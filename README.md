@@ -14,6 +14,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **Jalousie-Piktogramm im Fenster-Format** — hochkant wie das
+  Loxone-Fenster-Piktogramm (statt Quadrat), mit nur leicht angedeuteten
+  Sprossen; die Behang-Animation bleibt unverändert.
+
 - **Fix: Lichtsteuerung zeigte „an", obwohl über eine eigene „Aus"-Szene
   ausgeschaltet.** Ursache: Loxone reserviert intern ID 778 für „aus" — manche
   Anlagen legen aber zusätzlich eine eigene Szene an, die zwar „Aus" heißt,

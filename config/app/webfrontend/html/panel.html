@@ -1352,6 +1352,7 @@ function blindIcon(pct, shape){
     // scaleY aufgezogener Block sieht identisch aus und braucht keinen Clip.
     return '<span class="ico blindico"><svg viewBox="0 0 30 30" fill="currentColor" aria-hidden="true">'+
       '<path d="M24,4V26H6V4H24m2-2H4V28H26V2Z"/>'+
+      '<path d="M14.5 4h1v22h-1zM6 14.5h18v1H6z" opacity=".3"/>'+   // Sprossen, dezent
       '<g class="sh" style="transform:scaleY('+p.toFixed(3)+')"><rect x="7" y="5" width="16" height="20"/></g>'+
       '</svg></span>';
   }

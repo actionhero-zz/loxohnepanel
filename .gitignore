@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Lokale Konfiguration mit echten Zugangsdaten (nur *.example einchecken)
+config/app/config/loxpanel.cfg
+config/app/config/panels.json
+config/app/config/theme.json
+config/app/config/visu.json
+config/app/deploy/loxpanel-kiosk.conf
+
+# Build-/Release-Artefakte
+*.zip
+dist/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp

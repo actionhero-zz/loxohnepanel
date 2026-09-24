@@ -1,0 +1,17 @@
+[Unit]
+Description=LoxPanel Web-Visu Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Pfad anpassen, falls nicht /opt/loxpanel:
+WorkingDirectory=/opt/loxpanel
+ExecStart=/usr/bin/python3 /opt/loxpanel/bin/webvisu.py --port 8099
+Restart=always
+RestartSec=5
+# Benutzer anpassen (z.B. pi, root oder der Vendor-User des PX30):
+User=root
+
+[Install]
+WantedBy=multi-user.target

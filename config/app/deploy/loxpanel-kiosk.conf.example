@@ -1,0 +1,44 @@
+# LoxPanel Kiosk — panel-lokale Konfiguration.
+# Nach loxpanel-kiosk.conf (neben kiosk.sh) ODER /etc/loxpanel/kiosk.conf kopieren.
+# kiosk.sh liest daraus Server-Adresse und Panel-Profil.
+
+# Adresse des LoxPanel-Servers (host:port). Beispiele:
+#   192.168.1.10:8099   -> Server laeuft auf dem PC/LoxBerry im LAN
+#   localhost:8099      -> Server laeuft auf dem Panel selbst (Variante A)
+SERVER=192.168.1.10:8099
+
+# Panel-Profil-ID (leer = Standardansicht). IDs anlegen/sehen auf der
+# Konfig-Seite:  http://<SERVER>/config     z. B. erdgeschoss
+PANEL=
+
+# --- nur fuer den Panel-Agenten (agent/loxpanel-agent.py) ---
+# HTTP-Port des Agenten (Server steuert das Panel darueber). Default 8130.
+AGENT_PORT=8130
+# Anzeigename in der Settings-Seite (Default: Hostname).
+# AGENT_NAME=Panel Erdgeschoss
+# AUTOSTART=0 -> Kiosk NICHT automatisch oeffnen; Start/Ansicht kommt aus
+# der Settings-Seite (Displays). Default 1 (startet beim Hochfahren).
+# AUTOSTART=0
+# X = horizontaler Feinversatz der ganzen Visu in px gegen Display-Overscan/
+# Fensterposition (negativ = nach links). Leer/0 = kein Versatz. Nach Aendern:
+# Agent neu laden (Settings -> Displays -> Reload) bzw. neu booten.
+# X=-8
+# DPMS_OFF = Sekunden bis das Display komplett abschaltet (Backlight aus), wenn
+# nichts angetippt wird. 0 = nie. Antippen weckt es sofort. Default 180 (3 min).
+# Der Web-Screensaver (Uhr) erscheint schon nach 60 s; danach schaltet DPMS ab.
+# Bewaehrt am PX30-Wandpanel: 60 (schaltet zuegig ab, bleibt kuehl).
+# DPMS_OFF=60
+# BL_ON = feste Helligkeit im Ein-Zustand (0..max_brightness des Panels). Leer =
+# volles max_brightness. Wird beim Aufwachen immer neu gesetzt (nicht aus dem
+# Ist-Wert gelernt), damit ein zu dunkel gedimmtes Panel wieder hell wird.
+# Bewaehrt am PX30: 200.
+# BL_ON=200
+# PAUSE_ON_BLANK = Chromium-Kiosk pausieren (SIGSTOP), solange das Display aus
+# ist. 0 = weiterlaufen lassen (Default, empfohlen: Visu bleibt live, wacht
+# sofort mit aktuellem Stand auf). 1 = pausieren (spart CPU, aber Kaltstart-
+# Gefuehl beim Aufwachen). Backlight/DPMS laeuft unabhaengig davon.
+# PAUSE_ON_BLANK=0
+# RELOAD_HOURS = Stunden bis zum automatischen Kiosk-Neustart (gegen Einfrieren
+# des Panels). 0 = aus (Default). Besser ueber die Settings-Seite pro Panel
+# setzen (ueberschreibt diesen Wert). Beispiel: alle 12 Stunden neu starten.
+# RELOAD_HOURS=12

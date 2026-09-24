@@ -1,0 +1,2337 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>LoxPanel</title>
+<style>
+  :root{
+    --bg:#0d120e; --screen:#0f1512; --line:rgba(var(--wash,255,255,255),.08);
+    --ink:#e7ede7; --muted:#9fb0a4; --glow:#e0a24d; --accent:#52b881;
+    --good:#52b881; --crit:#e2695f;
+    --tile:rgba(var(--wash,255,255,255),.045);
+    /* Deckfarbe der Auflagen: Weiss hebt auf dunklem Grund ab, Schwarz auf
+       hellem. Ein helles Theme schickt "0,0,0" und dreht damit saemtliche
+       Auflagen auf einen Schlag um. */
+    --wash:255,255,255;
+    --mono:ui-monospace,"Cascadia Code",Consolas,monospace;
+    --nudge-x:0px;    /* Feinversatz der ganzen Visu; live via ?x=-6 (negativ=links) */
+    /* ---- Bewegung als Variable: ein Schalter (Settings -> Global ->
+       Darstellung -> "Animationen": An/Aus) steuert alle Dauern zentral ueber
+       --anim-scale, ohne Code zu aendern. --r-tile/--r-ctrl bleiben als freie
+       Rundungs-Variablen stehen (per CSS ueberschreibbar). Farben unberuehrt -
+       die sind schon laenger frei einstellbar. */
+    --r-tile:16px; --r-ctrl:12px;                    /* Kachel-/Button-Rundung */
+    --anim-scale:1;                                   /* 0=aus, 1=an */
+    --anim-fast:calc(120ms * var(--anim-scale));       /* Tastendruck, Fokus */
+    --anim-med:calc(220ms * var(--anim-scale));        /* Tabwechsel, Kachel-Einblendung */
+    --anim-slow:calc(420ms * var(--anim-scale));       /* Screensaver-Ein-/Ausblendung */
+    --ease:cubic-bezier(.4,0,.2,1);
+  }
+  /* Manuelle wie System-Praeferenz respektieren: Bewegung ganz aus. */
+  @media (prefers-reduced-motion:reduce){ :root{ --anim-scale:0 !important; } }
+  *{box-sizing:border-box;}
+  [hidden]{display:none !important;}   /* el.hidden zuverlaessig, trotz eigener display-Regeln */
+  /* Touch-Panel (Wandpanel/Tablet): keinen Mauszeiger anzeigen — auch nicht die
+     pointer-Hand ueber Kacheln. Am Desktop (echte Maus) bleibt der Cursor.
+     Zwei Trigger: Media-Query (Touch-Geraet) + .touch-Klasse (erste Beruehrung). */
+  @media (hover:none),(pointer:coarse){ *{cursor:none !important;} }
+  body.touch *{cursor:none !important;}
+  /* Self-gehostete Standardschrift (Manrope, SIL OFL) - an TPD-Optik
+     angelehnt, kein CDN/Internet noetig. --font ueberschreibt weiterhin frei
+     (Settings -> Aussehen -> Schriftart). font-display:swap: Text erscheint
+     sofort in einem Systemfont, springt beim Nachladen auf Manrope um -
+     kein Warten auf einen unsichtbaren Ladebalken. */
+  @font-face{font-family:"Manrope";src:url("/fonts/Manrope.woff2") format("woff2");
+    font-weight:200 800;font-style:normal;font-display:swap;}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:var(--font,"Manrope","Inter","Roboto","Segoe UI Variable Text",-apple-system,"Segoe UI",system-ui,sans-serif);
+    display:grid;place-items:center;-webkit-font-smoothing:antialiased;}
+  .screen{
+    position:relative;
+    width:100vw;height:100vh;
+    max-width:calc(var(--cols,2) * 240px);max-height:calc(var(--rows,2) * 240px);
+    border-radius:0;overflow:hidden;background:var(--screen);
+    box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 0 60px rgba(0,0,0,.5);
+    transform:translateX(var(--nudge-x,0));
+    display:grid;grid-template-rows:minmax(0,1fr) auto;}
+  /* "Bildschirm fuellen": ganzen Tablet-Schirm nutzen (Voll-Zoom). Die Kacheln
+     passen sich der Geraeteform an (koennen leicht rechteckig werden) statt als
+     zentrierter cols:rows-Kasten mit Rand zu stehen. Gilt auch fuer Vollbreit. */
+  .screen.fill{max-width:none;max-height:none;width:100vw;height:100vh;}
+  /* Split-Layout (grosse Tablets): EIN Panel = links navigierbare Visu, rechts
+     fester Player, unten EINE gemeinsame Tab-Leiste ueber die volle Breite. */
+  /* Denke in einem 4x2-Raster: links 2x2 = Visu, rechts 2x2 = Player. Der Block
+     hat Seitenverhaeltnis 4:2 (=2:1) und wird zentriert eingepasst (quadratische
+     Kacheln, kein Strecken ueber den ganzen Schirm). */
+  /* Split (fill AUS): feste Kachelgroesse wie die uebrigen Tabs -> gleiche Hoehe.
+     2 Panes nebeneinander = 2x Visu-Breite, deshalb --cols*480; Hoehe --rows*240
+     (identisch zur nicht-geteilten .screen -> kein Hoehensprung beim Tab-Wechsel). */
+  .screen.split{max-width:none;max-height:none;
+    width:min(100vw, calc(var(--cols,2) * 480px));height:min(100vh, calc(var(--rows,2) * 240px));
+    grid-template-columns:1fr 1fr;grid-template-rows:minmax(0,1fr) auto;}
+  /* "Bildschirm fuellen" im Split: ganzen Tablet-Schirm nutzen (Kacheln passen
+     sich an, statt zentriertem 2:1-Kasten mit Rand). */
+  .screen.split.fill{width:100vw;height:100vh;}
+  #playerpane{display:none;}
+  #frontpane{display:none;}
+  .screen.split #grid{grid-column:1;grid-row:1;}
+  .screen.split #playerpane{display:flex;flex-direction:column;grid-column:2;grid-row:1;
+    min-height:0;border-left:1px solid var(--line);overflow:hidden;padding:10px;gap:10px;}
+  /* Split-Pane Wetter/Kalender/Energie: rechte Spalte, auf Pane-Hoehe begrenzt
+     (min-height:0 + minmax(0,1fr)-Zeile) -> Inhalt scrollt INNEN statt ueber den
+     Kachelrahmen hinauszulaufen. Seiten-Snapping wie beim Kachel-Grid:
+     jede .fp-page fuellt genau die Pane-Hoehe, Scrollen rastet seitenweise ein. */
+  .screen.split #frontpane{display:flex;flex-direction:column;grid-column:2;grid-row:1;
+    min-height:0;border-left:1px solid var(--line);overflow-y:auto;padding:10px;gap:10px;
+    scroll-snap-type:y mandatory;scroll-padding-top:10px;}
+  /* Jede Seite = ein gerahmter 480x480-Block wie der 2x2-Kachelblock links:
+     min-height:100% fuellt die Pane-Hoehe, gleiche Rahmung/Innenabstand wie eine
+     Kachel -> Inhalt startet auf gleicher Hoehe (nicht mehr "zu hoch"). */
+  .screen.split #frontpane .fp-page,
+  .screen.split #playerpane .fp-page{flex:0 0 auto;min-height:100%;box-sizing:border-box;
+    display:flex;flex-direction:column;gap:10px;padding:16px;
+    background:linear-gradient(180deg,var(--tile),rgba(255,255,255,.015));
+    border:var(--tile-bw,1px) solid var(--tile-bord,var(--line));border-radius:16px;
+    scroll-snap-align:start;scroll-snap-stop:always;}
+  /* Einzel-Seite (Energie/Kamera/Audio): genau EINE Pane hoch (480x480), fuellt sie
+     exakt statt content-getrieben zu wachsen. Der Inhalt (quadratisches Radial-SVG,
+     4:3-Video, Cover) skaliert per object-fit/preserveAspectRatio hinein - sonst
+     erzwingt z.B. das 480x480-SVG seine Breite als Hoehe -> Pane ~550 statt 480.
+     Wetter/Kalender bleiben mehrseitig (Snap) und duerfen scrollen. */
+  .screen.split #frontpane .fp-page.solo,
+  .screen.split #playerpane .fp-page.solo{flex:1 1 0;min-height:0;max-height:100%;overflow:hidden;}
+  /* Kamera-Pane: MJPEG-Live-Bild fuellt die rechte Spalte (kein Padding/Scroll). */
+  /* Kamera-Pane: volle Intercom-Ansicht (Klingel-Banner + Video + Tür-/Ausgang-Buttons). */
+  #frontpane.cam{justify-content:flex-start;}
+  #frontpane .cambell{margin:0;}
+  #frontpane .camwait{display:flex;flex-direction:column;align-items:center;gap:10px;
+    color:var(--muted);padding:24px 0;}
+  #frontpane .camwait svg{width:56px;height:56px;opacity:.5;}
+  /* Energiefluss-Pane (Radial, Loxone-Standard). Erzeugung=Akzent, Verbrauch=Glow. */
+  .epane{flex:1;display:flex;flex-direction:column;min-height:0;}
+  .epane .etop{display:flex;justify-content:center;padding:2px 0 2px;}
+  .epane .ettl{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);}
+  .epane .ewrap{flex:1;min-height:0;}
+  .epane .ewrap svg{width:100%;height:100%;display:block;}
+  .epane .ebot{text-align:center;color:var(--muted);font-size:12px;padding-top:2px;}
+  .epane .ebot b{color:var(--ink);font-weight:600;}
+  .epane .spoke{stroke:var(--line);stroke-width:2;}
+  .epane .ehub{fill:var(--screen);stroke:var(--line);stroke-width:1.5;}
+  .epane .ering{fill:var(--screen);stroke-width:3;}
+  .epane .ering.prod{stroke:var(--accent);} .epane .ering.cons{stroke:var(--glow);} .epane .ering.grid{stroke:var(--crit);}
+  .epane .ering.idle{stroke:var(--muted);opacity:.55;}
+  .epane .eic{fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;}
+  .epane .eic.prod{stroke:var(--accent);} .epane .eic.cons{stroke:var(--glow);} .epane .eic.grid{stroke:var(--crit);} .epane .eic.idle{stroke:var(--muted);}
+  /* echtes Loxone-Icon: monochrome SVG-Maske, in Rollenfarbe eingefaerbt */
+  .epane .emask{width:100%;height:100%;background:currentColor;}
+  .epane .emask.prod{color:var(--accent);} .epane .emask.cons{color:var(--glow);} .epane .emask.grid{color:var(--crit);} .epane .emask.idle{color:var(--muted);}
+  .epane .enval{fill:var(--ink);font-size:16px;font-weight:600;text-anchor:middle;}
+  .epane .enval.idle{fill:var(--muted);}
+  .epane .enlab{fill:var(--muted);font-size:12px;text-anchor:middle;}
+  .epane .edot{opacity:0;}
+  .epane .edot.prod{fill:var(--accent);} .epane .edot.cons{fill:var(--glow);} .epane .edot.grid{fill:var(--crit);}
+  /* Fluss-Punkte laufen dauerhaft (Bewegung = Flussrichtung, also Info, kein
+     Deko-Effekt). Farbe = Rolle (prod/cons/grid), Richtung = Fluss (fin/fout) –
+     entkoppelt: z.B. Einspeisung ist gruen UND laeuft nach aussen (fout). Die Pane
+     wird nur bei Strukturaenderung neu gezeichnet, sonst laufen die Punkte
+     ununterbrochen weiter (siehe paintEnergy/updateEnergyPane). */
+  .epane .edot{animation:2.6s linear infinite;}
+  .epane .edot.fin{animation-name:eflowin;} .epane .edot.fout{animation-name:eflowout;}
+  .epane .edot.idle{animation:none;opacity:0;}
+  /* Radial in der Detailansicht (Antippen der Energie-Kachel; auch 4"-Panel ohne Split) */
+  .epane-detail{width:min(100%,440px);margin:6px auto 0;}
+  .epane-detail .epane{height:clamp(280px,58vh,460px);}
+  @keyframes eflowout{0%{transform:translate(0,0);opacity:0}12%{opacity:1}80%{opacity:1}100%{transform:translate(var(--dx),var(--dy));opacity:0}}
+  @keyframes eflowin{0%{transform:translate(var(--dx),var(--dy));opacity:0}12%{opacity:1}80%{opacity:1}100%{transform:translate(0,0);opacity:0}}
+  .screen.split #tabs{grid-column:1 / -1;grid-row:2;}   /* Tab-Leiste ueber volle Breite */
+  .screen.split .conn{grid-column:1;grid-row:1;place-self:start start;margin:6px;}
+  /* Player-Pane Innenaufbau (Cover gross oben, Titel, Transport, Lautstaerke) */
+  /* Cover = zentriertes QUADRAT, passt in die verfuegbare Flaeche (Breite ODER
+     Hoehe, je nachdem was kleiner ist) -> kein Abschneiden bei flachem Tablet. */
+  #playerpane .ppcover{flex:1;min-height:0;display:grid;place-items:center;color:var(--muted);}
+  #playerpane .ppcover>*{grid-area:1/1;}   /* Note-Platzhalter + Cover uebereinander */
+  /* Cover als zentriertes Quadrat, das in die Flaeche passt, ABER nach oben
+     begrenzt ist: sonst fuellt z.B. ein Senderlogo die halbe Seite. */
+  #playerpane .ppcover img{max-width:min(100%,300px);max-height:min(100%,300px);
+    aspect-ratio:1;object-fit:cover;
+    border-radius:14px;opacity:0;transition:opacity .2s;}
+  #playerpane .ppcover .coverph{width:96px;height:96px;display:grid;place-items:center;
+    background:rgba(var(--wash,255,255,255),.06);border-radius:14px;}
+  #playerpane .ppcover .coverph svg{width:56px;height:56px;}
+  #playerpane .pptitle{font-size:18px;font-weight:600;text-align:center;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #playerpane .ppsub{font-size:14px;color:var(--muted);text-align:center;margin-top:-4px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  #playerpane .pptrans{display:flex;gap:14px;justify-content:center;align-items:center;}
+  #playerpane .ppvol{display:flex;align-items:center;gap:8px;}
+  #playerpane .ppvol .sico{color:var(--muted);} #playerpane .ppvol .sico svg{width:20px;height:20px;}
+  #playerpane .ppvol .sld{flex:1;}
+  #playerpane .ppvol .sval{min-width:34px;text-align:right;color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;}
+  /* Scrollbarer Kachelbereich: var(--cols) Spalten x var(--rows) Reihen sichtbar */
+  .grid{--gap:10px;grid-area:1/1;
+    display:grid;grid-template-columns:repeat(var(--cols,2),1fr);
+    grid-auto-rows:calc((100% - (var(--rows,2) - 1) * var(--gap)) / var(--rows,2));gap:var(--gap);padding:10px;
+    overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+  /* Schlanke Scrollleiste im Theme fuer JEDEN scrollenden Bereich. Ohne das
+     zeichnet der Browser in der Split-Pane seine Standardleiste (16 px, grau)
+     direkt neben das 5-px-Band des Kachelrasters - und nimmt der Pane die
+     Breite weg. Die Pane scrollt seit dem Seiten-Snapping immer, weil Wetter
+     und Kalender zwei Seiten hoch sind. */
+  .grid,#frontpane,.frontpage,.menubox{
+    scrollbar-width:thin;scrollbar-color:rgba(var(--wash,255,255,255),.18) transparent;}
+  .grid::-webkit-scrollbar,#frontpane::-webkit-scrollbar,
+  .frontpage::-webkit-scrollbar,.menubox::-webkit-scrollbar{width:5px;}
+  .grid::-webkit-scrollbar-thumb,#frontpane::-webkit-scrollbar-thumb,
+  .frontpage::-webkit-scrollbar-thumb,.menubox::-webkit-scrollbar-thumb{
+    background:rgba(var(--wash,255,255,255),.18);border-radius:3px;}
+  /* Eigene, garantiert sichtbare Scroll-Anzeige zusaetzlich zur ::-webkit-
+     scrollbar oben: viele Android-Kiosk-Browser (u.a. Fully Kiosk) stellen
+     Pseudo-Element-Scrollbars gar nicht dar, gerade auf kleinen quadratischen
+     Panels faellt das ohne jeden Hinweis auf, dass unten noch mehr kommt.
+     Eigenes Grid-Item in DERSELBEN Zelle wie #grid (wie .frontpane/.playerpane
+     auch) - liegt oben drauf, ist aber selbst kein Kind des scrollenden
+     Elements und scrollt darum nicht mit weg. Rein informativ (kein Ziehen),
+     schmal und dezent, blendet sich nur ein, wenn tatsaechlich mehr Kacheln
+     da sind als auf den Screen passen (siehe updateScrollInd()). */
+  .scrollind{grid-area:1/1;justify-self:end;align-self:stretch;width:4px;margin:10px 4px;
+    border-radius:2px;background:rgba(var(--wash,255,255,255),.08);
+    opacity:0;transition:opacity var(--anim-fast) var(--ease);pointer-events:none;
+    z-index:6;position:relative;}
+  .scrollind.show{opacity:1;}
+  .scrollind .thumb{position:absolute;left:0;width:100%;border-radius:2px;
+    background:rgba(var(--wash,255,255,255),.34);transition:top .15s linear,height .15s linear;}
+  /* Seiten-Snapping: Kachelraster rastet hart in Vierer-Seiten ein (4 oben/4
+     unten, nie dazwischen), lange Listen rasten nur sanft ein. Snap-Punkte
+     setzt render() per .snap auf jede 4. Kachel. */
+  .grid.snapy{scroll-snap-type:y mandatory;scroll-padding-top:10px;}
+  .grid.list.snapy{scroll-snap-type:y proximity;}
+  .tile.snap{scroll-snap-align:start;}
+  .tile{background:linear-gradient(180deg,var(--tile),rgba(var(--wash,255,255,255),.015));
+    border:var(--tile-bw,1px) solid var(--tile-bord,var(--line));border-radius:var(--r-tile,16px);padding:16px;
+    display:flex;flex-direction:column;justify-content:space-between;
+    cursor:pointer;user-select:none;overflow:hidden;
+    box-shadow:var(--tile-shadow,0 3px 10px rgba(0,0,0,.14));
+    transition:background var(--anim-fast) var(--ease),border-color var(--anim-fast) var(--ease),transform var(--anim-fast) var(--ease);
+    animation:tileIn var(--anim-med) var(--ease) both;}
+  .tile:active{transform:scale(.97);}
+  /* Kachel-Einblendung beim (Neu-)Rendern (Tabwechsel, Reinnavigieren, Zurueck):
+     render() baut das Grid jedesmal komplett neu auf, darum spielt diese
+     Animation automatisch bei jeder Navigation - ohne eigenen JS-Hook. Rein
+     Transform/Opacity (billig fuer schwache Panel-Hardware); --anim-scale:0
+     (Animationen aus) macht daraus einen Sprung ohne Bewegung. */
+  @keyframes tileIn{from{opacity:0;transform:translateY(6px) scale(.98);}to{opacity:1;transform:none;}}
+  /* Aktiv-Overlay: Farbe je Zustand (--*-rgb), Aussehen global via --ov-* (pro Kachel ueberschreibbar) */
+  /* Aktiv-Overlay der EIN-Kacheln: standardmaessig aus (0), seit Piktogramme
+     und Icon-Farben den Zustand selbst zeigen. Ueber Aussehen -> Aktiv-Overlay
+     ("Kachel einfaerben") wieder einschaltbar. good/crit bleiben davon
+     unberuehrt - Warnfarben sind nicht abschaltbar. */
+  .tile.on{background:rgba(var(--on-rgb,224,162,77),var(--ov-on-fill,0));
+    border:var(--ov-bw,1px) solid rgba(var(--on-rgb,224,162,77),var(--ov-on-bord,0));}
+  .tile .head{display:flex;justify-content:space-between;align-items:flex-start;}
+  .tile .ico,.tile .icowrap{color:var(--ico,var(--muted));}
+  .tile.on .ico,.tile.on .icowrap{color:var(--ico-fixed,var(--glow));}
+  .tile .ico svg{width:var(--ico-size,38px);height:var(--ico-size,38px);}
+  .tile .ico .rawico{width:var(--ico-size,38px);height:var(--ico-size,38px);object-fit:contain;display:block;}
+  /* Positionsring: Stellung von Rollladen, Tor, Fenster und Dimmer als Bogen
+     um das Icon. Der Server schickt "pos" nur fuer diese Bausteine; ohne den
+     Wert entsteht gar kein Element und die Kachel sieht aus wie immer.
+     Fester viewBox 0..100, Groesse ueber --ico-size - der Ring waechst also
+     mit, wenn die Icon-Groesse verstellt wird. Farbe ueber currentColor, damit
+     er dem Zustand UND dem Theme folgt, ohne eigene Farbregel. */
+  .tile .icowrap{position:relative;display:inline-grid;place-items:center;}
+  .favs{display:flex;gap:10px;overflow-x:auto;padding:6px 2px;-webkit-overflow-scrolling:touch;}
+  .favs.wrap{flex-wrap:wrap;overflow-x:visible;justify-content:flex-start;gap:12px;}
+  .phead{font-weight:650;font-size:15px;margin:10px 2px 2px;padding-bottom:6px;border-bottom:1px solid var(--line);text-align:left;}
+  /* Wecker: read-only Liste der Weckzeit-Eintraege */
+  .alist{display:flex;flex-direction:column;gap:10px;width:100%;max-width:520px;margin:6px auto 0;}
+  .arow{background:var(--tile);border:1px solid var(--line);border-radius:14px;padding:13px 16px;
+    display:grid;grid-template-columns:auto 1fr auto;column-gap:12px;row-gap:3px;align-items:center;}
+  .arow .adot{width:10px;height:10px;border-radius:50%;background:var(--accent);grid-row:1;grid-column:1;}
+  .arow .anm{grid-row:1;grid-column:2;font-weight:600;font-size:16px;text-align:left;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .arow .atime{grid-row:1;grid-column:3;font-size:20px;font-weight:600;font-variant-numeric:tabular-nums;text-align:right;}
+  .arow .arep{grid-row:2;grid-column:2/4;color:var(--muted);font-size:13px;text-align:left;}
+  .arow.off{opacity:.5;}
+  .arow.off .adot{background:var(--muted);}
+  .fav{flex:0 0 auto;width:88px;cursor:pointer;text-align:center;}
+  .favc{width:88px;height:88px;border-radius:12px;overflow:hidden;background:rgba(var(--wash,255,255,255),.06);display:grid;place-items:center;color:var(--muted);}
+  .favc img{width:100%;height:100%;object-fit:cover;}
+  .favc svg{width:34px;height:34px;}
+  .favn{font-size:12px;margin-top:5px;line-height:1.15;max-height:2.4em;overflow:hidden;}
+  /* Maskiertes Kachel-Icon: Fuellfarbe DIREKT aus der Icon-/Theme-Variable statt
+     ueber currentColor. Sonst bricht die eingeschraenkte Panel-WebView, sobald
+     eine eigene Icon-Farbe (--ico inline) gesetzt ist -> Icon bleibt leer.
+     Die Zustaende spiegeln die Farbregeln von .tile .ico (on/good/crit). */
+  .tile .ico.img{display:inline-block;width:var(--ico-size,38px);height:var(--ico-size,38px);background-color:var(--ico,var(--muted));
+    -webkit-mask:var(--u) no-repeat center/contain;mask:var(--u) no-repeat center/contain;}
+  .tile.on .ico.img{background-color:var(--ico-fixed,var(--glow));}
+  .tile.good .ico.img{background-color:var(--good);}
+  .tile.crit .ico.img{background-color:var(--crit-ink,var(--crit));}
+  .tile .chev{color:var(--muted);opacity:.55;}
+  /* Ein/Aus-Schnellschalter oben rechts (ersetzt dort den Pfeil) - klassischer
+     Schieber wie im Original-Loxone-Plugin: Knopf springt links/rechts,
+     Farbe zeigt den Zustand. Eigene Touch-Zone (siehe panel.html: n.onclick
+     ignoriert .tswitch genau wie .tctrls -> kein Sprung in die Detailansicht). */
+  .tswitch{position:relative;flex:none;width:38px;height:22px;border-radius:11px;
+    background:#565b64;border:1px solid #6b707a;
+    cursor:pointer;transition:background var(--anim-fast) var(--ease);}
+  .tswitch .knob{position:absolute;top:1px;left:1px;width:18px;height:18px;border-radius:50%;
+    background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
+    transition:transform var(--anim-fast) var(--ease);}
+  .tswitch.on{background:var(--accent);border-color:var(--accent);}
+  .tswitch.on .knob{transform:translateX(16px);}
+  .tswitch:active .knob{filter:brightness(.92);}
+  /* Runder Taster-Button (Pushbutton) - gleicher Platz wie .tswitch, aber
+     ohne Ein/Aus-Zustand: nur ein Punkt, der beim Antippen kurz aufleuchtet. */
+  .tapbtn{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+    background:#565b64;color:#c4c8ce;cursor:pointer;transition:background .3s ease,color .3s ease;}
+  .tapbtn svg{width:17px;height:17px;stroke-width:2.7;}
+  .tapbtn:active{background:var(--accent);color:#fff;}
+  /* Kurzes gruenes Nachleuchten nach dem Antippen (siehe bindTapFlash im JS) -
+     nicht nur waehrend des Drauftippens (:active), sondern noch kurz danach
+     als Bestaetigung, dass der Impuls tatsaechlich raus ist. */
+  .tapbtn.flash{background:var(--good);color:#fff;}
+  /* Auf/Ab-Mini-Buttons (Jalousie) oben rechts, wie in der Loxone-App. */
+  .updown{flex:none;display:flex;flex-direction:column;gap:3px;}
+  .updown .ub,.prevnext .ub{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;
+    background:#565b64;color:#c4c8ce;cursor:pointer;transition:background .3s ease,color .3s ease;}
+  .updown .ub svg,.prevnext .ub svg{width:14px;height:14px;stroke-width:2.4;}
+  .updown .ub:active,.prevnext .ub:active{background:var(--accent);color:#fff;}
+  .updown .ub.flash,.prevnext .ub.flash{background:var(--good);color:#fff;}
+  /* Jalousie-Piktogramm: Behang faehrt von der Fenster-Oberkante nach unten. */
+  .blindico .sh{transform-origin:0px 4px;
+    transition:transform var(--anim-med) var(--ease);}
+  .blindico.gateico .sh{transform-origin:0px 6px;}
+  .windowico .cr{transition:opacity var(--anim-med) var(--ease);}
+  /* Horizontale </>-Mini-Buttons (Lichtszenen) - gleicher .ub-Stil, nur
+     nebeneinander statt uebereinander. */
+  .prevnext{flex:none;display:flex;gap:3px;}
+  .tile .chev svg{width:20px;height:20px;}
+  .tile .room{font-size:var(--room-size,12px);color:var(--muted);font-weight:500;letter-spacing:.02em;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;opacity:.85;}
+  .tile .name{font-size:var(--name-size,18px);font-weight:var(--name-weight,450);color:var(--name-color,inherit);line-height:1.15;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .tile .sub{font-size:var(--sub-size,15px);color:var(--muted);font-weight:400;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px;}
+  .tile.on .sub{color:var(--glow);}
+  .tile.good{background:rgba(var(--good-rgb,82,184,129),var(--ov-fill,.16));
+    border:var(--ov-bw,1px) solid rgba(var(--good-rgb,82,184,129),var(--ov-bord,.55));}
+  .tile.good .ico,.tile.good .icowrap,.tile.good .sub{color:var(--good);}
+  .tile.crit{background:var(--crit-fill,rgba(var(--crit-rgb,226,107,95),var(--ov-fill,.16)));
+    border:var(--ov-bw,1px) solid rgba(var(--crit-rgb,226,107,95),var(--ov-bord,.55));}
+  .tile.crit .ico,.tile.crit .icowrap,.tile.crit .sub{color:var(--crit-ink,var(--crit));}
+  /* Gefuellte Stoerungskachel: dann tragen Name, Raumzeile und Pfeil die
+     Gegenfarbe. Ohne --crit-ink/--crit-muted aendert sich nichts. */
+  .tile.crit .name{color:var(--crit-ink,var(--name-color,inherit));}
+  .tile.crit .room,.tile.crit .chev{color:var(--crit-muted,var(--muted));}
+  .tctrls{display:flex;gap:8px;justify-content:center;margin-top:6px;}
+  .tctrls .tb{width:34px;height:34px;border-radius:50%;background:rgba(var(--wash,255,255,255),.10);
+    display:grid;place-items:center;color:var(--ink);flex:0 0 auto;}
+  .tctrls .tb:active{transform:scale(.92);background:rgba(var(--wash,255,255,255),.18);}
+  .tctrls .tb svg{width:17px;height:17px;}
+  .empty{grid-column:1/-1;text-align:center;color:var(--muted);padding-top:40px;font-size:15px;}
+  /* Listen-Layout (volle Breite): immer exakt 4 Zeilen sichtbar (fuellt die
+     Grid-Hoehe, egal wie hoch die Tab-Leiste ist -> kein 3,75-Zeilen-Rest). */
+  .grid.list{grid-template-columns:1fr;grid-auto-rows:calc((100% - 3*var(--gap)) / 4);}
+  .grid.list .tile{flex-direction:row;align-items:center;gap:14px;padding:0 18px;}
+  .grid.list .tile .head{flex:0 0 auto;}
+  .grid.list .tile .body{flex:1;min-width:0;}
+  .grid.list .tctrls{margin-top:0;}
+  /* Detail-Panel (z.B. Jalousie) */
+  .grid.panel{display:flex;flex-direction:column;gap:10px;align-items:stretch;grid-auto-rows:initial;}
+  /* Anlagenschema (SystemScheme): Titel oben, darunter ein Zoom-/Pan-Viewport.
+     .schemestage ist das Original-Koordinatensystem (schemeSize), per transform
+     skaliert/verschoben. Die Werte liegen absolut an ihren pos-Koordinaten. */
+  .grid.scheme{display:flex;flex-direction:column;gap:0;padding:0;grid-auto-rows:initial;overflow:hidden;}
+  .schemetitle{flex:0 0 auto;text-align:center;font-weight:600;font-size:16px;
+    padding:10px 12px 8px;border-bottom:1px solid var(--line);}
+  .schemeview{flex:1;min-height:0;position:relative;overflow:hidden;touch-action:none;
+    background:var(--screen);}
+  .schemestage{position:absolute;top:0;left:0;transform-origin:0 0;will-change:transform;}
+  .schemeimg{position:absolute;top:0;left:0;width:100%;height:100%;user-select:none;-webkit-user-drag:none;}
+  .schemeval{position:absolute;display:flex;align-items:center;justify-content:center;
+    font-size:19px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1;
+    /* Bewusst KEINE --wash-Auflage: das Wertschild liegt ueber dem Schemabild,
+       nicht ueber dem Panelgrund. Es bringt seinen Hintergrund selbst mit und
+       muss hell bleiben, sonst steht die dunkle Schrift auf Schwarz. */
+    color:#12140f;background:rgba(255,255,255,.82);border-radius:6px;
+    box-shadow:0 1px 3px rgba(0,0,0,.25);padding:0 4px;overflow:hidden;white-space:nowrap;}
+  .schemeval span{overflow:hidden;text-overflow:ellipsis;}
+  .schemeval.on{background:rgba(var(--accent-rgb,82,184,129),.9);color:var(--on-accent,#08130c);}
+  .schemeval.crit{background:var(--crit-fill,rgba(226,105,95,.92));color:var(--crit-ink,#fff);}
+  .schemeval.tap{cursor:pointer;box-shadow:0 0 0 2px var(--accent),0 1px 3px rgba(0,0,0,.25);}
+  .schemehint{position:absolute;right:8px;bottom:6px;font-size:11px;color:var(--muted);
+    background:rgba(0,0,0,.35);border-radius:6px;padding:2px 7px;pointer-events:none;}
+  .hero{display:grid;place-items:center;padding:6px 0 2px;}
+  .hero .circle{width:84px;height:84px;border-radius:50%;background:var(--tile);
+    border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);}
+  .hero .circle svg{width:38px;height:38px;}
+  .hero .circle .himg{width:38px;height:38px;background-color:currentColor;
+    -webkit-mask:var(--u) no-repeat center/contain;mask:var(--u) no-repeat center/contain;}
+  .hero .circle .rawico{width:38px;height:38px;object-fit:contain;}
+  .status{text-align:center;color:var(--muted);font-size:14px;padding:2px 6px;}
+  /* Wecker-Status: moderat gross (nicht so riesig wie .pbig), Raum als Unterzeile */
+  .astat{text-align:center;font-size:30px;font-weight:600;line-height:1.18;letter-spacing:-.01em;padding:0 16px;}
+  .astat.crit{color:var(--crit);}
+  .astat .astatsub{font-size:15px;font-weight:400;color:var(--muted);margin-top:8px;letter-spacing:0;}
+  .pbar{background:var(--tile);border:1px solid var(--line);border-radius:var(--r-ctrl,12px);
+    padding:15px;text-align:center;font-weight:650;font-size:15px;}
+  .pbig{text-align:center;font-size:clamp(56px,15vw,84px);font-weight:600;letter-spacing:-.02em;line-height:1.06;
+    padding:8px 8px;word-break:break-word;}
+  .pbig.good{color:var(--good);} .pbig.crit{color:var(--crit);}
+  /* Ring-Regler (Loxone-TPD-artiger Kreisbogen statt geradem Slider, z.B.
+     Solltemperatur). Ganze Flaeche ist Touch-Ziel (nicht nur der duenne
+     Strich) - Winkelberechnung in JS nimmt jeden Punkt relativ zur Mitte,
+     auch mittig angetippt. --ring-thick/--ring-size global/pro Panel
+     einstellbar (siehe Aussehen-Tab), wie --ico-size etc. */
+  .ring{position:relative;width:clamp(200px,55vw,var(--ring-size,260px));aspect-ratio:1;margin:6px auto;
+    touch-action:none;cursor:pointer;}
+  .ring svg{width:100%;height:100%;transform:rotate(135deg);}
+  .ring circle{fill:none;stroke-width:var(--ring-thick,14);stroke-linecap:round;}
+  .ring .rbg{stroke:rgba(var(--wash,255,255,255),.10);}
+  .ring .rfg{stroke:var(--accent);transition:stroke-dasharray .05s linear;}
+  .ring .rval{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    pointer-events:none;gap:2px;}
+  .ring .rnum{font-size:clamp(32px,11vw,48px);font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+  .ring .rsub{font-size:13px;color:var(--muted);}
+  .grid.panel.bigpage{justify-content:center;gap:14px;}
+  /* anchor:bottom (IRR/Klima): Anzeige oben zentriert, Bedienung unten fixiert.
+     Aufklappende Auswahl steht im .panbot VOR den festen Zeilen -> waechst nach oben. */
+  .grid.panel.anchorbot{justify-content:flex-start;gap:0;}
+  .grid.panel.anchorbot .pantop{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;
+    justify-content:center;align-items:stretch;gap:10px;}
+  .grid.panel.anchorbot .panbot{flex:0 0 auto;display:flex;flex-direction:column;gap:10px;padding-top:8px;}
+  .brow{display:flex;gap:10px;}
+  .btn{flex:1;background:var(--tile);border:1px solid var(--line);border-radius:var(--r-ctrl,12px);
+    padding:17px 10px;text-align:center;font-weight:650;font-size:15px;cursor:pointer;
+    user-select:none;-webkit-user-select:none;touch-action:none;
+    transition:background var(--anim-fast) var(--ease),transform var(--anim-fast) var(--ease);}
+  .btn:active{transform:scale(.97);background:rgba(var(--wash,255,255,255),.09);}
+  .btn.on{background:linear-gradient(180deg,rgba(var(--on-rgb,224,162,77),.22),rgba(var(--on-rgb,224,162,77),.05));
+    border-color:rgba(var(--on-rgb,224,162,77),.55);color:var(--glow);}
+  /* Aufklappbare Auswahl (z.B. Klima Modus/Fan): Zeile per Toggle ein/aus */
+  .brow.collapsed{display:none;}
+  .brow.wraprow{flex-wrap:wrap;}
+  .brow.wraprow .btn{flex:1 1 28%;min-width:82px;}
+  .btn.toggler::after{content:'▾';margin-left:7px;opacity:.55;font-size:.82em;vertical-align:middle;}
+  /* Auswahl-Popup (Klima Modus/Fan) */
+  .menuov{position:absolute;inset:0;z-index:25;}
+  .menubox{position:absolute;background:var(--screen);border:1px solid var(--line);
+    border-radius:12px;padding:4px;min-width:150px;max-height:82%;overflow-y:auto;
+    box-shadow:0 14px 44px rgba(0,0,0,.65);display:flex;flex-direction:column;gap:1px;}
+  .menuitem{padding:7px 16px;border-radius:7px;font-size:15px;line-height:1.15;white-space:nowrap;
+    cursor:pointer;user-select:none;-webkit-user-select:none;color:var(--ink);}
+  .menuitem:active{background:rgba(var(--wash,255,255,255),.13);}
+  .menuitem.on{color:var(--glow);background:rgba(var(--on-rgb,224,162,77),.15);}
+  /* Musik-Player */
+  /* Cover = zentriertes Quadrat, das in Breite UND Hoehe der Flaeche passt.
+     Ohne Hoehen-Cap ueberdeckt/verdraengt es auf flachen bzw. quadratischen
+     Displays (4-Zoll 480x480, Shelly X2) Titel/Interpret. */
+  .cover{position:relative;display:grid;place-items:center;padding:4px 0 2px;min-height:0;}
+  .cover .coverph,.cover img{width:auto;height:auto;
+    max-width:min(60%,210px);max-height:min(44vh,210px);aspect-ratio:1/1;border-radius:12px;}
+  .cover .coverph{position:absolute;width:120px;height:120px;
+    background:var(--tile);display:grid;place-items:center;color:var(--muted);}
+  .cover .coverph svg{width:44px;height:44px;}
+  .cover img{position:relative;object-fit:cover;opacity:0;transition:opacity .2s;
+    box-shadow:0 8px 24px rgba(0,0,0,.45);}
+  .webframe{width:100%;height:74vh;border-radius:12px;overflow:hidden;background:#000;}
+  .webframe iframe{width:100%;height:100%;border:0;display:block;}
+  .video{width:100%;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3;
+    display:grid;place-items:center;}
+  .video img{width:100%;height:100%;object-fit:contain;}
+  .ptitle{text-align:center;font-size:19px;font-weight:550;padding:0 8px;letter-spacing:-.01em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .ptitle .psub{font-size:15px;font-weight:400;color:var(--muted);margin-top:3px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .brow.transport{justify-content:center;align-items:center;gap:18px;}
+  .btn.icon{flex:0 0 auto;width:58px;height:58px;display:grid;place-items:center;padding:0;
+    border-radius:50%;color:var(--ink);}
+  .btn.icon svg{width:24px;height:24px;}
+  .btn.icon.big{width:70px;height:70px;background:var(--glow);border-color:transparent;color:var(--on-glow,#181008);}
+  .btn.icon.big svg{width:30px;height:30px;}
+  .srow{display:flex;align-items:center;gap:10px;padding:4px 4px;}
+  .srow .sico{color:var(--muted);display:grid;place-items:center;}
+  .srow .sico svg{width:20px;height:20px;}
+  .srow .sval{font-family:var(--mono);font-size:12px;color:var(--muted);width:28px;text-align:right;}
+  .sbtn{flex:0 0 auto;width:32px;height:32px;border-radius:8px;border:1px solid var(--line);
+    background:var(--panel2);color:var(--fg);font-size:20px;line-height:1;display:grid;
+    place-items:center;cursor:pointer;user-select:none;-webkit-user-select:none;}
+  .sbtn:active{background:var(--glow);color:var(--on-glow,#04121f);}
+  #playerpane .ppvol .sbtn{width:30px;height:30px;font-size:18px;}
+  /* Einheitliche Lautstaerke-/Wert-Leiste fuer BEIDE Player (Vollseite + Pane).
+     Fuellung ueber --p (Prozent, per JS gesetzt) statt natives accent-color,
+     damit sie auf jedem WebView gleich aussieht und der Track nie verschwindet.
+     Track ueber --wash getoent, damit er auf hellen Themes sichtbar bleibt. */
+  .sld{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:4px;cursor:pointer;
+    outline:none;background:linear-gradient(to right,
+      var(--glow) var(--p,0%),rgba(var(--wash,255,255,255),.22) var(--p,0%));}
+  .sld::-webkit-slider-runnable-track{-webkit-appearance:none;height:6px;border-radius:4px;background:transparent;}
+  .sld::-webkit-slider-thumb{-webkit-appearance:none;margin-top:-6px;width:18px;height:18px;border-radius:50%;
+    background:var(--glow);border:2px solid var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:pointer;}
+  .sld::-moz-range-track{height:6px;border-radius:4px;background:rgba(var(--wash,255,255,255),.22);}
+  .sld::-moz-range-progress{height:6px;border-radius:4px;background:var(--glow);}
+  .sld::-moz-range-thumb{width:16px;height:16px;border:2px solid var(--bg);border-radius:50%;
+    background:var(--glow);cursor:pointer;}
+  /* Schwebender Zurück-Pfeil (nur beim Reinnavigieren) */
+  .tabback{flex:0 0 auto;align-self:center;width:50px;height:50px;margin:0 14px;
+    display:grid;place-items:center;border-radius:50%;cursor:pointer;font-size:32px;line-height:1;
+    color:var(--muted);border:2px solid var(--line);background:rgba(var(--wash,255,255,255),.04);
+    transition:color var(--anim-fast) var(--ease),border-color var(--anim-fast) var(--ease),background var(--anim-fast) var(--ease);
+    animation:backIn var(--anim-fast) var(--ease) both;}
+  /* Nur beim (Neu-)Erscheinen in der Leiste (Tabs ohne Kategorie-Scroll: der
+     Button wird dort nur ins DOM gehaengt, wenn es wirklich ein "zurueck"
+     gibt - siehe renderTabs()) - kein Sprung, sondern ein kurzes Einpoppen. */
+  @keyframes backIn{from{opacity:0;transform:scale(.6);}to{opacity:1;transform:none;}}
+  .tabback.on{color:var(--on-accent,#fff);border-color:var(--accent);background:rgba(var(--accent-rgb,82,184,129),.14);}
+  .tabback:active{transform:scale(.94);}
+  .back:active{background:rgba(0,0,0,.65);}
+  /* Tabs */
+  .tabs{display:flex;border-top:1px solid var(--line);background:var(--tabbar,rgba(0,0,0,.25));}
+  .tab{flex:1;display:grid;place-items:center;padding:13px 0;color:var(--muted);cursor:pointer;}
+  .tabspacer{flex:1;pointer-events:none;}   /* leere Zelle, haelt den Zurueck-Button mittig */
+  .tab svg{width:28px;height:28px;}
+  /* Kategorie-Tab-Icon: Maskenfarbe DIREKT an die Theme-Variable haengen (nicht
+     an currentColor). Sonst loest die eingeschraenkte WebView (Shelly) currentColor
+     beim Farbschema-Wechsel nicht neu auf und das Icon bleibt an der Standardfarbe
+     haengen -> auf getoentem Theme kaum sichtbar. */
+  .tab .tico{display:inline-block;width:28px;height:28px;background-color:var(--muted);
+    -webkit-mask:var(--u) no-repeat center/contain;mask:var(--u) no-repeat center/contain;}
+  .tab.active{color:var(--accent);}
+  .tab.active .tico{background-color:var(--accent);}
+  .tab:active{transform:scale(.92);}
+  /* Online-Punkt: nur auf den Haupt-Screens (Tabs), zentriert im 2x2-Raster */
+  .conn{grid-row:1;grid-column:1;place-self:center;z-index:6;pointer-events:none;
+    width:8px;height:8px;border-radius:50%;background:var(--crit-dot,#c14338);display:none;}
+  .conn.ok{background:var(--accent);}
+  .conn.vis{display:block;}
+  .saver{position:absolute;inset:0;z-index:30;background:var(--bg);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    cursor:pointer;user-select:none;-webkit-user-select:none;
+    opacity:1;transition:opacity var(--anim-slow) var(--ease);}
+  /* Weich ein-/ausblenden statt hart umzuschalten (display:none) - bleibt aus
+     dem Layout raus (absolut positioniert) und faengt im ausgeblendeten
+     Zustand keine Beruehrungen mehr ab. */
+  .saver.hidden{opacity:0;pointer-events:none;}
+  .saver .sv-time{font-size:78px;font-weight:300;line-height:1;letter-spacing:1px;
+    font-variant-numeric:tabular-nums;color:var(--ink);}
+  .saver .sv-date{font-size:20px;color:var(--muted);margin-top:8px;text-transform:capitalize;}
+  .saver .sv-hint{margin-top:6px;font-size:13px;color:var(--muted);opacity:.5;}
+  /* Anti-Einbrennen: Inhalt driftet langsam ueber den Schirm. Kleinere Amplitude
+     als bei der reinen Uhr, damit Wetter/Termine nicht ueber den Rand wandern. */
+  .saver .sv-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;
+    width:min(92%,440px);animation:svdrift 90s linear infinite;}
+  @keyframes svdrift{
+    0%{transform:translate(-14px,-5px);}   25%{transform:translate(14px,-5px);}
+    50%{transform:translate(14px,5px);}     75%{transform:translate(-14px,5px);}
+    100%{transform:translate(-14px,-5px);}
+  }
+  .sv-clock{display:flex;flex-direction:column;align-items:center;gap:4px;}
+  /* Kompakte Front, sobald Wetter/Termine dazukommen (sonst passt es nicht aufs
+     480x480-Panel). Die reine Uhr (ohne Front-Daten) bleibt gross. */
+  .sv-wrap.rich{gap:9px;}
+  /* Mit Wetter/Terminen keine Anti-Einbrenn-Drift — der Inhalt soll ruhig stehen
+     (die reine Uhr weiter unten driftet weiterhin als Einbrennschutz). */
+  .saver .sv-wrap.rich{animation:none;transform:none;}
+  .sv-wrap.rich .sv-time{font-size:44px;}
+  .sv-wrap.rich .sv-date{font-size:15px;}
+  .sv-wrap.rich .sv-clock{margin:20px 0 6px;}   /* Uhr klar von der Wettervorschau darueber absetzen */
+  .sv-wrap.rich .sv-hint{display:none;}   /* bei voller Front kein Platz; nur-Uhr behaelt ihn */
+  /* Split-Panel: doppelte Breite nutzen. Uhr oben mittig ueber beide Spalten,
+     darunter Wetter links und Kalender rechts. Festes 2-Spalten-Grid (bricht
+     nicht um). Nur mit Front-Daten (rich); die reine Uhr bleibt zentriert. */
+  .saver.split .sv-wrap.rich{width:min(94%,820px);display:grid;
+    grid-template-columns:1fr 1fr;grid-template-areas:"clock clock" "wx cal";
+    column-gap:44px;row-gap:16px;align-items:start;}
+  .saver.split .sv-wrap.rich .sv-clock{grid-area:clock;justify-self:center;margin:0 0 4px;}
+  .saver.split .sv-wrap.rich .sv-wx{grid-area:wx;}
+  .saver.split .sv-wrap.rich .sv-cal,.saver.split .sv-wrap.rich .sv-cam{grid-area:cal;}
+  .saver.split .sv-wrap.rich .sv-time{font-size:60px;}
+  .saver.split .sv-wrap.rich .sv-date{font-size:18px;}
+  /* Wetter oben: aktuelle Lage + Vorschau-Streifen (je Tag Icon + Max/Min). */
+  .saver .sv-wx{display:flex;flex-direction:column;gap:10px;align-self:stretch;}
+  .sv-wx .now{display:flex;align-items:center;gap:12px;}
+  .sv-wx .now .ico{width:34px;height:34px;flex:none;}
+  .sv-wx .now .t{font-size:26px;font-weight:600;letter-spacing:-.02em;line-height:1;
+    font-variant-numeric:tabular-nums;}
+  .sv-wx .now .meta{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .sv-wx .now .cond{font-size:15px;font-weight:500;}
+  .sv-wx .now .hl{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .sv-wx .fore{display:grid;grid-template-columns:repeat(var(--fc,4),1fr);gap:8px;}
+  .sv-wx .fc{background:var(--tile);border:1px solid var(--line);border-radius:12px;
+    padding:6px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .sv-wx .fc .d{font-size:calc(var(--sv-fc-size,12.5) * 0.88 * 1px);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
+  .sv-wx .fc .ico{width:calc(var(--sv-fc-size,12.5) * 1.76 * 1px);height:calc(var(--sv-fc-size,12.5) * 1.76 * 1px);}
+  .sv-wx .fc .tt{font-size:calc(var(--sv-fc-size,12.5) * 1 * 1px);font-variant-numeric:tabular-nums;}
+  .sv-wx .fc .tt .mx{font-weight:600;} .sv-wx .fc .tt .mn{color:var(--muted);}
+  .sv-wx .ico{display:grid;place-items:center;color:var(--ink);}
+  .sv-wx .ico svg{width:100%;height:100%;}
+  .sv-wx .ico.sun{color:var(--glow);}
+  .sv-wx .ico.rain,.sv-wx .ico.drizzle,.sv-wx .ico.snow,.sv-wx .ico.storm{color:var(--cool,#7fb2e6);}
+  /* Termine unten: die naechsten Eintraege aus dem iCal-Abo. */
+  .saver .sv-cal{display:flex;flex-direction:column;gap:8px;align-self:stretch;}
+  .sv-cal .lbl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:8px;}
+  .sv-cal .lbl::after{content:"";flex:1;height:1px;background:var(--line);}
+  .sv-ev{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;
+    background:var(--tile);border:1px solid var(--line);border-radius:12px;padding:7px 11px;}
+  .sv-ev .when{display:flex;flex-direction:column;gap:1px;min-width:52px;}
+  .sv-ev .when .day{font-size:12px;color:var(--muted);}
+  .sv-ev .when .tm{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1;}
+  .sv-ev .ttl{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sv-ev .tag{font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);
+    border:1px solid rgba(var(--accent-rgb,82,184,129),.4);background:rgba(var(--accent-rgb,82,184,129),.10);
+    border-radius:999px;padding:2px 8px;white-space:nowrap;}
+  /* "Fenster zur Aussenwelt": Intercom-Livebild statt Kalender, wenn kein iCal
+     genutzt wird (Settings -> Kalender & Wetter). Gleicher Aufbau wie .sv-cal
+     (Label-Zeile + abgerundete Tile-Flaeche), damit es sich nahtlos einfuegt. */
+  .saver .sv-cam{display:flex;flex-direction:column;gap:8px;align-self:stretch;}
+  .sv-cam .lbl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:8px;}
+  .sv-cam .lbl::after{content:"";flex:1;height:1px;background:var(--line);}
+  .sv-cam-frame{background:var(--tile);border:1px solid var(--line);border-radius:12px;
+    overflow:hidden;aspect-ratio:4/3;position:relative;}
+  .sv-cam-img{width:100%;height:100%;object-fit:cover;display:block;}
+  .sv-cam-status{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:12.5px;text-align:center;padding:10px;pointer-events:none;}
+  .sv-cam-status:empty{display:none;}
+  /* Groessere Panels/Tablets/Browser: die Front nutzt den Platz statt als kleine
+     440px-Saeule in der Mitte zu haengen. Nur der Screensaver (.saver) skaliert
+     hoch — die reine 480x480-Ansicht bleibt unveraendert kompakt. */
+  @media (min-width:640px) and (min-height:560px){
+    .saver .sv-wrap{width:min(90%,680px);gap:24px;}
+    .sv-wrap.rich{gap:20px;}
+    .sv-wrap.rich .sv-time{font-size:76px;}
+    .sv-wrap.rich .sv-date{font-size:21px;}
+    .saver .sv-wx{gap:16px;}
+    .sv-wx .now{gap:16px;}
+    .sv-wx .now .ico{width:56px;height:56px;}
+    .sv-wx .now .t{font-size:42px;}
+    .sv-wx .now .cond{font-size:20px;}
+    .sv-wx .now .hl{font-size:15px;}
+    .sv-wx .fore{gap:12px;}
+    .sv-wx .fc{padding:13px 8px 14px;gap:6px;border-radius:14px;}
+    .sv-wx .fc .d{font-size:calc(var(--sv-fc-size,12.5) * 1.04 * 1px);}
+    .sv-wx .fc .ico{width:calc(var(--sv-fc-size,12.5) * 2.56 * 1px);height:calc(var(--sv-fc-size,12.5) * 2.56 * 1px);}
+    .sv-wx .fc .tt{font-size:calc(var(--sv-fc-size,12.5) * 1.28 * 1px);}
+    .saver .sv-cal{gap:11px;}
+    .sv-cal .lbl{font-size:12px;}
+    .sv-ev{padding:12px 18px;gap:18px;border-radius:14px;}
+    .sv-ev .when{min-width:70px;}
+    .sv-ev .when .day{font-size:14px;}
+    .sv-ev .when .tm{font-size:19px;}
+    .sv-ev .ttl{font-size:18px;}
+    .sv-ev .tag{font-size:12px;padding:3px 11px;}
+  }
+  /* ---- Ausfuehrliche "Wetter & Kalender"-Ansicht (eigene Seite / Split-Pane) ---- */
+  .frontpage.hidden{display:none;}
+  .frontpage{position:absolute;inset:0;z-index:5;background:var(--screen);
+    display:flex;flex-direction:column;gap:14px;padding:16px;overflow-y:auto;}
+  .fp-h{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:8px;}
+  .fp-h::after{content:"";flex:1;height:1px;background:var(--line);}
+  .fp-now{display:flex;align-items:center;gap:18px;padding:2px 4px 6px;}
+  .fp-now .ico{width:72px;height:72px;flex:none;display:grid;place-items:center;color:var(--ink);}
+  .fp-now .ico svg{width:100%;height:100%;}
+  .fp-now .ico.sun{color:var(--glow);}
+  .fp-now .ico.rain,.fp-now .ico.drizzle,.fp-now .ico.snow,.fp-now .ico.storm{color:var(--cool,#7fb2e6);}
+  .fp-now .t{font-size:58px;font-weight:600;letter-spacing:-.02em;line-height:1;
+    font-variant-numeric:tabular-nums;color:var(--ink);}
+  .fp-now .meta{display:flex;flex-direction:column;gap:3px;min-width:0;}
+  .fp-now .cond{font-size:19px;font-weight:600;color:var(--ink);}
+  .fp-now .sub{font-size:13px;color:var(--muted);}
+  .fp-curve{width:100%;color:var(--accent);}
+  .fp-curve svg{width:100%;height:auto;display:block;}
+  .fp-curve .fpx{fill:var(--muted);font-size:11px;}
+  .fp-curve .fpt{fill:var(--ink);font-size:11px;font-weight:600;}
+  .fp-fore{display:grid;grid-template-columns:repeat(var(--fc,5),1fr);gap:8px;}
+  .fp-fc{background:var(--tile);border:1px solid var(--line);border-radius:12px;
+    padding:10px 4px 11px;display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .fp-fc .d{font-size:12px;color:var(--muted);}
+  .fp-fc .ico{width:26px;height:26px;display:grid;place-items:center;color:var(--ink);}
+  .fp-fc .ico svg{width:100%;height:100%;}
+  .fp-fc .ico.sun{color:var(--glow);}
+  .fp-fc .ico.rain,.fp-fc .ico.drizzle,.fp-fc .ico.snow,.fp-fc .ico.storm{color:var(--cool,#7fb2e6);}
+  .fp-fc .tt{font-size:13px;font-variant-numeric:tabular-nums;}
+  .fp-fc .tt .mx{font-weight:600;} .fp-fc .tt .mn{color:var(--muted);}
+  .fp-fc .pop{font-size:11px;color:var(--cool,#7fb2e6);}
+  .fp-cal{display:flex;flex-direction:column;gap:6px;}
+  .fp-day{font-size:13px;font-weight:600;color:var(--muted);margin-top:8px;}
+  .fp-ev{display:grid;grid-template-columns:70px 1fr;align-items:baseline;gap:12px;
+    background:var(--tile);border:1px solid var(--line);border-radius:10px;padding:8px 12px;}
+  .fp-ev .tm{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--ink);}
+  .fp-ev .tm.all{color:var(--muted);font-weight:500;font-size:12px;}
+  .fp-ev .ttl{font-size:15px;overflow:hidden;text-overflow:ellipsis;}
+  .fp-empty{color:var(--muted);font-size:14px;padding:6px 0;}
+  /* Wetter-Detailkacheln (Luftfeuchte, Wind, Sonne, UV, ...) */
+  .fp-det{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .fp-det>div{background:var(--tile);border:1px solid var(--line);border-radius:10px;
+    padding:8px 11px;display:flex;flex-direction:column;gap:2px;}
+  .fp-det>div span{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .fp-det>div b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink);}
+  /* Monatsraster im Kalender-Pane — als eigene Karte */
+  .fp-mon{display:flex;flex-direction:column;background:var(--tile);
+    border:1px solid var(--line);border-radius:14px;padding:14px 14px 16px;
+    box-shadow:0 1px 4px rgba(0,0,0,.18);}
+  .fp-mon-h{display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding-bottom:11px;margin-bottom:9px;border-bottom:1px solid var(--line);}
+  .fp-mtitle{font-size:15px;font-weight:700;text-transform:capitalize;color:var(--ink);
+    letter-spacing:.01em;text-align:center;flex:1;}
+  .fp-mnav{cursor:pointer;user-select:none;color:var(--muted);font-size:22px;line-height:1;
+    width:34px;height:34px;display:grid;place-items:center;border-radius:9px;}
+  .fp-mnav:active{background:rgba(var(--wash,255,255,255),.08);}
+  .fp-mon-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
+  .fp-mon-wd{font-size:10px;font-weight:600;color:var(--muted);text-align:center;
+    text-transform:uppercase;letter-spacing:.06em;padding-bottom:5px;}
+  .fp-mon-wd.sun{color:var(--crit,#e2695f);}
+  .fp-mon-c{min-height:34px;padding:5px 0;display:grid;place-items:center;font-size:13px;
+    border-radius:9px;font-variant-numeric:tabular-nums;position:relative;color:var(--ink);cursor:pointer;}
+  .fp-mon-c.sat{color:var(--muted);}                 /* Samstag dezent */
+  .fp-mon-c.sun{color:var(--crit,#e2695f);}                       /* Sonntag + Feiertag rot */
+  .fp-mon-c.holi{font-weight:700;}                    /* Feiertag zusaetzlich fett */
+  .fp-mon-c.empty{visibility:hidden;}
+  .fp-mon-c.ev{font-weight:600;}
+  .fp-mon-c.ev::after{content:"";position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
+    width:5px;height:5px;border-radius:50%;background:var(--accent);}
+  .fp-mon-c.holi.ev::after{background:var(--crit,#e2695f);}
+  .fp-mon-c.sel{outline:2px solid var(--accent);outline-offset:-2px;}
+  .fp-mon-c.today{background:var(--accent);color:var(--on-accent,#fff);font-weight:700;
+    box-shadow:0 2px 8px rgba(0,0,0,.28);}
+  .fp-mon-c.today.ev::after{background:var(--on-accent,#fff);}
+  .fp-allbtn{background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:2px 4px;}
+  .fp-ev.holi .tm{color:var(--crit,#e2695f);}
+  .moreb{position:absolute;top:6px;right:8px;z-index:6;width:34px;height:34px;border-radius:50%;
+    display:grid;place-items:center;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;
+    background:rgba(var(--wash,255,255,255),.06);}
+  .moreb:active{transform:scale(.92);}
+  .pinov{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.6);display:grid;place-items:center;}
+  .pinbox{background:var(--screen);border:1px solid var(--line);border-radius:16px;padding:20px;width:78%;max-width:300px;
+    box-shadow:0 20px 50px rgba(0,0,0,.6);display:flex;flex-direction:column;gap:12px;}
+  .pinttl{font-weight:600;font-size:16px;text-align:center;}
+  .pinin{background:var(--bg);border:1px solid var(--line);color:var(--ink);border-radius:10px;
+    padding:12px;font-size:22px;text-align:center;letter-spacing:.3em;outline:none;}
+  .pinin:focus{border-color:var(--glow);}
+  .pinmsg{color:var(--crit);font-size:13px;text-align:center;min-height:16px;}
+  .pinbtn{flex:1;text-align:center;padding:12px;border-radius:10px;cursor:pointer;user-select:none;font-weight:600;border:1px solid var(--line);}
+  .pinbtn.ok{background:var(--glow);color:var(--on-glow,#181008);border-color:transparent;}
+  .pinbtn:active{transform:scale(.97);}
+  .pindisp{font-size:26px;text-align:center;letter-spacing:.35em;min-height:38px;padding:8px 6px;
+    border:1px solid var(--line);border-radius:10px;background:var(--bg);}
+  .pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .pinkey{padding:15px 0;text-align:center;font-size:22px;border:1px solid var(--line);border-radius:12px;
+    cursor:pointer;user-select:none;background:var(--tile);}
+  .pinkey:active{background:rgba(var(--wash,255,255,255),.14);transform:scale(.97);}
+  .pinkey.ok{background:var(--glow);color:var(--on-glow,#181008);border-color:transparent;font-weight:700;}
+  .pinkey.del{font-size:20px;}
+</style>
+</head>
+<body>
+<!-- Statisches <audio> fuer den eigenen Klingelton (Settings -> Kamera/
+     Tuerstation -> Upload). BEWUSST fest im Markup (nicht per new Audio()
+     erzeugt) und ausserhalb jedes ein-/ausblendbaren Bereichs, da ein Klingeln
+     auf jeder Ansicht passieren kann, nicht nur im Screensaver: manche Kiosk-
+     Browser/WebViews (u.a. Fully Kiosk Browser, wie z.B. auf einem Shelly
+     Wall Display eingesetzt) erlauben Autoplay fuer <audio> laut eigener Doku
+     NUR bei einem "statischen" Tag im Markup, nicht bei dynamisch per JS
+     erzeugten Audio-Objekten. preload "none" spart auf schwacher Hardware
+     Speicher, bis wirklich geklingelt wird. -->
+<audio id="ringAudio" preload="none" loop playsinline></audio>
+<div class="screen">
+  <div class="conn" id="conn"></div>
+  <div class="playerpane" id="playerpane"></div>
+  <div class="frontpane" id="frontpane"></div>
+  <div class="grid" id="grid"></div>
+  <div class="scrollind" id="scrollInd"><div class="thumb"></div></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="saver hidden" id="saver">
+    <div class="sv-wrap">
+      <div class="sv-wx" id="svWx" hidden></div>
+      <div class="sv-clock">
+        <div class="sv-time" id="svTime">--:--</div>
+        <div class="sv-date" id="svDate"></div>
+      </div>
+      <div class="sv-cal" id="svCal" hidden></div>
+      <div class="sv-cam" id="svCam" hidden></div>
+      <div class="sv-hint">Zum Öffnen tippen</div>
+    </div>
+  </div>
+  <div class="frontpage hidden" id="frontPage"></div>
+</div>
+
+<script>
+const ICONS = {
+  folder:'<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  bulb:'<path d="M9 18h6"/><path d="M10 21h4"/><path d="M12 3a6 6 0 0 0-4 10.5c.7.8 1 1.4 1 2.5h6c0-1.1.3-1.7 1-2.5A6 6 0 0 0 12 3Z"/>',
+  switch:'<rect x="3" y="7" width="18" height="10" rx="5"/><circle cx="8" cy="12" r="2.5"/>',
+  mood:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/>',
+  central:'<path d="M3 11 12 4l9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/>',
+  blind:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 9h16M4 13h16M4 17h16"/>',
+  window:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/>',
+  up:'<path d="m6 15 6-6 6 6"/>',
+  down:'<path d="m6 9 6 6 6-6"/>',
+  stop:'<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  music:'<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+  vol:'<path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16 8a5 5 0 0 1 0 8"/>',
+  prev:'<path d="M6 6h2v12H6zM20 6v12l-9-6z"/>',
+  next:'<path d="M16 6h2v12h-2zM4 6l9 6-9 6z"/>',
+  play:'<path d="M8 5v14l11-7z"/>',
+  pause:'<path d="M7 5h3v14H7zM14 5h3v14h-3z"/>',
+  alarm:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>',
+  gate:'<path d="M3 10 12 4l9 6v11H3z"/><path d="M6 21v-7h12v7"/><path d="M6 17.5h12"/>',
+  thermo:'<path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0Z"/>',
+  fan:'<path d="M10.83 16.38a6.08 6.08 0 0 1-8.62-7l5.41 1.45a6.08 6.08 0 0 1 7-8.62l-1.45 5.41a6.08 6.08 0 0 1 8.62 7l-5.41-1.45a6.08 6.08 0 0 1-7 8.62l1.45-5.41Z"/><path d="M12 12v.01"/>',
+  cam:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/>',
+  list:'<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3 6h.01M3 12h.01M3 18h.01"/>',
+};
+const TABS = [
+  {tab:'favoriten', label:'Favoriten', icon:'<path d="m12 3 2.9 5.9 6.1.9-4.5 4.4 1 6.1L12 17.8 6.5 20.3l1-6.1L3 9.8l6.1-.9z"/>'},
+  {tab:'zentral',   label:'Zentral',   icon:'<path d="M3 11 12 4l9 7"/><path d="M5 10v9a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-9"/>'},
+  {tab:'raeume',    label:'Räume',     icon:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M14 4v16"/>'},
+  {tab:'kategorien',label:'Kategorien',icon:'<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/>'},
+];
+
+const el = id => document.getElementById(id);
+let ws, stack = [{view:'tab',tab:'favoriten'}], view = null;
+// Touch-Panel: nach der ersten Beruehrung den Mauszeiger ausblenden (Desktop-Maus bleibt)
+addEventListener('touchstart', ()=>document.body.classList.add('touch'), {once:true, passive:true});
+let tabsCfg = ['favoriten','zentral','raeume','kategorien'];
+let tabMeta = {};   // Label/Icon fuer dynamische Tabs (Kategorien), vom Server
+let gridCols = 2;   // effektive Spalten der aktuellen Ansicht (Vollbreit-Pane -> 4)
+let gridRows = 2;   // effektive sichtbare Zeilen pro Seite
+let profCols = 2, profRows = 2;   // Profil-Standard (aus dem Theme); Vollbreit ueberschreibt auf 4x2
+let _lastWide = null;   // zuletzt gerenderte Quer/Hoch-Entscheidung (fuer resize-Nachzug, s. render())
+let _playerBuilt = false, _playerVolDrag = false;   // fester Player (Split-Layout)
+// Split-Pane pro Tab: panesCfg = {tabKennung -> "weather"|"calendar"|"wide"|"player:<zone>"|"energy:<uuid>"|"camera:<uuid>"}
+// (vom Server). themeFill = "Bildschirm fuellen" (gilt jetzt auch im Split).
+// curPlayerZone = zuletzt an den Server gemeldete Player-Zone (setplayer).
+let panesCfg = {}, themeFill = false, curPlayerZone = '', curEnergyUuid = '', curCameraUuid = '';
+let cameraData = null;   // letzter {t:'camera'}-Push (Intercom-Bloecke) fuer die Kamera-Pane
+let energyData = null;   // letzter {t:'energy'}-Push fuer die Energiefluss-Pane
+let themeSplit = true;   // Split-Screen an/aus (aus = 4"-Panel: nur die Visu, keine Pane 2)
+
+function svg(inner){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>';}
+function svgF(inner){return '<svg viewBox="0 0 24 24" fill="currentColor">'+inner+'</svg>';}
+let sldDragging=false;
+function esc(s){return (s==null?'':String(s)).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function key(r){return JSON.stringify(r||{});}
+
+// ---- Weckton (Loxone-Wecker klingelt / Intercom-Klingel) ----
+// Synthetischer Piep-Loop per Web Audio API: kein Audio-Asset noetig, laeuft bis
+// der Server das Ende meldet ({t:'alarm',on:false}, nach 'dismiss' in Loxone/App
+// oder ueber den "Wecker aus"-Button am Panel; bzw. {t:'ring',on:false,sound:true},
+// sobald der bell-Impuls am Miniserver endet). Der Kiosk startet Chromium mit
+// --autoplay-policy=no-user-gesture-required, darum spielt der Ton ohne vorherige
+// Nutzergeste. Zusaetzlich ein Failsafe, der nach 5 Min stoppt, falls das
+// Aus-Event mal ausbleibt (sonst piepte das Panel endlos).
+let _actx=null, _alarmTimer=null, _alarmFailsafe=null;
+function startAlarmTone(){
+  if(_alarmTimer) return;               // laeuft schon
+  try{
+    _actx = _actx || new (window.AudioContext||window.webkitAudioContext)();
+    if(_actx.state==='suspended') _actx.resume();
+    const beep=()=>{
+      const t=_actx.currentTime, o=_actx.createOscillator(), g=_actx.createGain();
+      o.type='square'; o.frequency.value=880;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.35,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+0.4);
+      o.connect(g); g.connect(_actx.destination);
+      o.start(t); o.stop(t+0.45);
+    };
+    beep();
+    _alarmTimer=setInterval(beep,700);
+    clearTimeout(_alarmFailsafe);
+    _alarmFailsafe=setTimeout(stopAlarmTone,5*60*1000);
+  }catch(e){}
+}
+function stopAlarmTone(){
+  _toneSources.clear();   // "Ton aus" ist immer vollstaendig - auch beim Failsafe (unten) synchron halten
+  if(_alarmTimer){ clearInterval(_alarmTimer); _alarmTimer=null; }
+  clearTimeout(_alarmFailsafe); _alarmFailsafe=null;
+}
+// Mehrere Quellen koennen gleichzeitig einen Ton wollen (Wecker UND Klingel).
+// startAlarmTone()/stopAlarmTone() steuern nur die Hardware (den Oszillator);
+// hier wird gezaehlt, WER gerade Ton will, damit z.B. eine endende Klingel
+// nicht versehentlich einen noch laufenden Weckton abwuergt (und umgekehrt).
+let _toneSources=new Set();
+function toneOn(src){ _toneSources.add(src); startAlarmTone(); }
+function toneOff(src){ _toneSources.delete(src); if(!_toneSources.size) stopAlarmTone(); }
+// ---- Eigener Klingelton (Upload je Intercom, s. Settings) ----
+// Laeuft als Endlosschleife, solange der bell-Impuls ansteht (wie der
+// synthetische Ton), plus eigenem 5-Min-Failsafe fuer den Fall, dass das
+// Aus-Event mal ausbleibt. Nutzt das statische <audio id="ringAudio"> aus dem
+// Markup (siehe Kommentar dort) - falls Autoplay dafuer trotzdem blockiert
+// ist (play() liefert eine abgelehnte Promise), faellt automatisch auf den
+// synthetischen Wecker-Ton zurueck, statt komplett stumm zu bleiben.
+let _ringFailsafe=null;
+function playRingAudio(url){
+  const a=el('ringAudio');
+  if(!a){ toneOn('ring'); return; }   // Markup fehlt aus irgendeinem Grund -> wenigstens Synth-Ton
+  if(a.getAttribute('src')!==url) a.src=url;
+  a.currentTime=0;
+  const p=a.play();
+  if(p && p.catch) p.catch(()=>{ toneOn('ring'); });   // Autoplay blockiert -> Fallback auf Synth-Ton
+  clearTimeout(_ringFailsafe);
+  _ringFailsafe=setTimeout(stopRingAudio,5*60*1000);
+}
+function stopRingAudio(){
+  clearTimeout(_ringFailsafe); _ringFailsafe=null;
+  const a=el('ringAudio'); if(a){ a.pause(); a.currentTime=0; }
+  toneOff('ring');   // raeumt auch den Fallback-Synth-Ton (falls aktiv) sauber ab
+}
+// Sichtbarer Hinweis oben am Panel — bestaetigt, dass ein Test-Ton-Event
+// tatsaechlich ankam, und meldet den AudioContext-Status. So laesst sich
+// "Push kommt nicht an" von "Audio-Ausgabe stumm" trennen.
+function flashAudioBadge(txt, ok){
+  let b=document.getElementById('audiobadge');
+  if(!b){
+    b=document.createElement('div'); b.id='audiobadge';
+    b.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;'+
+      'padding:13px 20px;border-radius:12px;font:600 15px system-ui,sans-serif;color:#fff;'+
+      'box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .3s;max-width:90vw;text-align:center;';
+    document.body.appendChild(b);
+  }
+  b.textContent=txt;
+  b.style.background = ok ? 'rgba(82,184,129,.96)' : 'rgba(226,107,95,.96)';
+  b.style.opacity='1';
+  clearTimeout(b._t); b._t=setTimeout(()=>{ b.style.opacity='0'; }, 3500);
+}
+// Kurzer Test-Ton (3 Pieptoene) von der Einstellungen-Seite ausgeloest. Eigener
+// AudioContext (stoert einen evtl. laufenden echten Weckton nicht). resume()
+// wird abgewartet, damit der Ton auch bei anfangs suspendiertem Context spielt;
+// der Badge meldet, ob der Context wirklich laeuft.
+function playTestTone(){
+  let actx;
+  try{ actx=new (window.AudioContext||window.webkitAudioContext)(); }
+  catch(e){ flashAudioBadge('🔊 Test-Ton empfangen — Web Audio nicht verfügbar', false); return; }
+  const boom=()=>{
+    try{
+      let t=actx.currentTime;
+      for(let i=0;i<3;i++){
+        const o=actx.createOscillator(), g=actx.createGain();
+        o.type='square'; o.frequency.value=880;
+        g.gain.setValueAtTime(0.0001,t);
+        g.gain.exponentialRampToValueAtTime(0.4,t+0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001,t+0.35);
+        o.connect(g); g.connect(actx.destination);
+        o.start(t); o.stop(t+0.4); t+=0.5;
+      }
+    }catch(e){}
+    const running = actx.state==='running';
+    flashAudioBadge(running ? '🔊 Test-Ton — Audio läuft' : '🔊 empfangen, Audio blockiert ('+actx.state+')', running);
+    setTimeout(()=>{ try{ actx.close(); }catch(e){} }, 2200);
+  };
+  if(actx.state==='suspended'){ actx.resume().then(boom, boom); }
+  else boom();
+}
+
+function send(o){ ws && ws.readyState===1 && ws.send(JSON.stringify(o)); }
+function nav(route){ stack.push(route); send({t:'nav',route}); }
+function goTab(tab){ stack=[{view:'tab',tab}]; send({t:'nav',route:stack[0]}); }
+function back(){
+  if(stack.length>1){
+    stack.pop();
+    const top=stack[stack.length-1];
+    // {view:'saver'} ist ein rein clientseitiger Merker (kein Server-Route).
+    if(top && top.view==='saver'){ showSaver(); renderTabs(); return; }
+    send({t:'nav',route:top});
+    return;
+  }
+  // Oberste Ebene (z.B. Favoriten) erreicht -> von hier immer zurueck zum
+  // Screensaver, unabhaengig davon, ob man ueber Idle-Timeout, Kiosk-Start
+  // oder direkten Tab-Wechsel hierher kam (kein Stack-Sentinel noetig).
+  showSaver(); renderTabs();
+}
+
+let pendingSecure=null;
+function askPin(cb,msg){
+  const s=document.querySelector('.screen'); let ov=s.querySelector('.pinov'); if(ov)ov.remove();
+  ov=document.createElement('div'); ov.className='pinov';
+  let val='';
+  const keys=['1','2','3','4','5','6','7','8','9','del','0','ok'];
+  ov.innerHTML='<div class="pinbox"><div class="pinttl">PIN / Passwort</div>'+
+    '<div class="pindisp" id="pindisp"></div>'+
+    '<div class="pinmsg">'+(msg||'')+'</div>'+
+    '<div class="pinpad">'+keys.map(k=>{
+      const cls='pinkey'+(k==='ok'?' ok':'')+(k==='del'?' del':'');
+      const lbl=k==='del'?'⌫':(k==='ok'?'OK':k);
+      return '<div class="'+cls+'" data-k="'+k+'">'+lbl+'</div>';
+    }).join('')+'</div>'+
+    '<div class="pinbtn cancel">Abbrechen</div></div>';
+  s.appendChild(ov);
+  const disp=ov.querySelector('#pindisp');
+  const draw=()=>{ disp.textContent='•'.repeat(val.length); };
+  const done=v=>{ ov.remove(); cb(v); };
+  ov.querySelectorAll('.pinkey').forEach(b=>{ b.onclick=()=>{
+    const k=b.dataset.k;
+    if(k==='ok') done(val);
+    else if(k==='del'){ val=val.slice(0,-1); draw(); }
+    else if(val.length<12){ val+=k; draw(); }
+  };});
+  ov.querySelector('.cancel').onclick=()=>done(null);
+}
+function doSecure(uuid,cmd,msg){
+  askPin(pin=>{ if(pin==null){pendingSecure=null;return;} pendingSecure={uuid,cmd}; send({t:'cmd',uuid,cmd,pin}); }, msg);
+}
+function sendCmd(uuid,cmd,secured){ if(secured) doSecure(uuid,cmd,''); else send({t:'cmd',uuid,cmd}); }
+const SLD_STEP=5;   // Schrittweite der -/+ Tasten am Schieberegler (Lautstaerke etc.)
+// Fuellstand der Leiste als CSS-Var --p (Prozent) setzen -> gefuellte Anzeige
+// unabhaengig vom nativen accent-color-Rendering des jeweiligen WebViews.
+function sldFill(sld){ if(!sld)return;
+  const min=+sld.min||0, max=(sld.max!==''?+sld.max:100);
+  const p=max>min?((+sld.value-min)/(max-min))*100:0;
+  sld.style.setProperty('--p', Math.max(0,Math.min(100,p))+'%'); }
+// ---- Ring-Regler (Loxone-TPD-artiger Kreisbogen statt geradem Slider) ----
+// 270-Grad-Bogen (Luecke unten, wie ein klassisches Thermostat-Rad), per
+// Ziehen ODER einfachem Antippen einer Stelle auf dem Bogen einstellbar.
+const RING_ARC=270, RING_R=80, RING_C=2*Math.PI*RING_R;
+function ringFrac(ring){ const min=+ring.dataset.min, max=+ring.dataset.max, v=+ring.dataset.value;
+  return max>min ? Math.max(0,Math.min(1,(v-min)/(max-min))) : 0; }
+function ringPaint(ring){
+  const fg=ring.querySelector('.rfg'); if(fg) fg.setAttribute('stroke-dasharray', (RING_C*RING_ARC/360*ringFrac(ring))+' '+RING_C); }
+function ringInit(ring, value){
+  const bg=ring.querySelector('.rbg'); if(bg) bg.setAttribute('stroke-dasharray', (RING_C*RING_ARC/360)+' '+RING_C);
+  ring.dataset.value=value; ringPaint(ring); }
+function ringSetValue(ring, v, live){
+  const min=+ring.dataset.min, max=+ring.dataset.max, step=+ring.dataset.step||1;
+  v = Math.round(Math.max(min,Math.min(max,v))/step)*step;
+  v = Math.round(v*100)/100;   // Gleitkomma-Rundungsreste (0.1-Schritte) glaetten
+  ring.dataset.value=v; ringPaint(ring);
+  const num=ring.querySelector('.rnum'); if(num) num.textContent=(step<1?v.toFixed(1):v)+(ring.dataset.unit||'');
+  return v;
+}
+function ringAngleFromPoint(ring, x, y){
+  const r=ring.querySelector('svg').getBoundingClientRect();
+  const cx=r.left+r.width/2, cy=r.top+r.height/2;
+  // SVG ist um 135° gedreht (sichtbarer Bogenanfang), 0° im atan2 ist "3 Uhr".
+  let deg=(Math.atan2(y-cy,x-cx)*180/Math.PI - 135 + 360) % 360;
+  if(deg>RING_ARC) deg = (deg-RING_ARC < 360-deg) ? RING_ARC : 0;   // in der Luecke -> naeheres Ende
+  return deg;
+}
+function bindRing(ring, uuid, tmpl){
+  let dragging=false;
+  const apply=(x,y)=>{ const deg=ringAngleFromPoint(ring,x,y);
+    const min=+ring.dataset.min, max=+ring.dataset.max;
+    ring._pending=ringSetValue(ring, min+(deg/RING_ARC)*(max-min)); };
+  ring.addEventListener('pointerdown', e=>{ e.preventDefault(); dragging=true; ring._dragging=true;
+    ring.setPointerCapture(e.pointerId); apply(e.clientX,e.clientY); });
+  ring.addEventListener('pointermove', e=>{ if(dragging) apply(e.clientX,e.clientY); });
+  const end=e=>{ if(!dragging) return; dragging=false; ring._dragging=false;
+    if(ring._pending!=null) send({t:'cmd',uuid,cmd:tmpl.replace('{v}',ring._pending)}); };
+  ring.addEventListener('pointerup', end);
+  ring.addEventListener('pointercancel', end);
+}
+function nudgeSld(sld,delta,valEl){ if(!sld)return;
+  const min=+sld.min||0, max=(sld.max!==''?+sld.max:100);
+  let v=Math.round((+sld.value||0)+delta); v=Math.max(min,Math.min(max,v));
+  if(v===(+sld.value)) return;
+  sld.value=v; sldFill(sld); if(valEl) valEl.textContent=v;
+  if(sld._uuid&&sld._tmpl) send({t:'cmd',uuid:sld._uuid,cmd:sld._tmpl.replace('{v}',v)}); }
+
+let holdRelease=null;
+// (kein Video-Stopp-Timer noetig: g.innerHTML wird bei jeder Navigation neu
+// gesetzt, das entfernt ein laufendes MJPEG-<img> automatisch aus dem DOM und
+// bricht damit dessen Stream ab.)
+function stopVideo(){}
+function setMore(route){ const s=document.querySelector('.screen'); if(!s)return; let mb=s.querySelector('.moreb');
+  if(route){ if(!mb){ mb=document.createElement('div'); mb.className='moreb'; mb.textContent='⋮'; s.appendChild(mb);} mb.onclick=()=>nav(route); }
+  else if(mb){ mb.remove(); } }
+function endHold(){ if(holdRelease){ send({t:'cmd',uuid:holdRelease.uuid,cmd:holdRelease.cmd}); holdRelease=null; } }
+window.addEventListener('pointerup', endHold);
+window.addEventListener('pointercancel', endHold);
+
+function bindCell(btn,c){ btn._cmd=c.cmd||null; btn._release=c.release||null; btn._hold=!!c.hold; btn._menu=c.menu||null; }
+function cellHtml(c,i){
+  const inner=c.icon?svgF(ICONS[c.icon]||ICONS.info):esc(c.label);
+  const cls='btn'+(c.icon?' icon':'')+(c.big?' big':'')+(c.menu?' toggler':'')+(c.on?' on':'');
+  return '<div class="'+cls+'" data-c="'+i+'">'+inner+'</div>';
+}
+function closeMenu(){ const m=document.querySelector('.menuov'); if(m)m.remove(); }
+// Auswahl-Popup ueber einem Button (Klima Modus/Fan): oeffnet nach oben, Tipp
+// daneben schliesst. Auswahl sendet den Befehl und schliesst.
+function openMenu(btn, items){
+  const s=document.querySelector('.screen'); if(!s)return;
+  closeMenu();
+  const ov=document.createElement('div'); ov.className='menuov';
+  const box=document.createElement('div'); box.className='menubox';
+  box.innerHTML=items.map((it,i)=>'<div class="menuitem'+(it.on?' on':'')+'" data-m="'+i+'">'+esc(it.label)+'</div>').join('');
+  ov.appendChild(box); s.appendChild(ov);
+  const br=btn.getBoundingClientRect(), sr=s.getBoundingClientRect();
+  let left=br.left-sr.left;
+  left=Math.max(8, Math.min(left, sr.width-box.offsetWidth-8));
+  box.style.left=left+'px';
+  box.style.bottom=(sr.height-(br.top-sr.top)+6)+'px';   // ueber dem Button
+  box.querySelectorAll('.menuitem').forEach(n=>{
+    n.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation();
+      const it=items[+n.dataset.m]; closeMenu();
+      if(it&&it.cmd) sendCmd(it.cmd.uuid,it.cmd.cmd,view&&view.secured); });
+  });
+  ov.addEventListener('pointerdown',()=>closeMenu());
+}
+// Struktur-Signatur der Bloecke: Art und Reihenfolge, dazu die Zaehlungen, die
+// die Anzeige formen. Weicht sie vom zuletzt Gerenderten ab, muss komplett neu
+// aufgebaut werden — in-place patchen wuerde neu dazugekommene Zeilen nie
+// erzeugen (z.B. "Wasser nachfuellen" in der Sauna) und weggefallene stehen
+// lassen.
+function blockSig(blocks){
+  return blocks.filter(b=>b.k!=='more').map(b=>
+    b.k==='row' ? 'row'+b.cells.length+(b.hidden?'h':'')
+    : b.k==='favs' ? 'favs'+(b.items?b.items.length:0)
+    : b.k==='alarmlist' ? 'alarm'+((b.entries&&b.entries.length)?1:0)
+    : b.k==='astat' ? 'astat'+(b.sub?1:0)
+    : b.k).join('|');
+}
+function renderPanel(blocks){
+  stopVideo();
+  closeMenu();
+  setMore((blocks.find(b=>b.k==='more')||{}).route||null);
+  el('conn').classList.remove('vis');
+  el('grid').classList.add('panel');
+  el('grid').classList.remove('list','snapy','scheme');
+  el('grid').classList.toggle('bigpage', blocks.some(b=>b.k==='big'));
+  const g=el('grid');
+  // anchor:bottom -> Anzeige (big/status) oben zentriert, Bedienung unten
+  // verankert; aufklappende Auswahl waechst dann nach oben ueber die festen Zeilen.
+  const anchorBot = !!(view && view.anchor==='bottom');
+  g.classList.toggle('anchorbot', anchorBot);
+  const TOPK = {hero:1,cover:1,video:1,status:1,title:1,value:1,big:1,astat:1,eflow:1,ring:1};
+  const bh = b => {
+    if(b.k==='eflow') return '<div class="epane-detail" data-eflow></div>';   // Radial; wird nach dem Einfuegen von paintEnergy gefuellt
+    if(b.k==='hero'){ const hic = b.iconImg
+        ? '<img class="rawico" src="'+esc(b.iconImg)+'" alt="">'
+        : b.iconUrl
+        ? '<span class="himg" style="--u:url(\''+esc(b.iconUrl)+'\')"></span>'
+        : svg(ICONS[b.icon]||ICONS.info);
+      return '<div class="hero"><div class="circle">'+hic+'</div></div>'; }
+    if(b.k==='cover') return '<div class="cover"><div class="coverph">'+svg(ICONS.music)+'</div><img id="coverimg" alt=""></div>';
+    if(b.k==='video') return '<div class="video"><img alt=""></div>';
+    if(b.k==='web') return '<div class="webframe"><iframe src="'+esc(b.url||'')+'" referrerpolicy="no-referrer"></iframe></div>';
+    if(b.k==='status') return '<div class="status">'+esc(b.text||'')+'</div>';
+    if(b.k==='title') return '<div class="ptitle">'+esc(b.text||'')+'<div class="psub">'+esc(b.sub||'')+'</div></div>';
+    if(b.k==='value') return '<div class="pbar">'+esc(b.text||'')+'</div>';
+    if(b.k==='big') return '<div class="pbig'+(b.tone==='good'?' good':(b.tone==='crit'?' crit':''))+'">'+esc(b.text||'')+'</div>';
+    if(b.k==='astat') return '<div class="astat'+(b.tone==='crit'?' crit':'')+'">'+esc(b.text||'')+(b.sub?'<div class="astatsub">'+esc(b.sub)+'</div>':'')+'</div>';
+    if(b.k==='slider') return '<div class="srow"><span class="sico">'+svg(ICONS[b.icon]||ICONS.vol)+'</span><button type="button" class="sbtn" data-sd="dn">−</button><input type="range" class="sld" min="'+b.min+'" max="'+b.max+'"'+(b.step?' step="'+b.step+'"':'')+' value="'+b.value+'"><button type="button" class="sbtn" data-sd="up">+</button><span class="sval">'+b.value+'</span></div>';
+    if(b.k==='ring') return '<div class="ring" data-min="'+b.min+'" data-max="'+b.max+'" data-step="'+(b.step||1)+'" data-unit="'+esc(b.unit||'')+'">'+
+      '<svg viewBox="0 0 200 200"><circle class="rbg" cx="100" cy="100" r="80"/><circle class="rfg" cx="100" cy="100" r="80"/></svg>'+
+      '<div class="rval"><span class="rnum">'+esc(String(b.value))+esc(b.unit||'')+'</span>'+(b.sub?'<span class="rsub">'+esc(b.sub)+'</span>':'')+'</div></div>';
+    if(b.k==='row') return '<div class="brow'+(b.cells.some(c=>c.icon)?' transport':'')+(b.wrap?' wraprow':'')+(b.hidden?' collapsed':'')+'"'+(b.id?' data-rowid="'+esc(b.id)+'"':'')+'>'+b.cells.map(cellHtml).join('')+'</div>';
+    if(b.k==='head') return '<div class="phead">'+esc(b.text||'')+'</div>';
+    if(b.k==='favs') return '<div class="favs'+(b.wrap?' wrap':'')+'">'+b.items.map((f,i)=>'<div class="fav" data-f="'+i+'"><div class="favc">'+(f.cover?'<img loading="lazy" src="'+esc(f.cover)+'" alt="">':svg(ICONS.music))+'</div><div class="favn">'+esc(f.label)+'</div></div>').join('')+'</div>';
+    if(b.k==='alarmlist'){
+      if(!b.entries||!b.entries.length) return '<div class="status alist-empty">Keine Weckzeiten angelegt</div>';
+      return '<div class="alist">'+b.entries.map(e=>
+        '<div class="arow'+(e.active?'':' off')+'">'+
+          '<span class="adot"></span>'+
+          '<span class="anm">'+esc(e.name)+'</span>'+
+          '<span class="atime">'+esc(e.hm)+'</span>'+
+          (e.repeat?'<span class="arep">'+esc(e.repeat)+'</span>':'')+
+        '</div>').join('')+'</div>';
+    }
+    return '';
+  };
+  if(anchorBot){
+    let top='',bot='';
+    for(const b of blocks){ if(b.k==='more')continue; if(TOPK[b.k]) top+=bh(b); else bot+=bh(b); }
+    g.innerHTML='<div class="pantop">'+top+'</div><div class="panbot">'+bot+'</div>';
+  } else {
+    let html='';
+    for(const b of blocks){ if(b.k!=='more') html+=bh(b); }
+    g.innerHTML=html;
+  }
+  const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d) paintEnergy(d, efb.e); }   // Radial in der Detailansicht zeichnen
+  const hc=g.querySelector('.hero .circle'); if(hc){
+    const cc=(view&&view.catColor)||''; hc.style.color=cc; hc.style.borderColor=cc; }
+  const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img){img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
+  const vid=blocks.find(b=>b.k==='video'); const vimg=g.querySelector('.video img');
+  if(vid&&vimg){ vimg.src=vid.src; }   // MJPEG-Stream: einmal laden, läuft live
+  const sb=blocks.find(b=>b.k==='slider'); const sld=g.querySelector('.sld');
+  if(sb&&sld){ sld._uuid=sb.cmd.uuid; sld._tmpl=sb.cmd.tmpl; sldFill(sld);
+    sld.addEventListener('input',()=>{ sldDragging=true; sldFill(sld); const sv=g.querySelector('.sval'); if(sv)sv.textContent=sld.value; });
+    sld.addEventListener('change',()=>{ sldDragging=false; send({t:'cmd',uuid:sld._uuid,cmd:sld._tmpl.replace('{v}',sld.value)}); });
+    const sdn=g.querySelector('.srow .sbtn[data-sd="dn"]'), sup=g.querySelector('.srow .sbtn[data-sd="up"]');
+    const step=(sb.step&&+sb.step>0)?+sb.step:SLD_STEP;
+    if(sdn) sdn.addEventListener('pointerdown',ev=>{ ev.preventDefault(); nudgeSld(sld,-step,g.querySelector('.sval')); });
+    if(sup) sup.addEventListener('pointerdown',ev=>{ ev.preventDefault(); nudgeSld(sld,step,g.querySelector('.sval')); });
+  }
+  const rb=blocks.find(b=>b.k==='ring'); const ring=g.querySelector('.ring');
+  if(rb&&ring){ ringInit(ring, rb.value); bindRing(ring, rb.cmd.uuid, rb.cmd.tmpl); }
+  const rows=[...g.querySelectorAll('.brow')]; let ri=0;
+  for(const b of blocks){ if(b.k!=='row') continue; const rowEl=rows[ri++];
+    b.cells.forEach((c,ci)=>{ const btn=rowEl.querySelector('[data-c="'+ci+'"]'); if(!btn)return;
+      bindCell(btn,c);
+      btn.addEventListener('pointerdown',ev=>{ ev.preventDefault();
+        if(btn._menu){ openMenu(btn,btn._menu); return; }
+        if(btn._cmd) sendCmd(btn._cmd.uuid,btn._cmd.cmd,view&&view.secured);
+        if(btn._hold) holdRelease=btn._release||null;
+      });
+    });
+  }
+  const fb=blocks.find(b=>b.k==='favs'); const fe=g.querySelector('.favs');
+  if(fb&&fe){ fe.querySelectorAll('.fav').forEach(n=>{ const f=fb.items[+n.dataset.f]; if(!f)return;
+    n.addEventListener('pointerdown',ev=>{ ev.preventDefault(); if(f.cmd){ send({t:'cmd',uuid:f.cmd.uuid,cmd:f.cmd.cmd}); back(); } }); }); }
+  g.dataset.bsig=blockSig(blocks);   // Grundlage fuer den In-place-Abgleich in updatePanel
+  renderTabs();
+}
+function updatePanel(blocks){
+  const g=el('grid');
+  // Struktur anders als zuletzt gerendert (Zeile/Status/Favorit dazu oder weg,
+  // Favoriten per roomfav/get nachgeliefert)? Dann komplett neu aufbauen.
+  if(g.dataset.bsig!==blockSig(blocks)){ renderPanel(blocks); return; }
+  const rowBlocks=blocks.filter(b=>b.k==='row');
+  const rows=[...g.querySelectorAll('.brow')];
+  // Ab hier ist die Struktur nachweislich identisch -> jeden Block an SEINER
+  // Position patchen, nicht nur den ersten seiner Art: Detailseiten wie die
+  // Sauna haben mehrere Status-Zeilen (Tuer, Wasser, Stoerung ...), die sonst
+  // auf dem Stand des ersten Renderns einfrieren.
+  const nth=(k,sel,fn)=>{ const es=[...g.querySelectorAll(sel)];
+    blocks.filter(b=>b.k===k).forEach((b,i)=>{ if(es[i]) fn(es[i],b); }); };
+  nth('status','.status:not(.alist-empty)',(e,b)=>{ e.textContent=b.text||''; });
+  nth('value','.pbar',(e,b)=>{ e.textContent=b.text||''; });
+  nth('big','.pbig',(e,b)=>{ e.textContent=b.text||''; e.className='pbig'+(b.tone==='good'?' good':(b.tone==='crit'?' crit':'')); });
+  nth('title','.ptitle',(e,b)=>{ e.childNodes[0].nodeValue=b.text||''; const su=e.querySelector('.psub'); if(su)su.textContent=b.sub||''; });
+  nth('astat','.astat',(e,b)=>{ e.childNodes[0].nodeValue=b.text||''; e.className='astat'+(b.tone==='crit'?' crit':''); const su=e.querySelector('.astatsub'); if(su)su.textContent=b.sub||''; });
+  const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img&&img.getAttribute('src')!==cov.src){img.style.opacity='0'; img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
+  const sb=blocks.find(b=>b.k==='slider'); if(sb){const sld=g.querySelector('.sld'); if(sld&&!sldDragging){ sld.value=sb.value; sldFill(sld); const sv=g.querySelector('.sval'); if(sv)sv.textContent=sb.value; }}
+  const rb=blocks.find(b=>b.k==='ring'); if(rb){ const ring=g.querySelector('.ring');
+    if(ring && !ring._dragging) ringSetValue(ring, rb.value);   // waehrend des Ziehens nicht ueberschreiben
+    const rsub=g.querySelector('.ring .rsub'); if(rsub && rb.sub!=null) rsub.textContent=rb.sub; }
+  const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d) paintEnergy(d, efb.e); }   // Radial live aktualisieren (in-place)
+  rowBlocks.forEach((b,ri)=>{ const rowEl=rows[ri]; if(!rowEl)return;
+    b.cells.forEach((c,ci)=>{ const btn=rowEl.querySelector('[data-c="'+ci+'"]'); if(!btn)return;
+      if(c.icon){ btn.innerHTML=svgF(ICONS[c.icon]||ICONS.info); btn.className='btn icon'+(c.big?' big':'')+(c.on?' on':''); }
+      else { btn.textContent=c.label; btn.className='btn'+(c.menu?' toggler':'')+(c.on?' on':''); }
+      bindCell(btn,c);
+    });
+  });
+}
+
+function activeTab(){ const b=stack.find(x=>x&&x.view==='tab'); return b?b.tab:null; }
+// Raum-Panel-Kontext: der (einzige) Profil-Tab ist ein Raum. Dann bleiben in
+// ALLEN Ansichten (auch Detail) die Kategorie-Tabs + mittiger Zurueck-Button
+// unten stehen. roomCatTabs merkt sie sich fuer Ansichten ohne eigene catTabs.
+function isRoomPanel(){ return tabsCfg.length===1 && String(tabsCfg[0]||'').indexOf('room:')===0; }
+let roomCatTabs=null, pendingCatScroll=null;
+
+function renderTabs(){
+  // Raum-Panel: die untere Leiste zeigt die im Raum vorkommenden Kategorien
+  // (vom Server als view.catTabs) als SCROLL-Tabs - ein Tipp scrollt zur Gruppe,
+  // statt die Seite zu wechseln. Design bleibt: 4 Tabs + Zurueck-Button mittig.
+  // In Detailansichten (kein view.catTabs) die gemerkten Tabs weiterzeigen.
+  const ct = (view && Array.isArray(view.catTabs) && view.catTabs.length) ? view.catTabs
+           : (isRoomPanel() && roomCatTabs && roomCatTabs.length ? roomCatTabs : null);
+  const backHtml = '<div class="tabback'+(stack.length>1?' on':'')+'" id="tabback">‹</div>';
+  let items;
+  if(ct){
+    const tabsHtml = ct.map(c => {
+      const ico = c.iconUrl
+        ? '<span class="tico" style="--u:url(\''+esc(c.iconUrl)+'\')"></span>'
+        : svg('<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/>');
+      return '<div class="tab" data-cat="'+esc(c.key)+'" title="'+esc(c.label||'')+'">'+ico+'</div>';
+    });
+    // Zurueck-Button IMMER mittig: links ceil(N/2), rechts floor(N/2) Tabs; die
+    // fehlende Zelle rechts mit einem leeren Spacer auffuellen, damit beide
+    // Seiten gleich breit sind (1->links, 2->je einer, 3->2+1, 4->symmetrisch).
+    const N=tabsHtml.length, leftN=Math.ceil(N/2), pad=leftN-(N-leftN);
+    items = tabsHtml.slice(0,leftN).concat([backHtml]).concat(tabsHtml.slice(leftN));
+    for(let s=0;s<pad;s++) items.push('<div class="tabspacer" aria-hidden="true"></div>');
+  } else {
+    const at = activeTab();
+    items = tabsCfg.map(tk => {
+      const cls = 'tab'+(tk===at?' active':'');
+      const t = TABS.find(x => x.tab===tk);
+      if(t) return '<div class="'+cls+'" data-tab="'+esc(tk)+'" title="'+esc(t.label)+'">'+svg(t.icon)+'</div>';
+      const m = tabMeta[tk]; if(!m) return '';   // dynamischer Tab (Kategorie/Raum)
+      // Ohne Bild aus Loxone: Raum bekommt das Raum-Symbol, Kategorie den Wuerfel -
+      // sonst sehen ein Raum- und ein Kategorie-Tab identisch aus.
+      const fallback = tk.indexOf('room:')===0
+        ? '<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M14 4v16"/>'
+        : '<path d="m12 3 8 4.5v9L12 21l-8-4.5v-9z"/>';
+      const ico = m.iconUrl
+        ? '<span class="tico" style="--u:url(\''+esc(m.iconUrl)+'\')"></span>'
+        : svg(fallback);
+      return '<div class="'+cls+'" data-tab="'+esc(tk)+'" title="'+esc(m.label||'')+'">'+ico+'</div>';
+    }).filter(Boolean);
+    // Zurueck-Button jetzt immer da (auch auf der obersten Ebene: fuehrt zum
+    // Screensaver zurueck, siehe back()).
+    items.splice(Math.floor(items.length/2), 0, backHtml);
+  }
+  el('tabs').innerHTML = items.join('');
+  if(ct) el('tabs').querySelectorAll('.tab[data-cat]').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) scrollToCat(n.dataset.cat); });
+  else   el('tabs').querySelectorAll('.tab').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) goTab(n.dataset.tab); });
+  const tb = el('tabs').querySelector('#tabback'); if(tb) tb.onclick = ()=>{ if(!justLeftSaver()) back(); };
+  applyPane();
+}
+// Raum-Panel: zur ersten Kachel einer Kategorie scrollen. Sind wir in einer
+// Detailansicht (die Kachel ist gerade nicht da), erst zurueck in den Raum und
+// nach dem Rendern dorthin scrollen (pendingCatScroll, s. render()).
+function scrollToCat(key){
+  const d = el('grid').querySelector('.tile[data-cat="'+key+'"]');
+  if(d){ d.scrollIntoView({behavior:'smooth', block:'start'}); return; }
+  pendingCatScroll = key;
+  const rt = tabsCfg[0]; if(rt) goTab(rt);
+}
+// ---- Split-Pane pro Tab: entscheidet je aktuellem Tab, was rechts steht ----
+// Wert je Tab: "weather" | "calendar" | "wide" | "player:<zone-uuid>" | "energy:<uuid>" | "camera:<uuid>".
+function paneForTab(tk){ return tk ? (panesCfg[tk]||null) : null; }
+function paneKind(v){ return v ? (v.indexOf('player:')===0 ? 'player' : (v.indexOf('energy:')===0 ? 'energy' : (v.indexOf('camera:')===0 ? 'camera' : v))) : null; }
+function applyPane(){
+  const sc=document.querySelector('.screen'); if(!sc) return;
+  const raw=themeSplit?paneForTab(activeTab()):null;   // Split aus (4"-Panel) -> keine Pane 2
+  const kind=paneKind(raw);
+  const isPane=(kind==='player'||kind==='weather'||kind==='calendar'||kind==='energy'||kind==='camera');   // Widget in Pane 2
+  sc.classList.toggle('split', isPane);   // Widget -> zweigeteilt, sonst "Screen fuellen"
+  sc.classList.toggle('fill', themeFill);  // "Bildschirm fuellen" fuellt Split UND Screen-fuellen
+  const pp=el('playerpane'), fp=el('frontpane');
+  if(pp) pp.hidden=(kind!=='player');
+  if(fp){
+    fp.hidden=!(kind==='weather'||kind==='calendar'||kind==='energy'||kind==='camera');
+    fp.classList.toggle('cam', kind==='camera');
+    // Kamera verlassen -> Video-Stream stoppen (Inhalt leeren), keine Hintergrund-Verbindung.
+    if(kind!=='camera' && fp.dataset.cam!==undefined){ fp.innerHTML=''; delete fp.dataset.cam; delete fp.dataset.camsig; }
+  }
+  if(kind==='weather') renderWeatherPane(fp);
+  else if(kind==='calendar') renderCalendarPane(fp);
+  else if(kind==='energy') renderEnergyPane(fp);
+  else if(kind==='camera') renderCameraPane(fp);
+  // Player-Zone dieses Tabs dem Server melden (nur bei Aenderung -> er pusht die Blocks).
+  const zone=(kind==='player')?raw.slice(7):'';
+  if(zone!==curPlayerZone){ curPlayerZone=zone; _playerBuilt=false; try{ send({t:'setplayer',zone:zone}); }catch(e){} }
+  // Energiefluss-Kachel dieses Tabs dem Server melden (er pusht dann {t:'energy'}).
+  const euid=(kind==='energy')?raw.slice(7):'';
+  if(euid!==curEnergyUuid){ curEnergyUuid=euid; try{ send({t:'setenergy',uuid:euid}); }catch(e){} }
+  // Kamera (Intercom) dieses Tabs dem Server melden (er pusht dann {t:'camera'} mit Video+Buttons).
+  const cuid=(kind==='camera')?raw.slice(7):'';
+  if(cuid!==curCameraUuid){ curCameraUuid=cuid; cameraData=null;
+    if(fp){ delete fp.dataset.cam; delete fp.dataset.camsig; }
+    try{ send({t:'setcamera',uuid:cuid}); }catch(e){}
+    if(cuid&&kind==='camera') renderCameraPane(fp);   // sofort Platzhalter zeigen, bis der Push kommt
+  }
+}
+
+// Inline-Style (CSS-Variablen + Farben) einer Kachel — von render() und
+// updateGrid() gemeinsam genutzt, liefert den ROHEN Style (ohne HTML-Escape).
+function tileVarStyle(it){
+  const sv=[]; const ts=it.style||{};
+  if(it.colorFixed){ sv.push('--ico:'+it.colorFixed); sv.push('--ico-fixed:'+it.colorFixed); }
+  else if(it.color) sv.push('--ico:'+it.color);
+  if(ts.bg) sv.push('background:'+ts.bg);
+  if(ts.border) sv.push('border-color:'+ts.border);
+  if(ts.txt) sv.push('color:'+ts.txt);
+  if(ts.font) sv.push('font-family:'+ts.font);
+  if(ts.ovFill!=null) sv.push('--ov-fill:'+ts.ovFill);
+  if(ts.ovBord!=null) sv.push('--ov-bord:'+ts.ovBord);
+  if(ts.ovBw!=null) sv.push('--ov-bw:'+ts.ovBw+'px');
+  if(ts.tileBord!=null) sv.push('--tile-bord:'+ts.tileBord);
+  if(ts.tileBw!=null) sv.push('--tile-bw:'+ts.tileBw+'px');
+  return sv.join(';');
+}
+function tileTone(it){ return it.tone==='good'?' good':(it.tone==='crit'?' crit':(it.on?' on':'')); }
+// Positionsring: EINE Quelle fuer Vollrender und In-place-Patch. Vorher stand
+// der Umfang zweimal als Zahl im Render-Zweig; sobald der Patch dazukam, waere
+// er die dritte Stelle gewesen, an der sich derselbe Wert aendern muss.
+// Dynamisches Jalousie-Piktogramm (wie in der Loxone-App): Fensterrahmen mit
+// einem Behang, der von oben zufaehrt. 0 = offen, 100 = ganz zu. Bewegt wird
+// per CSS-transform scaleY (breit unterstuetzt, auch auf aelteren WebViews -
+// anders als animierte SVG-Geometrie oder clip-path), Ursprung ist die
+// Fenster-Oberkante, dadurch faehrt der Behang nach unten und animiert
+// zwischen zwei Staenden weich mit.
+function blindIcon(pct, shape){
+  const p=Math.max(0,Math.min(100,Number(pct)||0))/100;
+  // shape 'gate' = Garagentor (breiter, auf dem Boden stehend, Segmente statt
+  // Lamellen), sonst Fenster/Rollladen. Beide fahren nach demselben Prinzip zu:
+  // die Behang-Gruppe wird von der Oberkante aus per scaleY aufgezogen.
+  const gate = shape==='gate';
+  const box = gate ? {x:3,y:6,w:18,h:13} : {x:4,y:4,w:16,h:16};
+  const lines = gate ? 'M3 10h18M3 14h18M3 18h18' : 'M4 9h16M4 14h16M4 19h16';
+  const r = gate ? '' : ' rx="1"';
+  return '<span class="ico blindico'+(gate?' gateico':'')+'"><svg viewBox="0 0 24 24" fill="none" '+
+    'stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+    (gate ? '<path d="M2 21h20"/>' : '')+       // Bodenlinie: Tor steht auf dem Boden
+    '<g class="sh" style="transform:scaleY('+p.toFixed(3)+')">'+
+      '<rect x="'+box.x+'" y="'+box.y+'" width="'+box.w+'" height="'+box.h+'" fill="currentColor" stroke="none" opacity=".3"/>'+
+      '<path d="'+lines+'"/>'+
+    '</g>'+
+    '<rect x="'+box.x+'" y="'+box.y+'" width="'+box.w+'" height="'+box.h+'"'+r+'/>'+
+    '</svg></span>';
+}
+// Fenster-Piktogramm (Window/WindowMonitor): Rahmen mit Kreuz (Sprossen), das
+// Kreuz verschwindet proportional beim Oeffnen - eigenstaendiges Design,
+// bewusst NICHT der Jalousie-Lamellenstil (andere Bauart, andere Optik).
+function windowIcon(pct){
+  const p=Math.max(0,Math.min(100,Number(pct)||0))/100;
+  return '<span class="ico windowico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
+    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
+    '<rect x="4" y="4" width="16" height="16" rx="1"/>'+
+    '<g class="cr" style="opacity:'+p.toFixed(3)+'"><path d="M12 4v16M4 12h16"/></g>'+
+    '</svg></span>';
+}
+// Live-Update der Kachel-Ansicht OHNE Neuaufbau: aktualisiert nur die
+// veraenderlichen Teile (Zustand/Farben/Sublabel/Steuer-Icons) der bestehenden
+// Kacheln. Verhindert das Flackern (Icons/Cover werden nicht neu geladen).
+// Gibt false zurueck, wenn sich die Struktur geaendert hat -> voller render().
+function updateGrid(items){
+  const g=el('grid');
+  if(g.classList.contains('panel')) return false;
+  const nodes=g.querySelectorAll('.tile[data-id]');
+  if(nodes.length!==items.length || !nodes.length) return false;
+  // Struktur-Abgleich statt Pauschal-Neuaufbau: {t:'view'} kommt nicht nur
+  // bei echter Navigation, sondern auch laufend bei jeder Live-Wertaenderung
+  // im Haus (_broadcast_tick) - ein Pauschal-"immer alles neu aufbauen" fuer
+  // jede Ansicht mit Schaltern waere bei einem lebhaften Haus (haeufige
+  // Aenderungen) spuerbar teuer. Stattdessen wird nur dann ein voller
+  // Neuaufbau erzwungen, wenn sich die Struktur einer Kachel TATSAECHLICH
+  // geaendert hat (Schalter/Taster-Button/Mini-Buttons kommen dazu, fallen
+  // weg oder aendern sich in der Anzahl) - sonst reicht das schnelle Patchen.
+  for(let i=0;i<items.length;i++){
+    if(String(items[i].id)!==nodes[i].dataset.id) return false;
+    if(!!items[i].toggle !== !!nodes[i].querySelector('.tswitch')) return false;
+    if(!!items[i].tap !== !!nodes[i].querySelector('.tapbtn')) return false;
+    if(!!items[i].updown !== !!nodes[i].querySelector('.updown')) return false;
+    if(!!items[i].prevnext !== !!nodes[i].querySelector('.prevnext')) return false;
+    if((typeof items[i].blind === 'number') !== !!nodes[i].querySelector('.blindico')) return false;
+    if((typeof items[i].winpos === 'number') !== !!nodes[i].querySelector('.windowico')) return false;
+    const cn = items[i].controls ? items[i].controls.length : 0;
+    if(cn !== nodes[i].querySelectorAll('.tctrls .tb').length) return false;
+  }
+  const _pg=(view.layout==='list'?4:gridCols*gridRows);
+  let ok=true;
+  items.forEach((it,i)=>{
+    const n=nodes[i];
+    n._it=it;
+    const cls='tile'+tileTone(it)+(i%_pg===0?' snap':'');
+    if(n.className!==cls) n.className=cls;
+    const stStr=tileVarStyle(it);
+    if((n.getAttribute('style')||'')!==stStr) n.setAttribute('style',stStr);
+    const body=n.querySelector('.body');
+    if(body){ let subEl=body.querySelector('.sub');
+      if(it.sublabel){ if(!subEl){ subEl=document.createElement('div'); subEl.className='sub'; body.appendChild(subEl); }
+        if(subEl.textContent!==it.sublabel) subEl.textContent=it.sublabel; }
+      else if(subEl){ subEl.remove(); } }
+    if(it.controls){ const tbs=n.querySelectorAll('.tctrls .tb');
+      if(tbs.length===it.controls.length) it.controls.forEach((c,ci)=>{ const b=tbs[ci]; if(!b) return;
+        b._cmd=c.cmd; b._secured=it.secured;
+        const nh=svgF(ICONS[c.icon]||ICONS.info); if(b.innerHTML!==nh) b.innerHTML=nh; }); }
+    if(it.toggle){ const sw=n.querySelector('.tswitch');
+      if(sw) sw.classList.toggle('on', !!it.toggle.on); }   // Zustand live nachziehen (z.B. von woanders geschaltet)
+    if(typeof it.blind === 'number'){ const sh=n.querySelector('.blindico .sh');
+      if(sh){ const p=(Math.max(0,Math.min(100,it.blind))/100).toFixed(3);
+        const tf='scaleY('+p+')'; if(sh.style.transform!==tf) sh.style.transform=tf; } }
+    if(typeof it.winpos === 'number'){ const cr=n.querySelector('.windowico .cr');
+      if(cr){ const p=(Math.max(0,Math.min(100,it.winpos))/100).toFixed(3);
+        if(cr.style.opacity!==p) cr.style.opacity=p; } }
+  });
+  return ok;
+}
+function render(){
+  if(!view) return;
+  // "Screen fuellen" (kein Widget in Pane 2): die KACHELZAHL wird nach rechts
+  // verdoppelt -> aus 2x2 wird 2x2|2x2 = 4x2 (GLEICHE Kachelgroesse, nur mehr
+  // Kacheln). Nur im Querformat (2-Pane-Tablet); das quadratische 4"-Panel
+  // bleibt einspaltig. Unabhaengig vom Zoom ("Bildschirm fuellen").
+  const _k = themeSplit ? paneKind(paneForTab(activeTab())) : null;   // Split aus -> nie Pane/Verdopplung
+  const _widget = (_k==='player'||_k==='weather'||_k==='calendar'||_k==='energy'||_k==='camera');
+  // Querformat-Entscheidung merken: beim Kiosk-Start / Auto-Reload meldet das
+  // Fenster kurz eine quere Groesse, bevor die echte Flaeche steht. Der
+  // resize-Handler rendert neu, sobald sie kippt (sonst bliebe das 4"-Panel in
+  // der Startmessung 4x2 statt 2x2 haengen - dasselbe Muster wie beim Screensaver).
+  _lastWide = window.innerWidth > window.innerHeight;
+  if(themeSplit && !_widget && _lastWide){ gridCols = profCols*2; gridRows = profRows; }
+  else { gridCols = profCols; gridRows = profRows; }
+  document.documentElement.style.setProperty('--cols', gridCols);
+  document.documentElement.style.setProperty('--rows', gridRows);
+  stopVideo();
+  closeMenu();
+  setMore(null);
+  el('conn').classList.toggle('vis', !!(view.route && view.route.view==='tab'));
+  el('grid').classList.remove('panel','bigpage','anchorbot','scheme');
+  el('grid').classList.toggle('list', view.layout==='list');
+  const items = view.items || [];
+  const g = el('grid');
+  if(!items.length){ g.innerHTML='<div class="empty">nichts hier</div>'; renderTabs(); return; }
+  let html='';
+  let _i=-1;
+  for(const it of items){
+    _i++;
+    const icoHtml = (typeof it.blind === 'number')
+      ? blindIcon(it.blind, it.blindShape)
+      : (typeof it.winpos === 'number')
+      ? windowIcon(it.winpos)
+      : it.iconImg
+      ? '<span class="ico"><img class="rawico" src="'+esc(it.iconImg)+'" alt=""></span>'
+      : it.iconUrl
+      ? '<span class="ico img" style="--u:url(\''+esc(it.iconUrl)+'\')"></span>'
+      : '<span class="ico">'+svg(ICONS[it.icon]||ICONS.info)+'</span>';
+    const icoCell = icoHtml;
+    // Einzelner Ein/Aus-Schnellschalter (Switch/TimedSwitch): eigener Schieber
+    // oben rechts, an der Stelle des Pfeils (ersetzt ihn) - wie im Original-
+    // Loxone-Plugin. Mehrere Bedienelemente (z.B. Player-Transport: zurueck/
+    // Play/weiter) bleiben als Reihe unten (tctrls), dafuer ist oben kein Platz.
+    const chev = (it.nav && !it.controls && !it.toggle && !it.tap && !it.updown && !it.prevnext)
+      ? '<span class="chev">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span>' : '';
+    const togg = it.toggle
+      ? '<span class="tswitch'+(it.toggle.on?' on':'')+'" data-tog="1"><span class="knob"></span></span>' : '';
+    // Runder Taster-Button (Pushbutton): wie togg oben rechts platziert, aber
+    // OHNE Ein/Aus-Zustand - ein Taster hat keinen dauerhaften Zustand, nur
+    // einen kurzen Impuls beim Antippen.
+    const tapb = it.tap
+      ? '<span class="tapbtn" data-tap="1">'+svg('<circle cx="12" cy="12" r="7"/>')+'</span>' : '';
+    // Auf/Ab-Mini-Buttons (Jalousie) oben rechts, wie in der Loxone-App -
+    // bewusst per CLICK statt pointerdown gebunden (siehe Bindung unten),
+    // damit ein Scroll-Wisch, der zufaellig hier beginnt, nicht die
+    // Beschattung losfahren laesst (anders als .tctrls/.tb).
+    const updown = it.updown
+      ? '<span class="updown" data-updown="1"><span class="ub" data-dir="up">'+svg(ICONS.up)+'</span><span class="ub" data-dir="down">'+svg(ICONS.down)+'</span></span>' : '';
+    // Horizontale </>-Mini-Buttons (Lichtszenen durchschalten) - gleiches
+    // Prinzip/Design wie updown, nur nebeneinander statt uebereinander, auch
+    // per CLICK gebunden (kein Scroll-Wisch-Konflikt).
+    const prevnext = it.prevnext
+      ? '<span class="prevnext" data-prevnext="1"><span class="ub" data-dir="prev">'+svg('<path d="m15 6-6 6 6 6"/>')+'</span><span class="ub" data-dir="next">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span></span>' : '';
+    const ctrls = it.controls ? '<div class="tctrls">'+it.controls.map((c,i)=>'<span class="tb" data-c="'+i+'">'+svgF(ICONS[c.icon]||ICONS.info)+'</span>').join('')+'</div>' : '';
+    const tone = tileTone(it);
+    const ts=it.style||{};
+    const stStr = tileVarStyle(it);
+    const st = stStr?' style="'+esc(stStr)+'"':'';
+    const nsv=[];
+    if(ts.txt) nsv.push('color:'+ts.txt);
+    if(ts.font) nsv.push('font-family:'+ts.font);
+    if(ts.weight) nsv.push('font-weight:'+ts.weight);
+    if(ts.italic) nsv.push('font-style:italic');
+    const nst = nsv.length?' style="'+esc(nsv.join(';'))+'"':'';
+    const _pg = (view.layout==='list'?4:gridCols*gridRows);   // Snap-Seite: Liste 4 Zeilen, sonst cols x rows
+    html += '<div class="tile'+tone+(_i%_pg===0?' snap':'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
+              '<div class="head">'+icoCell+chev+togg+tapb+updown+prevnext+'</div>'+
+              '<div class="body">'+
+              (it.room?'<div class="room">'+esc(it.room)+'</div>':'')+
+              '<div class="name"'+nst+'>'+esc(it.label)+'</div>'+
+              (it.sublabel?'<div class="sub">'+esc(it.sublabel)+'</div>':'')+'</div>'+
+              ctrls+
+            '</div>';
+  }
+  g.innerHTML = html;
+  g.classList.toggle('snapy', items.length > (view.layout==='list'?4:gridCols*gridRows));   // Snapping erst ab >1 Seite
+  g.querySelectorAll('.tile[data-id]').forEach(n=>{
+    const it = items.find(x=>String(x.id)===n.dataset.id);
+    n._it = it;   // aktuelle Daten am Knoten -> updateGrid kann sie in-place ersetzen
+    if(it.controls){
+      n.querySelectorAll('.tctrls .tb').forEach(b=>{
+        b._cmd = it.controls[+b.dataset.c].cmd; b._secured = it.secured;
+        b.addEventListener('pointerdown', ev=>{ ev.preventDefault();
+          if(justLeftSaver()) return;
+          if(b._cmd) sendCmd(b._cmd.uuid,b._cmd.cmd,b._secured); });
+      });
+    }
+    if(it.toggle){
+      const sw=n.querySelector('.tswitch');
+      if(sw) sw.addEventListener('pointerdown', ev=>{ ev.preventDefault();
+        if(justLeftSaver()) return;
+        const t=n._it||it; if(t.toggle&&t.toggle.cmd) sendCmd(t.toggle.cmd.uuid,t.toggle.cmd.cmd,t.secured); });
+    }
+    if(it.tap){
+      const tb=n.querySelector('.tapbtn');
+      if(tb) tb.addEventListener('pointerdown', ev=>{ ev.preventDefault();
+        if(justLeftSaver()) return;
+        const t=n._it||it; if(t.tap&&t.tap.cmd) sendCmd(t.tap.cmd.uuid,t.tap.cmd.cmd,t.secured);
+        // 0,8s gruenes Nachleuchten als Bestaetigung, nicht nur :active
+        // waehrend des Drauftippens selbst (das ist schon vorbei, sobald der
+        // Finger wieder loslaesst).
+        tb.classList.add('flash');
+        clearTimeout(tb._flashT);
+        tb._flashT=setTimeout(()=>tb.classList.remove('flash'), 800); });
+    }
+    if(it.updown){
+      // Bewusst 'click' statt 'pointerdown': feuert nur, wenn kein Scroll/
+      // Wisch dazwischenkam (siehe Kommentar bei der updown-Konstruktion oben).
+      n.querySelectorAll('.updown .ub').forEach(ub=>{
+        ub.addEventListener('click', ev=>{ ev.stopPropagation();
+          if(justLeftSaver()) return;
+          const t=n._it||it; const cmd=t.updown&&t.updown[ub.dataset.dir]&&t.updown[ub.dataset.dir].cmd;
+          if(cmd) sendCmd(cmd.uuid,cmd.cmd,t.secured);
+          // gleiches Farbfeedback wie beim Taster-Button (0,8s gruenes Nachleuchten)
+          ub.classList.add('flash');
+          clearTimeout(ub._flashT);
+          ub._flashT=setTimeout(()=>ub.classList.remove('flash'), 800); });
+      });
+    }
+    if(it.prevnext){
+      // Gleiches Prinzip wie updown (click statt pointerdown, gleiches
+      // Farbfeedback) - nur die Datenquelle ist t.prevnext statt t.updown.
+      n.querySelectorAll('.prevnext .ub').forEach(ub=>{
+        ub.addEventListener('click', ev=>{ ev.stopPropagation();
+          if(justLeftSaver()) return;
+          const t=n._it||it; const cmd=t.prevnext&&t.prevnext[ub.dataset.dir]&&t.prevnext[ub.dataset.dir].cmd;
+          if(cmd) sendCmd(cmd.uuid,cmd.cmd,t.secured);
+          ub.classList.add('flash');
+          clearTimeout(ub._flashT);
+          ub._flashT=setTimeout(()=>ub.classList.remove('flash'), 800); });
+      });
+    }
+    n.onclick=(e)=>{ if(justLeftSaver()) return;
+      if(e.target.closest('.tctrls')||e.target.closest('.tswitch')||e.target.closest('.tapbtn')||e.target.closest('.updown')||e.target.closest('.prevnext')) return; const t=n._it||it;
+      if(t.nav) nav(t.nav); else if(t.cmd) sendCmd(t.cmd.uuid,t.cmd.cmd,(view&&view.secured)||t.secured); };
+  });
+  if(view.catTabs && view.catTabs.length) roomCatTabs = view.catTabs;   // fuer Detailansichten merken
+  renderTabs();
+  updateScrollInd();
+  // Aus einem Detail zurueck in den Raum gesprungen? Jetzt zur Kategorie scrollen.
+  if(pendingCatScroll){ const k=pendingCatScroll; pendingCatScroll=null;
+    requestAnimationFrame(()=>{ const d=g.querySelector('.tile[data-cat="'+k+'"]'); if(d) d.scrollIntoView({behavior:'smooth',block:'start'}); }); }
+}
+
+// ---- Anlagenschema (SystemScheme) ----
+// Hintergrundbild + Live-Werte als Overlay. Der Viewport zeigt das Schema
+// fit-to-width; Pinch/Pan zoomt und verschiebt. Antippbare Werte (nav)
+// springen zur Detailansicht des Bausteins.
+let schemeFit=null;
+function schemeValHtml(it,i){
+  const w=it.w||120, h=it.h||30;
+  const cls='schemeval'+(it.on?' on':'')+(it.nav?' tap':'')+(it.tone==='crit'?' crit':'');
+  return '<div class="'+cls+'" data-i="'+i+'" style="left:'+it.x+'px;top:'+it.y+'px;width:'+w+'px;height:'+h+'px">'+
+    '<span>'+esc(it.text||'')+'</span></div>';
+}
+function renderScheme(v){
+  const g=el('grid');
+  g.classList.remove('panel','list','bigpage','anchorbot','snapy');
+  g.classList.add('scheme');
+  el('conn').classList.remove('vis');
+  const sw=v.sw||1300, sh=v.sh||866, items=v.items||[];
+  let html='<div class="schemetitle">'+esc(v.title||'')+'</div>'+
+    '<div class="schemeview" id="schemeView"><div class="schemestage" id="schemeStage" '+
+    'style="width:'+sw+'px;height:'+sh+'px">';
+  if(v.image) html+='<img class="schemeimg" src="'+esc(v.image)+'" alt="" draggable="false">';
+  html+=items.map(schemeValHtml).join('')+'</div><div class="schemehint">Ziehen · 2 Finger zoomen</div></div>';
+  g.innerHTML=html;
+  const viewEl=el('schemeView'), stage=el('schemeStage');
+  stage.querySelectorAll('.schemeval.tap').forEach(n=>{
+    n.onclick=()=>{ const it=items[+n.dataset.i]; if(it&&it.nav) nav(it.nav); };
+  });
+  setupSchemeZoom(viewEl, stage, sw, sh);
+  renderTabs();
+}
+function updateScheme(v){
+  const stage=el('schemeStage'); if(!stage) return false;
+  const nodes=stage.querySelectorAll('.schemeval');
+  const items=v.items||[];
+  if(nodes.length!==items.length) return false;   // Struktur anders -> voller Neuaufbau
+  items.forEach((it,i)=>{
+    const n=nodes[i], sp=n.querySelector('span');
+    if(sp && sp.textContent!==(it.text||'')) sp.textContent=it.text||'';
+    const cls='schemeval'+(it.on?' on':'')+(it.nav?' tap':'')+(it.tone==='crit'?' crit':'');
+    if(n.className!==cls){ n.className=cls;
+      n.onclick=it.nav?(()=>{ if(it.nav) nav(it.nav); }):null; }
+  });
+  return true;
+}
+function setupSchemeZoom(viewEl, stage, sw, sh){
+  let scale=1, tx=0, ty=0, minScale=0.05;
+  const apply=()=>{ stage.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')'; };
+  const clamp=()=>{ const vw=viewEl.clientWidth, vh=viewEl.clientHeight, cw=sw*scale, ch=sh*scale;
+    if(cw<=vw) tx=(vw-cw)/2; else tx=Math.min(0,Math.max(vw-cw,tx));
+    if(ch<=vh) ty=(vh-ch)/2; else ty=Math.min(0,Math.max(vh-ch,ty)); };
+  const fit=()=>{ const vw=viewEl.clientWidth, vh=viewEl.clientHeight; if(!vw||!vh) return;
+    minScale=Math.min(vw/sw, vh/sh);              // "contain": ganzes Schema sichtbar
+    scale=minScale;                               // Start: komplett eingepasst (Hoehe & Breite)
+    tx=(vw-sw*scale)/2; ty=(vh-sh*scale)/2; clamp(); apply(); };
+  const pts=new Map(); let lastDist=0;
+  viewEl.onpointerdown=e=>{ viewEl.setPointerCapture(e.pointerId);
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); lastDist=0; };
+  viewEl.onpointermove=e=>{ if(!pts.has(e.pointerId)) return;
+    const prev=pts.get(e.pointerId); pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===1){ tx+=e.clientX-prev.x; ty+=e.clientY-prev.y; clamp(); apply(); }
+    else if(pts.size>=2){ const a=[...pts.values()], dist=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y);
+      const rect=viewEl.getBoundingClientRect(), cx=(a[0].x+a[1].x)/2-rect.left, cy=(a[0].y+a[1].y)/2-rect.top;
+      if(lastDist){ const ns=Math.max(minScale,Math.min(6,scale*(dist/lastDist)));
+        tx=cx-(cx-tx)*(ns/scale); ty=cy-(cy-ty)*(ns/scale); scale=ns; clamp(); apply(); }
+      lastDist=dist; } };
+  const up=e=>{ pts.delete(e.pointerId); lastDist=0; };
+  viewEl.onpointerup=up; viewEl.onpointercancel=up;
+  // Doppeltipp: zwischen fit-to-width und 2.5x umschalten
+  let lastTap=0;
+  viewEl.addEventListener('click',e=>{ if(e.target.closest('.schemeval.tap')) return;
+    const now=Date.now(); if(now-lastTap<300){ const vw=viewEl.clientWidth;
+      // Doppeltipp: von "ganz sichtbar" auf fit-to-width (lesbar) zoomen, sonst zurueck
+      if(scale>minScale*1.15){ fit(); } else { const rect=viewEl.getBoundingClientRect();
+        const cx=e.clientX-rect.left, cy=e.clientY-rect.top, ns=Math.min(6,Math.max(vw/sw,minScale*2.5));
+        tx=cx-(cx-tx)*(ns/scale); ty=cy-(cy-ty)*(ns/scale); scale=ns; clamp(); apply(); } }
+    lastTap=now; });
+  schemeFit=fit;
+  // Bild kann nach dem Layout erst die richtige Groesse liefern -> nach Frame fitten
+  requestAnimationFrame(fit); const img=stage.querySelector('.schemeimg'); if(img) img.onload=fit;
+}
+window.addEventListener('resize',()=>{
+  if(el('grid').classList.contains('scheme')&&schemeFit) schemeFit();
+  // Screensaver-Spaltigkeit nachziehen, wenn das Fenster (Kiosk-Start, Rotation,
+  // Auto-Reload) erst spaet die echte Groesse meldet -> kein Haengenbleiben in 2-spaltig.
+  if(saverOn()) applySaverSplit();
+  // Kachel-Grid nur neu rendern, wenn die Quer/Hoch-Entscheidung tatsaechlich
+  // kippt (kein Neuzeichnen bei jedem Pixel) -> 4"-Panel bleibt 2x2 statt in der
+  // Startmessung 4x2 haengenzubleiben.
+  if(view && !el('grid').classList.contains('scheme')
+     && (window.innerWidth > window.innerHeight) !== _lastWide) render();
+  updateScrollInd();
+});
+
+// Eigene Scroll-Anzeige (siehe CSS-Kommentar bei .scrollind): Hoehe/Position
+// des Balkens folgen scrollTop/scrollHeight, eingeblendet nur bei
+// tatsaechlichem Overflow. Ein 1px-Toleranzwert gegen Rundungsjitter, der
+// sonst bei exakt passender Kachelzahl minimal flackern liesse.
+function updateScrollInd(){
+  const g=el('grid'), ind=el('scrollInd'); if(!g||!ind) return;
+  const over = g.scrollHeight - g.clientHeight;
+  if(over<=1){ ind.classList.remove('show'); return; }
+  ind.classList.add('show');
+  const thumb=ind.querySelector('.thumb');
+  const h=Math.max(24, g.clientHeight * g.clientHeight / g.scrollHeight);
+  const top=(g.clientHeight-h) * (g.scrollTop/over);
+  thumb.style.height=h+'px'; thumb.style.top=top+'px';
+}
+
+// Wisch nach rechts = zurueck (vertikales Scrollen bleibt unberuehrt)
+let sx=null, sy=null;
+const g=el('grid');
+g.addEventListener('scroll', updateScrollInd, {passive:true});
+g.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY;},{passive:true});
+g.addEventListener('touchend',e=>{
+  if(sx==null)return; const dx=e.changedTouches[0].clientX-sx, dy=e.changedTouches[0].clientY-sy; sx=null;
+  if(g.classList.contains('scheme')) return;   // im Schema pant der Finger, kein "zurueck"
+  if(dx>60 && Math.abs(dy)<45) back();
+});
+
+let booted=false;
+const PANEL_ID = new URLSearchParams(location.search).get('panel') || '';
+// Geraete-Kennung (physisches Panel). Darueber adressiert der Server dieses
+// Geraet (Betriebsmodus, Display, Ansicht wechseln) und listet es unter
+// Einstellungen -> Panels. Quelle: ?device=<name> in der Kiosk-URL, sonst ein
+// unter Einstellungen -> Panels vergebener Name (t:'setdevice', localStorage).
+let DEVICE_ID = new URLSearchParams(location.search).get('device') || '';
+try{ if(!DEVICE_ID) DEVICE_ID = localStorage.getItem('lp_device') || ''; }catch(e){}
+let LANG='de-DE';   // Panel-Sprache (aus dem Profil, Server sendet sie im theme); steuert Datum/Uhr
+// Horizontaler Feinversatz der ganzen Visu — live einstellbar ohne Redeploy:
+//   ?x=-6  -> 6px nach links     ?x=8 -> nach rechts     ?x=0 -> zuruecksetzen
+// Der Wert wird gemerkt (localStorage) und gilt dann auch ohne Parameter weiter.
+(function(){
+  const p=new URLSearchParams(location.search).get('x');
+  if(p!==null) localStorage.setItem('lp_nudge_x', p);
+  const v=localStorage.getItem('lp_nudge_x');
+  if(v!==null && v!=='') document.documentElement.style.setProperty('--nudge-x',(parseFloat(v)||0)+'px');
+})();
+// Strichstaerke des Positionsrings live am echten Display einstellen (verschiedene
+// Panels zeichnen duenne Linien unterschiedlich – Shelly braucht mehr fuer eine
+// sichtbare Linie): ?ring=4 duenner · ?ring=8 dicker · ?ring=6 Standard. Gemerkt.
+function connect(){
+  const q=[];
+  if(PANEL_ID) q.push('panel='+encodeURIComponent(PANEL_ID));
+  if(DEVICE_ID) q.push('device='+encodeURIComponent(DEVICE_ID));
+  if(kiosk()) q.push('kiosk=fully');   // Kiosk-App melden -> Typ in der Geraeteliste
+  ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws'
+                   +(q.length?('?'+q.join('&')):''));
+  // Erststart: Startseite kommt vom Server (erster Tab des Profils). Nach einem
+  // Reconnect stattdessen die zuletzt betrachtete Seite wiederherstellen.
+  ws.onopen=()=>{ el('conn').classList.add('ok'); if(booted) send({t:'nav',route:stack[stack.length-1]}); };
+  ws.onclose=()=>{ el('conn').classList.remove('ok'); setTimeout(connect,1500); };
+  ws.onmessage=e=>{
+    const msg=JSON.parse(e.data);
+    if(msg.t==='theme'){ const v=msg.vars||{}; for(const k in v){ if(v[k]) document.documentElement.style.setProperty(k,v[k]); }
+      profCols = (v['--cols']?(parseInt(v['--cols'])||2):2);
+      profRows = (v['--rows']?(parseInt(v['--rows'])||2):2);
+      gridCols = profCols; gridRows = profRows;
+      panesCfg = (msg.panes && typeof msg.panes==='object') ? msg.panes : {};
+      themeFill = !!msg.fill;
+      themeSplit = (msg.split !== false);   // Default an; nur explizit aus (4"-Panel)
+      if(msg.screensaverCam!==undefined){ screensaverCam=msg.screensaverCam||null; if(saverOn()) renderFront(); }
+      // Design-Variante ("classic"/"loxone") + Animationsgeschwindigkeit
+      // ("normal"/"slow"/"off") sind reine CSS-Schalter (body[data-*]) - alle
+      // Form-/Bewegungs-Variablen dahinter sitzen im :root (s. <style>).
+      // Animationen: nur noch an/aus (ein Multiplikator fuer alle --anim-*-Dauern).
+      document.documentElement.style.setProperty('--anim-scale', msg.motion==='off' ? 0 : 1);
+      if(saverOn()) applySaverSplit();      // Split-Erlaubnis kann sich geaendert haben -> Screensaver-Spaltigkeit nachziehen
+      if(msg.lang){ LANG=msg.lang; tickClock(); }   // Panel-Sprache -> Datum/Uhr sofort aktualisieren
+      if(msg.title) document.title=msg.title;
+      if(msg.tabMeta) tabMeta=msg.tabMeta;
+      if(msg.night){ NIGHT.dim=+msg.night.dim||0; NIGHT.wake=+msg.night.wake||0; setNight(msg.night.on); }
+      if(Array.isArray(msg.tabs)&&msg.tabs.length) tabsCfg=msg.tabs;
+      applyDisplayCfg(msg);   // Display aus / Auto-Neustart ohne Agent (Kiosk-App)
+      renderTabs(); return; }
+    if(msg.t==='ring'){
+      if(msg.id){ wake(); nav({view:'control',id:msg.id}); }
+      if(msg.sound){
+        if(msg.on){ if(msg.soundUrl) playRingAudio(msg.soundUrl); else toneOn('ring:'+msg.id); }
+        else { stopRingAudio(); toneOff('ring:'+msg.id); }
+      }
+      return;
+    }   // Klingel: Display an, Uhr weg, optional (je Intercom) eigener Ton oder Wecker-Ton solange der bell-Impuls ansteht
+    if(msg.t==='alarm'){ if(msg.on){ wake(); toneOn('alarm'); if(msg.id) nav({view:'control',id:msg.id}); } else { toneOff('alarm'); } return; }
+    if(msg.t==='testtone'){ playTestTone(); return; }
+    if(msg.t==='front'){ frontData=msg; renderFront(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
+    if(msg.t==='player'){ renderPlayer(msg.blocks); return; }   // fester Player im Split-Layout
+    if(msg.t==='energy'){ energyData=msg; const fp=el('frontpane'); if(fp && paneKind(paneForTab(activeTab()))==='energy') renderEnergyPane(fp); return; }   // Energiefluss-Pane
+    if(msg.t==='camera'){ cameraData=msg; const fp=el('frontpane'); if(fp && paneKind(paneForTab(activeTab()))==='camera') renderCameraPane(fp); return; }   // Kamera-Pane (Intercom-Vollansicht)
+    if(msg.t==='switch'){ if(msg.panel!==undefined){ const u=new URL(location.href);
+        if(msg.panel) u.searchParams.set('panel',msg.panel); else u.searchParams.delete('panel');
+        location.replace(u.toString()); } return; }   // Betriebsmodus -> Profil live wechseln
+    if(msg.t==='reload'){ location.reload(); return; }                       // Server -> Panel neu laden
+    if(msg.t==='night'){ setNight(msg.on); return; }                         // Tag/Nacht gewechselt
+    if(msg.t==='goto'){ if(msg.route){ wake(); nav(msg.route); } return; }  // auf Seite springen
+    if(msg.t==='notify'){ wake(); showNotify(msg.text, msg.level, msg.secs); return; }  // Nachricht einblenden
+    if(msg.t==='display'){ if(msg.on) wake(); else screenOff(); return; }   // Server schaltet Display (Kiosk-App)
+    if(msg.t==='setdevice'){ if(msg.name){ try{ localStorage.setItem('lp_device', msg.name); }catch(e){}
+        DEVICE_ID=msg.name; ws.close(); } return; }   // in den Einstellungen benannt -> mit Kennung neu verbinden
+    if(msg.t==='cmdresult'){ if(msg.ok===false && pendingSecure){ const p=pendingSecure; pendingSecure=null; doSecure(p.uuid,p.cmd,'PIN falsch – nochmal'); } else pendingSecure=null; return; }
+    if(msg.t!=='view') return;
+    if(!booted){ booted=true; if(msg.route&&msg.route.view==='tab') stack=[msg.route]; }
+    if(msg.layout==='scheme'){
+      const sameS = view && key(view.route)===key(msg.route) && el('grid').classList.contains('scheme');
+      view=msg;
+      if(!(sameS && updateScheme(msg))) renderScheme(msg);   // gleiche Seite: nur Werte patchen (Zoom bleibt)
+      return;
+    }
+    const same = view && key(view.route)===key(msg.route);
+    if(msg.blocks){
+      view=msg;
+      if(same && el('grid').classList.contains('panel')) updatePanel(msg.blocks);
+      else renderPanel(msg.blocks);
+    } else {
+      const st=same?g.scrollTop:0;
+      view=msg;
+      // Gleiche Kachel-Seite: nur die veraenderlichen Teile patchen (kein
+      // innerHTML-Neuaufbau -> kein Flackern/Neuladen der Icons, z.B. Fully Kiosk).
+      // Struktur geaendert (andere/mehr Kacheln) -> voller Neuaufbau.
+      if(!(same && updateGrid(view.items||[]))){ render(); g.scrollTop=st; }
+      else updateScrollInd();   // render() ruft es schon selbst auf - hier nur fuer den Patch-Pfad noetig
+    }
+  };
+}
+// ---- Screensaver: Uhr als Startseite, Tippen -> Favoriten ----
+const SAVER_IDLE_MS = 60000;   // nach 60 s Inaktivitaet zurueck zur Uhr
+let idleTimer=null;
+function tickClock(){
+  const d=new Date();
+  const t=el('svTime'), dd=el('svDate');
+  if(t) t.textContent=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
+  if(dd) dd.textContent=d.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+// ---- Front-Extras (Kalender/Wetter) auf dem Screensaver ----
+// Daten kommen vom Server ({t:'front', weather, events, calName}); das Panel
+// zeigt nur an. Wetter-Icons im gleichen Strichstil wie die uebrigen Icons.
+let frontData=null;
+let screensaverCam=null;   // {uuid,name} | null - "Fenster zur Aussenwelt" (Screensaver-Kamera statt Kalender)
+const WXI={
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>',
+  cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 19z"/>',
+  rain:'<path d="M17.5 15a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 15z"/><path d="M8 18v2M12 18v2.6M16 18v2"/>',
+  drizzle:'<path d="M17.5 15a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 15z"/><path d="M9 18v1.4M13 18v1.4M15 18v1.4"/>',
+  snow:'<path d="M17.5 15a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 15z"/><path d="M8 19h.01M12 20h.01M16 19h.01"/>',
+  fog:'<path d="M17.5 14a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 14z"/><path d="M6 18h12M8 21h8"/>',
+  storm:'<path d="M17.5 14a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 14z"/><path d="m13 14-3 4h3.5l-2.5 4"/>',
+};
+function wxSvg(k){ return svg(WXI[k]||WXI.cloud); }
+function fmtTemp(t){ if(t==null||isNaN(t)) return '–'; return Number(t).toLocaleString(LANG,{minimumFractionDigits:1,maximumFractionDigits:1}); }
+function tdeg(v){ return v==null?'–':(Math.round(v)+'°'); }
+function renderFront(){
+  const wxEl=el('svWx'), calEl=el('svCal'), camEl=el('svCam'); if(!wxEl||!calEl) return;
+  const d=frontData||{}, w=d.weather;
+  if(w){
+    const fc=Array.isArray(w.forecast)?w.forecast:[];
+    wxEl.style.setProperty('--fc', Math.max(1,Math.min(7,fc.length))||4);
+    let html='<div class="now"><span class="ico '+esc(w.icon||'cloud')+'">'+wxSvg(w.icon)+'</span>'+
+      '<span class="t">'+fmtTemp(w.temp)+'°</span>'+
+      '<span class="meta"><span class="cond">'+esc(w.cond||'')+'</span>';
+    if(w.hi!=null||w.lo!=null) html+='<span class="hl">Heute '+tdeg(w.hi)+' / '+tdeg(w.lo)+'</span>';
+    html+='</span></div>';
+    if(fc.length) html+='<div class="fore">'+fc.map(f=>
+      '<div class="fc"><span class="d">'+esc(f.day||'')+'</span>'+
+      '<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
+      '<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span></div>').join('')+'</div>';
+    wxEl.innerHTML=html; wxEl.hidden=false;
+  } else { wxEl.hidden=true; wxEl.innerHTML=''; }
+  const evs=(Array.isArray(d.events)?d.events:[]).slice(0,3);
+  let camShown=false;
+  if(evs.length){
+    const nm=d.calName||'';
+    calEl.innerHTML='<div class="lbl">Nächste Termine</div>'+evs.map(e=>
+      '<div class="sv-ev"><span class="when"><span class="day">'+esc(e.day||'')+'</span>'+
+      '<span class="tm">'+esc(e.time||'')+'</span></span>'+
+      '<span class="ttl">'+esc(e.title||'')+'</span>'+
+      (nm?'<span class="tag">'+esc(nm)+'</span>':'')+'</div>').join('');
+    calEl.hidden=false;
+    if(camEl){ camEl.hidden=true; stopScreensaverCam(); }
+  } else {
+    calEl.hidden=true; calEl.innerHTML='';
+    // "Fenster zur Aussenwelt": nur starten, wenn der Screensaver auch wirklich
+    // sichtbar ist - renderFront() laeuft sonst auch im Hintergrund mit jedem
+    // periodischen Wetter/Kalender-Push (alle ~15 Min), das soll den MJPEG-
+    // Stream nicht unnoetig auf jeder normalen Tab-Ansicht mitlaufen lassen.
+    if(camEl && screensaverCam && screensaverCam.uuid && saverOn()){
+      renderScreensaverCam(camEl); camShown=true;
+    } else if(camEl){ camEl.hidden=true; stopScreensaverCam(); }
+  }
+  // Kompakt-Layout aktivieren, sobald Wetter, Termine oder die Kamera angezeigt werden.
+  const wrap=document.querySelector('.sv-wrap');
+  if(wrap) wrap.classList.toggle('rich', !!w || evs.length>0 || camShown);
+}
+// Live-MJPEG-Bild der gewaehlten Intercom fuer den Screensaver. Wird nicht neu
+// aufgebaut, solange dieselbe Kamera schon laeuft (sonst reisst der Stream bei
+// jedem periodischen Front-Push unnoetig ab). Bei Ladefehler (Kamera kurz
+// nicht erreichbar) alle 8s ein neuer Versuch, solange die Kachel sichtbar ist.
+function renderScreensaverCam(camEl){
+  if(!camEl||!screensaverCam||!screensaverCam.uuid) return;
+  if(camEl.dataset.camuuid===screensaverCam.uuid && !camEl.hidden && camEl.querySelector('.sv-cam-img')){
+    camEl.hidden=false; return;
+  }
+  camEl.dataset.camuuid=screensaverCam.uuid;
+  camEl.innerHTML='<div class="lbl">'+esc(screensaverCam.name||'Kamera')+'</div>'+
+    '<div class="sv-cam-frame"><img class="sv-cam-img" alt=""><div class="sv-cam-status"></div></div>';
+  camEl.hidden=false;
+  const img=camEl.querySelector('.sv-cam-img'), stat=camEl.querySelector('.sv-cam-status');
+  const load=()=>{ if(stat) stat.textContent=''; img.src='/mjpeg?id='+encodeURIComponent(screensaverCam.uuid)+'&_t='+Date.now(); };
+  img.onerror=()=>{ if(stat) stat.textContent='Kamera nicht erreichbar …';
+    clearTimeout(img._retry); img._retry=setTimeout(()=>{ if(!camEl.hidden) load(); },8000); };
+  img.onload=()=>{ if(stat) stat.textContent=''; };
+  load();
+}
+function stopScreensaverCam(){
+  const camEl=el('svCam'); if(!camEl) return;
+  const img=camEl.querySelector('.sv-cam-img');
+  if(img){ clearTimeout(img._retry); img.onerror=null; img.onload=null; img.src=''; }
+  camEl.innerHTML=''; delete camEl.dataset.camuuid;
+}
+// ---- Ausfuehrliche "Wetter & Kalender"-Ansicht (fuer eigene Seite / Split-Pane) ----
+// Zeichnet den Stunden-Temperaturverlauf als Inline-SVG (Regenband + Kurve),
+// Vorschaukarten mit Regenwahrscheinlichkeit und die Termine als Tages-Agenda.
+function fpCurve(hourly){
+  const pts=hourly.filter(h=>h && h.temp!=null);
+  if(pts.length<2) return '';
+  const W=700,H=150,padT=24,padB=32,padX=12,n=pts.length;
+  const temps=pts.map(p=>p.temp);
+  let mn=Math.min(...temps), mx=Math.max(...temps);
+  if(mx-mn<4){ const c=(mx+mn)/2; mn=c-2; mx=c+2; }
+  const X=i=> padX + i*(W-2*padX)/(n-1);
+  const Y=t=> padT + (mx-t)*(H-padT-padB)/(mx-mn);
+  const barW=Math.max(3,(W-2*padX)/n*0.55);
+  const bars=pts.map((p,i)=>{ if(p.pop==null||p.pop<=0) return '';
+    const bh=(p.pop/100)*(H-padB-padT)*0.55;
+    return '<rect x="'+(X(i)-barW/2).toFixed(1)+'" y="'+(H-padB-bh).toFixed(1)+'" width="'+barW.toFixed(1)+'" height="'+bh.toFixed(1)+'" rx="1.5" fill="#7fb2e6" opacity=".2"/>'; }).join('');
+  const line=pts.map((p,i)=>X(i).toFixed(1)+','+Y(p.temp).toFixed(1)).join(' ');
+  const area=X(0).toFixed(1)+','+(H-padB)+' '+line+' '+X(n-1).toFixed(1)+','+(H-padB);
+  let lbl='';
+  pts.forEach((p,i)=>{ if(i%3===0||i===n-1){
+    lbl+='<text x="'+X(i).toFixed(1)+'" y="'+(H-12)+'" text-anchor="middle" class="fpx">'+p.h+'</text>';
+    lbl+='<text x="'+X(i).toFixed(1)+'" y="'+(Y(p.temp)-9).toFixed(1)+'" text-anchor="middle" class="fpt">'+p.temp+'°</text>'; }});
+  return '<svg viewBox="0 0 '+W+' '+H+'">'+
+    '<defs><linearGradient id="fpgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".22"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>'+
+    bars+
+    '<polygon points="'+area+'" fill="url(#fpgrad)"/>'+
+    '<polyline points="'+line+'" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'+
+    '<circle cx="'+X(0).toFixed(1)+'" cy="'+Y(pts[0].temp).toFixed(1)+'" r="4" fill="currentColor"/>'+
+    lbl+'</svg>';
+}
+// Windeinheit: der Server schickt sie mit (Open-Meteo km/h, der Loxone-
+// Wetterserver das, was die Anlage in ihren Formatstrings fuehrt).
+function wUnit(w){ return (w&&w.wind_unit)?w.wind_unit:'km/h'; }
+function windDir(deg){ const C=['N','NO','O','SO','S','SW','W','NW']; return (deg==null)?'':(C[Math.round(deg/45)%8]||''); }
+// Seite 1 (fuellt die 2x2-Kachelhoehe): Aktuell + Kurve + Vorschau.
+function fpWeatherMainHTML(w){
+  if(!w) return '';
+  let html='<div class="fp-h" data-i18n>Wetter</div>';
+  html+='<div class="fp-now"><span class="ico '+esc(w.icon||'cloud')+'">'+wxSvg(w.icon)+'</span>'+
+    '<span class="t">'+fmtTemp(w.temp)+'°</span><span class="meta">'+
+    '<span class="cond">'+esc(w.cond||'')+'</span>'+
+    '<span class="sub">'+(w.feels!=null?'Gefühlt '+tdeg(w.feels):'')+(w.wind!=null?' · Wind '+w.wind+' '+wUnit(w):'')+'</span>'+
+    '<span class="sub">Heute '+tdeg(w.hi)+' / '+tdeg(w.lo)+'</span></span></div>';
+  const hh=Array.isArray(w.hourly)?w.hourly:[];
+  if(hh.length>=2) html+='<div class="fp-curve">'+fpCurve(hh)+'</div>';
+  const fc=Array.isArray(w.forecast)?w.forecast:[];
+  if(fc.length) html+='<div class="fp-fore" style="--fc:'+Math.max(1,Math.min(7,fc.length))+'">'+fc.map(f=>
+    '<div class="fp-fc"><span class="d">'+esc(f.day||'')+'</span>'+
+    '<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
+    '<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span>'+
+    (f.pop!=null?'<span class="pop">'+f.pop+'%</span>':'')+'</div>').join('')+'</div>';
+  return html;
+}
+// Seite 2: Detailkacheln (nur vorhandene Werte).
+function fpWeatherDetailHTML(w){
+  if(!w) return '';
+  const det=[];
+  if(w.humidity!=null) det.push(['Luftfeuchte', w.humidity+' %']);
+  if(w.wind!=null) det.push(['Wind', w.wind+' '+wUnit(w)+(w.wind_dir!=null?' '+windDir(w.wind_dir):'')]);
+  if(w.sunrise&&w.sunset) det.push(['Sonne', w.sunrise+' – '+w.sunset]);
+  if(w.uv!=null) det.push(['UV-Index', String(w.uv)]);
+  if(w.precip_sum!=null) det.push(['Niederschlag', String(w.precip_sum).replace('.',',')+' mm']);
+  if(w.pressure!=null) det.push(['Luftdruck', w.pressure+' hPa']);
+  return det.length ? '<div class="fp-det">'+det.map(x=>'<div><span>'+esc(x[0])+'</span><b>'+esc(x[1])+'</b></div>').join('')+'</div>' : '';
+}
+function fpWeatherHTML(w){ if(!w) return ''; return fpWeatherMainHTML(w)+fpWeatherDetailHTML(w);
+}
+let calMonthOff=0, calSel='';   // Kalender-Pane: Monatsverschiebung + gewaehlter Tag (ISO)
+function isoDay(dt){ const p=n=>String(n).padStart(2,'0'); return dt.getFullYear()+'-'+p(dt.getMonth()+1)+'-'+p(dt.getDate()); }
+function evRow(e){ return '<div class="fp-ev"><span class="tm'+(e.allday?' all':'')+'">'+esc(e.time||'')+'</span>'+
+    '<span class="ttl">'+esc(e.title||'')+'</span></div>'; }
+function fpCalHTML(d){
+  const evs=Array.isArray(d.events)?d.events:[], hol=d.holidays||{};
+  if(calSel){   // ein Tag gewaehlt -> nur dessen Termine (+ Feiertag)
+    let dt; try{ dt=new Date(calSel+'T00:00'); }catch(e){ dt=new Date(); }
+    const lbl=dt.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long'});
+    let html='<div class="fp-h"><span>'+esc(lbl)+'</span><button class="fp-allbtn" data-calall="1">Alle ›</button></div>';
+    if(hol[calSel]) html+='<div class="fp-ev holi"><span class="tm all">Feiertag</span><span class="ttl">'+esc(hol[calSel])+'</span></div>';
+    const day=evs.filter(e=>e.date===calSel);
+    if(day.length) html+=day.map(evRow).join('');
+    else if(!hol[calSel]) html+='<div class="fp-empty">Keine Termine an diesem Tag.</div>';
+    return html;
+  }
+  let html='<div class="fp-h">'+esc(d.calName||'Termine')+'</div>';
+  if(evs.length){
+    html+='<div class="fp-cal">'; let curDay=null;
+    evs.forEach(e=>{ if(e.day!==curDay){ curDay=e.day; html+='<div class="fp-day">'+esc(e.day||'')+'</div>'; } html+=evRow(e); });
+    html+='</div>';
+  } else { html+='<div class="fp-empty" data-i18n>Keine Termine.</div>'; }
+  return html;
+}
+// Vollseite (Test ?front=1): Wetter + Kalender kombiniert.
+function renderFrontRich(elc){ if(!elc) return; const d=frontData||{}; elc.innerHTML=fpWeatherHTML(d.weather)+fpCalHTML(d); }
+// Split-Panes: je eine eigene Pane.
+// Energiefluss-Pane (Radial, Loxone-Standard): Daten vom Server ({t:'energy'});
+// das Panel zeichnet Knoten + animierte Fluss-Punkte. Zahlen deutsch, W/kW auto.
+function fmtPower(w){ if(w==null) return '–'; const a=Math.abs(w);
+  return a<1000 ? Math.round(w)+' W' : (w/1000).toFixed(1).replace('.',',')+' kW'; }
+const EICONS={
+  pv:'<circle cx="12" cy="8" r="3.2"/><path d="M12 1.6v1.6M6.7 3.3l1 1M17.3 3.3l-1 1M4.5 8h1.4M18.1 8h1.4"/><path d="M6 14l1.6 6.4h8.8L18 14z"/><path d="M7.4 17.2h9.2M11 14v6.4"/>',
+  grid:'<path d="M12 2 5.5 22M12 2l6.5 20M8 15h8M9.3 9h5.4"/>',
+  battery:'<rect x="2" y="7" width="16" height="11" rx="2.4"/><path d="M21 11v3"/>',
+  load:'<path d="M13 2 4 14h7l-1 8 10-12h-7z"/>'
+};
+// Knoten-Icon: echtes Loxone-Icon (per CSS-Maske in Flussfarbe eingefaerbt),
+// sonst das eingebaute Symbol als Fallback. So gibt der Miniserver Icon UND
+// Name vor (siehe energy_blocks/_node_icon_url im Server).
+function eIconMarkup(n,cls,i){
+  const tag='data-ic="'+i+'"';
+  if(n && n.iconUrl){
+    const u=String(n.iconUrl).replace(/"/g,'%22');
+    return '<foreignObject x="-13" y="-13" width="26" height="26">'+
+      '<div xmlns="http://www.w3.org/1999/xhtml" '+tag+' class="emask '+cls+'" '+
+      'style="-webkit-mask:url(&quot;'+u+'&quot;) center/contain no-repeat;'+
+      'mask:url(&quot;'+u+'&quot;) center/contain no-repeat"></div></foreignObject>';
+  }
+  const icon=EICONS[n&&n.icon]||EICONS.load;
+  return '<g '+tag+' class="eic '+cls+'" transform="translate(-12,-12)">'+icon+'</g>';
+}
+// Farbe nach ROLLE (kind vom Server): prod=Quelle gruen, grid=Netzbezug ROT,
+// load=Verbraucher orange, idle=0 W grau. (Fallback aus flow, falls kein kind.)
+function eColorCls(n){ const k=n.kind||(n.flow==='out'?'load':(n.flow==='in'?'prod':'idle'));
+  return k==='grid'?'grid':(k==='load'?'cons':(k==='prod'?'prod':'idle')); }
+// Animationsrichtung nach ECHTEM Fluss (flow), entkoppelt von der Farbe:
+// in = zur Mitte, out = nach aussen (in den Knoten, z.B. Einspeisung).
+function eDirCls(n){ return n.flow==='in'?' fin':(n.flow==='out'?' fout':''); }
+function nodeLabel(n){ return (n.name||'')+(n.soc!=null?' · '+Math.round(n.soc)+' %':''); }
+function efooter(tt){ return 'Erzeugung <b>'+esc(fmtPower(tt.prod||0))+'</b> · Verbrauch <b>'+esc(fmtPower(tt.cons||0))+'</b>'; }
+// Baut das Radial als HTML-String (fuer Pane UND Detailansicht). Knoten tragen
+// data-Attribute, damit updateEnergyPane() nur Werte/Farben aendert und die
+// Fluss-Punkte NICHT neu erzeugt werden (Animation laeuft sonst nie durch).
+function energyInner(d){
+  d=d||{};
+  const nodes=(d.nodes||[]).slice(0,9), N=nodes.length;
+  if(!N) return '<div class="epane"><div class="ebot">Energiefluss lädt …</div></div>';
+  const C=240,R=140,rn=(N>6?34:40), spokes=[],dots=[],ng=[],txts=[];   // C=240 in 480er-viewBox -> Rand fuer Beschriftung ausserhalb der Ringe
+  nodes.forEach((n,i)=>{
+    const ang=-Math.PI/2 + i*2*Math.PI/N, nx=C+R*Math.cos(ang), ny=C+R*Math.sin(ang);
+    const col=eColorCls(n), dir=eDirCls(n), tx=nx.toFixed(1), ty=ny.toFixed(1);
+    spokes.push('<line class="spoke" x1="'+C+'" y1="'+C+'" x2="'+tx+'" y2="'+ty+'"/>');
+    const dx=((nx-C)*0.72).toFixed(1), dy=((ny-C)*0.72).toFixed(1);
+    for(let k=0;k<2;k++) dots.push('<circle data-nd="'+i+'-'+k+'" class="edot '+col+dir+'" cx="'+C+'" cy="'+C+'" r="4.5" style="--dx:'+dx+'px;--dy:'+dy+'px;animation-delay:'+(k*1.3)+'s'+(n.flow?'':';display:none')+'"/>');
+    ng.push('<g transform="translate('+tx+','+ty+')"><circle class="ering '+col+'" data-ri="'+i+'" r="'+rn+'"/>'+eIconMarkup(n,col,i)+'</g>');
+    const above=ny<C-4, nm=esc(nodeLabel(n));
+    const val=esc(n.flow?fmtPower(n.w):'0 W'), vcls='enval'+(col==='idle'?' idle':'');
+    txts.push(above
+      ? '<text class="'+vcls+'" data-vv="'+i+'" x="'+tx+'" y="'+(ny-74).toFixed(1)+'">'+val+'</text><text class="enlab" data-vl="'+i+'" x="'+tx+'" y="'+(ny-56).toFixed(1)+'">'+nm+'</text>'
+      : '<text class="enlab" data-vl="'+i+'" x="'+tx+'" y="'+(ny+56).toFixed(1)+'">'+nm+'</text><text class="'+vcls+'" data-vv="'+i+'" x="'+tx+'" y="'+(ny+76).toFixed(1)+'">'+val+'</text>');
+  });
+  return '<div class="epane"><div class="etop"><span class="ettl">'+esc(d.name||'Energiefluss')+'</span></div>'+
+    '<div class="ewrap"><svg viewBox="0 0 480 480" preserveAspectRatio="xMidYMid meet">'+
+    spokes.join('')+dots.join('')+'<circle class="ehub" cx="'+C+'" cy="'+C+'" r="13"/>'+ng.join('')+txts.join('')+
+    '</svg></div><div class="ebot">'+efooter(d.totals||{})+'</div></div>';
+}
+// Struktur-Signatur: nur bei Aenderung (Knotensatz/Icons) neu zeichnen.
+function energySig(d){ return ((d.nodes||[]).map(n=>(n.name||'')+'§'+(n.icon||'')+'§'+(n.iconUrl||'')).join('¦'))+'#'+((d.nodes||[]).length); }
+function updateEnergyPane(elc,d){
+  (d.nodes||[]).slice(0,9).forEach((n,i)=>{
+    const col=eColorCls(n), dir=eDirCls(n);
+    const ring=elc.querySelector('.ering[data-ri="'+i+'"]'); if(ring){ const w='ering '+col; if(ring.getAttribute('class')!==w) ring.setAttribute('class',w); }
+    const ic=elc.querySelector('[data-ic="'+i+'"]'); if(ic){ const base=ic.classList.contains('emask')?'emask':'eic'; const w=base+' '+col; if(ic.getAttribute('class')!==w) ic.setAttribute('class',w); }
+    const vv=elc.querySelector('[data-vv="'+i+'"]'); if(vv){ const t=n.flow?fmtPower(n.w):'0 W'; if(vv.textContent!==t) vv.textContent=t; const w='enval'+(col==='idle'?' idle':''); if(vv.getAttribute('class')!==w) vv.setAttribute('class',w); }
+    const vl=elc.querySelector('[data-vl="'+i+'"]'); if(vl){ const t=nodeLabel(n); if(vl.textContent!==t) vl.textContent=t; }
+    for(let k=0;k<2;k++){ const dot=elc.querySelector('.edot[data-nd="'+i+'-'+k+'"]'); if(dot){ const w='edot '+col+dir; if(dot.getAttribute('class')!==w) dot.setAttribute('class',w); const disp=n.flow?'':'none'; if(dot.style.display!==disp) dot.style.display=disp; } }
+  });
+  const bot=elc.querySelector('.ebot'); if(bot){ const h=efooter(d.totals||{}); if(bot.innerHTML!==h) bot.innerHTML=h; }
+}
+// Zeichnet in elc: nur bei Strukturaenderung Neuaufbau, sonst in-place -> Punkte laufen weiter.
+function paintEnergy(elc,d){
+  d=d||{};
+  const sig=energySig(d);
+  if(elc._esig===sig && elc.querySelector('.ewrap svg')){ updateEnergyPane(elc,d); return; }
+  elc._esig=sig;
+  elc.innerHTML=energyInner(d);
+}
+function renderEnergyPane(elc){ if(!elc) return;
+  // Energiefluss in denselben gerahmten .fp-page-Block wie Wetter/Kalender (eine Seite).
+  let page=elc.querySelector('.fp-page.epage');
+  if(!page){ elc.innerHTML='<div class="fp-page epage solo"></div>'; page=elc.querySelector('.fp-page.epage'); }
+  paintEnergy(page, energyData||{}); }
+
+// Kamera-Pane: VOLLE Intercom-Ansicht (Klingel-Banner + Video + Tür-/Ausgang-Buttons),
+// gleiche Blöcke wie der Baustein (kommen per {t:'camera'}-Push vom Server). Das Video
+// wird wie beim Baustein direkt geladen (kein onload-Gate -> zeigt auch in Browsern, die
+// ein nacktes MJPEG-<img> nicht rendern). Struktur nur bei Änderung neu bauen, sonst nur
+// Buttons/Klingel in-place aktualisieren -> der Video-Stream läuft ununterbrochen weiter.
+function renderCameraPane(elc){ if(!elc) return;
+  const blocks=(cameraData&&cameraData.blocks)||null;
+  if(blocks===null){   // Push noch nicht da -> Platzhalter
+    if(elc.dataset.cam!=='wait'){ elc.dataset.cam='wait'; delete elc.dataset.camsig;
+      elc.innerHTML='<div class="fp-page solo campage"><div class="camwait">'+svg(ICONS.cam)+'<span>Kamera lädt …</span></div></div>'; }
+    return;
+  }
+  const video=blocks.find(b=>b.k==='video'), row=blocks.find(b=>b.k==='row');
+  const bell=blocks.find(b=>b.k==='astat'), nostat=blocks.find(b=>b.k==='status');
+  const sig=(video?'v':'')+'|'+(row?row.cells.length:0)+'|'+(nostat?nostat.text:'');
+  if(elc.dataset.camsig!==sig){          // Struktur -> Neuaufbau
+    elc.dataset.camsig=sig; elc.dataset.cam='1';
+    let html='<div class="cambell astat crit" hidden></div>';
+    html+= video ? '<div class="video"><img alt=""></div>'
+                 : '<div class="status">'+esc(nostat?nostat.text:'Kein Video')+'</div>';
+    if(row) html+='<div class="brow'+(row.wrap?' wraprow':'')+'">'+row.cells.map(cellHtml).join('')+'</div>';
+    elc.innerHTML='<div class="fp-page solo campage">'+html+'</div>';
+    const vimg=elc.querySelector('.video img'); if(vimg&&video) vimg.src=video.src;   // direkt, KEIN onload-Gate
+    if(row){ const btns=elc.querySelectorAll('.brow [data-c]');
+      row.cells.forEach((c,i)=>{ const btn=btns[i]; if(!btn)return;
+        btn.addEventListener('pointerdown',ev=>{ ev.preventDefault(); if(c.cmd) sendCmd(c.cmd.uuid,c.cmd.cmd,false); }); }); }
+  } else if(row){                         // gleiche Struktur -> nur Buttons aktualisieren (Video unangetastet)
+    const btns=elc.querySelectorAll('.brow [data-c]');
+    row.cells.forEach((c,i)=>{ const btn=btns[i]; if(btn){ btn.textContent=c.label||''; btn.className='btn'+(c.on?' on':''); } });
+  }
+  const be=elc.querySelector('.cambell'); if(be){ if(bell){ be.textContent=bell.text||''; be.hidden=false; } else be.hidden=true; }
+}
+function renderWeatherPane(elc){ if(!elc) return; const d=frontData||{}, w=d.weather;
+  if(!w){ elc.innerHTML='<div class="fp-empty">Kein Wetter konfiguriert.</div>'; return; }
+  // Seite 1 = Aktuell/Kurve/Vorschau (fuellt die 2x2-Hoehe), Seite 2 = Detailkacheln.
+  const det=fpWeatherDetailHTML(w);
+  elc.innerHTML='<div class="fp-page">'+fpWeatherMainHTML(w)+'</div>'
+    +(det?'<div class="fp-page">'+det+'</div>':''); }
+function fpMonthHTML(events, holidays){
+  const base=new Date(); base.setDate(1); base.setMonth(base.getMonth()+calMonthOff);
+  const y=base.getFullYear(), m=base.getMonth();
+  const startDow=(new Date(y,m,1).getDay()+6)%7;    // 0 = Montag
+  const dim=new Date(y,m+1,0).getDate();
+  const evd=new Set((events||[]).map(e=>e&&e.date).filter(Boolean));
+  const hol=holidays||{}, todayISO=isoDay(new Date());
+  const pad=n=>String(n).padStart(2,'0');
+  const mn=new Date(y,m,1).toLocaleDateString(LANG,{month:'long',year:'numeric'});
+  let html='<div class="fp-mon"><div class="fp-mon-h">'+
+    '<span class="fp-mnav" data-mnav="-1">‹</span>'+
+    '<span class="fp-mtitle">'+esc(mn)+'</span>'+
+    '<span class="fp-mnav" data-mnav="1">›</span></div><div class="fp-mon-g">';
+  html+=['Mo','Di','Mi','Do','Fr','Sa','So'].map((d,i)=>'<div class="fp-mon-wd'+(i===6?' sun':'')+'">'+d+'</div>').join('');
+  for(let i=0;i<startDow;i++) html+='<div class="fp-mon-c empty"></div>';
+  for(let d=1;d<=dim;d++){
+    const iso=y+'-'+pad(m+1)+'-'+pad(d);
+    const dow=(startDow+d-1)%7;                     // 5=Sa, 6=So
+    const isHol=!!hol[iso];
+    const cls='fp-mon-c'+(dow===5?' sat':'')+((dow===6||isHol)?' sun':'')+(isHol?' holi':'')+
+      (iso===todayISO?' today':'')+(evd.has(iso)?' ev':'')+(iso===calSel?' sel':'');
+    html+='<div class="'+cls+'" data-day="'+iso+'"'+(isHol?(' title="'+esc(hol[iso])+'"'):'')+'>'+d+'</div>';
+  }
+  return html+'</div></div>';
+}
+function renderCalendarPane(elc){ if(!elc) return; const d=frontData||{};
+  // Seite 1 = Monat (fuellt die 2x2-Hoehe), Seite 2 = Agenda/Termine.
+  elc.innerHTML='<div class="fp-page">'+fpMonthHTML(d.events, d.holidays)+'</div>'
+    +'<div class="fp-page">'+fpCalHTML(d)+'</div>';
+  elc.querySelectorAll('[data-mnav]').forEach(b=>b.onclick=()=>{ calMonthOff+=parseInt(b.dataset.mnav)||0; renderCalendarPane(elc); });
+  elc.querySelectorAll('[data-day]').forEach(c=>c.onclick=()=>{ calSel=(calSel===c.dataset.day?'':c.dataset.day); renderCalendarPane(elc); });
+  elc.querySelectorAll('[data-calall]').forEach(b=>b.onclick=()=>{ calSel=''; renderCalendarPane(elc); });
+}
+// Test-/Vorschau-Schalter: ?front=1 zeigt die ausfuehrliche Ansicht als Vollseite.
+const FRONT_TEST=new URLSearchParams(location.search).has('front');
+if(FRONT_TEST){ const fp=el('frontPage'); if(fp) fp.classList.remove('hidden'); }
+function saverOn(){ return !el('saver').classList.contains('hidden'); }
+// Screensaver zweispaltig NUR im Querformat (breites 2-Pane-Tablet, z.B. Shelly
+// X2) – gleiches Kriterium wie das Kachel-Grid (s. render()). Das quadratische
+// 4"-Panel bleibt einspaltig (Wetter oben, Uhr, Termine untereinander).
+// WICHTIG: Die Entscheidung haengt an der aktuellen Fenstergroesse, die beim
+// Kiosk-Start / nach dem Auto-Reload (Speichern) kurz falsch (quer) sein kann,
+// bevor die echte 480x480-Flaeche steht. Darum gekapselt und bei jedem resize
+// neu getroffen – sonst bleibt die Anzeige in der beim Start zufaellig
+// gemessenen Spaltigkeit haengen (2-spaltig direkt nach dem Speichern, erst
+// spaeter wieder einspaltig).
+function applySaverSplit(){
+  el('saver').classList.toggle('split', !!themeSplit && window.innerWidth > window.innerHeight);
+}
+function showSaver(){ tickClock();
+  applySaverSplit();
+  el('saver').classList.remove('hidden');
+  renderFront();   // ggf. Screensaver-Kamera jetzt erst starten (war waehrend der Ausblendung bewusst aus)
+}
+// Timer-basierte Sperre gegen "durchgereichte" Beruehrungen: manche Kiosk-
+// Browser/Touch-Stacks (insb. auf schwaecherer Hardware) liefern nach dem
+// Aufwecken-Tap noch ein Nachlauf-Event an die darunterliegende Kachel,
+// unabhaengig von der genauen Event-Reihenfolge (click/pointerdown) im Code -
+// das laesst sich nicht zuverlaessig ueber Event-Handling allein abfangen.
+// Darum zusaetzlich eine kurze "Totzeit" direkt nach dem Ausblenden: jede
+// Kachel-/Schalter-Interaktion in diesem Fenster wird ignoriert. 500ms sind
+// fuer eine zweite, bewusste Beruehrung kein spuerbares Hindernis.
+let _saverClosedAt = 0;
+const SAVER_GUARD_MS = 500;
+function justLeftSaver(){ return (Date.now() - _saverClosedAt) < SAVER_GUARD_MS; }
+function hideSaver(){
+  el('saver').classList.add('hidden');
+  stopScreensaverCam();   // MJPEG-Stream sofort stoppen, sobald der Screensaver weg ist (spart Bandbreite/CPU)
+  _saverClosedAt = Date.now();
+}
+// Kurze Nachricht/Banner vom Server (t:'notify') oben im Panel einblenden.
+function showNotify(text, level, secs){
+  if(!text) return;
+  const s=document.querySelector('.screen'); if(!s) return;
+  let n=s.querySelector('.lpnotify');
+  if(!n){ n=document.createElement('div'); n.className='lpnotify';
+    n.style.cssText='position:absolute;left:10px;right:10px;top:10px;z-index:50;padding:12px 14px;'+
+      'border-radius:12px;font-size:15px;font-weight:600;line-height:1.25;text-align:center;'+
+      'box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;word-break:break-word;';
+    s.appendChild(n); }
+  const col = level==='crit' ? '226,107,95' : (level==='warn' ? '224,162,77' : '82,184,129');
+  n.style.background='rgba('+col+',.96)'; n.style.color='#10140f';
+  n.textContent=text; hideSaver();
+  clearTimeout(n._t);
+  n._t=setTimeout(()=>{ if(n&&n.parentNode) n.parentNode.removeChild(n); }, Math.max(1,(secs||5))*1000);
+}
+// Fester Player im Split-Layout (linke Spalte). Baut das Grundgeruest einmal
+// auf und aktualisiert danach nur Cover/Titel/Transport/Lautstaerke in-place
+// (kein Neu-Rendern bei jedem 0.3s-Update -> kein Cover-Flackern).
+function renderPlayer(blocks){
+  const pane=el('playerpane'); if(!pane||!Array.isArray(blocks)) return;
+  const cover=blocks.find(b=>b.k==='cover');
+  const title=blocks.find(b=>b.k==='title');
+  const row=blocks.find(b=>b.k==='row');
+  const sl=blocks.find(b=>b.k==='slider');
+  if(!_playerBuilt){
+    pane.innerHTML=
+      '<div class="fp-page solo pppage">'+
+      '<div class="ppcover"><div class="coverph">'+svg(ICONS.music)+'</div><img id="ppimg" alt=""></div>'+
+      '<div class="pptitle" id="pptitle"></div>'+
+      '<div class="ppsub" id="ppsub"></div>'+
+      '<div class="pptrans" id="pptrans"></div>'+
+      '<div class="ppvol"><span class="sico">'+svg(ICONS.vol)+'</span>'+
+        '<button type="button" class="sbtn" data-sd="dn">−</button>'+
+        '<input type="range" class="sld" id="ppsld" min="0" max="100" value="0">'+
+        '<button type="button" class="sbtn" data-sd="up">+</button><span class="sval" id="ppsldv">0</span></div>'+
+      '</div>';
+    const s=el('ppsld');
+    pane.querySelector('.ppvol .sbtn[data-sd="dn"]').addEventListener('pointerdown',ev=>{ ev.preventDefault(); nudgeSld(s,-SLD_STEP,el('ppsldv')); });
+    pane.querySelector('.ppvol .sbtn[data-sd="up"]').addEventListener('pointerdown',ev=>{ ev.preventDefault(); nudgeSld(s,SLD_STEP,el('ppsldv')); });
+    s.addEventListener('input',()=>{ _playerVolDrag=true; sldFill(s); el('ppsldv').textContent=s.value; });
+    s.addEventListener('change',()=>{ _playerVolDrag=false;
+      if(s._uuid&&s._tmpl) send({t:'cmd',uuid:s._uuid,cmd:s._tmpl.replace('{v}',s.value)}); });
+    _playerBuilt=true;
+  }
+  // Cover nur bei Aenderung neu laden (sonst Flackern)
+  const img=el('ppimg');
+  if(img){ if(cover&&cover.src){ if(img.getAttribute('src')!==cover.src){
+        img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cover.src; } }
+    else { img.removeAttribute('src'); img.style.opacity='0'; } }
+  el('pptitle').textContent=title?(title.text||''):'';
+  el('ppsub').textContent=title?(title.sub||''):'';
+  // Transport-Buttons: einmal bauen, dann Icon+cmd in-place aktualisieren
+  const tr=el('pptrans'), cells=(row&&row.cells)||[];
+  if(tr){
+    if(tr.children.length!==cells.length){
+      tr.innerHTML=cells.map((c,i)=>'<div class="btn'+(c.icon?' icon':'')+(c.big?' big':'')+'" data-c="'+i+'"></div>').join('');
+      tr.querySelectorAll('[data-c]').forEach(n=>n.addEventListener('pointerdown',ev=>{ ev.preventDefault();
+        if(n._cmd) send({t:'cmd',uuid:n._cmd.uuid,cmd:n._cmd.cmd}); }));
+    }
+    cells.forEach((c,i)=>{ const n=tr.querySelector('[data-c="'+i+'"]'); if(!n)return;
+      n._cmd=c.cmd||null;
+      n.innerHTML=c.icon?svgF(ICONS[c.icon]||ICONS.info):esc(c.label||'');
+      n.className='btn'+(c.icon?' icon':'')+(c.big?' big':''); });
+  }
+  if(sl){ const s=el('ppsld'); if(s&&sl.cmd){ s._uuid=sl.cmd.uuid; s._tmpl=sl.cmd.tmpl; }
+    if(s&&!_playerVolDrag){ s.value=sl.value; sldFill(s); el('ppsldv').textContent=sl.value; } }
+}
+function resetIdle(){ clearTimeout(idleTimer);
+  idleTimer=setTimeout(()=>{ goTab(tabsCfg[0]||'favoriten'); showSaver(); }, SAVER_IDLE_MS);
+  armDpms(); }
+// Antippen zum Aufwecken: NICHT auf pointerdown schon ausblenden (opacity:0 +
+// pointer-events:none), sonst hat der Browser beim spaeter folgenden 'click'
+// (selbe Beruehrung) schon "durch" den Screensaver hindurch auf die Kachel
+// darunter gezielt - genau das Problem, dass ein Tippen auf den Screensaver
+// gleich als Tipp auf die erste Kachel durchschlaegt. Der Screensaver bleibt
+// bis zum eigentlichen 'click' voll da und faengt ihn ab; erst DANACH wird er
+// ausgeblendet. nightWake() (Nachtmodus-Aufhellen) darf weiter sofort auf
+// pointerdown reagieren, das aendert an der Interaktivitaet nichts.
+el('saver').addEventListener('pointerdown', e=>{ nightWake(); });
+el('saver').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); hideSaver(); resetIdle(); });
+['pointerdown','keydown','wheel'].forEach(ev=>document.addEventListener(ev, ()=>{ nightWake(); if(!saverOn()) resetIdle(); }, {passive:true}));
+// ---- Nachtmodus: Panel abdunkeln ----
+// Tag/Nacht meldet der Server ({t:"night"}), Staerke und Aufhelldauer kommen je
+// Panel im theme. Gedimmt wird ueber eine schwarze Auflage statt per CSS-Filter:
+// ein Filter auf dem Seitenrumpf zerschiesst die Positionierung von
+// position:fixed-Elementen, und die Auflage wirkt wie heruntergeregelte
+// Hintergrundbeleuchtung (Weiss wird grau, nicht nur dunkler).
+const NIGHT = { on:false, dim:0, wake:20 };
+let nightEl=null, nightWakeTimer=null;
+function nightLayer(){
+  if(!nightEl){
+    nightEl=document.createElement('div'); nightEl.id='nightdim';
+    nightEl.style.cssText='position:fixed;inset:0;background:#000;opacity:0;'+
+      'pointer-events:none;z-index:100000;transition:opacity .8s ease';
+    document.body.appendChild(nightEl);
+  }
+  return nightEl;
+}
+function applyNight(awake){
+  nightLayer().style.opacity =
+    (NIGHT.on && NIGHT.dim>0 && !awake) ? Math.min(90,NIGHT.dim)/100 : 0;
+}
+function setNight(on){ NIGHT.on=!!on; clearTimeout(nightWakeTimer); applyNight(false); }
+function nightWake(){          // Beruehrung -> kurz voll aufhellen, dann zurueck
+  if(!NIGHT.on || NIGHT.dim<=0 || NIGHT.wake<=0) return;
+  clearTimeout(nightWakeTimer);
+  applyNight(true);
+  nightWakeTimer=setTimeout(()=>applyNight(false), NIGHT.wake*1000);
+}
+// ---- Display ohne Agent: Kiosk-App-Anbindung (Android) ----
+// Auf einem Linux-Panel schaltet der Agent das Display (Server meldet agent:true,
+// die Seite haelt sich dann raus). Ohne Agent uebernimmt die Seite: nach dpmsOff
+// Sekunden Inaktivitaet Display aus ueber die JS-Schnittstelle der Kiosk-App,
+// bei Klingel / Wecker / Notify / Goto wieder an. Erkannt wird Fully Kiosk
+// Browser (window.fully; dort "Enable JavaScript Interface" einschalten).
+// Auto-Neustart (reloadHours) erledigt die Seite ohne Agent per location.reload().
+const DISP = { dpmsOff: 0, reloadHours: 0, agent: false };
+let dpmsTimer=null, reloadTimer=null;
+function kiosk(){
+  const f=window.fully;
+  return (f && typeof f.turnScreenOff==='function' && typeof f.turnScreenOn==='function') ? f : null;
+}
+function screenOff(){ const f=kiosk(); if(!f) return; try{ f.turnScreenOff(); }catch(e){} }
+function screenOn(){ const f=kiosk(); if(!f) return;
+  try{ if(typeof f.isScreenOn!=='function' || !f.isScreenOn()) f.turnScreenOn(); }catch(e){} }
+function armDpms(){ clearTimeout(dpmsTimer);
+  if(DISP.agent || !(DISP.dpmsOff>0)) return;
+  // Mit Kiosk-JS (Fully) direkt abschalten; sonst dem Server Leerlauf melden,
+  // der schaltet ueber den Display-Treiber des Geraets (Fully REST / WallPanel).
+  dpmsTimer=setTimeout(()=>{ if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
+function applyDisplayCfg(msg){
+  DISP.dpmsOff = (typeof msg.dpmsOff==='number' && msg.dpmsOff>0) ? msg.dpmsOff : 0;
+  DISP.reloadHours = (typeof msg.reloadHours==='number' && msg.reloadHours>0) ? msg.reloadHours : 0;
+  DISP.agent = !!msg.agent;
+  armDpms();
+  clearTimeout(reloadTimer);
+  if(!DISP.agent && DISP.reloadHours>0) reloadTimer=setTimeout(()=>location.reload(), DISP.reloadHours*3600*1000);
+}
+// Server-Ereignis, das Aufmerksamkeit braucht: Display an, Uhr weg, Timer neu.
+function wake(){ screenOn(); nightWake(); hideSaver(); resetIdle(); }
+setInterval(tickClock, 1000);
+showSaver();     // Startseite = Uhr
+resetIdle();
+
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+#!/bin/bash
+# Wird beim Deinstallieren ausgefuehrt: Container stoppen/entfernen + lokal
+# gebautes Image loeschen (Fork - kein Registry-Image zu entfernen).
+echo "<INFO> Stoppe LoxPanel-Container (Favoriten-Fork)..."
+docker rm -f loxpanelfav > /dev/null 2>&1
+
+echo "<INFO> Entferne lokal gebautes LoxPanel-Image..."
+docker image rm loxpanelfav:local > /dev/null 2>&1
+
+echo "<OK> LoxPanel (Favoriten-Fork) entfernt. (Panel-Daten im Plugin-data-Ordner werden von LoxBerry mitentfernt.)"
+exit 0

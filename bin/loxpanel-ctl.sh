@@ -1,0 +1,113 @@
+#!/bin/bash
+# LoxPanel (Favoriten-Fork) Docker-Steuerung.
+# Nutzung: loxpanel-ctl.sh start|stop|restart|check|backup|restore <datei>
+#   start   baut bei Bedarf das lokale Image (aus dem mitgelieferten
+#           Quellcode unter config/app) und startet den Container
+#   stop    stoppt den Container (merkt sich das -> check startet ihn NICHT neu)
+#   restart stop + start  (baut dabei bei Aenderungen neu = manuelles Update)
+#   check   startet den Container, falls er (unerwartet) nicht laeuft
+#           (fuer Boot-daemon und 5-Minuten-Cron; ein bewusst gestopptes
+#            Panel wird NICHT wieder gestartet)
+#   backup  sichert die Konfiguration (Panels/Theme/Miniserver) als tar.gz
+#   restore <datei>  spielt ein Backup zurueck (sichert vorher den Ist-Stand)
+#
+# Eigenstaendiger Fork: eigener Container-Name (loxpanelfav) und eigenes,
+# LOKAL gebautes Image (kein Pull von ghcr.io/lenardo1/loxpanel) - laeuft
+# unabhaengig neben einer evtl. installierten Original-LoxPanel-Version.
+# REPLACELBPCONFIGDIR / REPLACELBPDATADIR werden beim Install durch echte Pfade ersetzt.
+
+COMPOSE="REPLACELBPCONFIGDIR/docker-compose.yml"
+STOPPED="REPLACELBPCONFIGDIR/loxpanelfav_stopped.cfg"
+# Konfig-Daten liegen im gemounteten Volume (panels.json, theme.json,
+# loxpanel.cfg) und gehoeren root (der Container schreibt als root). Backup/
+# Restore laufen deshalb als root IM Container (sonst darf der Widget-Benutzer
+# loxberry die root-Dateien nicht ueberschreiben -> "tar: Cannot open: File
+# exists"). Sicherungen liegen in data/backups und ueberleben Plugin-Updates
+# (pre-/postroot.sh sichern die Konfiguration ueber das Update hinweg).
+DATADIR="REPLACELBPDATADIR"
+CONFIGDATA="REPLACELBPDATADIR/config"
+BACKUPDIR="REPLACELBPDATADIR/backups"
+KEEP=20                 # so viele Backups behalten, aeltere werden entfernt
+
+# Image aus der Compose-Datei lesen (Fallback fest: lokal gebautes Tag).
+_img() {
+	local i
+	i=$(sed -n 's/^[[:space:]]*image:[[:space:]]*//p' "$COMPOSE" | head -1)
+	[ -n "$i" ] && echo "$i" || echo "loxpanelfav:local"
+}
+
+# Einen sh-Befehl als root im Container ausfuehren. $DATADIR wird nach /data
+# gemountet -> config=/data/config, backups=/data/backups.
+_indocker() {
+	sudo docker run --rm -v "$DATADIR":/data "$(_img)" sh -c "$1"
+}
+
+running() {
+	[ -n "$(sudo docker ps --filter 'name=^/loxpanelfav$' --filter status=running -q 2>/dev/null)" ]
+}
+
+backup() {
+	mkdir -p "$BACKUPDIR"     # als loxberry -> Verzeichnis bleibt loxberry-eigen (Loeschen moeglich)
+	local ts f
+	ts=$(date +%Y%m%d-%H%M%S)
+	f="loxpanelfav-config-$ts.tar.gz"
+	if _indocker "cd /data/config 2>/dev/null && tar -czf /data/backups/$f . 2>/dev/null"; then
+		echo "Backup erstellt: $f ($(du -h "$BACKUPDIR/$f" 2>/dev/null | cut -f1))"
+	else
+		echo "Backup fehlgeschlagen (Konfiguration vorhanden?)."; exit 1
+	fi
+	# aelteste ueber KEEP hinaus loeschen (Sicherungen vor Restore eingeschlossen)
+	ls -1t "$BACKUPDIR"/loxpanelfav-config-*.tar.gz 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
+}
+
+restore() {
+	local bn ts
+	bn=$(basename "$1")     # nur Dateiname, keine Pfad-Tricks
+	[ -f "$BACKUPDIR/$bn" ] || { echo "Backup nicht gefunden: $bn"; exit 1; }
+	mkdir -p "$BACKUPDIR"
+	ts=$(date +%Y%m%d-%H%M%S)
+	# Ist-Stand vor dem Ueberschreiben sichern (Rueckweg offen halten)
+	_indocker "cd /data/config 2>/dev/null && tar -czf /data/backups/loxpanelfav-config-$ts-vor-restore.tar.gz . 2>/dev/null" \
+		&& echo "Aktuellen Stand gesichert (loxpanelfav-config-$ts-vor-restore.tar.gz)."
+	echo "Spiele $bn ein..."
+	# config leeren und Backup als root einspielen (ueberschreibt root-Dateien)
+	if _indocker "mkdir -p /data/config && cd /data/config && rm -rf ./* && tar -xzf /data/backups/$bn -C /data/config"; then
+		echo "Konfiguration wiederhergestellt."
+	else
+		echo "Wiederherstellung fehlgeschlagen."; exit 1
+	fi
+	# Container neu starten, damit die App die Panels frisch einliest (ohne Neu-Build)
+	sudo docker restart loxpanelfav 2>&1 && echo "Panel neu gestartet."
+}
+
+start() {
+	rm -f "$STOPPED"
+	# Lokal bauen (nutzt den Build-Cache -> nur beim ersten Mal bzw. nach
+	# Quellcode-Aenderungen dauert es laenger), danach starten. Kein 'pull':
+	# es gibt kein Registry-Image, der Code kommt aus config/app/.
+	# --provenance=false --sbom=false: spart die BuildKit-Standard-Attestationen
+	# (Lieferketten-Metadaten) beim Export - bei einem rein lokal gebauten und
+	# gestarteten Image (nie in eine Registry gepusht, nie von dort geprueft)
+	# ungenutzt, kostet aber bei jedem Build ein, zwei Sekunden.
+	sudo docker compose -f "$COMPOSE" build --provenance=false --sbom=false 2>&1
+	sudo docker compose -f "$COMPOSE" up -d 2>&1
+}
+
+stop() {
+	touch "$STOPPED"
+	sudo docker compose -f "$COMPOSE" down 2>&1
+}
+
+case "$1" in
+	start)   start ;;
+	stop)    stop ;;
+	restart) stop; start ;;
+	check)
+		[ -f "$STOPPED" ] && exit 0     # bewusst gestoppt -> nichts tun
+		running || start
+		;;
+	backup)  backup ;;
+	restore) restore "$2" ;;
+	*) echo "Nutzung: $0 start|stop|restart|check|backup|restore <datei>"; exit 1 ;;
+esac
+exit 0

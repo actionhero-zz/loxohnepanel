@@ -1,0 +1,29 @@
+# LoxPanel (Favoriten-Fork) als eigener Docker-Service.
+#
+# WICHTIG - eigenstaendig neben einer Original-LoxPanel-Installation:
+#  - eigener Container-Name/Hostname (loxpanelfav statt loxpanel)
+#  - eigener Host-Port (8098 statt 8099) - Original bleibt unberuehrt
+#  - eigenes Image, LOKAL aus dem mitgelieferten Quellcode gebaut (./app),
+#    NICHT das Original-Image von ghcr.io/lenardo1/loxpanel - sonst wuerden
+#    die Aenderungen (eigene Favoriten-Kachel) gar nicht laufen.
+#
+# Der Miniserver-Zugang wird NICHT hier gesetzt, sondern zur Laufzeit ueber die
+# Weboberflaeche (http://<loxberry>:8098/config -> Settings) und in
+# config/loxpanel.cfg im gemounteten Volume gespeichert.
+services:
+  loxpanelfav:
+    container_name: loxpanelfav
+    build: ./app
+    image: loxpanelfav:local
+    hostname: loxpanelfav
+    restart: unless-stopped
+    ports:
+      - "8098:8099"
+    volumes:
+      # Persistiert panels.json, theme.json und loxpanel.cfg (Miniserver/Intercom).
+      - REPLACELBPDATADIR/config:/app/config
+      # Loxone-Icon-Bibliothek (optional): die SVGs des LoxBerry-Plugins
+      # "loxoneicons" read-only einblenden -> der Kachel-Editor bietet die volle
+      # Bibliothek (~550 Icons). Ist das Plugin nicht installiert, bleibt der
+      # Ordner leer und die Icon-Quelle erscheint gar nicht.
+      - /opt/loxberry/data/plugins/loxoneicons/loxone_icons/svg/filled:/app/loxone-icons/filled:ro

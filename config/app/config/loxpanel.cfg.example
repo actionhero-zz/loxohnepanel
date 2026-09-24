@@ -1,0 +1,56 @@
+{
+  "_comment": "LoxPanel Plugin-Konfiguration. Kopiere diese Datei nach loxpanel.cfg und passe sie an.",
+
+  "miniserver": {
+    "_comment": "Bevorzugt aus der LoxBerry-Miniserver-Verwaltung (msno). host/user/pass als Fallback/Standalone. Gen2 = HTTPS mit selbstsigniertem Zertifikat -> verify_tls:false.",
+    "msno": 1,
+    "host": "192.168.1.50",
+    "user": "LoxoneUser",
+    "pass": "CHANGEME",
+    "port": 443,
+    "verify_tls": false
+  },
+
+  "loxone": {
+    "_comment": "Phase-2-Live-Anbindung: Polling-Intervall in Sekunden (bis der WebSocket-Event-Stream in Phase 2b kommt).",
+    "poll_interval": 1.0
+  },
+
+  "mqtt": {
+    "_comment": "Broker fuer die Panel-Seite (Daemon <-> openHASP). Oft der LoxBerry-eigene Broker.",
+    "host": "127.0.0.1",
+    "port": 1883,
+    "user": "",
+    "pass": "",
+    "base_topic": "hasp"
+  },
+
+  "web": {
+    "_comment": "Basis-URL, unter der LoxBerry die gerasterten Icons/Cover ausliefert.",
+    "asset_base_url": "http://loxberry/plugins/loxpanel/assets"
+  },
+
+  "lms": {
+    "_comment": "Standard-LMS/MS4H fuer Musik, sofern nicht pro Player-Seite ueberschrieben.",
+    "host": "192.168.1.50",
+    "port": 9000
+  },
+
+  "audio": {
+    "_comment": "Loxone-Audioserver (echt oder MS4H) fuer Favoriten-Wiedergabe via Loxone-Music-Server-Protokoll (Port 7091). host optional: wird sonst automatisch aus den Cover-URLs erkannt. enabled:false schaltet die Direktsteuerung ab.",
+    "host": "",
+    "port": 7091,
+    "enabled": true
+  },
+
+  "calendar": {
+    "_comment": "Front (Screensaver): Termine aus einem iCal-Abo und Wetter (Open-Meteo). ical_url: webcal:// oder https:// Abo-Link (Apple/iCloud, Google, ...). lat/lon: Standort in Dezimalgrad fuer das Wetter (leer/null = kein Wetter, kein API-Key noetig). days: Termine der naechsten n Tage; fore_days: Wetter-Vorschautage (1-7). Pflegbar unter /config -> Settings -> Kalender & Wetter.",
+    "ical_url": "",
+    "holiday_url": "",
+    "name": "Family",
+    "lat": null,
+    "lon": null,
+    "days": 14,
+    "fore_days": 4
+  }
+}

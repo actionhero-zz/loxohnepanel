@@ -14,9 +14,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
-- **Jalousie-Piktogramm im Fenster-Format** — hochkant wie das
-  Loxone-Fenster-Piktogramm (statt Quadrat), mit nur leicht angedeuteten
-  Sprossen; die Behang-Animation bleibt unverändert.
+- **Rollladen-Piktogramm wie im Loxone-Webinterface** — Geometrie 1:1 aus
+  dem Loxone-SVG übernommen (gefüllter Hochformat-Rahmen, Behang als voller
+  Block, der je nach Stellung von oben hereinfährt), Farbe aus dem Theme.
 
 - **Fix: Lichtsteuerung zeigte „an", obwohl über eine eigene „Aus"-Szene
   ausgeschaltet.** Ursache: Loxone reserviert intern ID 778 für „aus" — manche

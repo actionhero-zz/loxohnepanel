@@ -910,6 +910,11 @@ function renderGlobalEditor(p){
       '<label class="chk"><input type="checkbox" id="gMotion"'+((p.ui||{}).motion!=='off'?' checked':'')+'>'+
         '<span>'+T('Sanfte Übergänge (Kachel-Einblendung, Screensaver-Überblendung, Zurück-Button)')+'</span></label>'+
     '</div>'+
+    '<div class="card"><h3 data-i18n>Bedienung</h3>'+
+      '<label class="chk"><input type="checkbox" id="gDblOff"'+((p.ui||{}).dblTapOff===false?'':' checked')+'>'+
+        '<span>'+T('Licht bei Doppelklick auf Beleuchtungskachel aus?')+'</span></label>'+
+      '<p class="hint" style="padding-top:6px">'+T('Nur bei eingeschaltetem Licht. Ein einfacher Tipp öffnet die Kachel dann mit kurzer Verzögerung (0,35 s).')+'</p>'+
+    '</div>'+
     '<div class="card"><h3 data-i18n>Wecker</h3>'+
       '<label class="chk"><input type="checkbox" id="gAlarmsOn"'+((p.ui||{}).alarmsEnabled===false?'':' checked')+'>'+
         '<span>'+T('Weckton & automatisches Aufwecken/Umschalten auf allen Panels aktiv')+'</span></label>'+
@@ -921,6 +926,8 @@ function renderGlobalEditor(p){
   bindAppearance(p);
   { const ga=$('#gAlarmsOn'); if(ga) ga.onchange=()=>{ p.ui=p.ui||{};
       if(ga.checked) delete p.ui.alarmsEnabled; else p.ui.alarmsEnabled=false; markDirty(); }; }
+  { const gd=$('#gDblOff'); if(gd) gd.onchange=()=>{ p.ui=p.ui||{};
+      if(gd.checked) delete p.ui.dblTapOff; else p.ui.dblTapOff=false; markDirty(); }; }
   { const gm=$('#gMotion'); if(gm) gm.onchange=()=>{ p.ui=p.ui||{};
       if(gm.checked) delete p.ui.motion; else p.ui.motion='off'; markDirty(); }; }
   renderCatColors(p);

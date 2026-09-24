@@ -207,6 +207,10 @@
   .grid.snapy{scroll-snap-type:y mandatory;scroll-padding-top:10px;}
   .grid.list.snapy{scroll-snap-type:y proximity;}
   .tile.snap{scroll-snap-align:start;}
+  /* manipulation: kein Doppeltipp-Zoom und keine 300-ms-Klickverzoegerung
+     (wichtig fuer den Doppeltipp auf Lichtkacheln), Scrollen bleibt. */
+  .tile{touch-action:manipulation;-webkit-user-select:none;user-select:none;}
+  .tile.dblflash{filter:brightness(1.35);}
   .tile{background:linear-gradient(180deg,var(--tile),rgba(var(--wash,255,255,255),.015));
     border:var(--tile-bw,1px) solid var(--tile-bord,var(--line));border-radius:var(--r-tile,16px);padding:16px;
     display:flex;flex-direction:column;justify-content:space-between;
@@ -1437,6 +1441,10 @@ function updateGrid(items){
   });
   return ok;
 }
+// Doppeltipp-Fenster: 350 ms - lang genug fuer traege Touchscreens (Shelly
+// Wall Display), kurz genug, dass der einfache Tipp nicht haengt.
+const DBL_TAP_MS=350;
+let _dblTap=null;   // {id,timer} - wartender erster Tipp auf eine Lichtkachel
 function render(){
   if(!view) return;
   // "Screen fuellen" (kein Widget in Pane 2): die KACHELZAHL wird nach rechts
@@ -1582,7 +1590,22 @@ function render(){
     }
     n.onclick=(e)=>{ if(justLeftSaver()) return;
       if(e.target.closest('.tctrls')||e.target.closest('.tswitch')||e.target.closest('.tapbtn')||e.target.closest('.updown')||e.target.closest('.prevnext')) return; const t=n._it||it;
-      if(t.nav) nav(t.nav); else if(t.cmd) sendCmd(t.cmd.uuid,t.cmd.cmd,(view&&view.secured)||t.secured); };
+      const act=()=>{ const u=n._it||t;
+        if(u.nav) nav(u.nav); else if(u.cmd) sendCmd(u.cmd.uuid,u.cmd.cmd,(view&&view.secured)||u.secured); };
+      // Doppeltipp = Licht aus (nur wenn der Server dblOff mitliefert: Licht
+      // an + Option aktiv). Eigene Erkennung ueber zwei 'click' statt
+      // 'dblclick', das Android-WebViews (Shelly Wall Display) und iOS bei
+      // Touch nicht zuverlaessig liefern. Nur diese Kacheln warten kurz auf
+      // den zweiten Tipp, alle anderen reagieren weiter sofort.
+      if(!t.dblOff){ act(); return; }
+      if(_dblTap && _dblTap.id===n.dataset.id){
+        clearTimeout(_dblTap.timer); _dblTap=null;
+        sendCmd(t.dblOff.cmd.uuid,t.dblOff.cmd.cmd,t.secured);
+        n.classList.add('dblflash'); setTimeout(()=>n.classList.remove('dblflash'), 350);
+        return;
+      }
+      if(_dblTap) clearTimeout(_dblTap.timer);
+      _dblTap={id:n.dataset.id, timer:setTimeout(()=>{ _dblTap=null; act(); }, DBL_TAP_MS)}; };
   });
   if(view.catTabs && view.catTabs.length) roomCatTabs = view.catTabs;   // fuer Detailansichten merken
   renderTabs();

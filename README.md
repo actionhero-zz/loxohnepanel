@@ -14,6 +14,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **Licht per Doppeltipp aus** — Doppeltipp auf eine eingeschaltete
+  Lichtsteuerungs-Kachel sendet den Loxone-Aus-Befehl (`changeTo/778`).
+  Eigene Tipp-Erkennung (350 ms), funktioniert auf Touch (Shelly Wall Display,
+  Tablets) und mit Maus. Abschaltbar unter Einstellungen → Global → Bedienung.
+
 - **Fenster-Piktogramm auch für generische Fensterkontakte** (InfoOnlyDigital
   mit Fenster-Icon) — wie in der Loxone-App am zugewiesenen Icon
   (`window-*.svg`) erkannt. Offen/zu kommt aus den in Loxone Config

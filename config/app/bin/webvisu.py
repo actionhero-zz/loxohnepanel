@@ -70,7 +70,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.13.7-fav1"
+APP_VERSION = "0.13.8-fav1"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -2117,6 +2117,9 @@ class App:
         # Panel). Default an; nur bei explizitem "off" gespeichert.
         if ui.get("motion") == "off":
             out["motion"] = "off"
+        # Licht per Doppeltipp aus. Default an; nur explizites False speichern.
+        if ui.get("dblTapOff") is False:
+            out["dblTapOff"] = False
         return out
 
     @staticmethod
@@ -2155,7 +2158,7 @@ class App:
             doc = {}
         cur = doc.get("ui") if isinstance(doc.get("ui"), dict) else {}
         for k in ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick", "tileShadow",
-                  "font", "textColor", "baseColor", "bold", "lang", "alarmsEnabled", "motion"):
+                  "font", "textColor", "baseColor", "bold", "lang", "alarmsEnabled", "motion", "dblTapOff"):
             if k in ui:
                 cur[k] = ui[k]
             else:
@@ -2486,6 +2489,12 @@ class App:
                 ua = c.get("uuidAction")
                 it["prevnext"] = {"prev": {"cmd": {"uuid": ua, "cmd": f"changeTo/{pv}"}},
                                   "next": {"cmd": {"uuid": ua, "cmd": f"changeTo/{nx}"}}}
+            # Doppeltipp auf die Kachel schaltet aus (nur solange an; global
+            # abschaltbar). 778 ist die von Loxone reservierte Aus-Stimmung -
+            # derselbe Befehl wie der Aus-Knopf der Loxone-App, unabhaengig
+            # davon, wie die Szenen in der Anlage heissen.
+            if r["on"] and self.theme.get("ui", {}).get("dblTapOff", True) and c.get("uuidAction"):
+                it["dblOff"] = {"cmd": {"uuid": c.get("uuidAction"), "cmd": f"changeTo/{LIGHT.OFF_MOOD}"}}
         elif t == "Jalousie":
             r = JAL.render(self._with_uuid(uuid), self.states)
             # Fahrt auf der Kachel sichtbar machen: dieselben States, die die
@@ -4804,7 +4813,7 @@ async def api_meta(request: web.Request) -> web.Response:
         "theme": {"ui": {k: v for k, v in (app.theme.get("ui") or {}).items()
                          if k in ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick", "tileShadow",
                                   "font", "textColor", "baseColor", "bold", "lang",
-                                  "alarmsEnabled", "motion")},
+                                  "alarmsEnabled", "motion", "dblTapOff")},
                   "categories": {k: v for k, v in (app.theme.get("categories") or {}).items()
                                  if not str(k).startswith("_")}},
     })

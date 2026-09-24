@@ -14,6 +14,12 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **Fenster-Piktogramm auch für generische Fensterkontakte** (InfoOnlyDigital
+  mit Fenster-Icon) — wie in der Loxone-App am zugewiesenen Icon
+  (`window-*.svg`) erkannt. Offen/zu kommt aus den in Loxone Config
+  hinterlegten Texten (ganze Wörter, „gekippt" zählt als offen); ist das nicht
+  eindeutig, bleibt das normale Icon. Geschlossen mit Sprossen, offen ohne.
+
 - **Rollladen-Piktogramm wie im Loxone-Webinterface** — Geometrie 1:1 aus
   dem Loxone-SVG übernommen (gefüllter Hochformat-Rahmen, Behang als voller
   Block, der je nach Stellung von oben hereinfährt), Farbe aus dem Theme.

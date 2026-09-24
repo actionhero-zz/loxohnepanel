@@ -70,7 +70,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.13.6-fav1"
+APP_VERSION = "0.13.7-fav1"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -240,6 +240,9 @@ def _clean_icon(ic):
     if s == "custom" and isinstance(ic.get("file"), str) and re.match(r"^[A-Za-z0-9._-]{1,80}$", ic["file"]):
         return {"src": "custom", "file": ic["file"]}
     return None
+# Zustandstexte generischer Fensterkontakte (InfoOnlyDigital), ganze Woerter.
+_WIN_CLOSED = {"geschlossen", "zu", "dicht", "verschlossen", "closed", "shut"}
+_WIN_OPEN = {"offen", "auf", "geöffnet", "geoeffnet", "gekippt", "open", "opened", "tilted"}
 _NUMFMT = re.compile(r"^(%[-+ 0-9.]*[dfeg])(.*)$")
 _PREFIX = ["k", "M", "G", "T"]
 
@@ -2675,7 +2678,21 @@ class App:
         elif t == "InfoOnlyDigital":
             on = bool(self._state(c, "active"))
             txt = (c.get("details") or {}).get("text") or {}
-            it.update(on=on, sublabel=(txt.get("on") if on else txt.get("off")) or ("Ein" if on else "Aus"))
+            lbl_on, lbl_off = str(txt.get("on") or ""), str(txt.get("off") or "")
+            it.update(on=on, sublabel=(lbl_on if on else lbl_off) or ("Ein" if on else "Aus"))
+            # Fenster-Piktogramm wie in der Loxone-App: erkannt am zugewiesenen
+            # Icon (window-*.svg), NICHT am Bausteintyp - InfoOnlyDigital wird
+            # fuer alles Moegliche verwendet. Ob "an" offen oder zu bedeutet,
+            # ist je Anlage frei konfiguriert, deshalb an den in Loxone Config
+            # hinterlegten Texten erkannt (ganze Woerter, keine Teilstrings wie
+            # "zu" in "Zuluft"). Eindeutig nur, wenn genau eine Seite passt -
+            # sonst bleibt es beim normalen Icon statt falsch zu raten.
+            if "window" in (it.get("iconUrl") or "").lower():
+                words = set(re.findall(r"\w+", (lbl_on if on else lbl_off).lower()))
+                shut = bool(words & _WIN_CLOSED)
+                open_ = bool(words & _WIN_OPEN)
+                if shut != open_ and not (words & {"nicht", "not", "kein", "no"}):
+                    it["winpos"] = 100 if shut else 0
         elif t == "Meter":
             det = c.get("details") or {}
             a = self._fmt_num(self._state(c, "actual"), det.get("actualFormat", "%.1f"))

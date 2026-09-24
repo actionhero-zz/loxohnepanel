@@ -1373,10 +1373,11 @@ function blindIcon(pct, shape){
 // bewusst NICHT der Jalousie-Lamellenstil (andere Bauart, andere Optik).
 function windowIcon(pct){
   const p=Math.max(0,Math.min(100,Number(pct)||0))/100;
-  return '<span class="ico windowico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" '+
-    'stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+
-    '<rect x="4" y="4" width="16" height="16" rx="1"/>'+
-    '<g class="cr" style="opacity:'+p.toFixed(3)+'"><path d="M12 4v16M4 12h16"/></g>'+
+  // Gleicher Loxone-Rahmen wie beim Rollladen (viewBox 30); geschlossen mit
+  // Sprossen, offen ohne.
+  return '<span class="ico windowico"><svg viewBox="0 0 30 30" fill="currentColor" aria-hidden="true">'+
+    '<path d="M24,4V26H6V4H24m2-2H4V28H26V2Z"/>'+
+    '<g class="cr" style="opacity:'+p.toFixed(3)+'"><path d="M14.5 4h1v22h-1zM6 14.5h18v1H6z"/></g>'+
     '</svg></span>';
 }
 // Live-Update der Kachel-Ansicht OHNE Neuaufbau: aktualisiert nur die

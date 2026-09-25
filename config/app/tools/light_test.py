@@ -24,7 +24,7 @@ import logging
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bin"))
 from loxone_live import LoxoneLive  # noqa: E402
 
 log = logging.getLogger("loxpanel.lighttest")

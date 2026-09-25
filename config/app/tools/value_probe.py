@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
-"""Liest die volle cover-URL der Zone 'Zentral' und prueft, ob sie ein Bild liefert."""
+"""Liest Live-Werte + Formatstrings der Wert-Kacheln (Favoriten)."""
 import asyncio
 import json
 import sys
 from pathlib import Path
-from urllib.parse import unquote
 
-import requests
-
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bin"))
 from loxone_api import LoxoneClient  # noqa: E402
 from loxone_ws import LoxoneWS  # noqa: E402
 
-ZONE = "1d763528-02ea-2bbd-ffffaba260ecd863"  # Zentral
+TYPES = {"Meter", "Slider", "InfoOnlyAnalog", "InfoOnlyText", "TextState",
+         "InfoOnlyDigital"}
 
 
 def _conn():
@@ -31,32 +29,32 @@ async def main():
     structure = await client.load_structure()
     await client.close()
 
-    s = structure["controls"][ZONE]["states"]
-    cover_uuid = s["cover"]
-    song_uuid = s["songName"]
-
     ws = LoxoneWS(host=ms["host"], port=ms.get("port", 443), user=ms["user"], jwt=jwt,
                   hash_alg=alg, verify_tls=ms.get("verify_tls", False))
     await ws.connect()
     task = asyncio.ensure_future(ws.stream(lambda u, v: st.__setitem__(u, v)))
-    await asyncio.sleep(3.0)
+    await asyncio.sleep(3.5)
+
+    for u, c in structure["controls"].items():
+        if not (c.get("isFavorite") and c.get("type") in TYPES):
+            continue
+        s = c.get("states") or {}
+        det = c.get("details") or {}
+        print(f"# {c.get('name')!r} [{c.get('type')}]")
+        print(f"  details: {json.dumps(det, ensure_ascii=False)[:160]}")
+        for sn, su in s.items():
+            v = st.get(su)
+            if isinstance(v, str) and len(v) > 70:
+                v = v[:70] + "…"
+            print(f"    {sn} = {v!r}")
+        print()
+
     task.cancel()
     try:
         await task
     except asyncio.CancelledError:
         pass
     await ws.close()
-
-    cover = st.get(cover_uuid)
-    print("songName   :", unquote(str(st.get(song_uuid))))
-    print("cover (roh):", cover)
-    if cover:
-        try:
-            r = requests.get(str(cover), timeout=8)
-            ct = r.headers.get("Content-Type")
-            print(f"HTTP {r.status_code}  {ct}  {len(r.content)} Bytes")
-        except Exception as e:
-            print("Cover-GET fehlgeschlagen:", e)
 
 
 if __name__ == "__main__":

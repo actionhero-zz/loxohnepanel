@@ -19,7 +19,7 @@ import logging
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bin"))
 from loxone_api import LoxoneClient  # noqa: E402
 from loxone_ws import LoxoneWS  # noqa: E402
 from adapters import get_adapter  # noqa: E402

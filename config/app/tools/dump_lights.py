@@ -12,7 +12,7 @@ import sys
 from collections import Counter
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bin"))
 from loxone_api import LoxoneClient  # noqa: E402
 
 

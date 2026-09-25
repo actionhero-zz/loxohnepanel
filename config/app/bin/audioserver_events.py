@@ -212,7 +212,7 @@ class AudioEventClient:
             return
 
         async def read_until(key, secs):
-            loop = asyncio.get_event_loop(); end = loop.time() + secs
+            loop = asyncio.get_running_loop(); end = loop.time() + secs
             while loop.time() < end:
                 try:
                     m = await asyncio.wait_for(ws.receive(), timeout=max(0.1, end - loop.time()))

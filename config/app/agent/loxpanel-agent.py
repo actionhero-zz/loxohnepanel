@@ -15,6 +15,7 @@ Start am Panel aus dem X-Autostart:  python3 loxpanel-agent.py &
 """
 import json
 import os
+import re
 import shutil
 import signal
 import socket
@@ -137,7 +138,10 @@ _proc = None
 # das Panel per Settings-Seite/Agent auf ein Profil (z.B. "pool") gestellt wird,
 # und ueberlebt so Reboots — statt wieder auf die Default-Visu zurueckzufallen.
 _cur_panel = os.environ.get("LOXPANEL_PANEL") or _load_panel_state() or CFG.get("PANEL", "")
-_lock = threading.Lock()
+# RLock: start_kiosk ruft stop_kiosk - der ganze Stopp+Start-Ablauf laeuft unter
+# EINER Sperre, sonst starten zwei gleichzeitige /start-Anfragen zwei Chromiums.
+_lock = threading.RLock()
+_PANEL_RE = re.compile(r"^[A-Za-z0-9_-]{0,60}$")
 
 
 def local_ip():
@@ -160,7 +164,7 @@ MY_IP = local_ip()
 def kiosk_url(panel):
     q = []
     if panel:
-        q.append("panel=%s" % panel)
+        q.append("panel=%s" % quote(str(panel), safe=""))
     if NUDGE_X:
         q.append("x=%s" % NUDGE_X)
     # Geraetekennung mitgeben: so ordnet der Server die WebSocket-Verbindung
@@ -457,6 +461,11 @@ def stop_kiosk():
 
 
 def start_kiosk(panel=None):
+    with _lock:
+        return _start_kiosk_locked(panel)
+
+
+def _start_kiosk_locked(panel=None):
     global _proc, _cur_panel, _last_reload, _kiosk_paused
     if panel is not None and panel != _cur_panel:
         _cur_panel = panel
@@ -478,8 +487,7 @@ def start_kiosk(panel=None):
            "--disable-features=HttpsUpgrades,HttpsFirstBalancedMode,HttpsFirstModeV2,Translate,TranslateUI",
            "--no-first-run",
            kiosk_url(_cur_panel)]
-    with _lock:
-        _proc = subprocess.Popen(cmd, env=env)
+    _proc = subprocess.Popen(cmd, env=env)
     _kiosk_paused = False        # frisch gestarteter Kiosk laeuft (nicht eingefroren)
     _last_reload = time.time()   # Auto-Reload-Timer bei jedem Start zuruecksetzen
     # force: Chromium-(Neu)Start setzt DPMS auf den X-Default (600) zurueck —
@@ -556,14 +564,20 @@ class Handler(BaseHTTPRequestHandler):
             self._send(404, {"error": "not found"})
 
     def do_POST(self):
-        n = int(self.headers.get("Content-Length") or 0)
         try:
+            n = max(0, min(int(self.headers.get("Content-Length") or 0), 65536))
             body = json.loads(self.rfile.read(n) or b"{}")
         except Exception:
             body = {}
+        if not isinstance(body, dict):
+            body = {}
         p = self.path.rstrip("/") or "/"
         if p == "/start":
-            ok = start_kiosk(body.get("panel") if body.get("panel") is not None else _cur_panel)
+            panel = body.get("panel")
+            if panel is not None and not (isinstance(panel, str) and _PANEL_RE.match(panel)):
+                self._send(400, {"ok": False, "error": "ungueltige panel-ID"})
+                return
+            ok = start_kiosk(panel if panel is not None else _cur_panel)
             self._send(200 if ok else 500, {"ok": ok})
         elif p == "/reload":
             ok = start_kiosk()

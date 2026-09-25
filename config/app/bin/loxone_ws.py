@@ -24,6 +24,7 @@ bliebe unsichtbar, dass der Miniserver etwas schickt, das hier niemand liest.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import json
@@ -40,6 +41,8 @@ ValueCallback = Callable[[str, Any], None]
 # uuid -> Liste von Wetter-Eintraegen (siehe _parse_weather).
 WeatherCallback = Callable[[str, list], None]
 
+
+KEEPALIVE_S = 120   # Abstand der "keepalive"-Kommandos an den Miniserver
 
 # Ein Wetter-Eintrag: 5 * int32, dann 6 * double, ohne Padding.
 _WX_ENTRY = struct.Struct("<5i6d")
@@ -124,6 +127,27 @@ class LoxoneWS:
 
         on_weather(uuid, eintraege) wird zusaetzlich gerufen, wenn die Anlage
         Wetterdaten schickt (nur mit Loxone-Wetterdienst)."""
+        assert self._ws is not None
+        ka = asyncio.create_task(self._keepalive())
+        try:
+            await self._receive_loop(on_value, on_weather)
+        finally:
+            ka.cancel()
+
+    async def _keepalive(self) -> None:
+        """Loxone-Protokoll: der Client meldet sich regelmaessig mit "keepalive"
+        (Antwort: Header mit Kennung 6), sonst kann der Miniserver eine
+        Verbindung ohne Client-Aktivitaet nach einigen Minuten schliessen."""
+        while self._ws is not None and not self._ws.closed:
+            await asyncio.sleep(KEEPALIVE_S)
+            try:
+                await self._ws.send_str("keepalive")
+            except (ConnectionError, RuntimeError) as err:
+                log.debug("keepalive nicht gesendet: %s", err)
+                return
+
+    async def _receive_loop(self, on_value: ValueCallback,
+                            on_weather: WeatherCallback | None) -> None:
         assert self._ws is not None
         pending_ident: int | None = None
         seen_unknown: set[int] = set()

@@ -14,6 +14,13 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **Code-Check & Härtung (0.13.9)** — Miniserver-/Kamera-Passwort wird bei
+  geändertem Host/Benutzer bzw. URL nicht mehr weiterverwendet; Cover-Proxy
+  liefert nur noch Bilder (max. 5 MB); Agent-Anmeldung prüft IP/Port; Agent
+  startet Chromium nie doppelt und kodiert die Profil-ID; eine fehlerhafte
+  Kachel reißt nicht mehr die ganze Seite mit; Loxone-`keepalive` auf dem
+  Miniserver-WebSocket; Verbindungs-Aufräumen an einer Stelle.
+
 - **Licht per Doppeltipp aus** — Doppeltipp auf eine eingeschaltete
   Lichtsteuerungs-Kachel sendet den Loxone-Aus-Befehl (`changeTo/778`).
   Eigene Tipp-Erkennung (350 ms), funktioniert auf Touch (Shelly Wall Display,
@@ -205,6 +212,19 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   Zentral hat die neue Reihenfolge bisher nicht gespeichert, sobald die
   interne Ablage dafür noch leer war (u. a. bei jedem allerersten Sortieren).
   Live per Browser-Automatisierung nachgestellt und behoben.
+
+## Aufbau des Repos
+
+| Pfad | Inhalt |
+|---|---|
+| `plugin.cfg`, `release.cfg`, `*.sh`, `daemon/`, `cron/`, `sudoers/`, `uninstall/` | LoxBerry-Plugin-Rahmen (Installation, Start, Update) |
+| `bin/loxpanel-ctl.sh` | Docker-Steuerung (start/stop/check/backup/restore) |
+| `webfrontend/htmlauth/index.cgi` | Plugin-Seite in der LoxBerry-Oberfläche |
+| `config/docker-compose.yml` | Container-Definition (Port 8098) |
+| `config/app/bin/` | Server (`webvisu.py`) und seine Module – das läuft im Container |
+| `config/app/webfrontend/` | Panel, Config-Editor, Settings (HTML/JS) |
+| `config/app/agent/`, `config/app/deploy/` | Panel-Agent und Installer für Linux-Anzeigegeräte |
+| `config/app/tools/` | Entwickler-Diagnoseskripte (nicht im Image) |
 
 ## Was das Plugin macht
 

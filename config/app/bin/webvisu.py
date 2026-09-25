@@ -19,6 +19,7 @@ import asyncio
 import contextlib
 import hashlib
 import hmac
+import ipaddress
 import json
 import logging
 import math
@@ -70,7 +71,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.13.8-fav1"
+APP_VERSION = "0.13.9-fav1"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -211,6 +212,15 @@ def _clean_lang(v):
 # Ordner leer -> die Icon-Quelle erscheint gar nicht. Ueber Env ueberschreibbar.
 LOXLIB_DIR = os.environ.get("LOXPANEL_LOXLIB_DIR", "/app/loxone-icons/filled")
 _LOXLIB_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\.svg$")
+
+
+# Globale Darstellungs-Schluessel in theme.json "ui" - EINE Liste fuer
+# Speichern (_write_theme) und Ausliefern an den Editor (api_meta).
+_COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
+
+THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick",
+                 "tileShadow", "font", "textColor", "baseColor", "bold", "lang",
+                 "alarmsEnabled", "motion", "dblTapOff")
 
 
 def _loxlib_names() -> list:
@@ -641,10 +651,21 @@ class App:
         self._pending_alarm: list[dict] = []
         self.agents: dict[str, dict] = {}   # ip -> Panel-Agent (Fernstart)
         self.bg_tasks: set = set()          # laufende Hintergrund-Tasks (z.B. Favs anfordern)
+        self._item_errors: set[str] = set()   # Bausteine, deren Kachel schon einmal fehlschlug (Log nur einmal)
+        self._mjpeg_tasks: dict[str, asyncio.Task] = {}   # Kamera-UUID -> laufender /mjpeg-Stream
         # Dynamisches Song-Cover (iTunes) fuer Zonen, die nur ein Sender-Logo
         # liefern (z.B. Sonn/Audioserver): "artist\ntitle" -> (url|None, expiry).
         self._cover_cache: dict[str, tuple[str | None, float]] = {}
         self._cover_pending: set[str] = set()
+
+    def drop_conn(self, ws) -> None:
+        """Alle Daten einer Panel-Verbindung vergessen (getrennt oder tot).
+        EINE Stelle fuer alle conn_*-Tabellen und den Sende-Cache - vorher an
+        fuenf Stellen einzeln und unterschiedlich vollstaendig gepflegt, der
+        Sende-Cache (_last_sent) wurde beim normalen Trennen nie geleert."""
+        for d in (self.conn_route, self.conn_prof, self.conn_dev, self.conn_info,
+                  self.conn_player, self.conn_energy, self.conn_camera, self._last_sent):
+            d.pop(ws, None)
 
     def _spawn(self, coro) -> None:
         """Hintergrund-Task starten und sauber referenziert halten."""
@@ -2157,8 +2178,7 @@ class App:
         except ValueError:
             doc = {}
         cur = doc.get("ui") if isinstance(doc.get("ui"), dict) else {}
-        for k in ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick", "tileShadow",
-                  "font", "textColor", "baseColor", "bold", "lang", "alarmsEnabled", "motion", "dblTapOff"):
+        for k in THEME_UI_KEYS:
             if k in ui:
                 cur[k] = ui[k]
             else:
@@ -2196,12 +2216,20 @@ class App:
     async def fetch_cover(self, url: str) -> tuple[bytes, str] | None:
         if not self.icon_session:
             return None
+        # Nur Bilder, hoechstens 5 MB: /cover ist ein offener Proxy fuer
+        # beliebige URLs (Senderlogos, iTunes, Audioserver). Ohne diese Grenze
+        # liesse sich darueber jede Seite im Netz abrufen bzw. fremdes HTML
+        # unter der Panel-Adresse ausliefern.
         try:
-            async with self.icon_session.get(url) as r:
-                if r.status != 200:
+            async with self.icon_session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
+                ctype = r.headers.get("Content-Type", "image/jpeg")
+                if r.status != 200 or not ctype.lower().startswith("image/"):
                     return None
-                return (await r.read(), r.headers.get("Content-Type", "image/jpeg"))
-        except aiohttp.ClientError:
+                if (r.content_length or 0) > _COVER_MAX_BYTES:
+                    return None
+                body = await r.content.read(_COVER_MAX_BYTES + 1)
+                return None if len(body) > _COVER_MAX_BYTES else (body, ctype)
+        except (aiohttp.ClientError, asyncio.TimeoutError):
             return None
 
     # ---- Kachel fuer ein Control ----
@@ -2365,7 +2393,7 @@ class App:
             e["controls"].append({"uuid": uuid, "name": name, "room": room})
             if not e["supported"]:
                 try:
-                    it = self._control_item(uuid)
+                    it = self._control_item_build(uuid)   # ungeschuetzt: Ersatzkachel zaehlt nicht als Unterstuetzung
                 except Exception as err:  # Diagnose darf nie an einem Baustein scheitern
                     log.warning("types_overview: %s (%s): %s", name, t, err)
                     it = {}
@@ -2438,6 +2466,22 @@ class App:
 
     def _control_item(self, uuid: str, prof: dict | None = None,
                       show_room: bool = False) -> dict:
+        """Kachel eines Bausteins - fehlertolerant: wirft der Aufbau (z.B. ein
+        unerwarteter State-Wert nach einem Firmware-Update), faellt nur DIESE
+        Kachel auf eine schlichte Namenskachel zurueck statt der ganzen Seite.
+        Protokolliert wird je Baustein nur einmal (der Tick laeuft oft)."""
+        try:
+            return self._control_item_build(uuid, prof, show_room)
+        except Exception:
+            if uuid not in self._item_errors:
+                self._item_errors.add(uuid)
+                log.exception("Kachel fuer %s fehlgeschlagen - zeige Ersatzkachel", uuid)
+            c = self.controls.get(uuid) or {}
+            return {"id": uuid, "label": _clean(c.get("name")) or "?", "icon": "info", "on": False,
+                    "nav": {"view": "control", "id": uuid}}
+
+    def _control_item_build(self, uuid: str, prof: dict | None = None,
+                            show_room: bool = False) -> dict:
         c = self.controls.get(uuid)
         if not c:
             return {"id": uuid, "label": "?", "icon": "info", "on": False}
@@ -4217,7 +4261,7 @@ class App:
                     cl = AudioEventClient(host, 7091, user=self.user,
                                           token_provider=lambda: self.jwt)
                     self.audio_clients[host] = cl
-                    asyncio.create_task(self._run_audio_client(host, cl))
+                    self._spawn(self._run_audio_client(host, cl))
                     log.info("Audioserver-Event-Client gestartet: %s", host)
             for host in list(self.audio_clients):
                 if host not in want:
@@ -4501,12 +4545,7 @@ class App:
             await asyncio.wait_for(ws.send_json(payload), timeout=5)
             return True
         except Exception:
-            self.conn_route.pop(ws, None)
-            self.conn_prof.pop(ws, None)
-            self.conn_dev.pop(ws, None)
-            self.conn_player.pop(ws, None)
-            self.conn_energy.pop(ws, None)
-            self.conn_camera.pop(ws, None)
+            self.drop_conn(ws)
             try:
                 await ws.close()
             except Exception:
@@ -4545,12 +4584,6 @@ class App:
             self._pending_reload = False
             for ws in list(self.conn_route):
                 await self._send_or_drop(ws, {"t": "reload"})
-        if self._last_sent:
-            # Merkzettel von Verbindungen befreien, die es nicht mehr gibt.
-            # Selbstheilend, damit nicht an jeder der vier Stellen, die eine
-            # Verbindung schliessen, daran gedacht werden muss.
-            for _tot in [w for w in self._last_sent if w not in self.conn_route]:
-                del self._last_sent[_tot]
         night = self._night_now()
         if night != self._night_on:
             # Nur beim Wechsel senden — die Panels halten den Zustand selbst.
@@ -4607,26 +4640,19 @@ class App:
                 last = self._last_sent.setdefault(ws, {})
                 if msg != last.get("view"):
                     if not await self._send_or_drop(ws, msg):
-                        self._last_sent.pop(ws, None)
                         continue
                     last["view"] = msg
                 if player_msg is not None and player_msg != last.get("player"):
-                    if await self._send_or_drop(ws, player_msg):
-                        last["player"] = player_msg
-                    else:
-                        self._last_sent.pop(ws, None)
+                    if not await self._send_or_drop(ws, player_msg):
                         continue
+                    last["player"] = player_msg
                 if energy_msg is not None and energy_msg != last.get("energy"):
-                    if await self._send_or_drop(ws, energy_msg):
-                        last["energy"] = energy_msg
-                    else:
-                        self._last_sent.pop(ws, None)
+                    if not await self._send_or_drop(ws, energy_msg):
                         continue
+                    last["energy"] = energy_msg
                 if camera_msg is not None and camera_msg != last.get("camera"):
                     if await self._send_or_drop(ws, camera_msg):
                         last["camera"] = camera_msg
-                    else:
-                        self._last_sent.pop(ws, None)
 
     async def broadcaster(self) -> None:
         # Diese Schleife darf NIEMALS sterben — sonst bekommen ALLE Panels keine
@@ -4811,9 +4837,7 @@ async def api_meta(request: web.Request) -> web.Response:
         "devices": app.devices,
         "wsDevices": sorted({d for d in app.conn_dev.values() if d}),
         "theme": {"ui": {k: v for k, v in (app.theme.get("ui") or {}).items()
-                         if k in ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick", "tileShadow",
-                                  "font", "textColor", "baseColor", "bold", "lang",
-                                  "alarmsEnabled", "motion", "dblTapOff")},
+                         if k in THEME_UI_KEYS},
                   "categories": {k: v for k, v in (app.theme.get("categories") or {}).items()
                                  if not str(k).startswith("_")}},
     })
@@ -4977,8 +5001,14 @@ async def api_settings_ms(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": "Host fehlt"}, status=400)
     cfg = _load_cfg()
     ms = dict(cfg.get("miniserver", {}))
+    user = str(data.get("user", "")).strip()
+    # Gespeichertes Passwort nur fuer DENSELBEN Host/Benutzer weiterverwenden.
+    # Sonst koennte jeder im Netz den Host auf einen eigenen Rechner umstellen
+    # und der Server meldete sich dort mit dem hinterlegten Passwort an.
+    if (host, user) != (ms.get("host"), ms.get("user")):
+        ms.pop("pass", None)
     ms["host"] = host
-    ms["user"] = str(data.get("user", "")).strip()
+    ms["user"] = user
     try:
         ms["port"] = int(data.get("port") or 443)
     except (TypeError, ValueError):
@@ -4987,7 +5017,8 @@ async def api_settings_ms(request: web.Request) -> web.Response:
     if data.get("pass"):                       # leer = altes Passwort behalten
         ms["pass"] = str(data["pass"])
     if not ms.get("pass"):
-        return web.json_response({"ok": False, "error": "Passwort fehlt"}, status=400)
+        return web.json_response({"ok": False, "error": "Passwort fehlt (bei geändertem Host/Benutzer bitte neu eingeben)"},
+                                 status=400)
     cfg["miniserver"] = ms
     try:
         _write_cfg(cfg)
@@ -5060,6 +5091,8 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
     except (ValueError, aiohttp.ContentTypeError):
         return web.json_response({"ok": False, "error": "kein gültiges JSON"}, status=400)
     items = data.get("intercoms") or {}
+    if not isinstance(items, dict):
+        return web.json_response({"ok": False, "error": "Feld 'intercoms' ungültig"}, status=400)
     cfg = _load_cfg()
     ic = dict(cfg.get("intercom", {}))
     for uuid, e in items.items():
@@ -5067,8 +5100,12 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
             continue
         cur = ic.get(uuid)
         cur = dict(cur) if isinstance(cur, dict) else ({"url": cur} if isinstance(cur, str) else {})
-        cur["url"] = str(e.get("url", "")).strip()
-        cur["user"] = str(e.get("user", "")).strip()
+        url, user = str(e.get("url", "")).strip(), str(e.get("user", "")).strip()
+        # Passwort nur fuer dieselbe URL/denselben Benutzer behalten - sonst
+        # ginge das gespeicherte Kamera-Passwort an eine neu eingetragene Adresse.
+        if (url, user) != (cur.get("url"), cur.get("user", "")):
+            cur.pop("pass", None)
+        cur["url"], cur["user"] = url, user
         if e.get("pass"):
             cur["pass"] = str(e["pass"])
         cur["sound"] = bool(e.get("sound"))   # Ton bei Klingeln (generischer Wecker-Ton)
@@ -5181,7 +5218,7 @@ async def api_settings_calendar(request: web.Request) -> web.Response:
     except (ValueError, aiohttp.ContentTypeError):
         return web.json_response({"ok": False, "error": "kein gültiges JSON"}, status=400)
 
-    def _coord(v):
+    def _coord(v, lim):
         # leer = nicht gesetzt; deutsches Komma erlauben; ausserhalb des Bereichs = ungueltig
         if v in (None, ""):
             return None
@@ -5189,7 +5226,7 @@ async def api_settings_calendar(request: web.Request) -> web.Response:
             f = float(str(v).replace(",", "."))
         except (TypeError, ValueError):
             return None
-        return f if -90.0 <= f <= 180.0 else None
+        return f if -lim <= f <= lim else None
 
     def _int(v, default, lo, hi):
         try:
@@ -5202,7 +5239,7 @@ async def api_settings_calendar(request: web.Request) -> web.Response:
     cal["ical_url"] = str(data.get("ical_url", "")).strip()
     cal["holiday_url"] = str(data.get("holiday_url", "")).strip()
     cal["name"] = str(data.get("name", "")).strip() or "Family"
-    lat, lon = _coord(data.get("lat")), _coord(data.get("lon"))
+    lat, lon = _coord(data.get("lat"), 90.0), _coord(data.get("lon"), 180.0)
     # Nur ein vollstaendiges Koordinatenpaar speichern (halb gesetzt = kein Wetter).
     cal["lat"] = lat if (lat is not None and lon is not None) else None
     cal["lon"] = lon if (lat is not None and lon is not None) else None
@@ -5239,10 +5276,23 @@ async def api_agent_announce(request: web.Request) -> web.Response:
         d = await request.json()
     except (ValueError, aiohttp.ContentTypeError):
         d = {}
-    ip = str(d.get("ip") or "").strip() or request.remote or "?"
+    # IP/Port gehen spaeter in eine URL (api_agent_command) - deshalb streng
+    # pruefen: nur echte IP-Adressen und gueltige Ports, sonst liesse sich per
+    # Announce ein beliebiges Ziel eintragen, an das der Server Anfragen schickt.
+    ip = str(d.get("ip") or "").strip() or (request.remote or "")
+    try:
+        ip = str(ipaddress.ip_address(ip))
+        port = int(d.get("port") or 8130)
+    except (ValueError, TypeError):
+        return web.json_response({"ok": False, "error": "ungueltige ip/port"}, status=400)
+    if not 1 <= port <= 65535:
+        return web.json_response({"ok": False, "error": "ungueltiger port"}, status=400)
+    now = time.time()
+    for k in [k for k, v in app.agents.items() if now - v["ts"] > 600]:
+        del app.agents[k]   # verwaiste Eintraege aufraeumen (api_agents zeigt sie ohnehin nicht)
     app.agents[ip] = {"ip": ip, "name": str(d.get("name") or ip)[:60],
-                      "panel": str(d.get("panel") or ""), "port": int(d.get("port") or 8130),
-                      "kiosk": bool(d.get("kiosk")), "ts": time.time()}
+                      "panel": str(d.get("panel") or "")[:60], "port": port,
+                      "kiosk": bool(d.get("kiosk")), "ts": now}
     # Panel-spezifische Geraeteeinstellungen an den Agenten zurueckgeben
     # (der wendet sie am Geraet an, z.B. Display-Abschaltung per xset).
     return web.json_response({"ok": True, "dpmsOff": app.panel_dpms(d.get("panel")),
@@ -5272,7 +5322,8 @@ async def api_agent_command(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": "Panel nicht bekannt"}, status=404)
     if action not in ("start", "reload", "stop"):
         return web.json_response({"ok": False, "error": "unbekannte Aktion"}, status=400)
-    url = f"http://{a['ip']}:{a['port']}/{action}"
+    host = f"[{a['ip']}]" if ":" in a["ip"] else a["ip"]   # IPv6 in URLs geklammert
+    url = f"http://{host}:{a['port']}/{action}"
     payload = {"panel": str(d.get("panel") or "")} if action == "start" else {}
     try:
         async with aiohttp.ClientSession() as s:
@@ -5374,7 +5425,7 @@ async def api_device_name(request: web.Request) -> web.Response:
         try:
             await ws.send_json({"t": "setdevice", "name": name})
             n += 1
-        except ConnectionError:
+        except (ConnectionError, RuntimeError):
             pass
     return web.json_response({"ok": n > 0, "sent": n,
                               **({} if n else {"error": "kein Geraet ohne Kennung unter dieser IP"})})
@@ -5420,13 +5471,7 @@ async def _push(app: "App", msg: dict, panel: str = "", device: str = "") -> int
             n += 1
         except Exception as err:   # nicht nur ConnectionError (F3)
             log.debug("Push an Panel fehlgeschlagen: %s", err)
-            app.conn_route.pop(ws, None)
-            app.conn_prof.pop(ws, None)
-            app.conn_dev.pop(ws, None)
-            app.conn_info.pop(ws, None)
-            app.conn_player.pop(ws, None)
-            app.conn_energy.pop(ws, None)
-            app.conn_camera.pop(ws, None)
+            app.drop_conn(ws)
     return n
 
 
@@ -5519,8 +5564,7 @@ async def api_testtone(request: web.Request) -> web.Response:
             n += 1
         except Exception as err:   # nicht nur ConnectionError (F3)
             log.debug("testtone-Push an Panel fehlgeschlagen: %s", err)
-            app.conn_route.pop(ws, None)
-            app.conn_prof.pop(ws, None)
+            app.drop_conn(ws)
     return web.json_response({"ok": True, "sent": n})
 
 
@@ -5562,8 +5606,7 @@ async def api_testring(request: web.Request) -> web.Response:
                 n += 1
             except Exception as err:
                 log.debug("testring-Push an Panel fehlgeschlagen: %s", err)
-                app.conn_route.pop(ws, None)
-                app.conn_prof.pop(ws, None)
+                app.drop_conn(ws)
         return n
 
     n = await _send(True)
@@ -5670,8 +5713,6 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
     if isinstance(ent, dict) and ent.get("user"):
         auth = aiohttp.BasicAuth(ent.get("user", ""), ent.get("pass", ""))
 
-    if not hasattr(app, "_mjpeg_tasks"):
-        app._mjpeg_tasks = {}
     old = app._mjpeg_tasks.get(uuid)
     if old and not old.done():
         old.cancel()
@@ -5679,10 +5720,10 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
             await old
     app._mjpeg_tasks[uuid] = asyncio.current_task()
 
-    sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_read=30))
+    sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=30))
     try:
         upstream = await sess.get(url, auth=auth)
-    except aiohttp.ClientError:
+    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
         await sess.close()
         return web.Response(status=502, text="camera unreachable")
     if upstream.status != 200:
@@ -5741,31 +5782,35 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     # Display-Einstellungen gehen auch an die Visu: ohne Agent (Android-Panel,
     # Tablet mit Kiosk-App) schaltet die Seite das Display selbst ab und laedt
     # sich periodisch neu. `agent` sagt ihr, ob ein Agent das uebernimmt.
-    await ws.send_json({"t": "theme", "vars": prof["vars"], "tabs": prof["tabs"],
-                        "tabMeta": app._tab_meta(prof["tabs"]), "title": prof["title"],
-                        "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
-                        "panes": prof.get("panes") or {},
-                        "dpmsOff": app.panel_dpms(prof["id"]),
-                        "reloadHours": app.panel_reload(prof["id"]),
-                        "night": {**app.panel_night(prof["id"]), "on": app._night_on},
-                        "screensaverCam": app._screensaver_cam(),
-                        "motion": prof["motion"],
-                        "agent": app._has_agent(dev)})
-    _first = app.render(app.conn_route[ws], prof)
-    await ws.send_json(_first)
-    app._last_sent.setdefault(ws, {})["view"] = _first
-    # Player-Pane fordert der Client selbst an (setplayer), sobald ein Tab mit
-    # Player-Pane aktiv ist — je Tab eine eigene Zone moeglich.
-    # Kalender/Wetter fuer die Uhr-Startseite sofort mitschicken (falls schon geladen)
-    if app._front is not None:
-        await ws.send_json(app._front)
+    # Ab hier alles im try: bricht die Verbindung schon waehrend der ersten
+    # Sendungen ab, raeumt finally die eben angelegten Eintraege trotzdem weg.
     try:
+        await ws.send_json({"t": "theme", "vars": prof["vars"], "tabs": prof["tabs"],
+                            "tabMeta": app._tab_meta(prof["tabs"]), "title": prof["title"],
+                            "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
+                            "panes": prof.get("panes") or {},
+                            "dpmsOff": app.panel_dpms(prof["id"]),
+                            "reloadHours": app.panel_reload(prof["id"]),
+                            "night": {**app.panel_night(prof["id"]), "on": app._night_on},
+                            "screensaverCam": app._screensaver_cam(),
+                            "motion": prof["motion"],
+                            "agent": app._has_agent(dev)})
+        _first = app.render(app.conn_route[ws], prof)
+        await ws.send_json(_first)
+        app._last_sent.setdefault(ws, {})["view"] = _first
+        # Player-Pane fordert der Client selbst an (setplayer), sobald ein Tab mit
+        # Player-Pane aktiv ist — je Tab eine eigene Zone moeglich.
+        # Kalender/Wetter fuer die Uhr-Startseite sofort mitschicken (falls schon geladen)
+        if app._front is not None:
+            await ws.send_json(app._front)
         async for msg in ws:
             if msg.type != WSMsgType.TEXT:
                 continue
             try:
                 data = json.loads(msg.data)
             except ValueError:
+                continue
+            if not isinstance(data, dict):
                 continue
             if data.get("t") == "nav" and isinstance(data.get("route"), dict):
                 route = data["route"]
@@ -5786,16 +5831,15 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 # aktiv anfordern; das frische Ergebnis wird per broadcaster
                 # nachgereicht (roomfav/get befuellt den sourceList-State).
                 if route.get("view") in ("control", "sources") and route.get("id"):
-                    task = asyncio.create_task(app.prime_favs(route["id"]))
-                    app.bg_tasks.add(task)
-                    task.add_done_callback(app.bg_tasks.discard)
+                    app._spawn(app.prime_favs(route["id"]))
             elif data.get("t") == "idle":
                 # Visu ohne Kiosk-JS meldet Leerlauf -> Display ueber Treiber aus
                 if dev:
                     app._spawn(app.display_drivers(False, dev))
             elif data.get("t") == "cmd":
                 pin = data.get("pin")
-                code = await app.command(data.get("uuid"), data.get("cmd"), pin)
+                code = await app.command(str(data.get("uuid") or ""), str(data.get("cmd") or ""),
+                                         None if pin is None else str(pin))
                 if pin is not None:
                     await ws.send_json({"t": "cmdresult", "ok": code == "200"})
             elif data.get("t") == "setplayer":
@@ -5838,19 +5882,15 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                     try:
                         ib = app.intercom_blocks(cuid)
                         if ib is not None:
-                            await ws.send_json({"t": "camera", "blocks": ib})
+                            _cm = {"t": "camera", "blocks": ib}
+                            await ws.send_json(_cm)
+                            app._last_sent.setdefault(ws, {})["camera"] = _cm   # wie player/energy: Tick nicht doppelt senden
                     except Exception:
                         log.exception("intercom_blocks (setcamera) fehlgeschlagen (%s)", cuid)
                 else:
                     app.conn_camera.pop(ws, None)
     finally:
-        app.conn_route.pop(ws, None)
-        app.conn_prof.pop(ws, None)
-        app.conn_dev.pop(ws, None)
-        app.conn_info.pop(ws, None)
-        app.conn_player.pop(ws, None)
-        app.conn_energy.pop(ws, None)
-        app.conn_camera.pop(ws, None)
+        app.drop_conn(ws)
     return ws
 
 

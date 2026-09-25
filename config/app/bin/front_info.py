@@ -236,8 +236,7 @@ async def fetch_events(session: aiohttp.ClientSession, url: str, days: int) -> l
                 raise
             log.info("Kalender: %s - zweiter Versuch in %.0f s", e, _RETRY_PAUSE)
             await asyncio.sleep(_RETRY_PAUSE)
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, _parse_events, data, days)
+    return await asyncio.get_running_loop().run_in_executor(None, _parse_events, data, days)
 
 
 def _iso(s):

@@ -175,18 +175,6 @@ if ($sr->is_success) {
         $mport = $m->{port} // 443; $haspass = $m->{hasPass} ? 1 : 0;
     }
 }
-# Panel-Profile fuer die Auswahl beim Einrichten eines Android-Panels
-my $profopts = "<option value=''>Standard</option>";
-if ($running) {
-    my $mr = LWP::UserAgent->new(timeout => 5)->get("$api/api/meta");
-    my $mj = $mr->is_success ? eval { decode_json($mr->decoded_content) } : undef;
-    for my $pid (sort keys %{ ($mj && $mj->{panels}) || {} }) {
-        next unless $pid =~ /^[a-z0-9-]{1,60}$/;
-        my $t = $mj->{panels}{$pid}{title} // $pid;
-        $profopts .= "<option value='" . h($pid) . "'>" . h($t) . " ($pid)</option>";
-    }
-}
-
 my $stat = !$running ? "<span style='color:#a94442'>Container l&auml;uft nicht</span>"
     : $conn ? "<span style='color:#3c763d'>l&auml;uft &middot; Miniserver verbunden</span>"
     : "<span style='color:#8a6d3b'>l&auml;uft &middot; noch kein Miniserver</span>";
@@ -334,10 +322,22 @@ print <<"HTML";
         <div class="lpf" style="flex:1.6"><label>Ger&auml;t</label><select class="form-control" name="paneldev">
           <option value="shelly">Shelly Wall Display</option><option value="android">Anderes Android-Tablet (Testing)</option></select></div>
         <div class="lpf" style="flex:1.4"><label>Panel-IP</label><input class="form-control" name="panelip" placeholder="192.168.1.103" required></div>
-        <div class="lpf" style="flex:1.4"><label>Panel-Profil</label><select class="form-control" name="panelid">$profopts</select></div>
+        <div class="lpf" style="flex:1.4"><label>Panel-Profil (leer = Standard)</label><input class="form-control" name="panelid" id="lp_panelid"
+          placeholder="z.&nbsp;B. wohnzimmer" pattern="[a-z0-9-]*" autocomplete="off" oninput="lpUrl()"></div>
       </div>
+      <p style="margin:10px 0 0;color:#777">&Uuml;bergebene URL: <code id="lp_url">http://$lbhost:8098/</code></p>
       <div class="lprow" style="margin-top:10px"><button class="lpbtn lpblue" type="submit">Launcher installieren &amp; einrichten</button></div>
     </form>
+    <script>
+      // Profil-ID wie im Config-Editor normalisieren (klein, nur a-z 0-9 -) und
+      // die URL anzeigen, die der Launcher an Fully Kiosk uebergibt.
+      function lpUrl(){
+        var f=document.getElementById('lp_panelid');
+        var v=f.value.toLowerCase().replace(/[^a-z0-9-]/g,'');
+        if(v!==f.value) f.value=v;
+        document.getElementById('lp_url').textContent='http://$lbhost:8098/'+(v?'?panel='+v:'');
+      }
+    </script>
   </div>
 </div>
 

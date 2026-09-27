@@ -86,6 +86,48 @@
   .grph{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:18px 0 8px;padding-bottom:5px;border-bottom:1px solid var(--line);}
   .grph:first-of-type{margin-top:4px;}
   /* Modus-Umschalter (z. B. Tabs: Raum-Panel / Klassisch) */
+  /* ---- Screensaver-Editor ---- */
+  .svedcard{max-width:1100px;}
+  .sved{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;user-select:none;-webkit-user-select:none;}
+  .sved .pal{width:190px;display:flex;flex-direction:column;gap:7px;}
+  .sved .pal .hd{font-size:12px;color:var(--muted);margin:4px 0 0;}
+  .sved .chipw{display:flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;
+    padding:9px 11px;font-size:13px;cursor:grab;touch-action:none;}
+  .sved .chipw small{margin-left:auto;color:var(--muted);font-size:11px;}
+  .sved .chipw .sw{width:14px;height:14px;border-radius:4px;flex:none;border-width:2px;border-style:solid;}
+  .sved .gridwrap{flex:1;min-width:300px;}
+  .sved .egrid{--cell:72px;display:grid;grid-template-columns:repeat(var(--ec,6),var(--cell));grid-template-rows:repeat(3,var(--cell));
+    gap:6px;padding:6px;background:#0d120e;border-radius:10px;position:relative;width:max-content;touch-action:none;}
+  .sved .egrid .bg{border:1px dashed rgba(255,255,255,.09);border-radius:8px;}
+  .sved .egrid.split::after{content:"";position:absolute;top:0;bottom:0;left:calc(6px + 3 * (var(--cell) + 6px) - 3px);width:1px;background:rgba(255,255,255,.18);}
+  .sved .xmark{position:absolute;right:4px;top:4px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.6);color:#bbb;
+    font-size:11px;display:grid;place-items:center;z-index:3;pointer-events:none;}
+  .sved .ew{border-radius:9px;padding:6px 8px;font-size:12px;font-weight:600;position:relative;display:flex;flex-direction:column;
+    justify-content:space-between;border:1px solid;cursor:grab;touch-action:none;overflow:hidden;z-index:1;}
+  .sved .ew .sz{font-size:10px;opacity:.85;font-weight:600;}
+  .sved .ew .nm{font-weight:500;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sved .ew .rs{position:absolute;right:0;bottom:0;width:22px;height:22px;cursor:nwse-resize;}
+  .sved .ew .rs::after{content:"";position:absolute;right:4px;bottom:4px;width:9px;height:9px;border-right:2px solid;border-bottom:2px solid;border-radius:0 0 3px 0;opacity:.8;}
+  .sved .ew.sel{outline:2px solid #fff;outline-offset:1px;}
+  .sved .ghost{border-radius:9px;border:2px dashed var(--good);background:rgba(82,184,129,.15);z-index:2;pointer-events:none;}
+  .sved .ghost.bad{border-color:var(--crit);background:rgba(226,105,95,.15);}
+  .sved .dragchip{position:fixed;z-index:1000;pointer-events:none;opacity:.9;transform:translate(-50%,-50%);}
+  .sved .c-clock{background:rgba(224,162,77,.16);border-color:rgba(224,162,77,.5);color:#f0c27e;}
+  .sved .c-weather{background:rgba(127,178,230,.16);border-color:rgba(127,178,230,.5);color:#a9cbee;}
+  .sved .c-calendar{background:rgba(180,140,230,.16);border-color:rgba(180,140,230,.5);color:#cdb3ef;}
+  .sved .c-intercom{background:rgba(226,105,95,.16);border-color:rgba(226,105,95,.5);color:#eea39c;}
+  .sved .c-tile{background:rgba(82,184,129,.14);border-color:rgba(82,184,129,.45);color:#8fd6ae;}
+  .sved .side{width:250px;display:flex;flex-direction:column;gap:10px;}
+  .sved .box{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:12px;font-size:13px;}
+  .sved .box b{display:block;margin-bottom:8px;}
+  .sved .box .lbl2{color:var(--muted);font-size:12px;margin:10px 0 5px;}
+  .sved .seg{display:flex;gap:4px;flex-wrap:wrap;}
+  .sved .seg button{flex:1;min-width:44px;background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:6px 4px;font:inherit;font-size:12px;cursor:pointer;}
+  .sved .seg button.on{background:var(--good);border-color:var(--good);color:#0d120e;font-weight:700;}
+  .sved .seg button:disabled{opacity:.35;cursor:not-allowed;}
+  .sved .box select,.sved .box input[type=text]{width:100%;max-width:none;}
+  .sved .exits label{display:flex;align-items:center;gap:8px;margin:5px 0;}
+  .sved .hintp{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.45;}
   .segmode{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:2px 0 14px;}
   .segmode button{border:0;background:transparent;color:var(--muted);padding:7px 16px;cursor:pointer;font-size:13px;font-family:inherit;}
   .segmode button.on{background:rgba(224,162,77,.16);color:var(--fg);}
@@ -368,6 +410,7 @@
             <button class="ovbox" data-goto="pconf:rooms"><b>Räume</b><span>Welche Räume dieses Panel zeigt. Nichts angehakt = alle.</span></button>
             <button class="ovbox" data-goto="pconf:cats"><b>Kategorien</b><span>Welche Kategorien im Tab „Kategorien" erscheinen.</span></button>
             <button class="ovbox" data-goto="pconf:tiles"><b>Kacheln gestalten</b><span>Einzelne Kacheln umbenennen, färben, Icon setzen oder ausblenden.</span></button>
+            <button class="ovbox" data-goto="pconf:saver"><b>Screensaver</b><span>Uhr, Wetter, Kalender, Türstation und Kacheln frei im Raster anordnen (Ziehen &amp; Ablegen), Schließen per ✕ oder Wischen.</span></button>
             <button class="ovbox" data-goto="pconf:title"><b>Titel</b><span>Name/Fenstertitel dieses Panel-Profils.</span></button>
             <button class="ovbox" data-goto="pconf:overlay"><b>Aktiv-Overlay</b><span>Wie eine aktive Kachel hervorgehoben wird (Rahmen, Füllung, Deckkraft).</span></button>
           </div>
@@ -678,7 +721,7 @@ const PCONF_TABS=[
   {k:'favs',label:'Favoriten'},{k:'zentral',label:'Zentral'},
   {k:'rooms',label:'Räume'},{k:'cats',label:'Kategorien'},
   {k:'tiles',label:'Kacheln gestalten'},{k:'appearance',label:'Aussehen'},
-  {k:'overlay',label:'Aktiv-Overlay'},{k:'title',label:'Titel'}];
+  {k:'overlay',label:'Aktiv-Overlay'},{k:'saver',label:'Screensaver'},{k:'title',label:'Titel'}];
 const GLOBAL_TABS=[{k:'appearance',label:'Darstellung'},{k:'catcolors',label:'Kategorie-Farben'}];
 const SET_TABS=[
   {k:'miniserver',label:'Miniserver'},{k:'intercom',label:'Kamera / Türstation'},
@@ -992,7 +1035,7 @@ function renderEditor(){
   if(!p){ $('#pconfHost').innerHTML='<div class="empty">Kein Panel gewählt.</div>'; $('#phead').innerHTML=''; return; }
   { const ov=$('#openVisu'); if(ov) ov.href = (cur==='default'||cur==='__global__') ? '/' : '/?panel='+encodeURIComponent(cur); }
   if(p.__global){ renderGlobalEditor(p); return; }
-  const ok=['title','tabs','rooms','cats','favs','zentral','tiles','appearance','overlay'];
+  const ok=['title','tabs','rooms','cats','favs','zentral','tiles','appearance','overlay','saver'];
   if(!ok.includes(subPconf)) subPconf='tabs';
   const urlTxt = cur==='default' ? '/  (Standard, ohne Parameter)' : '/?panel='+cur;
   $('#phead').innerHTML =
@@ -1002,6 +1045,10 @@ function renderEditor(){
     '<span class="kurl">'+T('Kiosk-URL:')+' <code>'+esc(urlTxt)+'</code></span>';
 
   $('#pconfHost').innerHTML =
+   '<section class="spane" data-sub="saver"><div class="card svedcard"><h3>Screensaver</h3>'+
+     '<p class="note">'+T('Bausteine aus der Leiste ins Raster ziehen, im Raster verschieben, an der Ecke die Größe ändern. Antippen öffnet die Einstellungen. Ohne Belegung bleibt der klassische Screensaver (Uhr, Wetter, Termine).')+'</p>'+
+     '<div id="svEd"></div></div></section>'+
+
    '<section class="spane" data-sub="title"><div class="card"><h3>Titel</h3><p class="note">Fenstertitel des Panels.</p>'+
      '<div class="field"><input type="text" id="fTitle" value="'+esc(p.title||'')+'" placeholder="'+esc(cur)+'"></div></div></section>'+
 
@@ -1160,7 +1207,7 @@ function renderEditor(){
   { const r=$('#ovReset'); if(r) r.onclick=()=>{ if(p.ui) delete p.ui.overlay; renderEditor(); markDirty(); }; }
 
   renderTabMode(p); renderPanes(p); renderChecklist(p,'rooms'); renderChecklist(p,'cats');
-  renderTileList(); renderTileEditor(); renderFavList(); renderZentralList();
+  renderTileList(); renderTileEditor(); renderFavList(); renderZentralList(); renderSaverEditor();
   const tsr=$('#tileSearch'); if(tsr) tsr.oninput=()=>renderTileList();
   const fsr=$('#favSearch'); if(fsr) fsr.oninput=()=>renderFavList();
   const fon=$('#favOnly'); if(fon) fon.onchange=()=>renderFavList();
@@ -1177,6 +1224,166 @@ function renderEditor(){
   if(window.I18N) I18N.autoChrome('h2, h3, label.lbl, .btn, .minibtn, .note, .hint, option, .stab');
 }
 
+// ---- Screensaver-Editor (je Panel-Profil) ----
+// Raster 6x3 (Split, z.B. Shelly X2i) bzw. 3x3 (4"-Panel). Widgets aus der
+// Leiste ins Raster ziehen, verschieben, an der Ecke vergroessern; nur die
+// erlaubten Groessen rasten ein. Alles per Pointer-Events -> auch am Tablet.
+const SV_W={
+  clock:{label:'Uhr & Datum', sizes:[[1,1],[2,1],[3,1],[2,2]], def:[2,1]},
+  weather:{label:'Wetter', sizes:[[3,1],[3,2]], def:[3,1]},
+  calendar:{label:'Kalender', sizes:[[3,1],[3,2],[3,3]], def:[3,2]},
+  intercom:{label:'Türstation', sizes:[[2,2],[3,3]], def:[3,3]},
+  tile:{label:'Loxone-Kachel', sizes:[[1,1],[2,1]], def:[1,1]}
+};
+const SV_EXITS=[['x','✕ Schließen-Button (oben rechts)'],['up','Wischen nach oben ↑'],['down','Wischen nach unten ↓'],
+  ['left','Wischen nach links ←'],['right','Wischen nach rechts →']];
+let svSel=-1, svDrag=null;
+function svCfg(p){ if(!p.saver||typeof p.saver!=='object') p.saver={items:[],exit:[]};
+  p.saver.items=p.saver.items||[]; p.saver.exit=p.saver.exit||[]; return p.saver; }
+function svCols(p){ return (p.ui&&p.ui.split===false)?3:6; }
+function svName(uuid){ const c=(META.controls||[]).find(x=>x.uuid===uuid); return c?c.name:''; }
+function svFree(items,x,y,w,h,skip,cols){
+  if(x<0||y<0||x+w>cols||y+h>3) return false;
+  return !items.some((it,i)=>i!==skip && x<it.x+it.w && it.x<x+w && y<it.y+it.h && it.y<y+h);
+}
+function svCommit(p){ const sv=svCfg(p);
+  if(!sv.items.length){ delete p.saver; } markDirty(); }
+function renderSaverEditor(){
+  const host=$('#svEd'); if(!host) return;
+  const p=PANELS[cur]; if(!p) return;
+  const sv=svCfg(p), cols=svCols(p);
+  const cells=[]; for(let y=0;y<3;y++) for(let x=0;x<cols;x++) cells.push('<div class="bg" style="grid-column:'+(x+1)+';grid-row:'+(y+1)+'"></div>');
+  const ws=sv.items.map((it,i)=>{ const d=SV_W[it.type]||{};
+    const nm=(it.type==='tile'||it.type==='intercom')?(svName(it.uuid)||'– wählen –'):'';
+    return '<div class="ew c-'+it.type+(i===svSel?' sel':'')+'" data-i="'+i+'" style="grid-column:'+(it.x+1)+' / span '+it.w+';grid-row:'+(it.y+1)+' / span '+it.h+'">'+
+      (it.type==='tile' ? '<span class="nm">'+esc(svName(it.uuid)||T('Kachel wählen'))+'</span>'
+                        : '<span>'+esc(d.label||it.type)+'</span>'+(nm?'<span class="nm">'+esc(nm)+'</span>':''))+
+      '<span class="sz">'+it.w+'×'+it.h+'</span><span class="rs" data-rs="1"></span></div>'; }).join('');
+  host.innerHTML='<div class="sved">'+
+    '<div class="pal"><div class="hd">'+T('Bausteine hineinziehen')+'</div>'+
+      Object.keys(SV_W).map(k=>'<div class="chipw" data-new="'+k+'"><span class="sw c-'+k+'"></span>'+esc(SV_W[k].label)+'<small>'+SV_W[k].def.join('×')+'</small></div>').join('')+
+      '<div class="hd" style="margin-top:10px">'+T('Vorlagen')+'</div>'+
+      '<button class="minibtn" id="svTplClassic">'+T('Wie bisher (Uhr, Wetter, Termine)')+'</button>'+
+      '<button class="minibtn" id="svTplClear">'+T('Leeren (klassischer Screensaver)')+'</button></div>'+
+    '<div class="gridwrap"><div class="egrid'+(cols===6?' split':'')+'" id="svGridEd" style="--ec:'+cols+'">'+cells.join('')+ws+
+      (sv.exit.indexOf('x')>=0?'<span class="xmark">✕</span>':'')+'</div>'+
+      '<div class="hintp">'+(cols===6
+        ? T('Raster 6×3 für breite Displays (z. B. Shelly X2i). Auf quadratischen 4″-Panels mit diesem Profil erscheinen nur die linken 3 Spalten (Trennlinie).')
+        : T('Raster 3×3 (4″-Panel, Split aus).'))+'</div></div>'+
+    '<div class="side">'+svSideHTML(p)+
+      '<div class="box exits"><b>'+T('Screensaver schließen')+'</b>'+
+        SV_EXITS.map(([k,l])=>'<label><input type="checkbox" data-exit="'+k+'"'+(sv.exit.indexOf(k)>=0?' checked':'')+'> '+esc(T(l))+'</label>').join('')+
+        '<div class="hintp">'+T('Beliebig kombinierbar. Nichts angehakt = Tipp auf eine freie Stelle schließt. Kacheln im Screensaver bleiben bedienbar, Tür-Buttons lösen nur durch 1 s Halten aus.')+'</div></div>'+
+    '</div></div>';
+  host.querySelectorAll('[data-exit]').forEach(cb=>cb.onchange=()=>{
+    const s2=svCfg(p); s2.exit=SV_EXITS.map(e=>e[0]).filter(k=>host.querySelector('[data-exit="'+k+'"]').checked);
+    svCommit(p); renderSaverEditor(); });
+  $('#svTplClassic').onclick=()=>{ const s2=svCfg(p); const c=cols;
+    s2.items=[{type:'clock',x:c===6?2:0,y:0,w:c===6?2:3,h:1,align:'center',date:'long'},{type:'weather',x:0,y:1,w:3,h:c===6?2:1}];
+    s2.items.push(c===6?{type:'calendar',x:3,y:1,w:3,h:2}:{type:'calendar',x:0,y:2,w:3,h:1});
+    svSel=-1; svCommit(p); renderSaverEditor(); };
+  $('#svTplClear').onclick=()=>{ if(!confirm(T('Belegung entfernen? Das Panel zeigt dann wieder den klassischen Screensaver.'))) return;
+    delete p.saver; svSel=-1; markDirty(); renderSaverEditor(); };
+  svBindSide(p);
+  svBindDrag(p);
+}
+function svSideHTML(p){
+  const sv=svCfg(p), it=sv.items[svSel];
+  if(!it) return '<div class="box"><b>'+T('Einstellungen')+'</b><div class="hintp" style="margin:0">'+T('Ein Widget im Raster antippen, um Größe und Optionen zu ändern.')+'</div></div>';
+  const d=SV_W[it.type], cols=svCols(p);
+  let h='<div class="box"><b>'+esc(d.label)+'</b><div class="lbl2">'+T('Größe')+'</div><div class="seg">'+
+    d.sizes.map(([w,hh])=>'<button data-size="'+w+'x'+hh+'"'+(it.w===w&&it.h===hh?' class="on"':'')+
+      (svFree(sv.items,it.x,it.y,w,hh,svSel,cols)?'':' disabled')+'>'+w+'×'+hh+'</button>').join('')+'</div>';
+  if(it.type==='clock'){
+    h+='<div class="lbl2">'+T('Ausrichtung')+'</div><div class="seg">'+[['left','links'],['center','mittig'],['right','rechts']].map(([k,l])=>
+      '<button data-align="'+k+'"'+((it.align||'center')===k?' class="on"':'')+'>'+T(l)+'</button>').join('')+'</div>'+
+      '<div class="lbl2">'+T('Datum')+'</div><div class="seg">'+[['none','aus'],['short','kurz'],['long','lang']].map(([k,l])=>
+      '<button data-date="'+k+'"'+((it.date||'short')===k?' class="on"':'')+'>'+T(l)+'</button>').join('')+'</div>';
+  }
+  if(it.type==='tile'){
+    h+='<div class="lbl2">'+T('Baustein')+'</div><input type="text" id="svCtlSearch" placeholder="'+T('Baustein suchen…')+'">'+
+      '<select id="svCtl" size="8" style="margin-top:6px"></select>'+
+      (it.uuid?'':'<div class="hintp" style="color:var(--accent)">'+T('Noch kein Baustein gewählt – ohne Auswahl wird die Kachel nicht gespeichert.')+'</div>');
+  }
+  if(it.type==='intercom'){
+    const ics=(META.controls||[]).filter(c=>c.type==='Intercom');
+    if(!it.uuid && ics.length===1){ it.uuid=ics[0].uuid; markDirty(); }   // nur eine Tuerstation -> gleich vorwaehlen
+    h+='<div class="lbl2">'+T('Türstation')+'</div><select id="svIc"><option value="">– '+T('wählen')+' –</option>'+
+      ics.map(c=>'<option value="'+esc(c.uuid)+'"'+(c.uuid===it.uuid?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>'+
+      '<div class="hintp">'+T('Video-URL je Türstation unter Einstellungen → Kamera / Türstation.')+'</div>';
+  }
+  if(it.type==='weather'||it.type==='calendar') h+='<div class="hintp">'+T('Quelle: Einstellungen → Kalender &amp; Wetter.')+'</div>';
+  h+='<div style="margin-top:12px"><button class="minibtn" id="svDel">'+T('Entfernen')+'</button></div></div>';
+  return h;
+}
+function svBindSide(p){
+  const sv=svCfg(p), it=sv.items[svSel]; if(!it) return;
+  const host=$('#svEd');
+  host.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{ const [w,h]=b.dataset.size.split('x').map(Number); it.w=w; it.h=h; svCommit(p); renderSaverEditor(); });
+  host.querySelectorAll('[data-align]').forEach(b=>b.onclick=()=>{ it.align=b.dataset.align; svCommit(p); renderSaverEditor(); });
+  host.querySelectorAll('[data-date]').forEach(b=>b.onclick=()=>{ it.date=b.dataset.date; svCommit(p); renderSaverEditor(); });
+  const del=$('#svDel'); if(del) del.onclick=()=>{ sv.items.splice(svSel,1); svSel=-1; svCommit(p); renderSaverEditor(); };
+  const ic=$('#svIc'); if(ic) ic.onchange=()=>{ it.uuid=ic.value; svCommit(p); renderSaverEditor(); };
+  const sel=$('#svCtl'), q=$('#svCtlSearch');
+  if(sel){
+    const fill=()=>{ const t=(q.value||'').toLowerCase();
+      const list=(META.controls||[]).filter(c=>c.type!=='Intercom' && ((c.name||'').toLowerCase().includes(t)||(c.roomName||'').toLowerCase().includes(t)))
+        .sort((a,b)=>(a.roomName||'').localeCompare(b.roomName||'')||(a.name||'').localeCompare(b.name||'')).slice(0,300);
+      sel.innerHTML=list.map(c=>'<option value="'+esc(c.uuid)+'"'+(c.uuid===it.uuid?' selected':'')+'>'+esc(c.name)+(c.roomName?' · '+esc(c.roomName):'')+'</option>').join(''); };
+    fill(); q.oninput=fill;
+    sel.onchange=()=>{ it.uuid=sel.value; svCommit(p);
+      const w=$('#svEd').querySelector('.ew[data-i="'+svSel+'"] .nm'); if(w) w.textContent=svName(it.uuid); };
+  }
+}
+// Ziehen & Ablegen per Pointer-Events (Maus + Touch): neue Widgets aus der
+// Leiste, vorhandene verschieben, an der Ecke Groesse aendern.
+function svBindDrag(p){
+  const sv=svCfg(p), cols=svCols(p), grid=$('#svGridEd'); if(!grid) return;
+  const cellAt=(cx,cy)=>{ const r=grid.getBoundingClientRect(), st=getComputedStyle(grid);
+    const cell=parseFloat(st.getPropertyValue('--cell'))||72, gap=6;
+    return {x:Math.floor((cx-r.left-gap)/(cell+gap)), y:Math.floor((cy-r.top-gap)/(cell+gap)), inside:cx>=r.left&&cx<=r.right&&cy>=r.top&&cy<=r.bottom}; };
+  let ghost=null;
+  const showGhost=(x,y,w,h,ok)=>{ if(!ghost){ ghost=document.createElement('div'); ghost.className='ghost'; grid.appendChild(ghost); }
+    ghost.style.gridColumn=(x+1)+' / span '+w; ghost.style.gridRow=(y+1)+' / span '+h; ghost.classList.toggle('bad',!ok); ghost.hidden=false; };
+  const hideGhost=()=>{ if(ghost) ghost.hidden=true; };
+  const start=(ev,d)=>{ ev.preventDefault(); svDrag=d; d.sx=ev.clientX; d.sy=ev.clientY; d.moved=false;
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up,{once:true}); };
+  const target=(ev,d)=>{ const c=cellAt(ev.clientX,ev.clientY);
+    if(d.kind==='resize'){ const it=sv.items[d.i];
+      const ww=Math.max(1,c.x-it.x+1), hh=Math.max(1,c.y-it.y+1);
+      // naechste erlaubte Groesse, die frei ist
+      const opts=SV_W[it.type].sizes.filter(([w,h])=>svFree(sv.items,it.x,it.y,w,h,d.i,cols))
+        .sort((a,b)=>(Math.abs(a[0]-ww)+Math.abs(a[1]-hh))-(Math.abs(b[0]-ww)+Math.abs(b[1]-hh)));
+      return opts.length?{x:it.x,y:it.y,w:opts[0][0],h:opts[0][1],ok:true}:null; }
+    if(!c.inside) return null;
+    const w=d.w, h=d.h, x=Math.min(Math.max(0,c.x-(d.ox||0)),cols-w), y=Math.min(Math.max(0,c.y-(d.oy||0)),3-h);
+    return {x,y,w,h,ok:svFree(sv.items,x,y,w,h,d.kind==='move'?d.i:-1,cols)}; };
+  const move=(ev)=>{ const d=svDrag; if(!d) return;
+    if(!d.moved && Math.hypot(ev.clientX-d.sx,ev.clientY-d.sy)<6) return;
+    d.moved=true;
+    if(d.chip){ d.chip.style.left=ev.clientX+'px'; d.chip.style.top=ev.clientY+'px'; }
+    const t=target(ev,d); if(t) showGhost(t.x,t.y,t.w,t.h,t.ok); else hideGhost(); };
+  const up=(ev)=>{ window.removeEventListener('pointermove',move); const d=svDrag; svDrag=null; hideGhost();
+    if(d&&d.chip) d.chip.remove();
+    if(!d) return;
+    if(!d.moved){ if(d.kind==='move'||d.kind==='resize'){ svSel=d.i; renderSaverEditor(); } return; }
+    const t=target(ev,d); if(!t||!t.ok) return;
+    if(d.kind==='new'){ const it={type:d.type,x:t.x,y:t.y,w:t.w,h:t.h};
+      if(d.type==='clock'){ it.align='center'; it.date='short'; }
+      sv.items.push(it); svSel=sv.items.length-1; }
+    else { const it=sv.items[d.i]; it.x=t.x; it.y=t.y; it.w=t.w; it.h=t.h; svSel=d.i; }
+    svCommit(p); renderSaverEditor(); };
+  $('#svEd').querySelectorAll('.chipw').forEach(ch=>ch.addEventListener('pointerdown',ev=>{
+    const type=ch.dataset.new, [w,h]=SV_W[type].def;
+    const chip=ch.cloneNode(true); chip.classList.add('dragchip'); chip.style.left=ev.clientX+'px'; chip.style.top=ev.clientY+'px';
+    $('#svEd').querySelector('.sved').appendChild(chip);
+    start(ev,{kind:'new',type,w,h,chip}); }));
+  grid.querySelectorAll('.ew').forEach(el=>el.addEventListener('pointerdown',ev=>{
+    const i=+el.dataset.i, it=sv.items[i];
+    if(ev.target.closest('[data-rs]')){ start(ev,{kind:'resize',i}); return; }
+    const c=cellAt(ev.clientX,ev.clientY);
+    start(ev,{kind:'move',i,w:it.w,h:it.h,ox:c.x-it.x,oy:c.y-it.y}); }));
+}
 function sizeField(label,key,ui){
   const v=(ui||{})[key];
   return '<div class="field"><label class="lbl">'+label+'</label>'+
@@ -1804,6 +2011,9 @@ async function loadSettings(){
         '<div class="field"><label class="lbl">'+T('Video-URL (MJPEG)')+'</label><input type="text" class="ic_url" value="'+esc(ic.url)+'" placeholder="http://192.168.1.201/cgi-bin/faststream.jpg?stream=full&fps=8"></div>'+
         '<div class="row2"><div class="field"><label class="lbl">'+T('Benutzer')+'</label><input type="text" class="ic_user" value="'+esc(ic.user)+'" autocomplete="off"></div>'+
         '<div class="field"><label class="lbl">'+T('Passwort')+'</label><input type="password" class="ic_pass" autocomplete="new-password" placeholder="'+(ic.hasPass?T('unverändert lassen'):'')+'"></div></div>'+
+        '<div class="field" style="margin-top:8px"><label class="lbl">'+T('Verbindung zur Kamera automatisch neu aufbauen')+'</label>'+
+          '<select class="ic_reconnect">'+[[0,T('aus')],[6,T('alle 6 Stunden')],[12,T('alle 12 Stunden')],[24,T('alle 24 Stunden')]]
+            .map(o=>'<option value="'+o[0]+'"'+((ic.reconnect||0)===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
         '<label class="chk" style="margin-top:8px"><input type="checkbox" class="ic_sound"'+(ic.sound?' checked':'')+'>'+
           '<span>'+T('Ton bei Klingeln (Panel piept, solange es klingelt)')+'</span></label>'+
         '<div class="row2" style="margin-top:8px;align-items:flex-end">'+
@@ -1944,7 +2154,8 @@ $('#ic_save').onclick=async()=>{
   const intercoms={};
   document.querySelectorAll('.ic[data-uuid]').forEach(n=>{
     const e={url:n.querySelector('.ic_url').value.trim(),user:n.querySelector('.ic_user').value.trim(),
-             sound:n.querySelector('.ic_sound').checked};
+             sound:n.querySelector('.ic_sound').checked,
+             reconnect:+(n.querySelector('.ic_reconnect')||{}).value||0};
     const p=n.querySelector('.ic_pass').value; if(p)e.pass=p;
     intercoms[n.dataset.uuid]=e;
   });

@@ -14,6 +14,19 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **Screensaver frei gestalten (0.14.0)** — Config → Panel-Profil →
+  „Screensaver“: Uhr & Datum, Wetter, Kalender, Türstation und Loxone-Kacheln
+  per Ziehen & Ablegen im Raster anordnen (3×3 je 480er-Display, 6×3 auf
+  breiten Displays wie dem Shelly X2i), Größe an der Ecke ändern. Kacheln
+  bleiben im Screensaver bedienbar; Tür-Buttons lösen nur durch 1 s Halten
+  aus. Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
+  Belegung bleibt der klassische Screensaver.
+- **Kamera stabiler (0.14.0)** — Kamerabilder werden bei Rückkehr ans Panel
+  neu aufgebaut (friert nach langer Ruhe nicht mehr ein), bei Fehlern nach 8 s
+  erneut versucht; optional je Türstation automatischer Neuaufbau alle
+  6/12/24 h (Einstellungen → Kamera / Türstation).
+- **LoxBerry-Seite:** Panel-Profil als Freitext, darunter die übergebene URL.
+
 - **Android-Panel per Klick einrichten (optional, 0.13.11)** — LoxBerry-Pluginseite →
   „Android-Panel einrichten“: Gerät (Shelly Wall Display / anderes Android-Tablet
   als Testing) und Panel-IP wählen, der Container installiert per ADB den

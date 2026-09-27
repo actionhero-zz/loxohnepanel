@@ -73,7 +73,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.13.11-fav1"
+APP_VERSION = "0.14.0-fav1"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -224,6 +224,58 @@ _LOXLIB_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\.svg$")
 
 # Globale Darstellungs-Schluessel in theme.json "ui" - EINE Liste fuer
 # Speichern (_write_theme) und Ausliefern an den Editor (api_meta).
+# ---- Screensaver-Raster je Panel-Profil ----
+# Raster: 3 Spalten x 3 Zeilen je 480er-Display, 6x3 bei Split (z.B. Shelly
+# X2i). Widgets belegen ganze Zellen; erlaubt sind nur diese Groessen (w, h).
+SAVER_COLS, SAVER_ROWS = 6, 3
+SAVER_SIZES = {
+    "clock": ((1, 1), (2, 1), (3, 1), (2, 2)),
+    "weather": ((3, 1), (3, 2)),
+    "calendar": ((3, 1), (3, 2), (3, 3)),
+    "intercom": ((2, 2), (3, 3)),
+    "tile": ((1, 1), (2, 1)),
+}
+SAVER_EXITS = ("x", "up", "down", "left", "right")   # Schliessen: X-Button und Wischrichtungen
+
+
+def _sanitize_saver(sv) -> dict | None:
+    """Screensaver-Belegung eines Profils pruefen: {items:[...], exit:[...]}.
+    Ungueltige, zu grosse oder ueberlappende Widgets fallen weg. None = keine
+    eigene Belegung (das Panel zeigt dann den bisherigen Screensaver)."""
+    if not isinstance(sv, dict):
+        return None
+    taken: set = set()
+    items = []
+    for it in (sv.get("items") or [])[:SAVER_COLS * SAVER_ROWS]:
+        if not isinstance(it, dict) or it.get("type") not in SAVER_SIZES:
+            continue
+        try:
+            x, y, w, h = (int(it.get(k)) for k in ("x", "y", "w", "h"))
+        except (TypeError, ValueError):
+            continue
+        if (w, h) not in SAVER_SIZES[it["type"]] or x < 0 or y < 0 \
+                or x + w > SAVER_COLS or y + h > SAVER_ROWS:
+            continue
+        cells = {(cx, cy) for cx in range(x, x + w) for cy in range(y, y + h)}
+        if cells & taken:
+            continue
+        e = {"type": it["type"], "x": x, "y": y, "w": w, "h": h}
+        if it["type"] == "clock":
+            e["align"] = it.get("align") if it.get("align") in ("left", "center", "right") else "center"
+            e["date"] = it.get("date") if it.get("date") in ("none", "short", "long") else "short"
+        elif it["type"] in ("tile", "intercom"):
+            if not (isinstance(it.get("uuid"), str) and _UUID_RE.match(it["uuid"])):
+                continue
+            e["uuid"] = it["uuid"]
+        taken |= cells
+        items.append(e)
+    exits = [x for x in SAVER_EXITS if x in (sv.get("exit") or [])]
+    if not items:
+        return None
+    return {"items": items, "exit": exits}
+
+
+CAM_RECONNECT_HOURS = (6, 12, 24)   # waehlbare Intervalle fuer den Kamera-Neuaufbau
 _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 
 THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick",
@@ -1371,6 +1423,8 @@ class App:
             # Animationen an/aus - global (Settings) mit optionaler Pro-Panel-
             # Ueberschreibung (ui.motion in panels.json), wie split/fill.
             "motion": ("off" if ui.get("motion") == "off" else "normal"),
+            # Eigene Screensaver-Belegung (None = bisheriger Screensaver).
+            "saver": _sanitize_saver(prof.get("saver")),
         }
 
     def player_blocks(self, uuid: str):
@@ -1386,6 +1440,34 @@ class App:
             log.exception("player_blocks fehlgeschlagen (%s)", uuid)
             return None
         return [b for b in (v.get("blocks") or []) if b.get("k") != "more"]
+
+    def saver_data(self, prof: dict) -> dict | None:
+        """Live-Daten fuer die Screensaver-Belegung eines Profils: Kacheln der
+        belegten Bausteine (gleiche Daten wie im Raster) und die Tuerstationen
+        (Video + Tuer-Buttons). None, wenn das Profil keine eigene Belegung hat."""
+        sv = (prof or {}).get("saver")
+        if not sv:
+            return None
+        tiles, cams = {}, {}
+        for it in sv["items"]:
+            u = it.get("uuid")
+            if it["type"] == "tile" and u in self.controls:
+                tiles[u] = self._control_item(u, prof)
+            elif it["type"] == "intercom" and u in self.controls:
+                cams[u] = {"name": _clean(self.controls[u].get("name")),
+                           "blocks": self.intercom_blocks(u) or []}
+        return {"t": "saver", "tiles": tiles, "intercoms": cams}
+
+    def _cam_reconnect_h(self, uuid: str) -> int:
+        """Automatischer Neuaufbau des Kamera-Streams alle N Stunden (0 = aus),
+        je Intercom in den Settings gewaehlt. Das Panel laedt den Stream dann
+        komplett neu - der Server baut dabei auch die Verbindung zur Kamera neu auf."""
+        ent = self.intercom_cfg.get(uuid)
+        try:
+            h = int(ent.get("reconnect") or 0) if isinstance(ent, dict) else 0
+        except (TypeError, ValueError):
+            return 0
+        return h if h in CAM_RECONNECT_HOURS else 0
 
     def intercom_blocks(self, uuid: str):
         """Volle Intercom-Ansicht (Video + Tuer-/Ausgang-Buttons + Klingel-Banner)
@@ -1419,7 +1501,7 @@ class App:
         has_url = bool(ent.get("url") if isinstance(ent, dict) else ent)
         if not has_url:
             return None
-        return {"uuid": uuid, "name": _clean(c.get("name"))}
+        return {"uuid": uuid, "name": _clean(c.get("name")), "reconnectH": self._cam_reconnect_h(uuid)}
 
     def energy_blocks(self, uuid: str, max_cons: int = 6):
         """Energiefluss-Daten (Radial, Loxone-Standard) einer EFM/EnergyManager2-
@@ -1875,6 +1957,7 @@ class App:
             "tileOrder": {str(k): [u for u in v if isinstance(u, str) and u in self.controls]
                           for k, v in (raw.get("tileOrder") or {}).items()
                           if isinstance(k, str) and isinstance(v, list)},
+            "saver": _sanitize_saver(raw.get("saver")),
         }
 
     def _loxone_icons(self) -> list:
@@ -1943,6 +2026,9 @@ class App:
                         to[k] = lst[:300]
                 if to:
                     e["tileOrder"] = to
+            sv = _sanitize_saver(p.get("saver"))
+            if sv:
+                e["saver"] = sv            # eigene Screensaver-Belegung
             ui = p.get("ui") or {}
             # Groessen genauso klemmen wie der globale Pfad (_sanitize_theme_ui)
             # und wie die Nachbarfelder unten - sonst nimmt der Panel-Override
@@ -3652,7 +3738,8 @@ class App:
             blocks = []
             if self._state(c, "bell"):
                 blocks.append({"k": "astat", "text": "Es klingelt", "tone": "crit"})
-            blocks += [{"k": "video", "src": f"/mjpeg?id={quote(uuid)}"}] if has_url else \
+            blocks += [{"k": "video", "src": f"/mjpeg?id={quote(uuid)}",
+                        "reconnectH": self._cam_reconnect_h(uuid)}] if has_url else \
                       [{"k": "status", "text": "Kein Video konfiguriert (loxpanel.cfg → intercom)"}]
             if cells:
                 blocks.append({"k": "row", "cells": cells})
@@ -4640,6 +4727,11 @@ class App:
                         camera_msg = {"t": "camera", "blocks": ib} if ib is not None else None
                     except Exception:
                         log.exception("intercom_blocks fehlgeschlagen (%s)", _cuid)
+                saver_msg = None
+                try:
+                    saver_msg = self.saver_data(self.conn_prof.get(ws) or {})
+                except Exception:
+                    log.exception("saver_data fehlgeschlagen")
                 # Nur senden, was sich seit der letzten Zustellung an DIESE
                 # Verbindung geaendert hat. Der Tick laeuft, sobald sich
                 # irgendein Wert im Haus bewegt — meist betrifft das die
@@ -4658,6 +4750,10 @@ class App:
                     if not await self._send_or_drop(ws, energy_msg):
                         continue
                     last["energy"] = energy_msg
+                if saver_msg is not None and saver_msg != last.get("saver"):
+                    if not await self._send_or_drop(ws, saver_msg):
+                        continue
+                    last["saver"] = saver_msg
                 if camera_msg is not None and camera_msg != last.get("camera"):
                     if await self._send_or_drop(ws, camera_msg):
                         last["camera"] = camera_msg
@@ -4925,6 +5021,7 @@ async def api_settings(request: web.Request) -> web.Response:
                 # bestehende Installationen sollen nach dem Update nicht
                 # ploetzlich unaufgefordert piepen.
                 "sound": bool(e.get("sound")),
+                "reconnect": app._cam_reconnect_h(uuid),
                 # Eigener hochgeladener Klingelton (MP3/OGG/WAV/M4A/AAC) statt
                 # des generischen Weckertons - nur der Vorhanden-Status, die
                 # Datei selbst liefert /api/sound?id=<uuid>.
@@ -5117,6 +5214,11 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
         if e.get("pass"):
             cur["pass"] = str(e["pass"])
         cur["sound"] = bool(e.get("sound"))   # Ton bei Klingeln (generischer Wecker-Ton)
+        try:
+            rc = int(e.get("reconnect") or 0)
+        except (TypeError, ValueError):
+            rc = 0
+        cur["reconnect"] = rc if rc in CAM_RECONNECT_HOURS else 0   # Stream-Neuaufbau alle N h
         if cur.get("url"):
             ic[uuid] = cur
         else:
@@ -5902,6 +6004,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "night": {**app.panel_night(prof["id"]), "on": app._night_on},
                             "screensaverCam": app._screensaver_cam(),
                             "motion": prof["motion"],
+                            "saver": prof.get("saver"),
                             "agent": app._has_agent(dev)})
         _first = app.render(app.conn_route[ws], prof)
         await ws.send_json(_first)
@@ -5911,6 +6014,10 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
         # Kalender/Wetter fuer die Uhr-Startseite sofort mitschicken (falls schon geladen)
         if app._front is not None:
             await ws.send_json(app._front)
+        _sv = app.saver_data(prof)
+        if _sv is not None:
+            await ws.send_json(_sv)
+            app._last_sent.setdefault(ws, {})["saver"] = _sv
         async for msg in ws:
             if msg.type != WSMsgType.TEXT:
                 continue

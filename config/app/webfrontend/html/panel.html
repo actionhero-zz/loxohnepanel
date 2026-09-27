@@ -554,6 +554,60 @@
   .saver.split .sv-wrap.rich .sv-cal,.saver.split .sv-wrap.rich .sv-cam{grid-area:cal;}
   .saver.split .sv-wrap.rich .sv-time{font-size:60px;}
   .saver.split .sv-wrap.rich .sv-date{font-size:18px;}
+  /* ---- Screensaver-Raster (eigene Belegung je Profil) ----
+     3x3 Zellen je 480er-Display (160 px), 6x3 bei Split. Der Inhalt driftet
+     nur um wenige Pixel (Einbrennschutz), damit das Raster ruhig wirkt. */
+  .saver .sv-grid{display:none;}
+  .saver.layout .sv-wrap{display:none;}
+  /* Raster ueber den ganzen Bildschirm (nicht nur den Visu-Container) und
+     Wischgesten selbst auswerten (kein Scrollen/Zoomen des Browsers). */
+  .saver.layout{position:fixed;touch-action:none;}
+  .saver.layout .sv-grid{display:grid;position:absolute;inset:0;padding:8px;gap:8px;
+    grid-template-columns:repeat(var(--svc,3),minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr));
+    animation:svgriddrift 120s linear infinite;}
+  @keyframes svgriddrift{0%,100%{transform:translate(-3px,-2px);}25%{transform:translate(3px,-2px);}
+    50%{transform:translate(3px,2px);}75%{transform:translate(-3px,2px);}}
+  .svw{min-width:0;min-height:0;position:relative;display:flex;}
+  .svw>*{flex:1;min-width:0;}
+  .svw .tile{height:100%;padding:12px;--ico-size:30px;--name-size:14px;--sub-size:12.5px;--room-size:10px;animation:none;}
+  .svw-empty{display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);
+    font-size:13px;background:var(--tile);border:1px dashed var(--line);border-radius:var(--r-tile,16px);padding:8px;}
+  /* Uhr: Groesse folgt der Zellbelegung */
+  .svw-clock{display:flex;flex-direction:column;justify-content:center;gap:6px;color:var(--ink);}
+  .svw-clock.al-left{align-items:flex-start;padding-left:10px;} .svw-clock.al-center{align-items:center;}
+  .svw-clock.al-right{align-items:flex-end;padding-right:10px;}
+  .svw-clock .t{font-weight:300;line-height:1;letter-spacing:1px;font-variant-numeric:tabular-nums;font-size:46px;}
+  .svw-clock .d{color:var(--muted);font-size:13px;text-transform:capitalize;}
+  .svw[data-sz="2x1"] .svw-clock .t{font-size:84px;} .svw[data-sz="2x1"] .svw-clock .d{font-size:16px;}
+  .svw[data-sz="3x1"] .svw-clock .t{font-size:100px;} .svw[data-sz="3x1"] .svw-clock .d{font-size:18px;}
+  .svw[data-sz="2x2"] .svw-clock .t{font-size:124px;} .svw[data-sz="2x2"] .svw-clock .d{font-size:20px;}
+  /* Wetter/Kalender: gleiche Bausteine wie der klassische Screensaver, in einer Karte */
+  .svw .svw-wx,.svw .svw-cal{background:var(--tile);border:1px solid var(--line);border-radius:var(--r-tile,16px);
+    padding:12px;gap:10px;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;}
+  .svw .svw-wx .now .ico{width:40px;height:40px;} .svw .svw-wx .now .t{font-size:32px;}
+  .svw .svw-wx .now .cond{font-size:14px;} .svw .svw-wx .now .hl{font-size:12px;}
+  .svw .svw-wx .fore{gap:6px;} .svw .svw-wx .fc{padding:5px 2px;gap:2px;border-radius:10px;}
+  .svw .svw-wx .fc .d{font-size:10px;} .svw .svw-wx .fc .ico{width:20px;height:20px;} .svw .svw-wx .fc .tt{font-size:12px;}
+  .svw .svw-curve svg{width:100%;height:auto;max-height:150px;display:block;}
+  .svw .svw-cal{justify-content:flex-start;gap:6px;}
+  .svw .svw-cal .sv-ev{padding:7px 12px;gap:10px;border-radius:12px;}
+  .svw .svw-cal .sv-ev .when .tm{font-size:14px;} .svw .svw-cal .sv-ev .ttl{font-size:13px;}
+  /* Tuerstation: Livebild fuellt die Zellen, Buttons darueber (nur Halten loest aus) */
+  .svw-cam{position:relative;border-radius:var(--r-tile,16px);overflow:hidden;background:#111;border:1px solid var(--line);}
+  .svw-cam img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  .svw-cam .cap{position:absolute;left:10px;top:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    background:rgba(0,0,0,.45);color:#fff;padding:4px 9px;border-radius:8px;}
+  .svw-cam .doors{position:absolute;left:10px;right:10px;bottom:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .svw-cam .door{position:relative;overflow:hidden;background:rgba(0,0,0,.55);color:#fff;border-radius:12px;
+    padding:10px 14px;font-size:14px;font-weight:600;touch-action:none;}
+  .svw-cam .door i{position:absolute;inset:0;background:var(--accent);opacity:.55;transform:scaleX(0);transform-origin:left;}
+  .svw-cam .door.hold i{transform:scaleX(1);transition:transform 1s linear;}
+  .svw-cam .door.flash{background:var(--good);}
+  /* X zum Schliessen (optional je Profil) */
+  .sv-close{position:absolute;right:12px;top:12px;z-index:2;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(0,0,0,.35);color:var(--muted);font-size:0;cursor:pointer;}
+  .sv-close::before,.sv-close::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:2px;background:currentColor;border-radius:1px;}
+  .sv-close::before{transform:translate(-50%,-50%) rotate(45deg);} .sv-close::after{transform:translate(-50%,-50%) rotate(-45deg);}
   /* Wetter oben: aktuelle Lage + Vorschau-Streifen (je Tag Icon + Max/Min). */
   .saver .sv-wx{display:flex;flex-direction:column;gap:10px;align-self:stretch;}
   .sv-wx .now{display:flex;align-items:center;gap:12px;}
@@ -750,6 +804,8 @@
   <div class="scrollind" id="scrollInd"><div class="thumb"></div></div>
   <div class="tabs" id="tabs"></div>
   <div class="saver hidden" id="saver">
+    <div class="sv-grid" id="svGrid"></div>
+    <button class="sv-close" id="svClose" type="button" aria-label="Schließen" hidden></button>
     <div class="sv-wrap">
       <div class="sv-wx" id="svWx" hidden></div>
       <div class="sv-clock">
@@ -1151,7 +1207,7 @@ function renderPanel(blocks){
     const cc=(view&&view.catColor)||''; hc.style.color=cc; hc.style.borderColor=cc; }
   const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img){img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
   const vid=blocks.find(b=>b.k==='video'); const vimg=g.querySelector('.video img');
-  if(vid&&vimg){ vimg.src=vid.src; }   // MJPEG-Stream: einmal laden, läuft live
+  if(vid&&vimg) camStream(vimg, vid.src, vid.reconnectH||0);   // MJPEG live, mit Neuaufbau (siehe camStream)
   const sb=blocks.find(b=>b.k==='slider'); const sld=g.querySelector('.sld');
   if(sb&&sld){ sld._uuid=sb.cmd.uuid; sld._tmpl=sb.cmd.tmpl; sldFill(sld);
     sld.addEventListener('input',()=>{ sldDragging=true; sldFill(sld); const sv=g.querySelector('.sval'); if(sv)sv.textContent=sld.value; });
@@ -1446,6 +1502,139 @@ function updateGrid(items){
 // Wall Display), kurz genug, dass der einfache Tipp nicht haengt.
 const DBL_TAP_MS=350;
 let _dblTap=null;   // {id,timer} - wartender erster Tipp auf eine Lichtkachel
+// Eine Kachel als HTML - gemeinsam fuer das Raster und den Screensaver.
+// extraCls: zusaetzliche Klassen (z.B. ' snap' fuers Seiten-Snapping).
+function tileHtml(it, extraCls){
+  const icoHtml = (typeof it.blind === 'number')
+    ? blindIcon(it.blind, it.blindShape)
+    : (typeof it.winpos === 'number')
+    ? windowIcon(it.winpos)
+    : it.iconImg
+    ? '<span class="ico"><img class="rawico" src="'+esc(it.iconImg)+'" alt=""></span>'
+    : it.iconUrl
+    ? '<span class="ico img" style="--u:url(\''+esc(it.iconUrl)+'\')"></span>'
+    : '<span class="ico">'+svg(ICONS[it.icon]||ICONS.info)+'</span>';
+  const icoCell = icoHtml;
+  // Einzelner Ein/Aus-Schnellschalter (Switch/TimedSwitch): eigener Schieber
+  // oben rechts, an der Stelle des Pfeils (ersetzt ihn) - wie im Original-
+  // Loxone-Plugin. Mehrere Bedienelemente (z.B. Player-Transport: zurueck/
+  // Play/weiter) bleiben als Reihe unten (tctrls), dafuer ist oben kein Platz.
+  const chev = (it.nav && !it.controls && !it.toggle && !it.tap && !it.updown && !it.prevnext)
+    ? '<span class="chev">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span>' : '';
+  const togg = it.toggle
+    ? '<span class="tswitch'+(it.toggle.on?' on':'')+'" data-tog="1"><span class="knob"></span></span>' : '';
+  // Runder Taster-Button (Pushbutton): wie togg oben rechts platziert, aber
+  // OHNE Ein/Aus-Zustand - ein Taster hat keinen dauerhaften Zustand, nur
+  // einen kurzen Impuls beim Antippen.
+  const tapb = it.tap
+    ? '<span class="tapbtn" data-tap="1">'+svg('<circle cx="12" cy="12" r="7"/>')+'</span>' : '';
+  // Auf/Ab-Mini-Buttons (Jalousie) oben rechts, wie in der Loxone-App -
+  // bewusst per CLICK statt pointerdown gebunden (siehe Bindung unten),
+  // damit ein Scroll-Wisch, der zufaellig hier beginnt, nicht die
+  // Beschattung losfahren laesst (anders als .tctrls/.tb).
+  const updown = it.updown
+    ? '<span class="updown" data-updown="1"><span class="ub" data-dir="up">'+svg(ICONS.up)+'</span><span class="ub" data-dir="down">'+svg(ICONS.down)+'</span></span>' : '';
+  // Horizontale </>-Mini-Buttons (Lichtszenen durchschalten) - gleiches
+  // Prinzip/Design wie updown, nur nebeneinander statt uebereinander, auch
+  // per CLICK gebunden (kein Scroll-Wisch-Konflikt).
+  const prevnext = it.prevnext
+    ? '<span class="prevnext" data-prevnext="1"><span class="ub" data-dir="prev">'+svg('<path d="m15 6-6 6 6 6"/>')+'</span><span class="ub" data-dir="next">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span></span>' : '';
+  const ctrls = it.controls ? '<div class="tctrls">'+it.controls.map((c,i)=>'<span class="tb" data-c="'+i+'">'+svgF(ICONS[c.icon]||ICONS.info)+'</span>').join('')+'</div>' : '';
+  const tone = tileTone(it);
+  const ts=it.style||{};
+  const stStr = tileVarStyle(it);
+  const st = stStr?' style="'+esc(stStr)+'"':'';
+  const nsv=[];
+  if(ts.txt) nsv.push('color:'+ts.txt);
+  if(ts.font) nsv.push('font-family:'+ts.font);
+  if(ts.weight) nsv.push('font-weight:'+ts.weight);
+  if(ts.italic) nsv.push('font-style:italic');
+  const nst = nsv.length?' style="'+esc(nsv.join(';'))+'"':'';
+  return '<div class="tile'+tone+(extraCls||'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
+          '<div class="head">'+icoCell+chev+togg+tapb+updown+prevnext+'</div>'+
+          '<div class="body">'+
+          (it.room?'<div class="room">'+esc(it.room)+'</div>':'')+
+          '<div class="name"'+nst+'>'+esc(it.label)+'</div>'+
+          (it.sublabel?'<div class="sub">'+esc(it.sublabel)+'</div>':'')+'</div>'+
+          ctrls+
+        '</div>';
+}
+// Bedienung einer Kachel binden - gemeinsam fuer Raster und Screensaver.
+function bindTile(n, it){
+  if(!it) return;
+  n._it = it;   // aktuelle Daten am Knoten -> updateGrid kann sie in-place ersetzen
+  if(it.controls){
+    n.querySelectorAll('.tctrls .tb').forEach(b=>{
+      b._cmd = it.controls[+b.dataset.c].cmd; b._secured = it.secured;
+      b.addEventListener('pointerdown', ev=>{ ev.preventDefault();
+        if(justLeftSaver()) return;
+        if(b._cmd) sendCmd(b._cmd.uuid,b._cmd.cmd,b._secured); });
+    });
+  }
+  if(it.toggle){
+    const sw=n.querySelector('.tswitch');
+    if(sw) sw.addEventListener('pointerdown', ev=>{ ev.preventDefault();
+      if(justLeftSaver()) return;
+      const t=n._it||it; if(t.toggle&&t.toggle.cmd) sendCmd(t.toggle.cmd.uuid,t.toggle.cmd.cmd,t.secured); });
+  }
+  if(it.tap){
+    const tb=n.querySelector('.tapbtn');
+    if(tb) tb.addEventListener('pointerdown', ev=>{ ev.preventDefault();
+      if(justLeftSaver()) return;
+      const t=n._it||it; if(t.tap&&t.tap.cmd) sendCmd(t.tap.cmd.uuid,t.tap.cmd.cmd,t.secured);
+      // 0,8s gruenes Nachleuchten als Bestaetigung, nicht nur :active
+      // waehrend des Drauftippens selbst (das ist schon vorbei, sobald der
+      // Finger wieder loslaesst).
+      tb.classList.add('flash');
+      clearTimeout(tb._flashT);
+      tb._flashT=setTimeout(()=>tb.classList.remove('flash'), 800); });
+  }
+  if(it.updown){
+    // Bewusst 'click' statt 'pointerdown': feuert nur, wenn kein Scroll/
+    // Wisch dazwischenkam (siehe Kommentar bei der updown-Konstruktion oben).
+    n.querySelectorAll('.updown .ub').forEach(ub=>{
+      ub.addEventListener('click', ev=>{ ev.stopPropagation();
+        if(justLeftSaver()) return;
+        const t=n._it||it; const cmd=t.updown&&t.updown[ub.dataset.dir]&&t.updown[ub.dataset.dir].cmd;
+        if(cmd) sendCmd(cmd.uuid,cmd.cmd,t.secured);
+        // gleiches Farbfeedback wie beim Taster-Button (0,8s gruenes Nachleuchten)
+        ub.classList.add('flash');
+        clearTimeout(ub._flashT);
+        ub._flashT=setTimeout(()=>ub.classList.remove('flash'), 800); });
+    });
+  }
+  if(it.prevnext){
+    // Gleiches Prinzip wie updown (click statt pointerdown, gleiches
+    // Farbfeedback) - nur die Datenquelle ist t.prevnext statt t.updown.
+    n.querySelectorAll('.prevnext .ub').forEach(ub=>{
+      ub.addEventListener('click', ev=>{ ev.stopPropagation();
+        if(justLeftSaver()) return;
+        const t=n._it||it; const cmd=t.prevnext&&t.prevnext[ub.dataset.dir]&&t.prevnext[ub.dataset.dir].cmd;
+        if(cmd) sendCmd(cmd.uuid,cmd.cmd,t.secured);
+        ub.classList.add('flash');
+        clearTimeout(ub._flashT);
+        ub._flashT=setTimeout(()=>ub.classList.remove('flash'), 800); });
+    });
+  }
+  n.onclick=(e)=>{ if(justLeftSaver()) return;
+    if(e.target.closest('.tctrls')||e.target.closest('.tswitch')||e.target.closest('.tapbtn')||e.target.closest('.updown')||e.target.closest('.prevnext')) return; const t=n._it||it;
+    const act=()=>{ const u=n._it||t;
+      if(u.nav){ if(n.closest('#saver')) hideSaver(); nav(u.nav); } else if(u.cmd) sendCmd(u.cmd.uuid,u.cmd.cmd,(view&&view.secured)||u.secured); };
+    // Doppeltipp = Licht aus (nur wenn der Server dblOff mitliefert: Licht
+    // an + Option aktiv). Eigene Erkennung ueber zwei 'click' statt
+    // 'dblclick', das Android-WebViews (Shelly Wall Display) und iOS bei
+    // Touch nicht zuverlaessig liefern. Nur diese Kacheln warten kurz auf
+    // den zweiten Tipp, alle anderen reagieren weiter sofort.
+    if(!t.dblOff){ act(); return; }
+    if(_dblTap && _dblTap.id===n.dataset.id){
+      clearTimeout(_dblTap.timer); _dblTap=null;
+      sendCmd(t.dblOff.cmd.uuid,t.dblOff.cmd.cmd,t.secured);
+      n.classList.add('dblflash'); setTimeout(()=>n.classList.remove('dblflash'), 350);
+      return;
+    }
+    if(_dblTap) clearTimeout(_dblTap.timer);
+    _dblTap={id:n.dataset.id, timer:setTimeout(()=>{ _dblTap=null; act(); }, DBL_TAP_MS)}; };
+}
 function render(){
   if(!view) return;
   // "Screen fuellen" (kein Widget in Pane 2): die KACHELZAHL wird nach rechts
@@ -1472,142 +1661,11 @@ function render(){
   const items = view.items || [];
   const g = el('grid');
   if(!items.length){ g.innerHTML='<div class="empty">nichts hier</div>'; renderTabs(); return; }
-  let html='';
-  let _i=-1;
-  for(const it of items){
-    _i++;
-    const icoHtml = (typeof it.blind === 'number')
-      ? blindIcon(it.blind, it.blindShape)
-      : (typeof it.winpos === 'number')
-      ? windowIcon(it.winpos)
-      : it.iconImg
-      ? '<span class="ico"><img class="rawico" src="'+esc(it.iconImg)+'" alt=""></span>'
-      : it.iconUrl
-      ? '<span class="ico img" style="--u:url(\''+esc(it.iconUrl)+'\')"></span>'
-      : '<span class="ico">'+svg(ICONS[it.icon]||ICONS.info)+'</span>';
-    const icoCell = icoHtml;
-    // Einzelner Ein/Aus-Schnellschalter (Switch/TimedSwitch): eigener Schieber
-    // oben rechts, an der Stelle des Pfeils (ersetzt ihn) - wie im Original-
-    // Loxone-Plugin. Mehrere Bedienelemente (z.B. Player-Transport: zurueck/
-    // Play/weiter) bleiben als Reihe unten (tctrls), dafuer ist oben kein Platz.
-    const chev = (it.nav && !it.controls && !it.toggle && !it.tap && !it.updown && !it.prevnext)
-      ? '<span class="chev">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span>' : '';
-    const togg = it.toggle
-      ? '<span class="tswitch'+(it.toggle.on?' on':'')+'" data-tog="1"><span class="knob"></span></span>' : '';
-    // Runder Taster-Button (Pushbutton): wie togg oben rechts platziert, aber
-    // OHNE Ein/Aus-Zustand - ein Taster hat keinen dauerhaften Zustand, nur
-    // einen kurzen Impuls beim Antippen.
-    const tapb = it.tap
-      ? '<span class="tapbtn" data-tap="1">'+svg('<circle cx="12" cy="12" r="7"/>')+'</span>' : '';
-    // Auf/Ab-Mini-Buttons (Jalousie) oben rechts, wie in der Loxone-App -
-    // bewusst per CLICK statt pointerdown gebunden (siehe Bindung unten),
-    // damit ein Scroll-Wisch, der zufaellig hier beginnt, nicht die
-    // Beschattung losfahren laesst (anders als .tctrls/.tb).
-    const updown = it.updown
-      ? '<span class="updown" data-updown="1"><span class="ub" data-dir="up">'+svg(ICONS.up)+'</span><span class="ub" data-dir="down">'+svg(ICONS.down)+'</span></span>' : '';
-    // Horizontale </>-Mini-Buttons (Lichtszenen durchschalten) - gleiches
-    // Prinzip/Design wie updown, nur nebeneinander statt uebereinander, auch
-    // per CLICK gebunden (kein Scroll-Wisch-Konflikt).
-    const prevnext = it.prevnext
-      ? '<span class="prevnext" data-prevnext="1"><span class="ub" data-dir="prev">'+svg('<path d="m15 6-6 6 6 6"/>')+'</span><span class="ub" data-dir="next">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span></span>' : '';
-    const ctrls = it.controls ? '<div class="tctrls">'+it.controls.map((c,i)=>'<span class="tb" data-c="'+i+'">'+svgF(ICONS[c.icon]||ICONS.info)+'</span>').join('')+'</div>' : '';
-    const tone = tileTone(it);
-    const ts=it.style||{};
-    const stStr = tileVarStyle(it);
-    const st = stStr?' style="'+esc(stStr)+'"':'';
-    const nsv=[];
-    if(ts.txt) nsv.push('color:'+ts.txt);
-    if(ts.font) nsv.push('font-family:'+ts.font);
-    if(ts.weight) nsv.push('font-weight:'+ts.weight);
-    if(ts.italic) nsv.push('font-style:italic');
-    const nst = nsv.length?' style="'+esc(nsv.join(';'))+'"':'';
-    const _pg = (view.layout==='list'?4:gridCols*gridRows);   // Snap-Seite: Liste 4 Zeilen, sonst cols x rows
-    html += '<div class="tile'+tone+(_i%_pg===0?' snap':'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
-              '<div class="head">'+icoCell+chev+togg+tapb+updown+prevnext+'</div>'+
-              '<div class="body">'+
-              (it.room?'<div class="room">'+esc(it.room)+'</div>':'')+
-              '<div class="name"'+nst+'>'+esc(it.label)+'</div>'+
-              (it.sublabel?'<div class="sub">'+esc(it.sublabel)+'</div>':'')+'</div>'+
-              ctrls+
-            '</div>';
-  }
+  const _pg = (view.layout==='list'?4:gridCols*gridRows);   // Snap-Seite: Liste 4 Zeilen, sonst cols x rows
+  const html = items.map((it,i)=>tileHtml(it, i%_pg===0?' snap':'')).join('');
   g.innerHTML = html;
   g.classList.toggle('snapy', items.length > (view.layout==='list'?4:gridCols*gridRows));   // Snapping erst ab >1 Seite
-  g.querySelectorAll('.tile[data-id]').forEach(n=>{
-    const it = items.find(x=>String(x.id)===n.dataset.id);
-    n._it = it;   // aktuelle Daten am Knoten -> updateGrid kann sie in-place ersetzen
-    if(it.controls){
-      n.querySelectorAll('.tctrls .tb').forEach(b=>{
-        b._cmd = it.controls[+b.dataset.c].cmd; b._secured = it.secured;
-        b.addEventListener('pointerdown', ev=>{ ev.preventDefault();
-          if(justLeftSaver()) return;
-          if(b._cmd) sendCmd(b._cmd.uuid,b._cmd.cmd,b._secured); });
-      });
-    }
-    if(it.toggle){
-      const sw=n.querySelector('.tswitch');
-      if(sw) sw.addEventListener('pointerdown', ev=>{ ev.preventDefault();
-        if(justLeftSaver()) return;
-        const t=n._it||it; if(t.toggle&&t.toggle.cmd) sendCmd(t.toggle.cmd.uuid,t.toggle.cmd.cmd,t.secured); });
-    }
-    if(it.tap){
-      const tb=n.querySelector('.tapbtn');
-      if(tb) tb.addEventListener('pointerdown', ev=>{ ev.preventDefault();
-        if(justLeftSaver()) return;
-        const t=n._it||it; if(t.tap&&t.tap.cmd) sendCmd(t.tap.cmd.uuid,t.tap.cmd.cmd,t.secured);
-        // 0,8s gruenes Nachleuchten als Bestaetigung, nicht nur :active
-        // waehrend des Drauftippens selbst (das ist schon vorbei, sobald der
-        // Finger wieder loslaesst).
-        tb.classList.add('flash');
-        clearTimeout(tb._flashT);
-        tb._flashT=setTimeout(()=>tb.classList.remove('flash'), 800); });
-    }
-    if(it.updown){
-      // Bewusst 'click' statt 'pointerdown': feuert nur, wenn kein Scroll/
-      // Wisch dazwischenkam (siehe Kommentar bei der updown-Konstruktion oben).
-      n.querySelectorAll('.updown .ub').forEach(ub=>{
-        ub.addEventListener('click', ev=>{ ev.stopPropagation();
-          if(justLeftSaver()) return;
-          const t=n._it||it; const cmd=t.updown&&t.updown[ub.dataset.dir]&&t.updown[ub.dataset.dir].cmd;
-          if(cmd) sendCmd(cmd.uuid,cmd.cmd,t.secured);
-          // gleiches Farbfeedback wie beim Taster-Button (0,8s gruenes Nachleuchten)
-          ub.classList.add('flash');
-          clearTimeout(ub._flashT);
-          ub._flashT=setTimeout(()=>ub.classList.remove('flash'), 800); });
-      });
-    }
-    if(it.prevnext){
-      // Gleiches Prinzip wie updown (click statt pointerdown, gleiches
-      // Farbfeedback) - nur die Datenquelle ist t.prevnext statt t.updown.
-      n.querySelectorAll('.prevnext .ub').forEach(ub=>{
-        ub.addEventListener('click', ev=>{ ev.stopPropagation();
-          if(justLeftSaver()) return;
-          const t=n._it||it; const cmd=t.prevnext&&t.prevnext[ub.dataset.dir]&&t.prevnext[ub.dataset.dir].cmd;
-          if(cmd) sendCmd(cmd.uuid,cmd.cmd,t.secured);
-          ub.classList.add('flash');
-          clearTimeout(ub._flashT);
-          ub._flashT=setTimeout(()=>ub.classList.remove('flash'), 800); });
-      });
-    }
-    n.onclick=(e)=>{ if(justLeftSaver()) return;
-      if(e.target.closest('.tctrls')||e.target.closest('.tswitch')||e.target.closest('.tapbtn')||e.target.closest('.updown')||e.target.closest('.prevnext')) return; const t=n._it||it;
-      const act=()=>{ const u=n._it||t;
-        if(u.nav) nav(u.nav); else if(u.cmd) sendCmd(u.cmd.uuid,u.cmd.cmd,(view&&view.secured)||u.secured); };
-      // Doppeltipp = Licht aus (nur wenn der Server dblOff mitliefert: Licht
-      // an + Option aktiv). Eigene Erkennung ueber zwei 'click' statt
-      // 'dblclick', das Android-WebViews (Shelly Wall Display) und iOS bei
-      // Touch nicht zuverlaessig liefern. Nur diese Kacheln warten kurz auf
-      // den zweiten Tipp, alle anderen reagieren weiter sofort.
-      if(!t.dblOff){ act(); return; }
-      if(_dblTap && _dblTap.id===n.dataset.id){
-        clearTimeout(_dblTap.timer); _dblTap=null;
-        sendCmd(t.dblOff.cmd.uuid,t.dblOff.cmd.cmd,t.secured);
-        n.classList.add('dblflash'); setTimeout(()=>n.classList.remove('dblflash'), 350);
-        return;
-      }
-      if(_dblTap) clearTimeout(_dblTap.timer);
-      _dblTap={id:n.dataset.id, timer:setTimeout(()=>{ _dblTap=null; act(); }, DBL_TAP_MS)}; };
-  });
+  g.querySelectorAll('.tile[data-id]').forEach(n=>bindTile(n, items.find(x=>String(x.id)===n.dataset.id)));
   if(view.catTabs && view.catTabs.length) roomCatTabs = view.catTabs;   // fuer Detailansichten merken
   renderTabs();
   updateScrollInd();
@@ -1777,6 +1835,9 @@ function connect(){
       themeFill = !!msg.fill;
       themeSplit = (msg.split !== false);   // Default an; nur explizit aus (4"-Panel)
       if(msg.screensaverCam!==undefined){ screensaverCam=msg.screensaverCam||null; if(saverOn()) renderFront(); }
+      saverCfg = (msg.saver && Array.isArray(msg.saver.items)) ? msg.saver : null;
+      if(saverLayoutOn()) stopScreensaverCam();
+      renderSaverGrid();
       // Design-Variante ("classic"/"loxone") + Animationsgeschwindigkeit
       // ("normal"/"slow"/"off") sind reine CSS-Schalter (body[data-*]) - alle
       // Form-/Bewegungs-Variablen dahinter sitzen im :root (s. <style>).
@@ -1803,6 +1864,7 @@ function connect(){
     if(msg.t==='front'){ frontData=msg; renderFront(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
     if(msg.t==='player'){ renderPlayer(msg.blocks); return; }   // fester Player im Split-Layout
     if(msg.t==='energy'){ energyData=msg; const fp=el('frontpane'); if(fp && paneKind(paneForTab(activeTab()))==='energy') renderEnergyPane(fp); return; }   // Energiefluss-Pane
+    if(msg.t==='saver'){ saverData=msg; renderSaverGrid(); return; }   // Live-Daten der Screensaver-Belegung
     if(msg.t==='camera'){ cameraData=msg; const fp=el('frontpane'); if(fp && paneKind(paneForTab(activeTab()))==='camera') renderCameraPane(fp); return; }   // Kamera-Pane (Intercom-Vollansicht)
     if(msg.t==='switch'){ if(msg.panel!==undefined){ const u=new URL(location.href);
         if(msg.panel) u.searchParams.set('panel',msg.panel); else u.searchParams.delete('panel');
@@ -1847,6 +1909,7 @@ function tickClock(){
   const t=el('svTime'), dd=el('svDate');
   if(t) t.textContent=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
   if(dd) dd.textContent=d.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  if(saverLayoutOn()) tickSaverClocks();
 }
 // ---- Front-Extras (Kalender/Wetter) auf dem Screensaver ----
 // Daten kommen vom Server ({t:'front', weather, events, calName}); das Panel
@@ -1865,32 +1928,42 @@ const WXI={
 function wxSvg(k){ return svg(WXI[k]||WXI.cloud); }
 function fmtTemp(t){ if(t==null||isNaN(t)) return '–'; return Number(t).toLocaleString(LANG,{minimumFractionDigits:1,maximumFractionDigits:1}); }
 function tdeg(v){ return v==null?'–':(Math.round(v)+'°'); }
+// Wetter (aktuell + Vorschau) als HTML - fuer den klassischen Screensaver und
+// das Wetter-Widget im Screensaver-Raster.
+function svWxHTML(w){
+  const fc=Array.isArray(w.forecast)?w.forecast:[];
+  let html='<div class="now"><span class="ico '+esc(w.icon||'cloud')+'">'+wxSvg(w.icon)+'</span>'+
+    '<span class="t">'+fmtTemp(w.temp)+'°</span>'+
+    '<span class="meta"><span class="cond">'+esc(w.cond||'')+'</span>';
+  if(w.hi!=null||w.lo!=null) html+='<span class="hl">Heute '+tdeg(w.hi)+' / '+tdeg(w.lo)+'</span>';
+  html+='</span></div>';
+  if(fc.length) html+='<div class="fore">'+fc.map(f=>
+    '<div class="fc"><span class="d">'+esc(f.day||'')+'</span>'+
+    '<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
+    '<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span></div>').join('')+'</div>';
+  return html;
+}
+// Termine als HTML (Ueberschrift + Eintraege).
+function svEvHTML(evs, nm){
+  return '<div class="lbl">Nächste Termine</div>'+evs.map(e=>
+    '<div class="sv-ev"><span class="when"><span class="day">'+esc(e.day||'')+'</span>'+
+    '<span class="tm">'+esc(e.time||'')+'</span></span>'+
+    '<span class="ttl">'+esc(e.title||'')+'</span>'+
+    (nm?'<span class="tag">'+esc(nm)+'</span>':'')+'</div>').join('');
+}
 function renderFront(){
+  if(saverLayoutOn()){ renderSaverGrid(); return; }   // eigene Belegung statt klassischem Screensaver
   const wxEl=el('svWx'), calEl=el('svCal'), camEl=el('svCam'); if(!wxEl||!calEl) return;
   const d=frontData||{}, w=d.weather;
   if(w){
     const fc=Array.isArray(w.forecast)?w.forecast:[];
     wxEl.style.setProperty('--fc', Math.max(1,Math.min(7,fc.length))||4);
-    let html='<div class="now"><span class="ico '+esc(w.icon||'cloud')+'">'+wxSvg(w.icon)+'</span>'+
-      '<span class="t">'+fmtTemp(w.temp)+'°</span>'+
-      '<span class="meta"><span class="cond">'+esc(w.cond||'')+'</span>';
-    if(w.hi!=null||w.lo!=null) html+='<span class="hl">Heute '+tdeg(w.hi)+' / '+tdeg(w.lo)+'</span>';
-    html+='</span></div>';
-    if(fc.length) html+='<div class="fore">'+fc.map(f=>
-      '<div class="fc"><span class="d">'+esc(f.day||'')+'</span>'+
-      '<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
-      '<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span></div>').join('')+'</div>';
-    wxEl.innerHTML=html; wxEl.hidden=false;
+    wxEl.innerHTML=svWxHTML(w); wxEl.hidden=false;
   } else { wxEl.hidden=true; wxEl.innerHTML=''; }
   const evs=(Array.isArray(d.events)?d.events:[]).slice(0,3);
   let camShown=false;
   if(evs.length){
-    const nm=d.calName||'';
-    calEl.innerHTML='<div class="lbl">Nächste Termine</div>'+evs.map(e=>
-      '<div class="sv-ev"><span class="when"><span class="day">'+esc(e.day||'')+'</span>'+
-      '<span class="tm">'+esc(e.time||'')+'</span></span>'+
-      '<span class="ttl">'+esc(e.title||'')+'</span>'+
-      (nm?'<span class="tag">'+esc(nm)+'</span>':'')+'</div>').join('');
+    calEl.innerHTML=svEvHTML(evs, d.calName||'');
     calEl.hidden=false;
     if(camEl){ camEl.hidden=true; stopScreensaverCam(); }
   } else {
@@ -1907,6 +1980,179 @@ function renderFront(){
   const wrap=document.querySelector('.sv-wrap');
   if(wrap) wrap.classList.toggle('rich', !!w || evs.length>0 || camShown);
 }
+// ---- Screensaver-Raster (eigene Belegung je Panel-Profil) ----
+// Raster 3x3 je 480er-Display bzw. 6x3 bei Split (X2i). Widgets: Uhr, Wetter,
+// Kalender, Tuerstation und Loxone-Kacheln (gleiche Kacheln/Bedienung wie im
+// Raster). Ohne Belegung bleibt der klassische Screensaver. Schliessen per X
+// und/oder Wischgesten (je Profil waehlbar); ist nichts gewaehlt, schliesst
+// wie bisher ein Tipp auf eine freie Stelle.
+let saverCfg=null;    // {items:[{type,x,y,w,h,...}], exit:[...]} | null
+let saverData=null;   // {tiles:{uuid:item}, intercoms:{uuid:{name,blocks}}}
+const SWIPE_MIN_PX=80, DOOR_HOLD_MS=1000;
+function saverLayoutOn(){ return !!(saverCfg && saverCfg.items && saverCfg.items.length); }
+function saverCols(){ return (themeSplit && window.innerWidth > window.innerHeight) ? 6 : 3; }
+function saverExit(k){ return !!(saverCfg && (saverCfg.exit||[]).indexOf(k)>=0); }
+function svClockHTML(it){
+  return '<div class="svw-clock al-'+esc(it.align||'center')+'"><div class="t"></div>'+
+    (it.date!=='none'?'<div class="d" data-fmt="'+esc(it.date||'short')+'"></div>':'')+'</div>';
+}
+function tickSaverClocks(){
+  const d=new Date();
+  document.querySelectorAll('#svGrid .svw-clock').forEach(c=>{
+    const t=c.querySelector('.t'); if(t) t.textContent=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
+    const dd=c.querySelector('.d'); if(dd) dd.textContent=dd.dataset.fmt==='long'
+      ? d.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+      : d.toLocaleDateString(LANG,{weekday:'short',day:'numeric',month:'long'});
+  });
+}
+function svWidgetHTML(it){
+  const d=frontData||{};
+  if(it.type==='clock') return svClockHTML(it);
+  if(it.type==='weather') return d.weather
+    ? '<div class="sv-wx svw-wx" style="--fc:'+Math.max(1,Math.min(it.h>1?7:5,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather)+
+        (it.h>1&&Array.isArray(d.weather.hourly)?'<div class="fp-curve svw-curve">'+fpCurve(d.weather.hourly)+'</div>':'')+'</div>'
+    : '<div class="svw-empty">Kein Wetter konfiguriert</div>';
+  if(it.type==='calendar'){
+    const n=it.h===1?2:(it.h===2?4:6), evs=(Array.isArray(d.events)?d.events:[]).slice(0,n);
+    return evs.length ? '<div class="sv-cal svw-cal">'+svEvHTML(evs, d.calName||'')+'</div>'
+                      : '<div class="svw-empty">Keine Termine</div>';
+  }
+  if(it.type==='intercom'){
+    const ic=(saverData&&saverData.intercoms||{})[it.uuid];
+    if(!ic) return '<div class="svw-empty">Türstation lädt …</div>';
+    const video=(ic.blocks||[]).find(b=>b.k==='video'), row=(ic.blocks||[]).find(b=>b.k==='row');
+    return '<div class="svw-cam">'+(video?'<img alt="">':'<div class="svw-empty">Kein Video konfiguriert</div>')+
+      '<div class="cap">'+esc(ic.name||'')+'</div>'+
+      (row&&row.cells.length?'<div class="doors">'+row.cells.map((c,i)=>
+        '<span class="door" data-c="'+i+'"><i></i>'+esc(c.label||'')+'</span>').join('')+'</div>':'')+'</div>';
+  }
+  if(it.type==='tile'){
+    const t=(saverData&&saverData.tiles||{})[it.uuid];
+    return t ? tileHtml(t,'') : '<div class="svw-empty">…</div>';
+  }
+  return '';
+}
+// Tuer-/Ausgang-Buttons: nur durch Halten (1 s) - ein versehentlicher Tipp
+// beim Aufwecken oeffnet nie die Tuer.
+function bindDoors(cell, it){
+  const ic=(saverData&&saverData.intercoms||{})[it.uuid]; if(!ic) return;
+  const row=(ic.blocks||[]).find(b=>b.k==='row'); if(!row) return;
+  cell.querySelectorAll('.door').forEach(btn=>{
+    const c=row.cells[+btn.dataset.c]; let tm=null;
+    const cancel=()=>{ clearTimeout(tm); btn.classList.remove('hold'); };
+    btn.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); btn.classList.add('hold');
+      tm=setTimeout(()=>{ btn.classList.remove('hold'); if(c&&c.cmd) sendCmd(c.cmd.uuid,c.cmd.cmd,false);
+        btn.classList.add('flash'); setTimeout(()=>btn.classList.remove('flash'),800); }, DOOR_HOLD_MS); });
+    ['pointerup','pointerleave','pointercancel'].forEach(e=>btn.addEventListener(e,cancel));
+    btn.addEventListener('click',ev=>ev.stopPropagation());
+  });
+}
+// Aufbauen bzw. aktualisieren. Eine Zelle wird nur neu gezeichnet, wenn sich
+// ihr Inhalt geaendert hat (Kamerabild laeuft sonst ununterbrochen weiter).
+function renderSaverGrid(){
+  const sv=el('saver'), g=el('svGrid'); if(!sv||!g) return;
+  const on=saverLayoutOn();
+  sv.classList.toggle('layout', on);
+  // Raster ueber den ganzen Bildschirm: .screen ist per transform verschoben
+  // (Feinversatz), das wuerde auch position:fixed auf den Visu-Container
+  // begrenzen - deshalb im Raster-Modus direkt unter <body> haengen.
+  if(!sv._home) sv._home=sv.parentNode;
+  if(on && sv.parentNode!==document.body) document.body.appendChild(sv);
+  if(!on && sv.parentNode!==sv._home) sv._home.appendChild(sv);
+  el('svClose').hidden=!(on && saverExit('x'));
+  if(!on){ g.querySelectorAll('.svw-cam img').forEach(camStop); g.innerHTML=''; return; }
+  const cols=saverCols();
+  g.style.setProperty('--svc', cols);
+  const want=saverCfg.items.filter(it=>it.x+it.w<=cols);
+  const keys=new Set();
+  want.forEach(it=>{
+    const key=it.type+':'+it.x+':'+it.y;
+    keys.add(key);
+    let cell=g.querySelector('[data-k="'+key+'"]');
+    if(!cell){ cell=document.createElement('div'); cell.className='svw svw-'+it.type+'-cell'; cell.dataset.k=key; g.appendChild(cell); }
+    cell.style.gridColumn=(it.x+1)+' / span '+it.w; cell.style.gridRow=(it.y+1)+' / span '+it.h;
+    cell.classList.toggle('big', it.w*it.h>=4);
+    cell.dataset.sz=it.w+'x'+it.h;
+    if(it.type==='clock'){ if(!cell.firstChild) cell.innerHTML=svClockHTML(it); return; }
+    const html=svWidgetHTML(it);
+    if(cell._html===html) return;
+    cell.querySelectorAll('.svw-cam img').forEach(camStop);
+    cell._html=html; cell.innerHTML=html;
+    if(it.type==='tile'){ const n=cell.querySelector('.tile'); if(n) bindTile(n,(saverData.tiles||{})[it.uuid]); }
+    if(it.type==='intercom'){ bindDoors(cell,it); if(saverOn()) svStartCams(cell); }
+  });
+  g.querySelectorAll('.svw').forEach(c=>{ if(!keys.has(c.dataset.k)){ c.querySelectorAll('.svw-cam img').forEach(camStop); c.remove(); } });
+  tickSaverClocks();
+}
+// Kamerabilder nur bei sichtbarem Screensaver laufen lassen.
+function svStartCams(root){
+  const r=root||el('svGrid');
+  (r.classList.contains('svw-intercom-cell') ? [r] : r.querySelectorAll('.svw-intercom-cell')).forEach(cell=>{
+    const it=saverCfg&&saverCfg.items.find(i=>'intercom:'+i.x+':'+i.y===cell.dataset.k); if(!it) return;
+    const ic=(saverData&&saverData.intercoms||{})[it.uuid];
+    const video=ic&&(ic.blocks||[]).find(b=>b.k==='video'), img=cell.querySelector('.svw-cam img');
+    if(video&&img&&!img.getAttribute('src')) camStream(img, video.src, video.reconnectH||0);
+  });
+}
+function svStopCams(){ document.querySelectorAll('#svGrid .svw-cam img').forEach(camStop); }
+// Wischgesten + erster Tipp nach Display-aus/Nacht nur zum Aufwecken.
+let _svSwipe=null, _svSwallow=false, _screenWasOff=false;
+function nightDimmed(){ return !!(nightEl && parseFloat(nightEl.style.opacity||'0')>0); }
+el('saver').addEventListener('pointerdown', e=>{
+  _svSwipe={x:e.clientX,y:e.clientY,t:Date.now()};
+  if(saverLayoutOn() && (nightDimmed() || _screenWasOff)){
+    _screenWasOff=false; _svSwallow=true; nightWake();
+    e.stopPropagation(); e.preventDefault();   // erreicht keine Kachel darunter
+  }
+}, true);
+el('saver').addEventListener('pointerup', e=>{
+  const s0=_svSwipe; _svSwipe=null; if(!s0||!saverLayoutOn()) return;
+  const dx=e.clientX-s0.x, dy=e.clientY-s0.y, ax=Math.abs(dx), ay=Math.abs(dy);
+  if(Math.max(ax,ay)<SWIPE_MIN_PX || Date.now()-s0.t>1200) return;
+  if(Math.max(ax,ay) < 1.5*Math.min(ax,ay)) return;           // keine klare Richtung
+  const dir = ax>ay ? (dx<0?'left':'right') : (dy<0?'up':'down');
+  _svSwallow=true;                                            // folgenden click nicht als Tipp werten
+  if(saverExit(dir)){ hideSaver(); resetIdle(); }
+}, true);
+el('saver').addEventListener('click', e=>{
+  if(_svSwallow){ _svSwallow=false; e.stopPropagation(); e.preventDefault(); }
+}, true);
+el('svClose').addEventListener('click', e=>{ e.stopPropagation(); hideSaver(); resetIdle(); });
+// ---- Kamera-Streams (MJPEG) robust halten ----
+// Ein MJPEG-<img> zeigt nach einem Stream-Ende einfach das letzte Bild weiter -
+// ohne Fehler, ohne Neuaufbau ("eingefroren"). Enden kann der Stream z.B., wenn
+// die Kamera/das WLAN kurz weg ist oder der Browser bei ausgeschaltetem Display
+// nicht mehr mitliest (der Server gibt die Kamera dann nach 15 s frei). Deshalb:
+//  - Ladefehler -> nach 8 s neuer Versuch
+//  - Rueckkehr ans Panel (Screensaver weg / Seite wieder sichtbar) -> Neuaufbau
+//  - optional alle N Stunden Neuaufbau (Settings -> Kamera, je Intercom)
+const CAM_RETRY_MS=8000;
+const camImgs=new Set();
+function camStream(img, src, reconnectH, onErr, onOk){
+  if(!img||!src) return;
+  const load=()=>{
+    clearTimeout(img._camRetry); clearTimeout(img._camCycle);
+    img.src=src+(src.indexOf('?')<0?'?':'&')+'_t='+Date.now();
+    if(reconnectH>0) img._camCycle=setTimeout(()=>{ if(img.isConnected) load(); }, reconnectH*3600*1000);
+  };
+  img._camLoad=load;
+  img.onerror=()=>{ if(onErr) onErr(); clearTimeout(img._camRetry);
+    img._camRetry=setTimeout(()=>{ if(img.isConnected) load(); }, CAM_RETRY_MS); };
+  img.onload=()=>{ if(onOk) onOk(); };
+  camImgs.add(img);
+  load();
+}
+function camStop(img){ if(!img) return;
+  clearTimeout(img._camRetry); clearTimeout(img._camCycle);
+  img.onerror=null; img.onload=null; img._camLoad=null; img.src=''; camImgs.delete(img); }
+// Alle noch angezeigten Streams neu aufbauen (entfernte Bilder vergessen).
+function camsRefresh(){
+  camImgs.forEach(img=>{
+    if(!img.isConnected||!img._camLoad){ camImgs.delete(img); return; }
+    img._camLoad();
+  });
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) camsRefresh(); });
 // Live-MJPEG-Bild der gewaehlten Intercom fuer den Screensaver. Wird nicht neu
 // aufgebaut, solange dieselbe Kamera schon laeuft (sonst reisst der Stream bei
 // jedem periodischen Front-Push unnoetig ab). Bei Ladefehler (Kamera kurz
@@ -1921,16 +2167,14 @@ function renderScreensaverCam(camEl){
     '<div class="sv-cam-frame"><img class="sv-cam-img" alt=""><div class="sv-cam-status"></div></div>';
   camEl.hidden=false;
   const img=camEl.querySelector('.sv-cam-img'), stat=camEl.querySelector('.sv-cam-status');
-  const load=()=>{ if(stat) stat.textContent=''; img.src='/mjpeg?id='+encodeURIComponent(screensaverCam.uuid)+'&_t='+Date.now(); };
-  img.onerror=()=>{ if(stat) stat.textContent='Kamera nicht erreichbar …';
-    clearTimeout(img._retry); img._retry=setTimeout(()=>{ if(!camEl.hidden) load(); },8000); };
-  img.onload=()=>{ if(stat) stat.textContent=''; };
-  load();
+  camStream(img, '/mjpeg?id='+encodeURIComponent(screensaverCam.uuid), screensaverCam.reconnectH||0,
+    ()=>{ if(stat) stat.textContent='Kamera nicht erreichbar …'; },
+    ()=>{ if(stat) stat.textContent=''; });
 }
 function stopScreensaverCam(){
   const camEl=el('svCam'); if(!camEl) return;
   const img=camEl.querySelector('.sv-cam-img');
-  if(img){ clearTimeout(img._retry); img.onerror=null; img.onload=null; img.src=''; }
+  camStop(img);
   camEl.innerHTML=''; delete camEl.dataset.camuuid;
 }
 // ---- Ausfuehrliche "Wetter & Kalender"-Ansicht (fuer eigene Seite / Split-Pane) ----
@@ -2136,7 +2380,7 @@ function renderCameraPane(elc){ if(!elc) return;
                  : '<div class="status">'+esc(nostat?nostat.text:'Kein Video')+'</div>';
     if(row) html+='<div class="brow'+(row.wrap?' wraprow':'')+'">'+row.cells.map(cellHtml).join('')+'</div>';
     elc.innerHTML='<div class="fp-page solo campage">'+html+'</div>';
-    const vimg=elc.querySelector('.video img'); if(vimg&&video) vimg.src=video.src;   // direkt, KEIN onload-Gate
+    const vimg=elc.querySelector('.video img'); if(vimg&&video) camStream(vimg, video.src, video.reconnectH||0);   // direkt, KEIN onload-Gate
     if(row){ const btns=elc.querySelectorAll('.brow [data-c]');
       row.cells.forEach((c,i)=>{ const btn=btns[i]; if(!btn)return;
         btn.addEventListener('pointerdown',ev=>{ ev.preventDefault(); if(c.cmd) sendCmd(c.cmd.uuid,c.cmd.cmd,false); }); }); }
@@ -2204,6 +2448,7 @@ function applySaverSplit(){
 function showSaver(){ tickClock();
   applySaverSplit();
   el('saver').classList.remove('hidden');
+  if(saverLayoutOn()) svStartCams();
   renderFront();   // ggf. Screensaver-Kamera jetzt erst starten (war waehrend der Ausblendung bewusst aus)
 }
 // Timer-basierte Sperre gegen "durchgereichte" Beruehrungen: manche Kiosk-
@@ -2218,8 +2463,14 @@ let _saverClosedAt = 0;
 const SAVER_GUARD_MS = 500;
 function justLeftSaver(){ return (Date.now() - _saverClosedAt) < SAVER_GUARD_MS; }
 function hideSaver(){
+  const wasOn=!el('saver').classList.contains('hidden');
   el('saver').classList.add('hidden');
   stopScreensaverCam();   // MJPEG-Stream sofort stoppen, sobald der Screensaver weg ist (spart Bandbreite/CPU)
+  svStopCams();
+  // Zurueck am Panel: Kamerabilder neu aufbauen. ERST nach dem Stoppen des
+  // Screensaver-Streams - der Server laesst je Kamera nur einen Stream zu, und
+  // der Screensaver hat den der Kamera-Ansicht darunter ohnehin verdraengt.
+  if(wasOn) camsRefresh();
   _saverClosedAt = Date.now();
 }
 // Kurze Nachricht/Banner vom Server (t:'notify') oben im Panel einblenden.
@@ -2302,7 +2553,15 @@ function resetIdle(){ clearTimeout(idleTimer);
 // ausgeblendet. nightWake() (Nachtmodus-Aufhellen) darf weiter sofort auf
 // pointerdown reagieren, das aendert an der Interaktivitaet nichts.
 el('saver').addEventListener('pointerdown', e=>{ nightWake(); });
-el('saver').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation(); hideSaver(); resetIdle(); });
+el('saver').addEventListener('click', e=>{ e.preventDefault(); e.stopPropagation();
+  // Eigene Belegung: Kacheln/Tuerstation bedienen sich selbst; geschlossen wird
+  // per X/Wischen - oder, wenn nichts davon gewaehlt ist, per Tipp auf eine
+  // freie Stelle (Uhr, Wetter, Kalender, Hintergrund).
+  if(saverLayoutOn()){
+    if((saverCfg.exit||[]).length) return;
+    if(e.target.closest('.tile,.door,.svw-cam')) return;
+  }
+  hideSaver(); resetIdle(); });
 ['pointerdown','keydown','wheel'].forEach(ev=>document.addEventListener(ev, ()=>{ nightWake(); if(!saverOn()) resetIdle(); }, {passive:true}));
 // ---- Nachtmodus: Panel abdunkeln ----
 // Tag/Nacht meldet der Server ({t:"night"}), Staerke und Aufhelldauer kommen je
@@ -2345,8 +2604,8 @@ function kiosk(){
   const f=window.fully;
   return (f && typeof f.turnScreenOff==='function' && typeof f.turnScreenOn==='function') ? f : null;
 }
-function screenOff(){ const f=kiosk(); if(!f) return; try{ f.turnScreenOff(); }catch(e){} }
-function screenOn(){ const f=kiosk(); if(!f) return;
+function screenOff(){ const f=kiosk(); if(!f) return; _screenWasOff=true; try{ f.turnScreenOff(); }catch(e){} }
+function screenOn(){ const f=kiosk(); if(!f) return; _screenWasOff=false;
   try{ if(typeof f.isScreenOn!=='function' || !f.isScreenOn()) f.turnScreenOn(); }catch(e){} }
 function armDpms(){ clearTimeout(dpmsTimer);
   if(DISP.agent || !(DISP.dpmsOff>0)) return;

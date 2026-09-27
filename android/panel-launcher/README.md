@@ -11,10 +11,16 @@ App-Menü; nachinstallierte Apps bekommen dort kein Symbol. Deshalb wird diese A
 als Startbildschirm (HOME) gesetzt, die Shelly-Oberfläche bleibt installiert und
 über das zweite Symbol erreichbar.
 
-## Installieren
+## Installieren per Klick (empfohlen)
+
+LoxBerry → Plugin „LoxPanel Favoriten“ → **Android-Panel einrichten**: Panel-IP
+eingeben, Profil wählen, „Launcher installieren & einrichten“. Das erledigt alle
+Schritte unten automatisch (inkl. LoxBerry-Adresse als URL).
+
+## Installieren von Hand
 
     adb connect 192.168.1.103:5555
-    adb install -r LoxPanel-Launcher.apk
+    adb install -r config/app/android/LoxPanel-Launcher.apk
     adb shell cmd package set-home-activity de.loxpanel.launcher/.Home
     adb shell input keyevent 3        # Home-Taste: neuer Startbildschirm erscheint
 
@@ -40,5 +46,6 @@ URL wieder entfernen: `--es url ""`.
     ./build.sh
 
 Benötigt `aapt apksigner zipalign dalvik-exchange android-sdk-platform-23` und ein JDK.
-Der Signaturschlüssel (`launcher.keystore`) entsteht beim ersten Build und liegt nicht
-im Git. Wird mit einem anderen Schlüssel neu gebaut, vorher `adb uninstall de.loxpanel.launcher`.
+Die APK landet in `config/app/android/` (von dort installiert sie der Server).
+Der Signaturschlüssel `launcher.keystore` liegt bewusst im Repo: Updates per
+`adb install -r` gehen nur mit demselben Schlüssel.

@@ -15,12 +15,21 @@ RUN set -eux; \
     apt-get purge -y --auto-remove gcc libc6-dev libffi-dev; \
     rm -rf /var/lib/apt/lists/*
 
+# adb: richtet Android-Panels (Shelly Wall Display) per Klick ein - installiert
+# den LoxPanel-Launcher und traegt die Server-Adresse ein (api_panel_launcher).
+# Eigener, fehlertoleranter Schritt: fehlt das Paket einmal, baut das Image
+# trotzdem (das Panel laeuft weiter, nur die Einrichtung meldet "adb fehlt").
+RUN apt-get update \
+    && (apt-get install -y --no-install-recommends adb || echo "WARN: adb nicht installierbar") \
+    && rm -rf /var/lib/apt/lists/*
+
 # App-Code + Standard-Frontend/Config (Beispiele/Defaults)
 COPY bin/ ./bin/
 COPY webfrontend/ ./webfrontend/
 COPY config/ ./config/
 COPY deploy/ ./deploy/
 COPY agent/ ./agent/
+COPY android/ ./android/
 
 # Laufzeit-Config (loxpanel.cfg, panels.json, theme.json) wird als Volume
 # unter /app/config gemountet; Miniserver-Zugang kann auch per Env kommen.

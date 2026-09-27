@@ -14,6 +14,13 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **Android-Panel per Klick einrichten (0.13.10)** — LoxBerry-Pluginseite →
+  „Android-Panel einrichten“: Panel-IP eingeben, der Container installiert per
+  ADB den LoxPanel-Launcher (`android/panel-launcher`), setzt ihn als
+  Startbildschirm (Symbole „LoxPanel“ und „Shelly“) und trägt die
+  LoxBerry-Adresse ein. Voraussetzung: ADB über WLAN am Panel aktiv; beim
+  ersten Mal „USB-Debugging zulassen“ am Panel bestätigen.
+
 - **Code-Check & Härtung (0.13.9)** — Miniserver-/Kamera-Passwort wird bei
   geändertem Host/Benutzer bzw. URL nicht mehr weiterverwendet; Cover-Proxy
   liefert nur noch Bilder (max. 5 MB); Agent-Anmeldung prüft IP/Port; Agent
@@ -223,6 +230,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 | `config/docker-compose.yml` | Container-Definition (Port 8098) |
 | `config/app/bin/` | Server (`webvisu.py`) und seine Module – das läuft im Container |
 | `config/app/webfrontend/` | Panel, Config-Editor, Settings (HTML/JS) |
+| `config/app/android/` | Fertig gebauter LoxPanel-Launcher (APK), wird per ADB installiert |
+| `android/panel-launcher/` | Quellcode + Build-Skript des Launchers |
 | `config/app/agent/`, `config/app/deploy/` | Panel-Agent und Installer für Linux-Anzeigegeräte |
 | `config/app/tools/` | Entwickler-Diagnoseskripte (nicht im Image) |
 

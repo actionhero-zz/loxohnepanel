@@ -63,6 +63,27 @@ sub apply_miniserver {
     return "<div class='alert alert-danger'>Container nicht erreichbar &ndash; l&auml;uft er? (unten &bdquo;Starten&ldquo;)</div>";
 }
 
+# Android-Panel (Shelly Wall Display u.a.) per adb einrichten: der Container
+# installiert den LoxPanel-Launcher und traegt diese LoxBerry-Adresse ein.
+sub setup_panel {
+    my ($ip, $panel) = @_;
+    my $ua = LWP::UserAgent->new(timeout => 180);   # Installation per WLAN kann dauern
+    my $r  = $ua->post("$api/api/panel/launcher", 'Content-Type' => 'application/json',
+        Content => encode_json({ ip => $ip, panel => $panel, server => "$lbhost:8098" }));
+    return "<div class='alert alert-danger'>Container nicht erreichbar &ndash; l&auml;uft er?</div>"
+        unless $r->is_success || $r->code == 400;
+    my $j = eval { decode_json($r->decoded_content) };
+    return "<div class='alert alert-danger'>Ung&uuml;ltige Antwort vom Container.</div>" unless $j;
+    my $steps = join('', map {
+        "<li>" . ($_->{ok} ? "&#10004;" : "&#10008;") . " " . h($_->{step})
+        . ($_->{out} ne '' ? " <small style='color:#777'>" . h($_->{out}) . "</small>" : "") . "</li>"
+    } @{ $j->{steps} // [] });
+    my $list = $steps ? "<ul style='margin:8px 0 0;padding-left:18px'>$steps</ul>" : "";
+    return "<div class='alert alert-success'>Panel eingerichtet &ndash; Fully Kiosk &ouml;ffnet "
+         . h($j->{url}) . "$list</div>" if $j->{ok};
+    return "<div class='alert alert-danger'>" . h($j->{error} // 'Fehler') . "$list</div>";
+}
+
 # ---- POST verarbeiten (vor jeder Ausgabe) ----
 my $msg = "";
 my $refresh = 0;   # nach einer Aktion die Seite per GET nachladen (Live-Verlauf)
@@ -95,6 +116,12 @@ elsif ($action eq 'fromlox') {
     } else {
         $msg = "<div class='alert alert-danger'>In LoxBerry ist kein Miniserver konfiguriert (Hauptmen&uuml; &rarr; Miniserver).</div>";
     }
+}
+elsif ($action eq 'panelsetup') {
+    my $ip    = scalar($cgi->param('panelip')) // '';
+    my $panel = scalar($cgi->param('panelid')) // '';
+    $ip =~ s/^\s+|\s+$//g;
+    $msg = setup_panel($ip, $panel);
 }
 elsif ($action =~ /^(start|stop|restart)$/) {
     my $act = $1;   # durch Regex begrenzt -> shell-sicher
@@ -144,6 +171,18 @@ if ($sr->is_success) {
         $mport = $m->{port} // 443; $haspass = $m->{hasPass} ? 1 : 0;
     }
 }
+# Panel-Profile fuer die Auswahl beim Einrichten eines Android-Panels
+my $profopts = "<option value=''>Standard</option>";
+if ($running) {
+    my $mr = LWP::UserAgent->new(timeout => 5)->get("$api/api/meta");
+    my $mj = $mr->is_success ? eval { decode_json($mr->decoded_content) } : undef;
+    for my $pid (sort keys %{ ($mj && $mj->{panels}) || {} }) {
+        next unless $pid =~ /^[a-z0-9-]{1,60}$/;
+        my $t = $mj->{panels}{$pid}{title} // $pid;
+        $profopts .= "<option value='" . h($pid) . "'>" . h($t) . " ($pid)</option>";
+    }
+}
+
 my $stat = !$running ? "<span style='color:#a94442'>Container l&auml;uft nicht</span>"
     : $conn ? "<span style='color:#3c763d'>l&auml;uft &middot; Miniserver verbunden</span>"
     : "<span style='color:#8a6d3b'>l&auml;uft &middot; noch kein Miniserver</span>";
@@ -268,6 +307,24 @@ print <<"HTML";
       <a class="lpbtn lpgreen" href="http://$lbhost:8098/config" target="_blank">Panels &amp; Kacheln &ouml;ffnen</a>
       <a class="lpbtn lpgreen" href="http://$lbhost:8098/settings" target="_blank">Settings &ouml;ffnen</a>
     </div>
+  </div>
+</div>
+
+<div class="panel panel-default">
+  <div class="panel-heading">Android-Panel einrichten (z.&nbsp;B. Shelly Wall Display)</div>
+  <div class="panel-body">
+    <p style="color:#777;margin-top:0">Installiert den LoxPanel-Launcher per ADB auf dem Panel, setzt ihn als Startbildschirm
+      (Symbole &bdquo;LoxPanel&ldquo; und &bdquo;Shelly&ldquo;) und tr&auml;gt diese LoxBerry-Adresse ein. Voraussetzung: am Panel
+      sind die Entwickleroptionen mit <b>ADB &uuml;ber WLAN</b> (Port 5555) aktiv. Beim ersten Mal fragt das Panel
+      &bdquo;USB-Debugging zulassen?&ldquo; &ndash; <b>Immer erlauben</b> anhaken, best&auml;tigen und erneut klicken.</p>
+    <form method="post" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Wird eingerichtet …';">
+      <input type="hidden" name="action" value="panelsetup">
+      <div class="lpfields">
+        <div class="lpf" style="flex:1.4"><label>Panel-IP</label><input class="form-control" name="panelip" placeholder="192.168.1.103" required></div>
+        <div class="lpf" style="flex:1.4"><label>Panel-Profil</label><select class="form-control" name="panelid">$profopts</select></div>
+      </div>
+      <div class="lprow" style="margin-top:10px"><button class="lpbtn lpblue" type="submit">Launcher installieren &amp; einrichten</button></div>
+    </form>
   </div>
 </div>
 

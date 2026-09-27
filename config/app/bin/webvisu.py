@@ -25,6 +25,8 @@ import logging
 import math
 import os
 import re
+import shlex
+import shutil
 import sys
 import time
 from datetime import datetime, timedelta
@@ -71,7 +73,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.13.9-fav1"
+APP_VERSION = "0.13.10-fav1"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -85,6 +87,12 @@ CFG_EXAMPLE = _CFGDIR / "loxpanel.cfg.example"
 # Eigene Klingelton-Dateien (Upload je Intercom) - persistiert im selben
 # Volume wie loxpanel.cfg/panels.json, ueberlebt also Updates/Neustarts.
 SOUNDS_DIR = _CFGDIR / "sounds"
+# Android-Panel-Launcher (android/panel-launcher, fertig gebaut) und der
+# adb-Schluessel: der Schluessel liegt im Config-Volume, damit das einmal auf
+# dem Panel bestaetigte "USB-Debugging zulassen" Container-Updates ueberlebt.
+LAUNCHER_APK = Path(__file__).resolve().parent.parent / "android" / "LoxPanel-Launcher.apk"
+LAUNCHER_PKG = "de.loxpanel.launcher"
+ADB_HOME = _CFGDIR / "adb"
 _SOUND_EXT_BY_MIME = {"audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/ogg": "ogg",
                       "audio/wav": "wav", "audio/x-wav": "wav", "audio/wave": "wav",
                       "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/aac": "aac"}
@@ -5622,6 +5630,91 @@ async def api_testring(request: web.Request) -> web.Response:
 _FONT_DIR = Path(__file__).resolve().parent.parent / "webfrontend" / "fonts"
 
 
+# ---- Android-Panel einrichten (Shelly Wall Display u.a.) ----
+_adb_lock = asyncio.Lock()   # adb-Server im Container nur einmal gleichzeitig benutzen
+
+
+async def _adb(*args: str, timeout: float = 30) -> tuple[int, str]:
+    """adb im Container ausfuehren -> (Returncode, Ausgabe). HOME zeigt auf das
+    Config-Volume, dort legt adb seinen Schluessel (~/.android/adbkey) ab."""
+    ADB_HOME.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, "HOME": str(ADB_HOME)}
+    proc = await asyncio.create_subprocess_exec(
+        "adb", *args, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    try:
+        out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        return 124, f"Zeitueberschreitung nach {timeout:.0f}s"
+    return proc.returncode or 0, out.decode("utf-8", "replace").strip()
+
+
+async def api_panel_launcher(request: web.Request) -> web.Response:
+    """LoxPanel-Launcher per adb auf ein Android-Panel installieren und
+    einrichten: {ip, port?, server, panel?}. `server` ist die Adresse, unter der
+    die Panels diesen Server erreichen (z.B. "192.168.1.10:8098") - die kennt
+    nur der Aufrufer (LoxBerry-Seite), nicht der Container selbst.
+
+    Schritte: verbinden -> installieren -> als Startbildschirm setzen -> URL
+    eintragen (startet Fully). Antwort mit Protokoll je Schritt."""
+    d = await _json_or_empty(request)
+    try:
+        ip = str(ipaddress.ip_address(str(d.get("ip") or "").strip()))
+        port = int(d.get("port") or 5555)
+    except (ValueError, TypeError):
+        return web.json_response({"ok": False, "error": "ungueltige Panel-IP/Port"}, status=400)
+    server = str(d.get("server") or "").strip()
+    panel = str(d.get("panel") or "").strip()
+    if not re.match(r"^[A-Za-z0-9.\-]{1,253}(:\d{1,5})?$", server):
+        return web.json_response({"ok": False, "error": "Server-Adresse fehlt/ungueltig"}, status=400)
+    if panel and not re.match(r"^[a-z0-9-]{1,60}$", panel):
+        return web.json_response({"ok": False, "error": "ungueltige Profil-ID"}, status=400)
+    if not 1 <= port <= 65535:
+        return web.json_response({"ok": False, "error": "ungueltiger Port"}, status=400)
+    if not shutil.which("adb"):
+        return web.json_response({"ok": False, "error": "adb fehlt im Container (Image neu bauen)"})
+    if not LAUNCHER_APK.is_file():
+        return web.json_response({"ok": False, "error": "LoxPanel-Launcher.apk fehlt im Container"})
+
+    target = f"{ip}:{port}"
+    url = f"http://{server}/" + (f"?panel={panel}" if panel else "")
+    steps: list[dict] = []
+
+    def step(name: str, code: int, out: str, ok: bool | None = None) -> bool:
+        ok = (code == 0) if ok is None else ok
+        steps.append({"step": name, "ok": ok, "out": out[-400:]})
+        return ok
+
+    async with _adb_lock:
+        code, out = await _adb("connect", target, timeout=15)
+        # "connected to" / "already connected" - sonst (z.B. "failed to connect") Abbruch.
+        if not step("Verbinden", code, out, ok=("connected" in out and "failed" not in out)):
+            return web.json_response({"ok": False, "steps": steps,
+                                      "error": "Panel nicht erreichbar - ADB/Entwickleroptionen am Panel aktiv?"})
+        code, out = await _adb("-s", target, "get-state", timeout=10)
+        if not step("Freigabe", code, out, ok=(out == "device")):
+            return web.json_response({"ok": False, "steps": steps,
+                                      "error": "Am Panel \"USB-Debugging zulassen\" bestaetigen "
+                                               "(\"Immer erlauben\" anhaken) und erneut klicken."})
+        code, out = await _adb("-s", target, "install", "-r", str(LAUNCHER_APK), timeout=120)
+        if not step("Installieren", code, out, ok=("Success" in out)):
+            return web.json_response({"ok": False, "steps": steps, "error": "Installation fehlgeschlagen"})
+        # Startbildschirm: schlaegt auf alten Android-Versionen fehl - dann
+        # waehlt man ihn beim ersten Druck auf Home ("Immer"). Kein Abbruch.
+        code, out = await _adb("-s", target, "shell", "cmd", "package", "set-home-activity",
+                               f"{LAUNCHER_PKG}/.Home", timeout=15)
+        step("Startbildschirm", code, out, ok=(code == 0 and "rror" not in out))
+        # URL speichern (startet dabei Fully). adb shell setzt die Argumente zu
+        # einer Kommandozeile zusammen -> URL fuer die Shell am Panel quoten.
+        code, out = await _adb("-s", target, "shell",
+                               f"am start -n {LAUNCHER_PKG}/.Main --es url {shlex.quote(url)}", timeout=15)
+        if not step("URL eintragen", code, out, ok=(code == 0 and "rror" not in out)):
+            return web.json_response({"ok": False, "steps": steps, "error": "URL konnte nicht gesetzt werden"})
+    log.info("LoxPanel-Launcher auf %s eingerichtet (URL %s)", target, url)
+    return web.json_response({"ok": True, "steps": steps, "url": url})
+
+
 async def font_handler(request: web.Request) -> web.Response:
     """Self-gehostete Schriftdatei (Manrope, SIL OFL - frei redistributierbar)
     ausliefern. Kein CDN/Google Fonts: das Panel muss auch ohne Internet-
@@ -5962,6 +6055,7 @@ def main() -> None:
     a.router.add_post("/api/goto", api_goto)
     a.router.add_get("/api/notify", api_notify)
     a.router.add_post("/api/notify", api_notify)
+    a.router.add_post("/api/panel/launcher", api_panel_launcher)
     a.router.add_get("/icon", icon_handler)
     a.router.add_get("/fonts/{name}", font_handler)
     a.router.add_get("/loxlib", loxlib_handler)

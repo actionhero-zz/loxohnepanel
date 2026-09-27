@@ -3,19 +3,19 @@ package de.loxpanel.launcher;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 
 import java.util.List;
 
 /**
- * Die urspruengliche Shelly-Oberflaeche: der andere Startbildschirm (HOME) auf
- * dem Geraet. Bewusst nicht per Paketname fest verdrahtet - der unterscheidet
- * sich je Modell/Firmware (z.B. cloud.shelly.stargate).
+ * Der urspruengliche Startbildschirm des Geraets (HOME) - auf dem Shelly Wall
+ * Display die Shelly-Oberflaeche, auf Tablets der normale Android-Launcher.
+ * Bewusst nicht per Paketname fest verdrahtet: der unterscheidet sich je
+ * Geraet/Firmware (z.B. cloud.shelly.stargate).
  */
-final class Shelly {
-    private Shelly() {}
+final class StockHome {
+    private StockHome() {}
 
     static ResolveInfo find(Context c) {
         Intent home = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME);
@@ -47,7 +47,13 @@ final class Shelly {
 
     static Drawable icon(Context c) {
         ResolveInfo ri = find(c);
-        PackageManager pm = c.getPackageManager();
-        return ri != null ? ri.loadIcon(pm) : null;
+        return ri != null ? ri.loadIcon(c.getPackageManager()) : null;
+    }
+
+    /** Name des Startbildschirms, z.B. "Shelly"; Fallback "Android". */
+    static String label(Context c) {
+        ResolveInfo ri = find(c);
+        CharSequence l = ri != null ? ri.loadLabel(c.getPackageManager()) : null;
+        return l != null && l.length() > 0 ? l.toString() : "Android";
     }
 }

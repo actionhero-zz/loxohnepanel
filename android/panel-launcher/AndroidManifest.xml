@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="de.loxpanel.launcher"
-    android:versionCode="2"
-    android:versionName="2.0">
+    android:versionCode="3"
+    android:versionName="3.0">
 
     <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="23" />
 
     <application android:label="LoxPanel" android:icon="@drawable/icon" android:allowBackup="false">
         <!-- Startbildschirm (HOME) mit zwei Symbolen: LoxPanel (Fully Kiosk) und
-             Shelly (die urspruengliche Shelly-Oberflaeche). Als Home setzen:
+             dem urspruenglichen Startbildschirm (Shelly-Oberflaeche bzw. Android-
+             Launcher). Auf normalen Tablets reicht das App-Symbol. Als Home setzen:
              adb shell cmd package set-home-activity de.loxpanel.launcher/.Home -->
         <activity android:name=".Home"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"

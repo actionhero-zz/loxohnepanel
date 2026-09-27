@@ -73,7 +73,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.13.10-fav1"
+APP_VERSION = "0.13.11-fav1"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -5652,12 +5652,18 @@ async def _adb(*args: str, timeout: float = 30) -> tuple[int, str]:
 
 async def api_panel_launcher(request: web.Request) -> web.Response:
     """LoxPanel-Launcher per adb auf ein Android-Panel installieren und
-    einrichten: {ip, port?, server, panel?}. `server` ist die Adresse, unter der
+    einrichten: {ip, port?, server, panel?, device?}. device "shelly" (Shelly
+    Wall Display, Standard) setzt den Launcher als Startbildschirm - die
+    Shelly-Oberflaeche hat kein App-Menue. device "android" (andere Tablets,
+    Testing) laesst den Startbildschirm in Ruhe; dort erscheint die App normal
+    im App-Menue. `server` ist die Adresse, unter der
     die Panels diesen Server erreichen (z.B. "192.168.1.10:8098") - die kennt
     nur der Aufrufer (LoxBerry-Seite), nicht der Container selbst.
 
     Schritte: verbinden -> installieren -> als Startbildschirm setzen -> URL
-    eintragen (startet Fully). Antwort mit Protokoll je Schritt."""
+    eintragen (startet Fully). Antwort mit Protokoll je Schritt. Fully Kiosk
+    selbst ist kommerziell und wird nicht mitgeliefert - fehlt es, gibt es
+    einen Hinweis."""
     d = await _json_or_empty(request)
     try:
         ip = str(ipaddress.ip_address(str(d.get("ip") or "").strip()))
@@ -5666,6 +5672,9 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": "ungueltige Panel-IP/Port"}, status=400)
     server = str(d.get("server") or "").strip()
     panel = str(d.get("panel") or "").strip()
+    device = str(d.get("device") or "shelly").strip()
+    if device not in ("shelly", "android"):
+        return web.json_response({"ok": False, "error": "unbekannter Geraetetyp"}, status=400)
     if not re.match(r"^[A-Za-z0-9.\-]{1,253}(:\d{1,5})?$", server):
         return web.json_response({"ok": False, "error": "Server-Adresse fehlt/ungueltig"}, status=400)
     if panel and not re.match(r"^[a-z0-9-]{1,60}$", panel):
@@ -5700,19 +5709,25 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
         code, out = await _adb("-s", target, "install", "-r", str(LAUNCHER_APK), timeout=120)
         if not step("Installieren", code, out, ok=("Success" in out)):
             return web.json_response({"ok": False, "steps": steps, "error": "Installation fehlgeschlagen"})
-        # Startbildschirm: schlaegt auf alten Android-Versionen fehl - dann
-        # waehlt man ihn beim ersten Druck auf Home ("Immer"). Kein Abbruch.
-        code, out = await _adb("-s", target, "shell", "cmd", "package", "set-home-activity",
-                               f"{LAUNCHER_PKG}/.Home", timeout=15)
-        step("Startbildschirm", code, out, ok=(code == 0 and "rror" not in out))
+        # Fully Kiosk vorhanden? Nicht mitgeliefert (kommerziell) -> nur Hinweis.
+        code, out = await _adb("-s", target, "shell", "pm", "path", "de.ozerov.fully", timeout=10)
+        has_fully = "package:" in out
+        step("Fully Kiosk", 0, "installiert" if has_fully
+             else "fehlt - bitte von fully-kiosk.com installieren", ok=has_fully)
+        if device == "shelly":
+            # Startbildschirm: schlaegt auf alten Android-Versionen fehl - dann
+            # waehlt man ihn beim ersten Druck auf Home ("Immer"). Kein Abbruch.
+            code, out = await _adb("-s", target, "shell", "cmd", "package", "set-home-activity",
+                                   f"{LAUNCHER_PKG}/.Home", timeout=15)
+            step("Startbildschirm", code, out, ok=(code == 0 and "rror" not in out))
         # URL speichern (startet dabei Fully). adb shell setzt die Argumente zu
         # einer Kommandozeile zusammen -> URL fuer die Shell am Panel quoten.
         code, out = await _adb("-s", target, "shell",
                                f"am start -n {LAUNCHER_PKG}/.Main --es url {shlex.quote(url)}", timeout=15)
         if not step("URL eintragen", code, out, ok=(code == 0 and "rror" not in out)):
             return web.json_response({"ok": False, "steps": steps, "error": "URL konnte nicht gesetzt werden"})
-    log.info("LoxPanel-Launcher auf %s eingerichtet (URL %s)", target, url)
-    return web.json_response({"ok": True, "steps": steps, "url": url})
+    log.info("LoxPanel-Launcher auf %s eingerichtet (%s, URL %s)", target, device, url)
+    return web.json_response({"ok": True, "steps": steps, "url": url, "fully": has_fully})
 
 
 async def font_handler(request: web.Request) -> web.Response:

@@ -14,12 +14,15 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
-- **Android-Panel per Klick einrichten (0.13.10)** — LoxBerry-Pluginseite →
-  „Android-Panel einrichten“: Panel-IP eingeben, der Container installiert per
-  ADB den LoxPanel-Launcher (`android/panel-launcher`), setzt ihn als
-  Startbildschirm (Symbole „LoxPanel“ und „Shelly“) und trägt die
-  LoxBerry-Adresse ein. Voraussetzung: ADB über WLAN am Panel aktiv; beim
-  ersten Mal „USB-Debugging zulassen“ am Panel bestätigen.
+- **Android-Panel per Klick einrichten (optional, 0.13.11)** — LoxBerry-Pluginseite →
+  „Android-Panel einrichten“: Gerät (Shelly Wall Display / anderes Android-Tablet
+  als Testing) und Panel-IP wählen, der Container installiert per ADB den
+  LoxPanel-Launcher (`android/panel-launcher`) und trägt die LoxBerry-Adresse
+  ein. Beim Shelly wird er Startbildschirm (Symbole „LoxPanel“ und „Shelly“),
+  auf anderen Tablets erscheint er im App-Menü. Fully Kiosk ist kommerziell und
+  wird nicht mitgeliefert – die Einrichtung prüft, ob es installiert ist.
+  Voraussetzung: ADB über WLAN am Panel aktiv; beim ersten Mal „USB-Debugging
+  zulassen“ am Panel bestätigen.
 
 - **Code-Check & Härtung (0.13.9)** — Miniserver-/Kamera-Passwort wird bei
   geändertem Host/Benutzer bzw. URL nicht mehr weiterverwendet; Cover-Proxy

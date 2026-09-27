@@ -66,10 +66,10 @@ sub apply_miniserver {
 # Android-Panel (Shelly Wall Display u.a.) per adb einrichten: der Container
 # installiert den LoxPanel-Launcher und traegt diese LoxBerry-Adresse ein.
 sub setup_panel {
-    my ($ip, $panel) = @_;
+    my ($ip, $panel, $device) = @_;
     my $ua = LWP::UserAgent->new(timeout => 180);   # Installation per WLAN kann dauern
     my $r  = $ua->post("$api/api/panel/launcher", 'Content-Type' => 'application/json',
-        Content => encode_json({ ip => $ip, panel => $panel, server => "$lbhost:8098" }));
+        Content => encode_json({ ip => $ip, panel => $panel, device => $device, server => "$lbhost:8098" }));
     return "<div class='alert alert-danger'>Container nicht erreichbar &ndash; l&auml;uft er?</div>"
         unless $r->is_success || $r->code == 400;
     my $j = eval { decode_json($r->decoded_content) };
@@ -79,8 +79,11 @@ sub setup_panel {
         . ($_->{out} ne '' ? " <small style='color:#777'>" . h($_->{out}) . "</small>" : "") . "</li>"
     } @{ $j->{steps} // [] });
     my $list = $steps ? "<ul style='margin:8px 0 0;padding-left:18px'>$steps</ul>" : "";
-    return "<div class='alert alert-success'>Panel eingerichtet &ndash; Fully Kiosk &ouml;ffnet "
-         . h($j->{url}) . "$list</div>" if $j->{ok};
+    my $nofully = ($j->{ok} && !$j->{fully})
+        ? "<br><b>Fully Kiosk fehlt noch</b> &ndash; bitte von <a href='https://www.fully-kiosk.com' target='_blank'>fully-kiosk.com</a> "
+          . "auf dem Panel installieren, danach das LoxPanel-Symbol antippen." : "";
+    return "<div class='alert " . ($nofully ? "alert-warning" : "alert-success") . "'>Launcher eingerichtet &ndash; "
+         . "das LoxPanel-Symbol &ouml;ffnet " . h($j->{url}) . " in Fully Kiosk.$nofully$list</div>" if $j->{ok};
     return "<div class='alert alert-danger'>" . h($j->{error} // 'Fehler') . "$list</div>";
 }
 
@@ -120,8 +123,9 @@ elsif ($action eq 'fromlox') {
 elsif ($action eq 'panelsetup') {
     my $ip    = scalar($cgi->param('panelip')) // '';
     my $panel = scalar($cgi->param('panelid')) // '';
+    my $dev   = (scalar($cgi->param('paneldev')) // '') eq 'android' ? 'android' : 'shelly';
     $ip =~ s/^\s+|\s+$//g;
-    $msg = setup_panel($ip, $panel);
+    $msg = setup_panel($ip, $panel, $dev);
 }
 elsif ($action =~ /^(start|stop|restart)$/) {
     my $act = $1;   # durch Regex begrenzt -> shell-sicher
@@ -311,15 +315,24 @@ print <<"HTML";
 </div>
 
 <div class="panel panel-default">
-  <div class="panel-heading">Android-Panel einrichten (z.&nbsp;B. Shelly Wall Display)</div>
+  <div class="panel-heading">Android-Panel einrichten (optional)</div>
   <div class="panel-body">
-    <p style="color:#777;margin-top:0">Installiert den LoxPanel-Launcher per ADB auf dem Panel, setzt ihn als Startbildschirm
-      (Symbole &bdquo;LoxPanel&ldquo; und &bdquo;Shelly&ldquo;) und tr&auml;gt diese LoxBerry-Adresse ein. Voraussetzung: am Panel
-      sind die Entwickleroptionen mit <b>ADB &uuml;ber WLAN</b> (Port 5555) aktiv. Beim ersten Mal fragt das Panel
+    <p style="color:#777;margin-top:0">Nur f&uuml;r Android-Ger&auml;te mit <b>Fully Kiosk</b> &ndash; andere Panels (Browser, Linux mit Agent)
+      brauchen das nicht. Installiert per ADB den LoxPanel-Launcher und tr&auml;gt diese LoxBerry-Adresse ein; das Symbol
+      &bdquo;LoxPanel&ldquo; &ouml;ffnet dann Fully Kiosk mit dem Panel.</p>
+    <ul style="color:#777;margin:0 0 10px;padding-left:18px">
+      <li><b>Shelly Wall Display:</b> Die Shelly-Oberfl&auml;che hat kein App-Men&uuml; &ndash; der Launcher wird deshalb
+        Startbildschirm mit den Symbolen &bdquo;LoxPanel&ldquo; und &bdquo;Shelly&ldquo;.</li>
+      <li><b>Anderes Android-Tablet (Testing):</b> Startbildschirm bleibt, das LoxPanel-Symbol erscheint im App-Men&uuml;.</li>
+    </ul>
+    <p style="color:#777">Voraussetzungen: Fully Kiosk ist installiert (nicht enthalten, <a href="https://www.fully-kiosk.com" target="_blank">fully-kiosk.com</a>)
+      und am Panel ist <b>ADB &uuml;ber WLAN</b> (Port 5555) aktiv. Beim ersten Mal fragt das Panel
       &bdquo;USB-Debugging zulassen?&ldquo; &ndash; <b>Immer erlauben</b> anhaken, best&auml;tigen und erneut klicken.</p>
     <form method="post" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Wird eingerichtet …';">
       <input type="hidden" name="action" value="panelsetup">
       <div class="lpfields">
+        <div class="lpf" style="flex:1.6"><label>Ger&auml;t</label><select class="form-control" name="paneldev">
+          <option value="shelly">Shelly Wall Display</option><option value="android">Anderes Android-Tablet (Testing)</option></select></div>
         <div class="lpf" style="flex:1.4"><label>Panel-IP</label><input class="form-control" name="panelip" placeholder="192.168.1.103" required></div>
         <div class="lpf" style="flex:1.4"><label>Panel-Profil</label><select class="form-control" name="panelid">$profopts</select></div>
       </div>

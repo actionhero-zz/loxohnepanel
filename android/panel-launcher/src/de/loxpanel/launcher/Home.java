@@ -13,7 +13,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-/** Startbildschirm mit zwei grossen Symbolen: LoxPanel und Shelly. */
+/** Startbildschirm mit zwei grossen Symbolen: LoxPanel und der urspruengliche Startbildschirm. */
 public class Home extends Activity {
     @Override
     protected void onCreate(Bundle state) {
@@ -26,10 +26,10 @@ public class Home extends Activity {
         row.addView(tile(getResources().getDrawable(R.drawable.icon), "LoxPanel", new View.OnClickListener() {
             @Override public void onClick(View v) { Fully.start(Home.this); }
         }));
-        row.addView(tile(Shelly.icon(this), "Shelly", new View.OnClickListener() {
+        row.addView(tile(StockHome.icon(this), StockHome.label(this), new View.OnClickListener() {
             @Override public void onClick(View v) {
-                if (!Shelly.start(Home.this)) {
-                    Toast.makeText(Home.this, "Shelly-Oberfläche nicht gefunden", Toast.LENGTH_LONG).show();
+                if (!StockHome.start(Home.this)) {
+                    Toast.makeText(Home.this, "Ursprünglicher Startbildschirm nicht gefunden", Toast.LENGTH_LONG).show();
                 }
             }
         }));

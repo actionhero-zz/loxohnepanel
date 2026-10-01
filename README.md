@@ -27,6 +27,16 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Fixes (0.19.0-fav27)** — Szenennamen im Lichtbaustein wieder lesbar (CSS-Kollision),
+  ohne %-Anzeige; Bildausschnitt auch für weitere Kameras, Editor nur bei Bedarf (schont
+  Browser-Verbindungen) mit Widget-Rahmen; Öffnen-Pfeil direkt an jedem Panel in der Liste.
+- **Statusleiste-Feinschliff (0.19.0-fav26)** — Statusleiste per Haken an/aus mit kompakter
+  Bausteinauswahl; schematisch im Grid-Editor angedeutet; Einbrennschutz (Drift) gilt jetzt
+  auch für die Menüleiste und läuft unabhängig von der Animations-Einstellung.
+- **Dashboard mit Statusleiste (0.19.0-fav25)** — Dashboard im Tab-Rahmen mit Menüleiste:
+  Statusleiste (bis 4 Bausteine, neutral bis etwas passiert; im Grid-Editor unter
+  Dashboard-Eigenschaften, unabhängig vom Ampel-Widget) und ✕; Wetter-Widget passt in
+  alle Größen; Fensterliste mit Raum; vom Dashboard geöffnete Bausteine markieren keinen Tab.
 - **Animierte Symbole (0.19.0-fav24)** — neuer Haken „Animierte Symbole“ (global, je Panel
   überschreibbar): Klingel/Wecker/Alarm wackeln, Jalousie-Pfeil wippt beim Fahren, Heizung
   pulsiert beim Heizen, Symbol ploppt beim Einschalten, neue Werte ticken ein, Ampel-Wechsel

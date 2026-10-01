@@ -160,7 +160,7 @@
   .sved .seg button:disabled{opacity:.35;cursor:not-allowed;}
   .sved .box select,.sved .box input[type=text]{width:100%;max-width:none;}
 
-  .sved .hintp{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.45;}
+  .sved .hintp,.dashprops .hintp{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.45;}
 
   .sizes .field{max-width:120px;}
   .row2{display:flex;gap:12px;flex-wrap:wrap;}
@@ -719,6 +719,7 @@
   @media (max-width:760px){ .palbtn span,.palbtn kbd{display:none;} }
   /* Weitere Kameras */
   /* Kamera-Zeile zweizeilig: Name + URL, darunter Benutzer + Passwort + ✕ (passt auch in schmale Karten) */
+  .camrow .camcrop{grid-column:1 / -1;} .camrow .camcrop .crp{margin-top:4px;}
   .camrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;
     padding:12px 0;border-top:1px solid var(--line);}
   .camrow:first-child{border-top:0;} .camrow .field{max-width:none;margin:0;min-width:0;}
@@ -751,6 +752,13 @@
     font-size:11px;line-height:22px;padding:0;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;}
   .pitem:hover .pdel,.pitem.active .pdel{opacity:1;} .pitem .pdel:hover{background:#e2695f;color:#fff;}
   .wrap.slim .pitem .pdel{display:none;}
+  /* Panel oeffnen per Pfeil in der Liste (unten rechts, wie das ✕ oben rechts) */
+  .pitem .popen{position:absolute;bottom:6px;right:6px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+    color:var(--dot);opacity:0;transition:opacity .15s,background .15s;}
+  .pitem .popen svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+  .pitem:hover .popen,.pitem.active .popen{opacity:1;} .pitem .popen:hover{background:rgba(255,193,69,.22);}
+  .pitem.active .popen{color:inherit;} .pitem.active .popen:hover{background:rgba(0,0,0,.08);}
+  .wrap.slim .pitem .popen{display:none;}
   /* Assistenten (Overlay) */
   .wzov{position:fixed;inset:0;z-index:2500;background:rgba(10,12,22,.5);backdrop-filter:blur(3px);display:grid;place-items:center;padding:20px;}
   .wzov[hidden]{display:none;}
@@ -803,16 +811,27 @@
   .apit{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line,#ddd);border-radius:10px;cursor:pointer;}
   .apit span{display:flex;flex-direction:column;min-width:0;} .apit small{opacity:.7;font-size:12px;}
   .crp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#e5e5e5);}
+  .crphead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;} .crpsum{font-size:12.5px;color:var(--muted,#888);}
+  .crphead .crptog{margin-left:auto;} .crpbody{margin-top:8px;}
   .crpbox{position:relative;max-width:520px;aspect-ratio:16/9;background:#111;border-radius:10px;overflow:hidden;cursor:crosshair;touch-action:none;user-select:none;}
   .crpimg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;}
   .crpfr{position:absolute;box-sizing:border-box;pointer-events:none;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);}
   .crpfr.f1{border-style:dashed;border-color:#ffd56b;}
+  .crpfr.fw{border-style:dotted;border-color:#7fd1ff;} .crpfr.fw span{top:auto;bottom:3px;left:auto;right:4px;color:#7fd1ff;}
+  .crpbox.whole .crpfr.fw{display:none;}
   .crpfr span{position:absolute;left:4px;top:3px;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;}
   .crpfr.f1 span{top:auto;bottom:3px;color:#ffd56b;}
   .crpbox.whole .crpfr.f1{display:none;}
   .crpdot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#fff;border:3px solid #2b6cff;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5);}
   .crpctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;max-width:520px;}
   .crpz{flex:1;min-width:120px;} .crpzv{min-width:38px;font-variant-numeric:tabular-nums;font-size:13px;}
+  .dashprops .dbarbox{margin-top:6px;padding:8px;border:1px solid var(--line,#e3e3e3);border-radius:12px;}
+  .dashprops .dbarbox .camsel{max-height:190px;overflow:auto;}
+  .dashprops .dbarlbl{font-size:12px;color:var(--muted);margin-bottom:6px;}
+  .sved .egrid .pgl.haspgbar{display:flex;align-items:center;gap:6px;}
+  .sved .egrid .pgl .pgbar{display:inline-flex;gap:3px;padding:2px 6px;border-radius:9px;background:rgba(127,127,127,.16);}
+  .sved .egrid .pgl .pgbar .eico,.sved .egrid .pgl .pgbar>*{width:13px;height:13px;}
+  .sved .egrid .pgl .pgx{margin-left:auto;font-size:12px;opacity:.8;}
 </style>
 </head>
 <body>
@@ -827,8 +846,6 @@
     <div class="plist" id="plist"></div>
     <button class="addbtn" id="addBtn" title="Neues Panel"><span class="adi">＋</span><span class="adt"> Neues Panel</span></button>
     <div class="sidefoot">
-      <a class="visubtn" href="/" target="_blank" id="openVisu" title="Visu öffnen" aria-label="Visu öffnen">
-        <svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></a>
       <div class="themesw" id="cfgTheme" title="Aussehen dieser Konfiguration">
         <button type="button" data-cth="bunt" title="Bunt" aria-label="Bunt"><svg viewBox="0 0 24 24"><circle cx="8.5" cy="9" r="3.2"/><circle cx="15.5" cy="9" r="3.2"/><circle cx="12" cy="15.2" r="3.2"/></svg></button>
         <button type="button" data-cth="hell" title="Hell" aria-label="Hell"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
@@ -1220,6 +1237,7 @@ async function load(){
   if(window.I18N) syncPanelLang(I18N.lang);
 }
 
+function panelUrl(id){ return (id==='default'||id==='__global__') ? '/' : '/?panel='+encodeURIComponent(id); }
 function renderList(){
   const box=$('#plist'); box.innerHTML='';
   if(cur==='__global__'||!PANELS[cur]) cur=PANELS.default?'default':Object.keys(PANELS).find(k=>k!=='__global__');
@@ -1230,8 +1248,11 @@ function renderList(){
     d.className='pitem'+(id===cur&&rubric==='pconf'?' active':'');
     const nm=p.title||id, ini=nm.split(/[\s_-]+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2)||nm.slice(0,2);
     d.title=nm; d.innerHTML='<span class="pini">'+esc(ini.toUpperCase())+'</span><span class="pn">'+esc(nm)+'</span><span class="pid">?panel='+esc(id)+'</span>'+
-      (id!=='default'?'<button type="button" class="pdel" title="'+T('Panel löschen')+'" aria-label="'+T('Panel löschen')+'">✕</button>':'');
-    d.onclick=e=>{ if(e.target.closest('.pdel')){ e.stopPropagation(); deletePanel(id); return; }
+      (id!=='default'?'<button type="button" class="pdel" title="'+T('Panel löschen')+'" aria-label="'+T('Panel löschen')+'">✕</button>':'')+
+      '<a class="popen" href="'+esc(panelUrl(id))+'" target="_blank" title="'+T('Panel öffnen')+'" aria-label="'+T('Panel öffnen')+'">'+
+        '<svg viewBox="0 0 24 24"><path d="M7 17 17 7M9 7h8v8"/></svg></a>';
+    d.onclick=e=>{ if(e.target.closest('.popen')){ e.stopPropagation(); return; }
+      if(e.target.closest('.pdel')){ e.stopPropagation(); deletePanel(id); return; }
       cur=id; tileSel=null; tbReset(); renderList(); setRubric('pconf'); };
     box.appendChild(d);
   }
@@ -1346,7 +1367,7 @@ function palItems(){
   Object.keys(DEV).forEach(n=>L.push({t:n,s:T('Gerät'),ic:'▣',go:()=>{ goTo('devices','panels'); setTimeout(()=>{ const e=[...document.querySelectorAll('#dev_list .dev')].find(d=>d.dataset.name===n); if(e){ e.scrollIntoView({block:'center'}); e.classList.add('flash'); setTimeout(()=>e.classList.remove('flash'),1200); } },80); }}));
   L.push({t:T('Speichern'),s:T('Aktion')+' · Strg/⌘ S',ic:'✓',go:()=>{ if(dirty) save(); }});
   L.push({t:T('Betriebsmodus-Assistent'),s:T('Aktion'),ic:'🧭',go:()=>{ goTo('devices','panels'); mzOpen(); }});
-  L.push({t:T('Visu öffnen'),s:T('Aktion'),ic:'↗',go:()=>$('#openVisu').click()});
+  L.push({t:T('Visu öffnen'),s:T('Aktion'),ic:'↗',go:()=>window.open(panelUrl(cur),'_blank')});
   L.push({t:T('Neues Panel'),s:T('Aktion'),ic:'＋',go:()=>$('#addBtn').click()});
   L.push({t:T('Menü ein-/ausklappen'),s:T('Aktion'),ic:'◧',go:()=>$('#sideTog').click()});
   [['bunt','Bunt'],['hell','Hell'],['dunkel','Dunkel']].forEach(([k,l])=>L.push({t:T('Theme: ')+T(l),s:T('Aktion'),ic:'◐',go:()=>document.querySelector('[data-cth="'+k+'"]').click()}));
@@ -1900,7 +1921,7 @@ function tbStore(p,k){ const items=(tbEff[k]||[]).map(it=>{ const o=Object.assig
     // Widgets der zweiten Flaeche bei 1-Panel-Profil behalten (werden nur nicht angezeigt)
     const hidden=(sv.items||[]).filter(it=>it.x+it.w>tbDashPages(p)*g);
     sv.items=items.concat(hidden); sv.grid=g;
-    if(!sv.items.length && !sv.exit.length) delete p.saver; return; }
+    if(!sv.items.length && !sv.exit.length && !(sv.bar||[]).length) delete p.saver; return; }
   const lay=tbLay(p,k); lay.grid=tbGrid(p,k); lay.items=items; }
 function tbType(k){ k=String(k||''); if(k==='favoriten'||k.indexOf('free:')===0) return 'free';
   if(k.indexOf('room:')===0) return 'room'; if(k.indexOf('cat:')===0) return 'cat';
@@ -2020,9 +2041,41 @@ function renderTabList(p){
   const add=$('#tbAdd'); if(add) add.onclick=()=>{ const k=tbNewId(p); p.tabs.push(k); tbTab=k; tbSel=-1; markDirty(); renderTabList(p); };
   renderTabProps(p); renderTabEditor();
 }
+// Bausteinauswahl fuer Status-Ampel (Widget) und Dashboard-Statusleiste:
+// passende Bausteine, Haken = anzeigen (max. 4), Ziehen = Reihenfolge.
+const ST_PRI=['WindowMonitor','CentralAlarm','Alarm','SmokeAlarm','MailBox','TextState','InfoOnlyDigital','PresenceDetector','AalEmergency','Intercom'];
+const ST_TL={WindowMonitor:'Fensterüberwachung',CentralAlarm:'Zentral-Alarm',Alarm:'Alarmanlage',SmokeAlarm:'Rauch-/Wassermelder',MailBox:'Briefkasten',
+  TextState:'Statusbaustein',InfoOnlyDigital:'Digitaler Status',PresenceDetector:'Präsenz',AalEmergency:'Notruf',Intercom:'Türklingel'};
+function stPickHTML(selIds, boxId, compact){
+  const cands=(META.controls||[]).filter(c=>ST_PRI.indexOf(c.type)>=0)
+    .sort((a,b)=>ST_PRI.indexOf(a.type)-ST_PRI.indexOf(b.type)||(a.name||'').localeCompare(b.name||''));
+  const sel=(selIds||[]).filter(u=>cands.some(c=>c.uuid===u));
+  const order=sel.map(u=>cands.find(c=>c.uuid===u)).concat(cands.filter(c=>sel.indexOf(c.uuid)<0));
+  return (cands.length?'<div class="camsel" id="'+boxId+'">'+order.map(c=>{ const k=sel.indexOf(c.uuid);
+      return '<div class="camopt'+(k>=0?' on':'')+'" draggable="true" data-id="'+esc(c.uuid)+'"><span class="grip" aria-hidden="true">⋮⋮</span>'+
+        '<label><input type="checkbox"'+(k>=0?' checked':'')+'> <span>'+esc(c.name)+'<small style="display:block;opacity:.6;font-size:11px">'+esc(T(ST_TL[c.type]||c.type))+(c.roomName?' · '+esc(c.roomName):'')+'</small></span></label>'+
+        '<span class="cnum">'+(k>=0?k+1:'')+'</span></div>'; }).join('')+'</div>'
+    :'<div class="hintp">'+T('Keine passenden Bausteine in der Anlage.')+'</div>')+
+    (compact?'':'<div class="hintp">'+T('Farben und Logik kommen aus dem Miniserver: Fenster offen = gelb, Alarm/Rauch ausgelöst = rot, Alarm scharf = blau, Statusbausteine in ihrer Farbe aus Loxone Config.')+'</div>');
+}
+function stPickBind(box, onIds, rerender){
+  if(!box) return;
+  const apply=()=>{ const rows=[...box.querySelectorAll('.camopt')], ids=rows.filter(r=>r.querySelector('input').checked).map(r=>r.dataset.id);
+    if(ids.length>4){ snack(T('Höchstens 4 Bausteine')); rerender(); return; }
+    onIds(ids); };
+  box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=apply);
+  let drag=null;
+  box.querySelectorAll('.camopt').forEach(r=>{
+    r.ondragstart=e=>{ drag=r; r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); }catch(x){} };
+    r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; };
+    r.ondragover=e=>{ if(!drag||drag===r) return; e.preventDefault(); const q=r.getBoundingClientRect(); box.insertBefore(drag,(e.clientY-q.top)>q.height/2?r.nextSibling:r); };
+    r.ondrop=e=>{ e.preventDefault(); apply(); }; });
+}
 // Dashboard-Eigenschaften (statt Typ/Name/Symbol): Raster, Schliessen, Vorlagen
+let dBarOpen=false;   // Haken "Statusleiste" gesetzt, aber noch nichts gewaehlt
 function renderDashProps(p){
   const box=$('#tbProps'), sv=p.saver||{}, ex=sv.exit||[], g=svGrid(p), two=tbDashPages(p)===2;
+  const barOn=dBarOpen||(sv.bar||[]).length>0;
   box.innerHTML='<div class="tbprops dashprops">'+
     '<div class="field"><label class="lbl">'+T('Raster')+'</label><div class="seg" style="display:flex;gap:4px">'+
       '<button type="button" class="minibtn'+(g===3?' on':'')+'" data-dgrid="3">3×3</button>'+
@@ -2031,6 +2084,10 @@ function renderDashProps(p){
     '<div class="field dexits"><label class="lbl">'+T('Dashboard schließen')+'</label>'+
       SV_EXITS.map(([k,l])=>'<label class="chk"><input type="checkbox" data-exit="'+k+'"'+(ex.indexOf(k)>=0?' checked':'')+'> <span>'+esc(T(l))+'</span></label>').join('')+
       '<div class="hint">'+T('Beliebig kombinierbar. Nichts angehakt = Tipp auf eine freie Stelle schließt. Kacheln bleiben bedienbar.')+'</div></div>'+
+    '<div class="field dbar"><label class="lbl">'+T('Statusleiste')+'</label>'+
+      '<label class="chk"><input type="checkbox" id="dBarOn"'+(barOn?' checked':'')+'> <span>'+T('Statusleiste oben anzeigen')+'</span></label>'+
+      (barOn?'<div class="dbarbox"><div class="dbarlbl">'+T('Bausteine (max. 4) – Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+'</div>':'')+
+      '<div class="hint">'+T('Symbole oben in der Menüleiste – neutral, bis etwas passiert. Unabhängig vom Widget „Status (Ampel)“.')+'</div></div>'+
     '<div class="field"><label class="lbl">'+T('Vorlagen')+'</label><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">'+
       '<button type="button" class="minibtn" id="dTplClassic">'+T('Wie bisher (Uhr, Wetter, Termine)')+'</button>'+
       '<button type="button" class="minibtn" id="dTplClear">'+T('Leeren (klassisches Dashboard)')+'</button></div></div>'+
@@ -2041,9 +2098,13 @@ function renderDashProps(p){
       const s2=svCfg(p), cur0=items(); s2.grid=ng; s2.items=[];
       tbEff[DK]=gridReflow(cur0, tbDashPages(p)*ng, ng, ng, t=>gridSizes(t,ng,false));
       tbHist[DK]=[]; delete tbLast[DK]; tbSel=-1; tbCommit(p); renderTabList(p); }); });
+  stPickBind($('#dBar'), ids=>{ const s2=svCfg(p); if(ids.length) s2.bar=ids; else delete s2.bar; dBarOpen=true; markDirty(); renderDashProps(p); renderTabEditor(); }, ()=>renderDashProps(p));
+  { const on=$('#dBarOn'); if(on) on.onchange=()=>{ if(on.checked){ dBarOpen=true; }
+      else { dBarOpen=false; const s2=svCfg(p); if(s2.bar){ delete s2.bar; if(!s2.items.length&&!s2.exit.length) delete p.saver; markDirty(); } }
+      renderDashProps(p); renderTabEditor(); }; }
   box.querySelectorAll('[data-exit]').forEach(cb=>cb.onchange=()=>{ const s2=svCfg(p);
     s2.exit=SV_EXITS.map(e=>e[0]).filter(k=>box.querySelector('[data-exit="'+k+'"]').checked);
-    s2.items=s2.items||[]; if(!s2.items.length && !s2.exit.length) delete p.saver; markDirty(); });
+    s2.items=s2.items||[]; if(!s2.items.length && !s2.exit.length && !(s2.bar||[]).length) delete p.saver; markDirty(); });
   $('#dTplClassic').onclick=()=>undoable(p, T('Vorlage übernommen'), ()=>{
     const wide=two, l=[];
     if(g===2){ l.push({type:'clock',x:0,y:0,w:2,h:1,align:'center',date:'long'},{type:'weather',x:0,y:1,w:2,h:1});
@@ -2147,8 +2208,12 @@ function renderTabEditor(){
   const rowT=[]; for(let b=0;b<bands;b++) rowT.push('26px repeat('+g+',var(--cell))');
   let cells='';
   for(let pg=0;pg<pages;pg++){ const cr=tbCR(p,pg,0,0,g), empty=k!==DK&&pg===pages-1;
-    cells+='<div class="pgl" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+cr.lr+'"><span>'+(k===DK?T('Dashboard'):T('Seite')+' '+(pg+1))+'</span>'+
-      (two?'<small>'+(k===DK?'':T('Bildschirm')+' '+(Math.floor(pg/2)+1)+' · ')+(pg%2?T('rechts'):T('links'))+'</small>':'')+'</div>'+
+    // Dashboard: Menueleiste schematisch (Statusleiste links, X rechts)
+    const dbar=k===DK?((p.saver||{}).bar||[]):[], dx=k===DK&&((p.saver||{}).exit||[]).indexOf('x')>=0;
+    const barHtml=(k===DK&&pg===0&&dbar.length)?'<span class="pgbar" title="'+esc(T('Statusleiste'))+'">'+dbar.map(u=>{ const ct=tbCtl(u); return tbIcoHtml(ct&&ct.iconUrl); }).join('')+'</span>':'';
+    const xHtml=(dx&&pg===pages-1)?'<span class="pgx" title="'+esc(T('Schließen'))+'">✕</span>':'';
+    cells+='<div class="pgl'+(barHtml||xHtml?' haspgbar':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+cr.lr+'">'+barHtml+'<span>'+(k===DK?T('Dashboard'):T('Seite')+' '+(pg+1))+'</span>'+
+      (two?'<small>'+(k===DK?'':T('Bildschirm')+' '+(Math.floor(pg/2)+1)+' · ')+(pg%2?T('rechts'):T('links'))+'</small>':'')+xHtml+'</div>'+
       '<div class="pgbg'+(empty?' empty':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+(cr.r)+' / span '+g+'">'+
         (empty?'<span>'+T('＋ Hierher ziehen für eine neue Seite')+'</span>':'')+'</div>';
     for(let y=0;y<g;y++) for(let x=0;x<g;x++){ const c=tbCR(p,pg,x,y,g);
@@ -2281,18 +2346,7 @@ function tbSideHTML(p){
   if(it.type==='weather') h+='<div class="lbl2">'+T('Vorschau (Tage)')+'</div><div class="seg">'+
     [1,2,3,4].map(n=>'<button data-wxd="'+n+'"'+((it.days||3)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
   if(it.type==='status'){   // Status-Ampel: bis zu 4 Bausteine als Chips (Haken + Ziehen), optional Verlauf
-    const pri=['WindowMonitor','CentralAlarm','Alarm','SmokeAlarm','MailBox','TextState','InfoOnlyDigital','PresenceDetector','AalEmergency','Intercom'];
-    const cands=(META.controls||[]).filter(c=>pri.indexOf(c.type)>=0)
-      .sort((a,b)=>pri.indexOf(a.type)-pri.indexOf(b.type)||(a.name||'').localeCompare(b.name||''));
-    const sel=(it.ctls||[]).filter(u=>cands.some(c=>c.uuid===u));
-    const order=sel.map(u=>cands.find(c=>c.uuid===u)).concat(cands.filter(c=>sel.indexOf(c.uuid)<0));
-    const TL={WindowMonitor:'Fensterüberwachung',CentralAlarm:'Zentral-Alarm',Alarm:'Alarmanlage',SmokeAlarm:'Rauch-/Wassermelder',MailBox:'Briefkasten',
-      TextState:'Statusbaustein',InfoOnlyDigital:'Digitaler Status',PresenceDetector:'Präsenz',AalEmergency:'Notruf',Intercom:'Türklingel'};
-    h+='<div class="lbl2">'+T('Chips (max. 4)')+'</div>'+(cands.length?'<div class="camsel" id="tbStCh">'+order.map(c=>{ const k=sel.indexOf(c.uuid);
-      return '<div class="camopt'+(k>=0?' on':'')+'" draggable="true" data-id="'+esc(c.uuid)+'"><span class="grip" aria-hidden="true">⋮⋮</span>'+
-        '<label><input type="checkbox"'+(k>=0?' checked':'')+'> <span>'+esc(c.name)+'<small style="display:block;opacity:.6;font-size:11px">'+esc(T(TL[c.type]||c.type))+(c.roomName?' · '+esc(c.roomName):'')+'</small></span></label>'+
-        '<span class="cnum">'+(k>=0?k+1:'')+'</span></div>'; }).join('')+'</div>'
-      :'<div class="hintp">'+T('Keine passenden Bausteine in der Anlage.')+'</div>')+
+    h+='<div class="lbl2">'+T('Chips (max. 4)')+'</div>'+stPickHTML(it.ctls,'tbStCh')+
       '<div class="hintp">'+T('Farben und Logik kommen aus dem Miniserver: Fenster offen = gelb, Alarm/Rauch ausgelöst = rot, Alarm scharf = blau, Statusbausteine in ihrer Farbe aus Loxone Config.')+'</div>';
     h+='<div class="lbl2">'+T('Darstellung')+'</div><div class="seg">'+
       '<button data-stlook="auto"'+(it.look!=='color'?' class="on"':'')+'>'+T('Passend zum Design')+'</button>'+
@@ -2328,17 +2382,7 @@ function tbBindSide(p){
       items.splice(tbSel,1); tbSel=-1; tbCommit(p); renderTabList(p); }); }
   const host=$('#tbEd'), redo=()=>{ tbCommit(p); renderTabEditor(); };
   host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===3) delete it.days; else it.days=n; redo(); });   // Standard 3 Tage
-  { const box=$('#tbStCh'); if(box){
-    const apply=()=>{ const rows=[...box.querySelectorAll('.camopt')], ids=rows.filter(r=>r.querySelector('input').checked).map(r=>r.dataset.id);
-      if(ids.length>4){ snack(T('Höchstens 4 Chips')); renderTabEditor(); return; }
-      it.ctls=ids; redo(); };
-    box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=apply);
-    let drag=null;
-    box.querySelectorAll('.camopt').forEach(r=>{
-      r.ondragstart=e=>{ drag=r; r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); }catch(x){} };
-      r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; };
-      r.ondragover=e=>{ if(!drag||drag===r) return; e.preventDefault(); const q=r.getBoundingClientRect(); box.insertBefore(drag,(e.clientY-q.top)>q.height/2?r.nextSibling:r); };
-      r.ondrop=e=>{ e.preventDefault(); apply(); }; }); } }
+  stPickBind($('#tbStCh'), ids=>{ it.ctls=ids; redo(); }, renderTabEditor);
   { const tr=$('#tbStTrk'); if(tr) tr.onchange=()=>{ if(tr.value) it.trk=tr.value; else delete it.trk; redo(); }; }
   host.querySelectorAll('[data-stlook]').forEach(b=>b.onclick=()=>{ if(b.dataset.stlook==='color') it.look='color'; else delete it.look; redo(); });
   { const box=$('#tbCams'); if(box){
@@ -3073,16 +3117,18 @@ $('#ms_save').onclick=async()=>{
 
 // Bildausschnitt einer Tuerstation: Fokuspunkt antippen/ziehen, Zoom, oder
 // ganzes Bild. Die Rahmen zeigen, was das Klingel-Popup davon zeigt.
-const CRP_FRAMES=[{k:'2',l:'Popup 2 Panels',a:2.9},{k:'1',l:'Popup 1 Panel',a:1.4}];
+const CRP_FRAMES=[{k:'2',l:'Popup 2 Panels',a:2.9},{k:'1',l:'Popup 1 Panel',a:1.4},{k:'w',l:'Widget 2×1',a:2.5}];
 function crpHTML(ic){
-  return '<div class="crp"><label class="lbl">'+T('Bildausschnitt')+'</label>'+
-    '<p class="hint" style="margin:0 0 6px">'+T('Ins Bild tippen oder ziehen, um den wichtigen Bereich festzulegen. Die Rahmen zeigen, was das Klingel-Popup zeigt.')+'</p>'+
+  const c=ic.crop, sum=!c?T('Standard (Mitte)'):(c.fit==='contain'?T('ganzes Bild'):T('Fokus')+' '+Math.round(c.x)+' / '+Math.round(c.y)+' %'+(c.z>1?' · '+T('Zoom')+' '+(+c.z).toFixed(1).replace(/\.0$/,'')+'×':''));
+  return '<div class="crp"><div class="crphead"><label class="lbl" style="margin:0">'+T('Bildausschnitt')+'</label><span class="crpsum">'+esc(sum)+'</span>'+
+    '<button type="button" class="minibtn crptog">'+T('Bildausschnitt einstellen')+'</button></div><div class="crpbody" hidden>'+
+    '<p class="hint" style="margin:0 0 6px">'+T('Ins Bild tippen oder ziehen, um den wichtigen Bereich festzulegen. Die Rahmen zeigen, was Popup und Widget davon zeigen. Ohne Zoom lässt sich nur verschieben, was durch das breitere Format ohnehin abgeschnitten wird – für mehr Spielraum den Zoom erhöhen.')+'</p>'+
     '<div class="crpbox"><img alt="" class="crpimg">'+CRP_FRAMES.map(f=>'<div class="crpfr f'+f.k+'"><span>'+T(f.l)+'</span></div>').join('')+'<i class="crpdot"></i></div>'+
     '<div class="crpctl"><label class="lbl" style="margin:0">'+T('Zoom')+'</label><input type="range" class="crpz" min="1" max="3" step="0.05">'+
     '<span class="crpzv"></span>'+
     '<label class="chk" style="margin:0"><input type="checkbox" class="crpfit"><span>'+T('Ganzes Bild zeigen (nicht beschneiden)')+'</span></label>'+
     '<button type="button" class="minibtn crprst">'+T('Zurücksetzen')+'</button></div>'+
-    '<p class="hint" style="margin-top:4px">'+T('Wirksam mit Speichern – gilt für Popup, Dashboard-Widget und Kamera-Ansicht.')+'</p></div>';
+    '<p class="hint" style="margin-top:4px">'+T('Wirksam mit Speichern – gilt für Popup, Dashboard-Widget und Kamera-Ansicht.')+'</p></div></div>';
 }
 function crpBind(row, ic){
   const box=row.querySelector('.crpbox'); if(!box||!ic) return;
@@ -3102,8 +3148,18 @@ function crpBind(row, ic){
       if(z>1){ const px=l+x*fw, py=t+y*fh; fw/=z; fh/=z; l=px-x*fw; t=py-y*fh; }
       fr.style.cssText='left:'+(l*100)+'%;top:'+(t*100)+'%;width:'+(fw*100)+'%;height:'+(fh*100)+'%'; });
     row._crop=c;
+    const sm=row.querySelector('.crpsum'); if(sm) sm.textContent=c.fit==='contain'?T('ganzes Bild'):((c.x===50&&c.y===50&&c.z<=1)?T('Standard (Mitte)'):
+      T('Fokus')+' '+Math.round(c.x)+' / '+Math.round(c.y)+' %'+(c.z>1?' · '+T('Zoom')+' '+(+c.z).toFixed(1).replace(/\.0$/,'')+'×':''));
   };
-  img.onload=paint; img.src='/mjpeg?id='+encodeURIComponent(ic.uuid)+'&_t='+Date.now();
+  img.onload=paint;
+  // Live-Bild nur, solange der Editor offen ist (immer nur einer): jeder
+  // MJPEG-Stream belegt eine der ~6 Browser-Verbindungen zum Server.
+  const body=row.querySelector('.crpbody'), tog=row.querySelector('.crptog');
+  const close=()=>{ body.hidden=true; img.removeAttribute('src'); tog.textContent=T('Bildausschnitt einstellen'); };
+  row._crpClose=close;
+  tog.onclick=()=>{ if(!body.hidden){ close(); return; }
+    document.querySelectorAll('.ic,.camrow').forEach(r=>{ if(r!==row&&r._crpClose) r._crpClose(); });
+    body.hidden=false; tog.textContent=T('Fertig'); img.src='/mjpeg?id='+encodeURIComponent(ic.uuid)+'&_t='+Date.now(); paint(); };
   const at=e=>{ const r=box.getBoundingClientRect(), p=e.touches?e.touches[0]:e;
     c.x=Math.round(Math.max(0,Math.min(100,(p.clientX-r.left)/r.width*100)));
     c.y=Math.round(Math.max(0,Math.min(100,(p.clientY-r.top)/r.height*100))); paint(); };
@@ -3124,14 +3180,17 @@ function camRow(c,i){
     '<div class="field camurl"><label class="lbl">'+T('Video-URL (MJPEG)')+'</label><input type="text" class="cam_url" value="'+esc(c.url||'')+'" placeholder="http://192.168.1.60/mjpg/video.mjpg"></div>'+
     '<div class="field"><label class="lbl">'+T('Benutzer')+'</label><input type="text" class="cam_user" value="'+esc(c.user||'')+'" autocomplete="off"></div>'+
     '<div class="field"><label class="lbl">'+T('Passwort')+'</label><input type="password" class="cam_pass" autocomplete="new-password" placeholder="'+(c.hasPass?T('unverändert lassen'):'')+'"></div>'+
-    '<button type="button" class="camdel" title="'+T('Kamera entfernen')+'" aria-label="'+T('Kamera entfernen')+'">✕</button></div>';
+    '<button type="button" class="camdel" title="'+T('Kamera entfernen')+'" aria-label="'+T('Kamera entfernen')+'">✕</button>'+
+    (c.id&&c.url?'<div class="camcrop">'+crpHTML({uuid:c.id,crop:c.crop})+'</div>':'')+'</div>';
 }
 function readCams(){ document.querySelectorAll('#cam_list .camrow').forEach(r=>{ const c=CAMS[+r.dataset.i]; if(!c) return;
   c.name=r.querySelector('.cam_name').value.trim(); c.url=r.querySelector('.cam_url').value.trim();
-  c.user=r.querySelector('.cam_user').value.trim(); const pw=r.querySelector('.cam_pass').value; if(pw) c.pass=pw; }); }
+  c.user=r.querySelector('.cam_user').value.trim(); const pw=r.querySelector('.cam_pass').value; if(pw) c.pass=pw;
+  if(r._crop) c.crop=r._crop; }); }
 function renderCams(){
   const box=$('#cam_list'); if(!box) return;
   box.innerHTML=CAMS.length?CAMS.map(camRow).join(''):'<div class="muted">'+T('Noch keine weiteren Kameras.')+'</div>';
+  box.querySelectorAll('.camrow').forEach(r=>{ const c=CAMS[+r.dataset.i]; if(c&&c.id&&c.url) crpBind(r,{uuid:c.id,crop:c.crop}); });
   box.querySelectorAll('.camdel').forEach(b=>b.onclick=()=>{ readCams(); const i=+b.closest('.camrow').dataset.i, gone=CAMS.splice(i,1)[0]; renderCams();
     snack(T('Kamera „')+(gone.name||gone.url||'')+T('“ entfernt – wirksam mit Speichern'), ()=>{ readCams(); CAMS.splice(i,0,gone); renderCams(); }); });
 }
@@ -3149,7 +3208,7 @@ $('#ic_save').onclick=async()=>{
   });
   try{
     readCams();
-    const cameras=CAMS.filter(c=>c.url).map(c=>{ const o={id:c.id||'',name:c.name||'Kamera',url:c.url,user:c.user||''}; if(c.pass) o.pass=c.pass; return o; });
+    const cameras=CAMS.filter(c=>c.url).map(c=>{ const o={id:c.id||'',name:c.name||'Kamera',url:c.url,user:c.user||''}; if(c.pass) o.pass=c.pass; if(c.crop) o.crop=c.crop; return o; });
     const r=await fetch('/api/settings/intercom',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({intercoms,cameras})});
     const j=await r.json();
     if(j.ok){ flash($('#ic_toast'),T('✓ Gespeichert'),true); loadSettings(); } else flash($('#ic_toast'),j.error||T('Fehler'),false);

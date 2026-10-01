@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav24"
+APP_VERSION = "0.19.0-fav27"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -425,9 +425,11 @@ def _widget_entry(it: dict, x: int, y: int, w: int, h: int) -> dict | None:
                 e["cams"] = ids
     if it["type"] == "status":
         ids = []
-        for u in (it.get("ctls") or [])[:4]:
+        for u in (it.get("ctls") or [])[:32]:
             if isinstance(u, str) and _UUID_RE.match(u) and u not in ids:
                 ids.append(u)
+                if len(ids) == 4:
+                    break
         e["ctls"] = ids                           # Chips (max. 4) in dieser Reihenfolge
         if isinstance(it.get("trk"), str) and _UUID_RE.match(it["trk"]):
             e["trk"] = it["trk"]                  # optional: Tracker fuer den Verlauf
@@ -533,6 +535,16 @@ def _sanitize_saver(sv, dg: int = 3) -> dict | None:
     out = {"items": items, "exit": exits}
     if sv.get("grid") in (2, 3, "2", "3"):
         out["grid"] = g
+    # Statusleiste oben im Dashboard: bis zu 4 Bausteine (unabhaengig vom
+    # Ampel-Widget, gleiche Logik - s. App.status_data)
+    bar = []
+    for u in (sv.get("bar") or [])[:32]:
+        if isinstance(u, str) and _UUID_RE.match(u) and u not in bar:
+            bar.append(u)
+            if len(bar) == 4:
+                break
+    if bar:
+        out["bar"] = bar
     return out
 
 
@@ -2032,7 +2044,13 @@ class App:
         sv = (prof or {}).get("saver")
         if not sv:
             return None
-        return {"t": "saver", **self._widgets_data(sv["items"], prof)}
+        out = {"t": "saver", **self._widgets_data(sv["items"], prof)}
+        if sv.get("bar"):
+            try:
+                out["bar"] = self.status_data(sv["bar"], None)
+            except Exception:
+                log.exception("Dashboard-Statusleiste fehlgeschlagen")
+        return out
 
     # ---- Status-Ampel (Widget "status") ----
     # Die Logik kommt aus dem Miniserver: Fensterueberwachung, Alarm, Rauchmelder,
@@ -2089,8 +2107,10 @@ class App:
                     continue
                 if bits & 6 and i < len(wins):
                     w = wins[i] or {}
+                    wloc = (_clean((self.rooms.get(w.get("room")) or {}).get("name")) if w.get("room") else "") \
+                        or _clean(w.get("installPlace"))
                     detail.append(f"{_clean(w.get('name')) or 'Fenster'}"
-                                  + (f" ({_clean(w.get('installPlace'))})" if w.get("installPlace") else "")
+                                  + (f" ({wloc})" if wloc else "")
                                   + (" offen" if bits & 4 else " gekippt"))
             detail.sort(key=lambda d: 0 if d.endswith(" offen") else 1)   # offene vor gekippten
         elif t == "Alarm":
@@ -5302,9 +5322,17 @@ class App:
                     b = int(float(codes[i])) if i < len(codes) else 0
                 except (ValueError, TypeError):
                     b = 0
-                items.append({"id": f"{uuid}:{i}", "icon": "blind", "on": bool(b & 6),
-                              "label": _clean(w.get("name") or f"Fenster {i + 1}"),
-                              "sublabel": wtext(b), "_r": 0 if b & 4 else (1 if b & 2 else 2)})
+                ent = {"id": f"{uuid}:{i}", "icon": "blind", "on": bool(b & 6),
+                       "label": _clean(w.get("name") or f"Fenster {i + 1}"),
+                       "sublabel": wtext(b), "_r": 0 if b & 4 else (1 if b & 2 else 2)}
+                # Raum (Loxone: window.room = Raum-UUID) und Einbauort, wie auf
+                # den Kacheln als Kopfzeile ueber dem Namen
+                loc = " · ".join(x for x in (
+                    _clean((self.rooms.get(w.get("room")) or {}).get("name")) if w.get("room") else "",
+                    _clean(w.get("installPlace"))) if x)
+                if loc:
+                    ent["room"] = loc
+                items.append(ent)
             # Offene zuerst, dann gekippte, dann der Rest (sonst Loxone-Reihenfolge)
             items.sort(key=lambda x: x.pop("_r"))
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
@@ -7116,7 +7144,7 @@ async def api_settings(request: web.Request) -> web.Response:
     intercoms = [{"uuid": u, "name": _clean(c.get("name")), **icv(u)}
                  for u, c in app.controls.items() if c.get("type") == "Intercom"]
     cameras = [{"id": k, "name": str(e.get("name") or ""), "url": (e.get("url") or "").strip(),
-                "user": e.get("user", ""), "hasPass": bool(e.get("pass"))}
+                "user": e.get("user", ""), "hasPass": bool(e.get("pass")), "crop": _clean_crop(e.get("crop"))}
                for k, e in ic.items() if k.startswith("cam_") and isinstance(e, dict)]
     am = cfg.get("audiometa", {}) if isinstance(cfg.get("audiometa"), dict) else {}
     cal = cfg.get("calendar", {}) if isinstance(cfg.get("calendar"), dict) else {}
@@ -7344,6 +7372,9 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
                 continue
             cur = ic.get(cid) if isinstance(ic.get(cid), dict) else {}
             ent = {"name": str(e.get("name") or "Kamera").strip()[:40], "url": url, "user": user}
+            cr = _clean_crop(e.get("crop")) if "crop" in e else _clean_crop(cur.get("crop"))
+            if cr:
+                ent["crop"] = cr                    # Bildausschnitt wie bei den Tuerstationen
             if e.get("pass"):
                 ent["pass"] = str(e["pass"])
             elif cur.get("pass") and (url, user) == (cur.get("url"), cur.get("user", "")):

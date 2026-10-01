@@ -399,7 +399,7 @@
   #phead .phcur{color:var(--dot);background:rgba(255,193,69,.12);}
   /* Reiter der Seite: Pillen auf der hellen Flaeche */
   .subtabs{background:var(--bg);border-bottom:0;padding:14px 28px 4px;gap:6px;}
-  .stab{padding:8px 16px;border:0;border-radius:var(--pill);color:var(--muted);font-weight:600;background:transparent;}
+  .stab{padding:8px 13px;border:0;border-radius:var(--pill);color:var(--muted);font-weight:600;background:transparent;}
   .stab:hover{color:var(--fg);background:var(--hover-tint);}
   .stab.active{color:var(--prim-ink);background:var(--prim);border:0;}
   .scroll{padding:18px 28px 28px;}
@@ -832,6 +832,32 @@
   .sved .egrid .pgl .pgbar{display:inline-flex;gap:3px;padding:2px 6px;border-radius:9px;background:rgba(127,127,127,.16);}
   .sved .egrid .pgl .pgbar .eico,.sved .egrid .pgl .pgbar>*{width:13px;height:13px;}
   .sved .egrid .pgl .pgx{margin-left:auto;font-size:12px;opacity:.8;}
+  .pfgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;}
+  .pfgrid .lbl2{margin-top:0;}
+  .pfgrid .sizepick{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .pfgrid .sizepick button{min-width:0;padding:12px;}
+  .pfgrid .sizepick small{font-size:11.5px;}
+  /* ===== Handy: Panel-Leiste kompakt (eine Zeile, seitlich scrollbar) statt
+     eines halben Bildschirms Liste; Kopfzeile ohne Umbruch ===== */
+  @media (max-width:760px){
+    .wrap:not(.slim) aside.side{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;}
+    .wrap:not(.slim) .brandrow{flex:1 1 100%;}
+    .wrap:not(.slim) .brand small,.wrap:not(.slim) .sectlbl{display:none;}
+    .wrap:not(.slim) .plist{flex:1 1 0;min-width:0;flex-direction:row;flex-wrap:nowrap;overflow-x:auto;gap:8px;scrollbar-width:none;}
+    .wrap:not(.slim) .plist::-webkit-scrollbar{display:none;}
+    .wrap:not(.slim) .pitem{flex:0 0 auto;max-width:200px;padding:8px 34px 8px 12px;}
+    .wrap:not(.slim) .pitem .pid{display:none;}
+    .wrap:not(.slim) .pitem .pdel{top:50%;transform:translateY(-50%);right:6px;}
+    .wrap:not(.slim) .pitem .popen{display:none;}
+    .wrap:not(.slim) .addbtn{flex:0 0 auto;width:auto;padding:8px 12px;margin:0;}
+    .wrap:not(.slim) .addbtn .adt{display:none;}
+    .wrap:not(.slim) .sidefoot{display:none;}
+    .rubrics{flex-wrap:nowrap;gap:4px;} .rubrics .langrow select{max-width:96px;padding-left:10px;}
+  }
+  /* Auswahlfelder fuellen ihr Feld (wie die Textfelder); Reiter duerfen ab
+     Tablet-Breite umbrechen statt versteckt seitlich zu scrollen */
+  .field>select{width:100%;max-width:none;}
+  @media (min-width:761px){ .subtabs{flex-wrap:wrap;overflow-x:visible;row-gap:6px;} }
 </style>
 </head>
 <body>
@@ -899,6 +925,7 @@
         <section class="spane" data-sub="miniserver">
           <p class="lead" data-i18n>Zugang zum Loxone Miniserver. Nach dem Speichern verbindet der Server sofort neu.</p>
           <div class="card">
+            <h3 data-i18n>Miniserver-Zugang</h3>
             <div class="field" style="max-width:none"><label class="lbl" data-i18n>Host / IP</label><input type="text" id="ms_host" placeholder="192.168.1.50"></div>
             <div class="row2" style="margin-top:12px">
               <div class="field"><label class="lbl" data-i18n>Benutzer</label><input type="text" id="ms_user" autocomplete="off"></div>
@@ -949,7 +976,7 @@
           <div class="card">
             <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
             <div id="ag_list"></div>
-            <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">🧭 Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
+            <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
           </div>
           <details class="card devhelp">
             <summary><h3 data-i18n>Hinweise</h3></summary>
@@ -962,21 +989,21 @@
 
         <!-- Audio -->
         <section class="spane" data-sub="audio">
-          <p class="lead" data-i18n>Testton und Cover, Titel und Favoriten vom Loxone-Audioserver.</p>
-          <div class="card">
-            <h3 data-i18n>Testton abspielen</h3>
-            <p class="note" data-i18n>Spielt drei kurze Pieptöne auf dem gewählten Panel – so prüfst du, ob Weckton und Klingel hörbar sind. Das Panel muss die Visu geöffnet haben.</p>
-            <div class="row2">
-              <div class="field" style="max-width:280px"><label class="lbl" data-i18n>Ziel-Panel</label><select id="at_panel"></select></div>
-            </div>
-            <div class="actions"><button class="btn" id="at_send" data-i18n>🔊 Test-Ton senden</button><span class="toast" id="at_toast"></span></div>
-          </div>
+          <p class="lead" data-i18n>Cover, Titel und Favoriten vom Loxone-Audioserver – und ein Test-Ton, um die Lautsprecher der Panels zu prüfen.</p>
           <div class="card">
             <h3 data-i18n>Audioserver (Cover / Titel / Favoriten)</h3>
             <p class="note" data-i18n>Loxone-Audioserver (Gen 2) liefern Cover/Titel/Interpret und Favoriten über einen eigenen Live-Kanal (Audioprotokoll, Port 7091) — genau wie die Loxone-App. LoxPanel abonniert diesen Kanal und legt die Infos über die passende Zone. Die Audioserver-Adresse wird <b>automatisch</b> aus der Loxone-Struktur erkannt — keine IP-Eingabe nötig. Funktioniert mit dem originalen Loxone-Audioserver ebenso wie mit Nachbauten (Sonn/Audioserver4Home). Musikserver-/MS4H-Zonen bleiben unberührt (die liefern es ohnehin).</p>
             <label class="chk"><input type="checkbox" id="am_enabled"><span data-i18n>Audioserver-Live-Daten abonnieren (automatisch)</span></label>
             <div class="note" id="am_servers" style="margin-top:8px"></div>
             <div class="actions"><button class="btn" id="am_save" data-i18n>Speichern</button><span class="toast" id="am_toast"></span></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n>Test-Ton (Diagnose)</h3>
+            <p class="note" data-i18n>Spielt drei kurze Pieptöne auf dem gewählten Panel – so prüfst du, ob Weckton und Klingel hörbar sind. Das Panel muss die Visu geöffnet haben.</p>
+            <div class="row2">
+              <div class="field" style="max-width:280px"><label class="lbl" data-i18n>Ziel-Panel</label><select id="at_panel"></select></div>
+            </div>
+            <div class="actions"><button class="btn" id="at_send" data-i18n>🔊 Test-Ton senden</button><span class="toast" id="at_toast"></span></div>
           </div>
         </section>
 
@@ -1217,10 +1244,11 @@ function apCardHTML(p){
 const PCONF_TABS=[
   {k:'profile',label:'Profil'},{k:'tabs',label:'Tabs'},
   {k:'appearance',label:'Aussehen'}];
-const GLOBAL_TABS=[{k:'appearance',label:'Aussehen'},{k:'catcolors',label:'Kategorie-Farben'}];
+// Darstellung aller Panels: Aussehen, Effekte und Kategorie-Farben auf einer Seite
+const GLOBAL_TABS=[{k:'appearance',label:'Aussehen'}];
 const SET_TABS=[
   {k:'miniserver',label:'Miniserver'},{k:'calendar',label:'Kalender'},
-  {k:'intercom',label:'Intercom / Kameras'},{k:'audio',label:'Audio'},{k:'behavior',label:'Bedienung'},{k:'security',label:'Sicherheit'}];
+  {k:'intercom',label:'Kameras'},{k:'audio',label:'Audio'},{k:'behavior',label:'Bedienung'},{k:'security',label:'Sicherheit'}];
 const DEV_TABS=[
   {k:'panels',label:'Meine Geräte'},{k:'newpanel',label:'Gerät hinzufügen'},{k:'supported',label:'Unterstützte Geräte'}];
 
@@ -1265,7 +1293,7 @@ function deletePanel(id){
   const snap=JSON.stringify(PANELS[id]), was=cur;
   delete PANELS[id]; if(cur===id){ cur='default'; tbReset(); }
   renderList(); if(rubric==='pconf') setRubric('pconf'); markDirty();
-  snack(T('Panel „')+id+T('“ gelöscht – wirksam mit Speichern'), ()=>{ PANELS[id]=JSON.parse(snap); cur=was; tbReset(); renderList(); if(rubric==='pconf') setRubric('pconf'); markDirty(); });
+  snack(T('Panel „')+(JSON.parse(snap).title||id)+T('“ gelöscht – wirksam mit Speichern'), ()=>{ PANELS[id]=JSON.parse(snap); cur=was; tbReset(); renderList(); if(rubric==='pconf') setRubric('pconf'); markDirty(); });
 }
 
 // ---- ?-Hilfe: Hinweistexte einer Karte hinter einem ?-Knopf neben der Ueberschrift ----
@@ -1355,11 +1383,12 @@ async function renderAdminCard(){
 
 // ---- Befehlspalette (Strg/⌘+K): Seiten, Panels, Tabs, Geraete, Aktionen ----
 function palItems(){
-  const L=[], rubName={settings:T('System'),devices:T('Geräte'),global:T('Darstellung global')};
+  const L=[], rubName={settings:T('System'),devices:T('Geräte'),global:T('Darstellung')};
   L.push({t:T('Start'),s:T('Übersicht'),ic:'⌂',go:()=>goTo('overview')});
   SET_TABS.forEach(x=>L.push({t:T(x.label),s:rubName.settings,ic:'⚙',go:()=>goTo('settings',x.k)}));
   DEV_TABS.forEach(x=>L.push({t:T(x.label),s:rubName.devices,ic:'▣',go:()=>goTo('devices',x.k)}));
   GLOBAL_TABS.forEach(x=>L.push({t:T(x.label),s:rubName.global,ic:'◐',go:()=>goTo('global',x.k)}));
+  L.push({t:T('Kategorie-Farben'),s:rubName.global,ic:'◐',go:()=>goTo('global','catcolors')});   // Karte auf der Darstellungs-Seite
   Object.keys(PANELS).filter(k=>k!=='__global__').forEach(id=>{ const p=PANELS[id], nm=p.title||id;
     PCONF_TABS.forEach(x=>L.push({t:nm+' · '+T(x.label),s:T('Panel'),ic:'▢',go:()=>{ cur=id; tbReset(); subPconf=x.k; setRubric('pconf'); }}));
     L.push({t:nm+' · '+T('Dashboard'),s:T('Panel'),ic:'▦',go:()=>{ cur=id; tbReset(); subPconf='tabs'; tbTab=DK; setRubric('pconf'); }});
@@ -1419,10 +1448,9 @@ function renderSysBehavior(){
   const ui=g.ui=g.ui||{};
   host.innerHTML=
     '<p class="lead">'+T('Gilt für alle Panels. Datum und Uhrzeit folgen der Sprache dieser Konfiguration (rechts oben).')+'</p>'+
-    '<div class="card"><h3>'+T('Bedienung')+'</h3>'+
+    '<div class="card"><h3>'+T('Kacheln & Wecker')+'</h3>'+
       '<label class="chk"><input type="checkbox" id="sysDblOff"'+(ui.dblTapOff===false?'':' checked')+'><span>'+T('Licht bei Doppelklick auf Beleuchtungskachel aus')+'</span></label>'+
-      '<p class="hint">'+T('Nur bei eingeschaltetem Licht. Ein einfacher Tipp öffnet die Kachel dann mit kurzer Verzögerung (0,35 s).')+'</p></div>'+
-    '<div class="card"><h3>'+T('Wecker')+'</h3>'+
+      '<p class="hint">'+T('Nur bei eingeschaltetem Licht. Ein einfacher Tipp öffnet die Kachel dann mit kurzer Verzögerung (0,35 s).')+'</p>'+
       '<label class="chk"><input type="checkbox" id="sysAlarms"'+(ui.alarmsEnabled===false?'':' checked')+'><span>'+T('Weckton &amp; automatisches Aufwecken/Umschalten auf allen Panels')+'</span></label>'+
       '<p class="hint">'+T('Betrifft nur die Weck-Benachrichtigung (Ton, Bildschirm an, Sprung zur Wecker-Ansicht). Wecker-Kacheln bleiben überall bedienbar.')+'</p>'+
       '<div class="actions"><button class="btn" id="sys_bsave">'+T('Speichern')+'</button><span class="toast" id="sys_btoast"></span></div></div>';
@@ -1485,7 +1513,7 @@ function subTabs(){
 }
 // System: eigene Reiter + "Darstellung global" (Darstellung, Kategorie-Farben).
 // Die Darstellungs-Reiter laufen intern weiter als Rubrik "global" (Panel-Editor).
-function SYS_TABS(){ return SET_TABS.concat(GLOBAL_TABS.map(t=>({k:'g:'+t.k,label:t.k==='appearance'?'Darstellung global':t.label}))); }
+function SYS_TABS(){ return SET_TABS.concat(GLOBAL_TABS.map(t=>({k:'g:'+t.k,label:t.k==='appearance'?'Darstellung':t.label}))); }
 function renderSubtabs(){
   const tabs=subTabs(), active=rubric==='global'?'g:'+subGlob:getSub();
   const bar=$('#subtabs');
@@ -1582,12 +1610,12 @@ function motionOpts(cur,withGlobal){
 // Mehr Kontrast: Schatten an Kacheln/Knoepfen (global an/aus, je Panel abweichend)
 function contrastOpts(cur,withGlobal){
   const o=(v,t)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+T(t)+'</option>';
-  return (withGlobal?o('','Wie Standard'):'')+o('off','Aus (flach)')+o('on','Mehr Kontrast (erfordert mehr Rechenleistung)');
+  return (withGlobal?o('','Wie Standard'):'')+o('off','Aus (flach)')+o('on','Mehr Kontrast');
 }
 // Lichtszenen: Piktogramm zeigt Lichtfarbe + Helligkeit der Szene (lernend)
 function sceneLightOpts(cur,withGlobal){
   const o=(v,t)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+T(t)+'</option>';
-  return (withGlobal?o('','Wie Standard'):'')+o('off','Aus (einheitliches Symbol)')+o('on','Lichtfarbe & Helligkeit anzeigen (lernend)');
+  return (withGlobal?o('','Wie Standard'):'')+o('off','Einheitliches Symbol')+o('on','Lichtfarbe zeigen');
 }
 // Aussehen: Design (Farben) und Schrift. Sprache steht bei "Bedienung" bzw. im
 // Profil, die Textfarbe kommt aus dem Design (Farbe "Schrift").
@@ -1600,11 +1628,12 @@ function appearanceFields(ui){
       '<select id="fBold"><option value="">'+T('Normal')+'</option><option value="1"'+(ui.bold?' selected':'')+'>'+T('Fett')+'</option></select></div>'+
     '<div class="grph" style="flex:1 1 100%">'+T('Größen (px, leer = Standard)')+'</div>'+
     sizeField('Symbol','iconSize',ui)+sizeField('Kachelname','nameSize',ui)+sizeField('Statuszeile','subSize',ui)+
-    sizeField('Wettervorschau (Dashboard)','saverFcSize',ui);
+    sizeField('Wettervorschau','saverFcSize',ui);
 }
 
 function renderGlobalEditor(p){
-  if(['appearance','catcolors'].indexOf(subGlob)<0) subGlob='appearance';
+  const toCC=subGlob==='catcolors';   // alter Sprung "Kategorie-Farben" -> Karte auf der Darstellungs-Seite
+  subGlob='appearance';
   $('#phead').innerHTML=''; $('#phead').style.display='none';
   $('#pconfHost').innerHTML =
     '<p class="lead">'+T('Standard für alle Panels. Ein einzelnes Panel (links wählen) kann unter „Aussehen“ davon abweichen.')+'</p>'+
@@ -1619,8 +1648,8 @@ function renderGlobalEditor(p){
         '<span>'+T('Animierte Symbole – dezente Bewegung: Klingel und Wecker wackeln, Jalousie-Pfeil wippt beim Fahren, Heizung flackert beim Heizen, Symbol ploppt beim Einschalten, neue Werte ticken ein')+'</span></label>'+
       '</div>'+
       '<p class="hint">'+T('Animation: Keine · Mittel (nur Überblendungen) · Viel (mit Zoom). Kontrast: weicher Schatten an Kacheln und Knöpfen. Lichtszenen: Symbol zeigt Lichtfarbe und Helligkeit, lernt jede Szene beim ersten Einschalten. Schwache Panels: Animation „Mittel“, Kontrast „Aus“.')+'</p>'+
-    '</div></section>'+
-    '<section class="spane" data-sub="catcolors"><div class="card"><h3>Kategorie-Farben (Ampel)</h3>'+
+    '</div>'+
+    '<div class="card" id="ccCard"><h3>Kategorie-Farben (Ampel)</h3>'+
       '<p class="note">'+T('Pro Kategorie eine <b>Aktiv-</b> und <b>OK-Farbe</b> für Kachel-Hintergrund und Rahmen — gilt systemweit auf allen Panels (Wiedererkennung). ◐ einschalten = Zustands-Ampel (z. B. Alarm rot/grün, Tor gelb/grün). Aus = neutral. Analoge Messwerte bleiben immer neutral.')+'</p>'+
       '<div class="cclist" id="catcolors"></div></div></section>';
   bindAppearance(p);
@@ -1636,6 +1665,7 @@ function renderGlobalEditor(p){
   $('#delSlot').innerHTML='';
   $('#saveBtn').onclick=save;
   renderSubtabs(); showSub(subGlob);
+  if(toCC){ const cc=$('#ccCard'); if(cc) setTimeout(()=>cc.scrollIntoView({block:'start',behavior:'smooth'}),60); }
 }
 function renderCatColors(p){
   const box=$('#catcolors'); if(!box) return;
@@ -1705,27 +1735,37 @@ function renderEditor(){
   $('#pconfHost').innerHTML =
    // 1 · Tabs: Leiste + Raster
    // 0 · Profil: Groesse des Panels
-   '<section class="spane" data-sub="profile"><div class="card"><h3>'+T('Panel-Größe')+'</h3>'+
-     '<p class="note">'+T('Bestimmt, wie Tabs und Dashboard aufgebaut sind: eine 480×480-Fläche oder zwei nebeneinander.')+'</p>'+
-     '<div class="sizepick">'+
-       '<button type="button" data-psize="1" class="'+((p.ui||{}).split===false?'on':'')+'"><span class="spv one"><i></i></span><b>'+T('1 Panel')+'</b><small>480 × 480 · 4″-Wandpanel</small></button>'+
-       '<button type="button" data-psize="2" class="'+((p.ui||{}).split===false?'':'on')+'"><span class="spv two"><i></i><i></i></span><b>'+T('2 Panels')+'</b><small>960 × 480 · Shelly X2 / Tablet</small></button>'+
-     '</div></div>'+
-     '<div class="card"><h3>'+T('Standardraster')+'</h3>'+
-     '<p class="note">'+T('Gilt für neue Tabs und das Dashboard. Einzelne Tabs können abweichen (Tab-Eigenschaften).')+'</p>'+
-     '<div class="sizepick">'+
-       '<button type="button" data-pgrid="3" class="'+(pGrid(p)===3?'on':'')+'"><span class="spv g3"><i></i></span><b>3 × 3</b><small>'+T('9 Kacheln je Fläche · fein')+'</small></button>'+
-       '<button type="button" data-pgrid="2" class="'+(pGrid(p)===2?'on':'')+'"><span class="spv g2"><i></i></span><b>2 × 2</b><small>'+T('4 große Kacheln je Fläche')+'</small></button>'+
-     '</div></div>'+
+   // Profil: Allgemein -> Bildschirm (Groesse, Raster, Fuellen, Versatz) -> Display & Nacht -> Alarm
+   '<section class="spane" data-sub="profile">'+
      '<div class="card"><h3>'+T('Allgemein')+'</h3><div class="sizes">'+
-       '<div class="field" style="max-width:260px"><label class="lbl">Name</label>'+
+       '<div class="field" style="max-width:320px"><label class="lbl">Name</label>'+
          '<input type="text" id="fTitle" value="'+esc(p.title||'')+'" placeholder="'+esc(cur)+'"></div>'+
-       '<div class="field" style="max-width:260px"><label class="lbl">Bildschirm füllen</label>'+
-         '<select id="fFill">'+
-           '<option value=""'+(((p.ui||{}).fill)?'':' selected')+'>'+T('Aus (480er-Raster)')+'</option>'+
-           '<option value="1"'+(((p.ui||{}).fill)?' selected':'')+'>'+T('An (auf große Screens zoomen)')+'</option>'+
-         '</select></div>'+
      '</div></div>'+
+     '<div class="card"><h3>'+T('Bildschirm')+'</h3>'+
+     '<div class="pfgrid">'+
+       '<div><div class="lbl2">'+T('Panel-Größe')+'</div>'+
+       '<p class="note">'+T('Bestimmt, wie Tabs und Dashboard aufgebaut sind: eine 480×480-Fläche oder zwei nebeneinander.')+'</p>'+
+       '<div class="sizepick">'+
+         '<button type="button" data-psize="1" class="'+((p.ui||{}).split===false?'on':'')+'"><span class="spv one"><i></i></span><b>'+T('1 Panel')+'</b><small>480 × 480 · 4″-Wandpanel</small></button>'+
+         '<button type="button" data-psize="2" class="'+((p.ui||{}).split===false?'':'on')+'"><span class="spv two"><i></i><i></i></span><b>'+T('2 Panels')+'</b><small>960 × 480 · Shelly X2 / Tablet</small></button>'+
+       '</div></div>'+
+       '<div><div class="lbl2">'+T('Standardraster')+'</div>'+
+       '<p class="note">'+T('Gilt für neue Tabs und das Dashboard. Einzelne Tabs können abweichen (Tab-Eigenschaften).')+'</p>'+
+       '<div class="sizepick">'+
+         '<button type="button" data-pgrid="3" class="'+(pGrid(p)===3?'on':'')+'"><span class="spv g3"><i></i></span><b>3 × 3</b><small>'+T('9 Kacheln je Fläche · fein')+'</small></button>'+
+         '<button type="button" data-pgrid="2" class="'+(pGrid(p)===2?'on':'')+'"><span class="spv g2"><i></i></span><b>2 × 2</b><small>'+T('4 große Kacheln je Fläche')+'</small></button>'+
+       '</div></div>'+
+     '</div>'+
+     '<div class="sizes" style="margin-top:14px">'+
+       '<div class="field" style="max-width:320px"><label class="lbl">'+T('Bildschirm füllen')+'</label>'+
+         '<select id="fFill">'+
+           '<option value=""'+(((p.ui||{}).fill)?'':' selected')+'>'+T('Aus')+'</option>'+
+           '<option value="1"'+(((p.ui||{}).fill)?' selected':'')+'>'+T('An (hochzoomen)')+'</option>'+
+         '</select></div>'+
+       '<div class="field" style="max-width:180px"><label class="lbl">'+T('Horiz. Versatz (px)')+'</label>'+
+         '<input type="number" min="-40" max="40" step="2" data-ui="nudgeX" value="'+
+         (((p.ui||{}).nudgeX==null)?'':(p.ui||{}).nudgeX)+'" placeholder="0"></div>'+
+     '</div><p class="hint">'+T('Bildschirm füllen: auf größeren Displays hochzoomen statt im 480er-Raster zu bleiben. Versatz nur nötig, wenn das Bild am Rand abgeschnitten ist.')+'</p></div>'+
      '<div class="card"><h3>'+T('Display &amp; Nacht')+'</h3>'+
        '<p class="note">'+T('<b>Display</b> gilt Tag und Nacht: Nach der Leerlaufzeit schaltet das Panel das Display aus (Fully Kiosk); Klingel, Wecker und Nachrichten schalten es wieder ein. Das automatische Neuladen hält die Seite auf Dauer frisch.')+'</p>'+
        '<p class="note">'+T('<b>Nacht</b> wirkt nur, solange Nacht ist – wann das ist, legst du unter System → Bedienung → Nachtmodus fest (Auslöser-Baustein oder Sonnenuntergang bis -aufgang). Dann legt das Panel eine Abdunklung über das Bild; Antippen macht es kurz wieder hell. 0 % = dieses Panel dunkelt nachts nicht ab.')+'</p>'+
@@ -1739,17 +1779,12 @@ function renderEditor(){
        '</div><div class="lbl2" style="margin-top:12px">'+T('Nacht')+'</div><div class="sizes">'+
        '<div class="field" style="max-width:220px"><label class="lbl">'+T('Abdunkeln um (%)')+'</label>'+
          '<input type="number" min="0" max="90" step="5" data-ui="nightDim" value="'+
-         (((p.ui||{}).nightDim==null)?'':(p.ui||{}).nightDim)+'" placeholder="'+T('0 = nicht abdunkeln')+'"></div>'+
+         (((p.ui||{}).nightDim==null)?'':(p.ui||{}).nightDim)+'" placeholder="'+T('0 = aus')+'"></div>'+
        '<div class="field" style="max-width:220px" id="nightWakeField"><label class="lbl">'+T('Nach Antippen hell für (Sek.)')+'</label>'+
          '<input type="number" min="0" max="300" step="5" data-ui="nightWake" value="'+
          (((p.ui||{}).nightWake==null)?'':(p.ui||{}).nightWake)+'" placeholder="20"></div>'+
      '</div></div>'+
-     apCardHTML(p)+
-     '<div class="card"><h3>'+T('Feinjustierung')+'</h3><div class="sizes">'+
-       '<div class="field" style="max-width:180px"><label class="lbl">Horiz. Versatz (px)</label>'+
-         '<input type="number" min="-40" max="40" step="2" data-ui="nudgeX" value="'+
-         (((p.ui||{}).nudgeX==null)?'':(p.ui||{}).nudgeX)+'" placeholder="0"></div>'+
-     '</div><p class="hint">'+T('Nur nötig, wenn das Bild am Rand des Displays abgeschnitten ist.')+'</p></div></section>'+
+     apCardHTML(p)+'</section>'+
 
    '<section class="spane" data-sub="tabs"><div class="card"><h3>Tabs</h3>'+
      '<p class="note">'+T('Angeordnet wie am Panel: <b>Dashboard</b> ganz links, die Tabs rechtsbündig – <b>Tab 1</b> (Startseite) steht ganz rechts. Tabs zum Umsortieren ziehen.')+'</p>'+
@@ -1767,7 +1802,7 @@ function renderEditor(){
 
    // 3 · Aussehen (Abweichung vom Standard)
    '<section class="spane" data-sub="appearance"><div class="card"><h3>Aussehen</h3>'+
-     '<p class="note">'+T('Nur für dieses Panel. Leer bzw. „Wie Standard“ übernimmt die Einstellung aus System → Darstellung global.')+'</p>'+
+     '<p class="note">'+T('Nur für dieses Panel. Leer bzw. „Wie Standard“ übernimmt die Einstellung aus System → Darstellung.')+'</p>'+
      '<div class="sizes">'+appearanceFields(p.ui)+'</div></div>'+
      '<div class="card"><h3>'+T('Effekte')+'</h3><div class="sizes">'+
        '<div class="field" style="max-width:260px"><label class="lbl">Animation</label>'+
@@ -2549,7 +2584,7 @@ const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Displa
 function changeList(){
   const out=[], old=SAVED_SNAP||{}, ids=new Set(Object.keys(old).concat(Object.keys(PANELS)));
   const ctl=u=>{ const c=tileRef?tileRef(u):null; return c?c.name:u.slice(0,8); };
-  ids.forEach(id=>{ const a=old[id], b=PANELS[id], pn=id==='__global__'?T('Darstellung global'):'„'+((b||a||{}).title||id)+'“';
+  ids.forEach(id=>{ const a=old[id], b=PANELS[id], pn=id==='__global__'?T('Darstellung (alle Panels)'):'„'+((b||a||{}).title||id)+'“';
     if(!a){ out.push(T('Panel')+' '+pn+' '+T('neu angelegt')); return; }
     if(!b){ out.push(T('Panel')+' '+pn+' '+T('gelöscht')); return; }
     const keys=new Set(Object.keys(a).concat(Object.keys(b)));
@@ -2565,6 +2600,8 @@ function changeList(){
   return out;
 }
 function saveInfo(){ const i=$('#saveInfo'), sb=$('#savebar'), d=$('#discardBtn'); if(!i) return;
+  // Alles wieder wie gespeichert (z. B. nach Rueckgaengig) -> nicht mehr "ungespeichert"
+  if(dirty && SAVED_SNAP && !changeList().length){ dirty=false; dirtyN=0; }
   const n=dirty?(SAVED_SNAP?changeList().length:dirtyN):0;
   i.textContent = dirty ? (n===1?T('1 Änderung'):(n||dirtyN)+' '+T('Änderungen')) : T('Alles gespeichert');
   if(sb) sb.classList.toggle('dirty',!!dirty); if(d) d.hidden=!dirty; }
@@ -2824,7 +2861,7 @@ function pwRender(){
     b.innerHTML='<p class="wzq">'+T('Wie möchtest du anfangen?')+'</p><div class="pwstart">'+
       '<button type="button" class="pwbig" id="pwWiz"><b>✨ '+T('Mit Assistent')+'</b><span>'+T('In 6 kurzen Schritten zum fertigen Panel: Größe, Tabs, Dashboard, Design, Name und Gerät.')+'</span></button>'+
       '<button type="button" class="pwbig" id="pwBlank"><b>'+T('Leer anlegen')+'</b><span>'+T('Ohne Assistent bei 0 anfangen – du landest direkt im Profil.')+'</span></button></div>'+
-      (PW.blank?'<div class="pwblank"><div class="field"><label class="lbl">'+T('Name des Panels')+'</label><input id="pwBlankName" placeholder="'+T('z. B. Küche')+'"></div>'+
+      (PW.blank?'<div class="pwblank"><div class="field"><label class="lbl">'+T('Name des Panels')+'</label><input type="text" id="pwBlankName" placeholder="'+T('z. B. Küche')+'"></div>'+
         '<div class="hintp" id="pwBlankId"></div></div>':'');
     $('#pwWiz').onclick=()=>{ PW.blank=false; PW.step=1; pwRender(); };
     $('#pwBlank').onclick=()=>{ PW.blank=true; pwRender(); setTimeout(()=>{ const n=$('#pwBlankName'); if(n) n.focus(); },0); };
@@ -2858,12 +2895,12 @@ function pwRender(){
   } else if(key==='design'){
     const pr=META.designPresets||{}, sw=k=>{ const c=pr[k]||{}; return '<span class="pwsw"><i style="background:'+esc(c.bezel||'#222')+'"></i><i style="background:'+esc(c.face1||'#eee')+'"></i><i style="background:'+esc(c.tile||'#fff')+'"></i></span>'; };
     b.innerHTML='<p class="wzq">'+T('Welches Design?')+'</p><div class="mzopts">'+
-      pwOpt(PW.design==='','data-pwdesign=""',T('Wie alle Panels'),T('System → Darstellung global'))+
+      pwOpt(PW.design==='','data-pwdesign=""',T('Wie alle Panels'),T('System → Darstellung'))+
       ['bunt','hell','dunkel'].map(k=>pwOpt(PW.design===k,'data-pwdesign="'+k+'"',sw(k)+' '+T(k.charAt(0).toUpperCase()+k.slice(1)),T('nur für dieses Panel'))).join('')+'</div>';
   } else if(key==='name'){
     b.innerHTML='<p class="wzq">'+T('Wie heißt das Panel?')+'</p><div class="pwname">'+
-      '<div class="field"><label class="lbl">'+T('Name')+'</label><input id="pwTitle" value="'+esc(PW.title)+'" placeholder="'+T('z. B. Küche')+'"></div>'+
-      '<div class="field"><label class="lbl">'+T('Kennung (für die Adresse)')+'</label><input id="pwIdIn" value="'+esc(PW.id)+'" placeholder="kueche"></div></div>'+
+      '<div class="field"><label class="lbl">'+T('Name')+'</label><input type="text" id="pwTitle" value="'+esc(PW.title)+'" placeholder="'+T('z. B. Küche')+'"></div>'+
+      '<div class="field"><label class="lbl">'+T('Kennung (für die Adresse)')+'</label><input type="text" id="pwIdIn" value="'+esc(PW.id)+'" placeholder="kueche"></div></div>'+
       '<div class="wznote" id="pwUrl"></div>';
     const ti=$('#pwTitle'), ii=$('#pwIdIn');
     const upd=()=>{ if(!PW.idTouched) ii.value=pwFreeId(pwId(ti.value)||'panel'); PW.title=ti.value.trim(); PW.id=pwId(ii.value);
@@ -3033,7 +3070,7 @@ async function loadSettings(){
   // Nachtmodus-Ausloeser
   const nt=SET.night||{}, ntSel=$('#nt_control');
   if(ntSel){
-    ntSel.innerHTML='<option value="">'+T('Kein Baustein – Sonnenuntergang bis Sonnenaufgang')+'</option>'
+    ntSel.innerHTML='<option value="">'+T('Kein Baustein (nach Sonnenstand)')+'</option>'
       + (nt.options||[]).map(o=>'<option value="'+esc(o.uuid)+'"'+(o.uuid===nt.control?' selected':'')+'>'
           + esc((o.room?o.room+' · ':'')+o.name+' ('+o.type+')')+'</option>').join('');
   }
@@ -3392,7 +3429,7 @@ function anonRow(a, typed){
   return '<div class="ag" data-anon="'+esc(a.ip)+'">'+
     '<span class="dot on"></span><span class="agn">'+T('Ohne Kennung')+'</span>'+
     '<span class="agip">'+esc(info)+'</span><span class="sp"></span>'+
-    '<input class="anname" placeholder="'+T('Gerätename')+'" value="'+esc(typed||'')+'" style="max-width:180px">'+
+    '<input type="text" class="anname" placeholder="'+T('Gerätename')+'" value="'+esc(typed||'')+'" style="max-width:180px">'+
     '<button class="btn sm" data-act="name">'+T('Namen vergeben')+'</button></div>';
 }
 function renderDeviceList(j){
@@ -3489,7 +3526,7 @@ function mzRender(){
       (names.length?'<div class="mzchips">'+names.map(n=>'<button type="button" class="mzchip'+(MZ.devices.indexOf(n)>=0?' on':'')+'" data-mzdev="'+esc(n)+'">'+esc(n)+'</button>').join('')+'</div>'
         :(anon.length?'':'<div class="wznote">'+esc(T('Noch kein Gerät bekannt. Ein Panel muss die Visu einmal mit ?device=<name> öffnen oder einen Agent haben.'))+'</div>'))+
       (anon.length?'<div class="wznote">'+T('Verbunden, aber noch ohne Namen – erst benennen, dann auswählen:')+'</div>'+anon.map(a=>
-        '<div class="mzanon" data-mzanon="'+esc(a.ip)+'"><span class="agip">'+esc(a.ip)+'</span><input class="mzname" placeholder="'+T('Gerätename')+'">'+
+        '<div class="mzanon" data-mzanon="'+esc(a.ip)+'"><span class="agip">'+esc(a.ip)+'</span><input type="text" class="mzname" placeholder="'+T('Gerätename')+'">'+
         '<button type="button" class="btn ghost sm" data-mzname>'+T('Namen vergeben')+'</button></div>').join(''):'')+
       (MZ.benannt?'<div class="wznote">'+esc(T('✓ Name vergeben – das Gerät verbindet sich neu und erscheint gleich oben:')+' '+MZ.benannt)+'</div>':'')+
       '<div class="wznote">'+T('Die Zuordnung gilt für alle gewählten Geräte gleich. Feinabstimmung danach unter „Meine Geräte“.')+'</div>';
@@ -3497,7 +3534,7 @@ function mzRender(){
     b.innerHTML='<p class="wzq">'+T('Welche Betriebsmodi?')+'</p><div class="mzopts">'+
       MZ_PRESETS.map(m=>{ const on=MZ.modes.some(x=>x.key===m.key);
         return '<button type="button" class="mzopt'+(on?' on':'')+'" data-mzmode="'+esc(m.key)+'" data-mzlabel="'+esc(m.label)+'"><b>'+esc(T(m.label))+'</b><span>'+T('Loxone sendet')+' <code>'+esc(m.key)+'</code></span></button>'; }).join('')+'</div>'+
-      '<div class="mzadd"><div class="field"><label class="lbl">'+T('Eigener Modus')+'</label><input id="mzCustomIn" placeholder="'+T('z. B. Kino')+'"></div>'+
+      '<div class="mzadd"><div class="field"><label class="lbl">'+T('Eigener Modus')+'</label><input type="text" id="mzCustomIn" placeholder="'+T('z. B. Kino')+'"></div>'+
         '<button type="button" class="btn ghost" id="mzAdd">＋ '+T('Hinzufügen')+'</button></div>'+
       (mzCustom().length?'<div class="mzchips">'+mzCustom().map(m=>'<button type="button" class="mzchip on" data-mzdel="'+esc(m.key)+'">'+esc(m.label)+' <code>'+esc(m.key)+'</code> ✕</button>').join('')+'</div>':'');
   } else if(key==='zuordnung'){
@@ -3585,7 +3622,7 @@ function devRow(name){
   const pairs=d.modes&&d.modes.length?d.modes:[['','']];
   const rows=pairs.map(([m,p])=>
     '<div class="dmrow" style="display:flex;gap:6px;align-items:center;margin:4px 0">'+
-      '<input class="dm_mode" placeholder="'+T('Modus (z.B. gaeste)')+'" value="'+esc(m)+'" style="flex:1;min-width:120px">'+
+      '<input type="text" class="dm_mode" placeholder="'+T('Modus (z.B. gaeste)')+'" value="'+esc(m)+'" style="flex:1;min-width:120px">'+
       '<span style="opacity:.6">→</span>'+
       '<select class="dm_prof" style="flex:1;min-width:120px">'+profOpts(p)+'</select>'+
       '<button class="btn sm ghost dm_del" type="button" title="'+T('Zeile entfernen')+'">✕</button>'+
@@ -3614,8 +3651,8 @@ function displayRow(disp){
     '<select class="dd_drv"><option value="">'+T('keine (nur über die Seite)')+'</option>'+
       '<option value="fully"'+(x.driver==='fully'?' selected':'')+'>Fully Kiosk (Remote Admin)</option>'+
       '<option value="wallpanel"'+(x.driver==='wallpanel'?' selected':'')+'>WallPanel (HTTP)</option></select>'+
-    '<input class="dd_host" placeholder="IP" value="'+esc(x.host||'')+'" style="width:130px">'+
-    '<input class="dd_port" placeholder="Port" value="'+esc(x.port||'')+'" style="width:70px">'+
+    '<input type="text" class="dd_host" placeholder="IP" value="'+esc(x.host||'')+'" style="width:130px">'+
+    '<input type="text" class="dd_port" placeholder="Port" value="'+esc(x.port||'')+'" style="width:70px">'+
     '<input class="dd_pw" type="password" placeholder="'+T('Passwort (Fully)')+'" value="'+esc(x.password||'')+'" style="width:140px" autocomplete="new-password">'+
   '</div><p class="hint" style="margin:4px 0 0">'+T('Ohne Fully-PLUS-Lizenz auf „keine“ lassen – das Display schaltet dann die Seite selbst.')+'</p></details>';
 }

@@ -3490,11 +3490,13 @@ function stBind(cell){
   w.addEventListener('click',()=>{ if(typeof justLeftSaver==='function'&&justLeftSaver()) return;
     const st=((cell._sd||saverData||{}).statuses||{})[w.dataset.stkey]; if(st) stSheet(st, go); });
 }
+const ST_ORD={alarm:0,hint:1,info:2,ok:3};
 function stSheet(st, go){
   let ov=el('stSheet'); if(!ov){ ov=document.createElement('div'); ov.id='stSheet'; ov.className='stsheet'; document.querySelector('.screen').appendChild(ov); }
   ov.innerHTML='<div class="stsbox lv-'+esc(st.level)+'"><div class="sthd">'+stHeadIco(st.level)+'<span>'+esc(st.head)+'</span>'+
     '<button type="button" class="stsx" aria-label="Schließen">✕</button></div>'+
-    (st.chips||[]).map(c=>'<button type="button" class="strow lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'">'+stIco(c)+
+    // Bausteine mit Meldung zuerst (Alarm > Hinweis > scharf > ok), sonst Reihenfolge wie eingestellt
+    (st.chips||[]).map((c,i)=>[c,i]).sort((a,b)=>(ST_ORD[a[0].level]??9)-(ST_ORD[b[0].level]??9)||a[1]-b[1]).map(([c])=>'<button type="button" class="strow lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'">'+stIco(c)+
       '<span class="stn">'+esc(c.name)+(c.detail&&c.detail.length?'<small>'+esc(c.detail.join(' · '))+'</small>':'')+'</span>'+
       '<span class="stt">'+esc(c.text)+'</span><span class="stgo">›</span></button>').join('')+
     ((st.log||[]).length?'<div class="stlog"><b>Verlauf</b>'+st.log.map(x=>'<div>'+esc(x)+'</div>').join('')+'</div>':'')+'</div>';

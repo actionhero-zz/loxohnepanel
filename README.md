@@ -27,6 +27,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Backend aufgeräumt (0.19.0-fav28)** — System mit 7 Reitern (Kategorie-Farben unter
+  Darstellung, „Kameras“), Profil neu gegliedert (Allgemein · Bildschirm · Display & Nacht ·
+  Alarm), Bedienung in einer Karte, Audio-Einstellungen vor dem Test-Ton; Auswahlfelder nicht
+  mehr abgeschnitten, alle Eingabefelder im Design, kompakte Handy-Ansicht; Speicherleiste
+  nach „Rückgängig“ korrekt; Statusseite zeigt Meldungen zuerst.
 - **Fixes (0.19.0-fav27)** — Szenennamen im Lichtbaustein wieder lesbar (CSS-Kollision),
   ohne %-Anzeige; Bildausschnitt auch für weitere Kameras, Editor nur bei Bedarf (schont
   Browser-Verbindungen) mit Widget-Rahmen; Öffnen-Pfeil direkt an jedem Panel in der Liste.

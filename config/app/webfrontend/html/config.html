@@ -744,6 +744,75 @@
   .ovsec .secst.on{background:rgba(82,184,129,.18);color:#2e8b57;}
   .ovsec .secrow{display:flex;flex-wrap:wrap;gap:12px;}
   .ovsec .secrow .field{flex:1 1 180px;max-width:280px;}
+
+  /* Panel loeschen per ✕ in der Liste */
+  .pitem{position:relative;}
+  .pitem .pdel{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:0;background:transparent;color:var(--bezel-muted);
+    font-size:11px;line-height:22px;padding:0;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;}
+  .pitem:hover .pdel,.pitem.active .pdel{opacity:1;} .pitem .pdel:hover{background:#e2695f;color:#fff;}
+  .wrap.slim .pitem .pdel{display:none;}
+  /* Assistenten (Overlay) */
+  .wzov{position:fixed;inset:0;z-index:2500;background:rgba(10,12,22,.5);backdrop-filter:blur(3px);display:grid;place-items:center;padding:20px;}
+  .wzov[hidden]{display:none;}
+  .wzbox{width:min(640px,96vw);max-height:90vh;background:var(--panel);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;animation:qin .18s ease-out;}
+  .wzhd{display:flex;align-items:center;gap:10px;padding:16px 20px;}
+  .wzhd b{font-family:var(--font-head);font-size:17px;} .wzstep{margin-left:auto;color:var(--muted);font-size:12.5px;}
+  .wzx{border:0;background:var(--panel2);color:var(--muted);width:30px;height:30px;border-radius:50%;cursor:pointer;}
+  .wzprog{height:4px;background:var(--panel2);} .wzprog i{display:block;height:100%;background:var(--dot,#ffc145);transition:width .25s ease;}
+  .wzbody{padding:18px 20px;overflow-y:auto;}
+  .wzft{display:flex;justify-content:space-between;gap:10px;padding:14px 20px;border-top:1px solid var(--line);}
+  .wzq{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 10px;}
+  .wznote{color:var(--muted);font-size:12.5px;margin-top:10px;} .wznote code,.mzopt code,.mzrow code,.mzchip code{background:var(--panel2);border-radius:4px;padding:1px 5px;}
+  .mzchips{display:flex;flex-wrap:wrap;gap:8px;}
+  .mzchip{border:1px solid var(--line);background:var(--field);color:var(--fg);border-radius:999px;padding:8px 14px;font:inherit;font-size:13.5px;cursor:pointer;}
+  .mzchip.on{background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
+  .mzopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
+  .mzopt{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--line);background:var(--field);color:var(--fg);border-radius:14px;padding:11px 13px;font:inherit;cursor:pointer;}
+  .mzopt span{font-size:12px;color:var(--muted);}
+  .mzopt.on{background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
+  .mzadd{display:flex;gap:10px;align-items:flex-end;margin:14px 0 10px;} .mzadd .field{flex:1;max-width:260px;margin:0;}
+  .mztable{display:flex;flex-direction:column;gap:6px;}
+  .mzrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:10px;background:var(--panel2);}
+  .mzrow select{max-width:220px;}
+  .mzanon{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;}
+  #mzLines{white-space:pre-wrap;margin:8px 0;}
+
+  /* Panel-Assistent */
+  .pwsteps{display:flex;gap:4px;padding:0 20px 10px;}
+  .pwsteps span{flex:1;font-size:11px;color:var(--muted);text-align:center;}
+  .pwsteps i{display:block;height:4px;border-radius:2px;background:var(--panel2);margin-bottom:5px;}
+  .pwsteps .d i,.pwsteps .a i{background:var(--dot,#ffc145);} .pwsteps .a{color:var(--fg);font-weight:600;}
+  .pwstart{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:560px){ .pwstart{grid-template-columns:1fr;} }
+  .pwbig{display:flex;flex-direction:column;gap:6px;text-align:left;padding:18px;border-radius:16px;border:1px solid var(--line);background:var(--field);color:var(--fg);font:inherit;cursor:pointer;transition:transform .12s,box-shadow .12s;}
+  .pwbig:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(31,36,64,.12);}
+  .pwbig b{font-size:16px;font-family:var(--font-head);} .pwbig span{font-size:12.5px;color:var(--muted);line-height:1.45;}
+  .pwblank{margin-top:14px;} .pwblank .field{max-width:320px;}
+  .pwbar{display:flex;align-items:center;gap:6px;background:var(--bezel,#0d0f1a);border-radius:12px;padding:8px;flex-wrap:wrap;}
+  .pwbar span{color:var(--bezel-muted,#9ea5c4);font-size:12px;padding:6px 10px;border-radius:8px;}
+  .pwbar span.on{background:var(--bezel2,#262a45);color:#fff;} .pwbar i{flex:1;}
+  .pwsw{display:inline-flex;gap:2px;vertical-align:-2px;margin-right:4px;} .pwsw i{width:12px;height:12px;border-radius:3px;border:1px solid rgba(0,0,0,.15);}
+  .pwname{display:grid;grid-template-columns:1fr 1fr;gap:12px;} .pwname .field{max-width:none;margin:0;}
+  @media (max-width:560px){ .pwname{grid-template-columns:1fr;} }
+  /* Aenderungsliste an der Speicherleiste */
+  #saveInfo{cursor:help;}
+  .chgpop{position:fixed;z-index:2200;background:var(--panel);border-radius:14px;box-shadow:0 14px 36px rgba(0,0,0,.25);padding:12px 14px;max-width:min(420px,90vw);font-size:13px;animation:qin .15s ease-out;}
+  .chgpop b{display:block;margin-bottom:6px;font-family:var(--font-head);}
+  .chgpop ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;} .chgpop .more{color:var(--muted);margin-top:6px;font-size:12px;}
+  .aplist{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;}
+  .apit{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line,#ddd);border-radius:10px;cursor:pointer;}
+  .apit span{display:flex;flex-direction:column;min-width:0;} .apit small{opacity:.7;font-size:12px;}
+  .crp{margin-top:12px;padding-top:12px;border-top:1px solid var(--line,#e5e5e5);}
+  .crpbox{position:relative;max-width:520px;aspect-ratio:16/9;background:#111;border-radius:10px;overflow:hidden;cursor:crosshair;touch-action:none;user-select:none;}
+  .crpimg{position:absolute;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none;}
+  .crpfr{position:absolute;box-sizing:border-box;pointer-events:none;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.4);}
+  .crpfr.f1{border-style:dashed;border-color:#ffd56b;}
+  .crpfr span{position:absolute;left:4px;top:3px;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;}
+  .crpfr.f1 span{top:auto;bottom:3px;color:#ffd56b;}
+  .crpbox.whole .crpfr.f1{display:none;}
+  .crpdot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#fff;border:3px solid #2b6cff;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .crpctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;max-width:520px;}
+  .crpz{flex:1;min-width:120px;} .crpzv{min-width:38px;font-variant-numeric:tabular-nums;font-size:13px;}
 </style>
 </head>
 <body>
@@ -863,7 +932,7 @@
           <div class="card">
             <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
             <div id="ag_list"></div>
-            <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
+            <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">🧭 Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
           </div>
           <details class="card devhelp">
             <summary><h3 data-i18n>Hinweise</h3></summary>
@@ -1106,6 +1175,25 @@ const sameFont=(f,v)=>((f||'')===(v||''));
 const customFont=(f)=>!!f && !FONTS.some(x=>x.v===f);
 function esc(s){return (s==null?'':String(s)).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 
+// Alarm-Vollbild je Panel: Alarmanlagen und Rauchmelder. Standard = an, wenn der
+// Baustein auf diesem Panel sichtbar ist (Raumfilter, nicht ausgeblendet);
+// abweichende Wahl landet in p.alarmPop {uuid: true|false}.
+function apDefault(p,u){ const c=(META.controls||[]).find(x=>x.uuid===u)||{};
+  return !(p.rooms&&p.rooms.length&&p.rooms.indexOf(c.room)<0) && !((p.hide||[]).indexOf(u)>=0); }
+function apCardHTML(p){
+  const cs=(META.controls||[]).filter(c=>c.type==='Alarm'||c.type==='SmokeAlarm');
+  if(!cs.length) return '';
+  const ov=p.alarmPop||{};
+  return '<div class="card"><h3>'+T('Alarm-Vollbild')+'</h3>'+
+    '<p class="note">'+T('Löst ein gewählter Baustein aus, zeigt dieses Panel ein rotes Vollbild mit <b>Stumm</b>/<b>Quittieren</b> (Rauchmelder) bzw. <b>Quittieren</b>/<b>Unscharf</b> (Alarmanlage). Die Tasten schalten direkt; abgesicherte Bausteine fragen den PIN ab. Vorgewählt sind alle Bausteine, die dieses Panel zeigt.')+'</p>'+
+    '<label class="chk" style="margin:0 0 10px"><input type="checkbox" id="apTone"'+(p.alarmTone?' checked':'')+'>'+
+      '<span>'+T('Ton am Panel (Piepton, bis Stumm/Quittieren gedrückt oder der Alarm vorbei ist)')+'</span></label>'+
+    '<p class="hint" style="margin:-4px 0 10px">'+T('Der Piepton wird im Browser erzeugt (keine Datei) und läuft auf Tablets, NSPanel, Shelly und Fully. Browser geben Ton erst nach einer Berührung frei: Panel nach dem Laden einmal antippen genügt. In Fully Kiosk zusätzlich „Autoplay Audio“ einschalten. Ist der Ton trotzdem gesperrt, zeigt das Vollbild „Ton gesperrt – Bildschirm antippen“. Prüfen lässt sich das je Gerät mit dem Test-Ton unter System → Audio.')+'</p>'+
+    '<div class="aplist">'+cs.map(c=>{ const on=(typeof ov[c.uuid]==='boolean')?ov[c.uuid]:apDefault(p,c.uuid);
+      return '<label class="apit"><input type="checkbox" data-apop="'+esc(c.uuid)+'"'+(on?' checked':'')+'>'+
+        '<span><b>'+esc(c.name)+'</b><small>'+esc((c.type==='SmokeAlarm'?T('Rauchmelder'):T('Alarmanlage'))+(c.roomName?' · '+c.roomName:''))+'</small></span></label>'; }).join('')+
+    '</div></div>';
+}
 // Reiter-Definitionen je Rubrik
 // Reihenfolge = Arbeitsablauf: erst Inhalt (Tabs, Dashboard), dann Aussehen,
 // dann Geraete-/Anzeigefragen, zuletzt Feinheiten.
@@ -1128,7 +1216,7 @@ async function load(){
   // Frueher separate Textfarbe fuer Kachelnamen - jetzt Design-Farbe "Schrift"
   Object.values(PANELS).forEach(pp=>{ if(pp&&pp.ui) delete pp.ui.textColor; });
   cur = PANELS.default ? 'default' : Object.keys(PANELS)[0];
-  renderList(); setRubric('overview');
+  renderList(); setRubric('overview'); snapSaved();
   if(window.I18N) syncPanelLang(I18N.lang);
 }
 
@@ -1141,10 +1229,22 @@ function renderList(){
     const d=document.createElement('div');
     d.className='pitem'+(id===cur&&rubric==='pconf'?' active':'');
     const nm=p.title||id, ini=nm.split(/[\s_-]+/).filter(Boolean).map(w=>w[0]).join('').slice(0,2)||nm.slice(0,2);
-    d.title=nm; d.innerHTML='<span class="pini">'+esc(ini.toUpperCase())+'</span><span class="pn">'+esc(nm)+'</span><span class="pid">?panel='+esc(id)+'</span>';
-    d.onclick=()=>{ cur=id; tileSel=null; tbReset(); renderList(); setRubric('pconf'); };
+    d.title=nm; d.innerHTML='<span class="pini">'+esc(ini.toUpperCase())+'</span><span class="pn">'+esc(nm)+'</span><span class="pid">?panel='+esc(id)+'</span>'+
+      (id!=='default'?'<button type="button" class="pdel" title="'+T('Panel löschen')+'" aria-label="'+T('Panel löschen')+'">✕</button>':'');
+    d.onclick=e=>{ if(e.target.closest('.pdel')){ e.stopPropagation(); deletePanel(id); return; }
+      cur=id; tileSel=null; tbReset(); renderList(); setRubric('pconf'); };
     box.appendChild(d);
   }
+}
+
+// Panel loeschen (✕ in der Liste): sofort, mit Rueckgaengig; wirksam mit Speichern.
+// Das Standard-Panel "default" laesst sich nicht loeschen.
+function deletePanel(id){
+  if(id==='default'||!PANELS[id]) return;
+  const snap=JSON.stringify(PANELS[id]), was=cur;
+  delete PANELS[id]; if(cur===id){ cur='default'; tbReset(); }
+  renderList(); if(rubric==='pconf') setRubric('pconf'); markDirty();
+  snack(T('Panel „')+id+T('“ gelöscht – wirksam mit Speichern'), ()=>{ PANELS[id]=JSON.parse(snap); cur=was; tbReset(); renderList(); if(rubric==='pconf') setRubric('pconf'); markDirty(); });
 }
 
 // ---- ?-Hilfe: Hinweistexte einer Karte hinter einem ?-Knopf neben der Ueberschrift ----
@@ -1245,6 +1345,7 @@ function palItems(){
     (p.tabs||[]).forEach(k=>L.push({t:nm+' · '+tbLabel(p,k),s:T('Tab'),ic:'▤',go:()=>{ cur=id; tbReset(); subPconf='tabs'; tbTab=k; setRubric('pconf'); }})); });
   Object.keys(DEV).forEach(n=>L.push({t:n,s:T('Gerät'),ic:'▣',go:()=>{ goTo('devices','panels'); setTimeout(()=>{ const e=[...document.querySelectorAll('#dev_list .dev')].find(d=>d.dataset.name===n); if(e){ e.scrollIntoView({block:'center'}); e.classList.add('flash'); setTimeout(()=>e.classList.remove('flash'),1200); } },80); }}));
   L.push({t:T('Speichern'),s:T('Aktion')+' · Strg/⌘ S',ic:'✓',go:()=>{ if(dirty) save(); }});
+  L.push({t:T('Betriebsmodus-Assistent'),s:T('Aktion'),ic:'🧭',go:()=>{ goTo('devices','panels'); mzOpen(); }});
   L.push({t:T('Visu öffnen'),s:T('Aktion'),ic:'↗',go:()=>$('#openVisu').click()});
   L.push({t:T('Neues Panel'),s:T('Aktion'),ic:'＋',go:()=>$('#addBtn').click()});
   L.push({t:T('Menü ein-/ausklappen'),s:T('Aktion'),ic:'◧',go:()=>$('#sideTog').click()});
@@ -1343,6 +1444,16 @@ document.addEventListener('keydown',e=>{
   if(mod&&k==='k'){ e.preventDefault(); openPalette(); }
 });
 $('#palBtn').onclick=()=>openPalette();
+// Speicherleiste: beim Darueberfahren/Antippen die einzelnen Aenderungen zeigen
+{ const si=$('#saveInfo'); let pop=null;
+  const show=()=>{ if(!dirty) return; const l=changeList();
+    if(!pop){ pop=document.createElement('div'); pop.className='chgpop'; document.body.appendChild(pop); }
+    pop.innerHTML='<b>'+T('Nicht gespeicherte Änderungen')+'</b>'+(l.length?'<ul>'+l.slice(0,14).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'+
+      (l.length>14?'<div class="more">… '+T('und')+' '+(l.length-14)+' '+T('weitere')+'</div>':''):'<div class="more">'+T('Geändert und wieder zurückgesetzt')+'</div>');
+    const q=si.getBoundingClientRect(); pop.style.left=Math.max(8,q.left)+'px'; pop.style.bottom=(innerHeight-q.top+8)+'px'; pop.hidden=false; };
+  const hide=()=>{ if(pop) pop.hidden=true; };
+  si.addEventListener('mouseenter',show); si.addEventListener('mouseleave',hide); si.addEventListener('click',()=>{ if(pop&&!pop.hidden) hide(); else show(); }); }
+$('#mzOpenBtn').onclick=()=>{ goTo('devices','panels'); mzOpen(); };
 $('#discardBtn').onclick=()=>{ dirty=false; location.reload(); };
 saveInfo();
 
@@ -1483,6 +1594,8 @@ function renderGlobalEditor(p){
       '<div class="field" style="max-width:260px"><label class="lbl">'+T('Animation')+'</label><select id="gMotion">'+motionOpts((p.ui||{}).motion||'full',false)+'</select></div>'+
       '<div class="field" style="max-width:320px"><label class="lbl">'+T('Kontrast')+'</label><select id="gContrast">'+contrastOpts((p.ui||{}).contrast==='on'?'on':'off',false)+'</select></div>'+
       '<div class="field" style="max-width:340px"><label class="lbl">'+T('Lichtszenen')+'</label><select id="gSceneLight">'+sceneLightOpts((p.ui||{}).sceneLight==='on'?'on':'off',false)+'</select></div>'+
+      '<label class="chk" style="flex:1 1 100%;margin-top:4px"><input type="checkbox" id="gIconAnim"'+((p.ui||{}).iconAnim==='off'?'':' checked')+'>'+
+        '<span>'+T('Animierte Symbole – dezente Bewegung: Klingel und Wecker wackeln, Jalousie-Pfeil wippt beim Fahren, Heizung flackert beim Heizen, Symbol ploppt beim Einschalten, neue Werte ticken ein')+'</span></label>'+
       '</div>'+
       '<p class="hint">'+T('Animation: Keine · Mittel (nur Überblendungen) · Viel (mit Zoom). Kontrast: weicher Schatten an Kacheln und Knöpfen. Lichtszenen: Symbol zeigt Lichtfarbe und Helligkeit, lernt jede Szene beim ersten Einschalten. Schwache Panels: Animation „Mittel“, Kontrast „Aus“.')+'</p>'+
     '</div></section>'+
@@ -1494,6 +1607,8 @@ function renderGlobalEditor(p){
       if(gm.value==='full') delete p.ui.motion; else p.ui.motion=gm.value; markDirty(); }; }
   { const gs=$('#gSceneLight'); if(gs) gs.onchange=()=>{ p.ui=p.ui||{};
       if(gs.value==='on') p.ui.sceneLight='on'; else delete p.ui.sceneLight; markDirty(); }; }
+  { const ga=$('#gIconAnim'); if(ga) ga.onchange=()=>{ p.ui=p.ui||{};
+      if(ga.checked) delete p.ui.iconAnim; else p.ui.iconAnim='off'; markDirty(); }; }
   { const gc=$('#gContrast'); if(gc) gc.onchange=()=>{ p.ui=p.ui||{};
       if(gc.value==='on') p.ui.contrast='on'; else delete p.ui.contrast; markDirty(); }; }
   renderCatColors(p);
@@ -1608,6 +1723,7 @@ function renderEditor(){
          '<input type="number" min="0" max="300" step="5" data-ui="nightWake" value="'+
          (((p.ui||{}).nightWake==null)?'':(p.ui||{}).nightWake)+'" placeholder="20"></div>'+
      '</div></div>'+
+     apCardHTML(p)+
      '<div class="card"><h3>'+T('Feinjustierung')+'</h3><div class="sizes">'+
        '<div class="field" style="max-width:180px"><label class="lbl">Horiz. Versatz (px)</label>'+
          '<input type="number" min="-40" max="40" step="2" data-ui="nudgeX" value="'+
@@ -1639,11 +1755,12 @@ function renderEditor(){
          '<select id="fContrast">'+contrastOpts((p.ui||{}).contrast||'',true)+'</select></div>'+
        '<div class="field" style="max-width:320px"><label class="lbl">Lichtszenen</label>'+
          '<select id="fSceneLight">'+sceneLightOpts((p.ui||{}).sceneLight||'',true)+'</select></div>'+
+       '<div class="field" style="max-width:260px"><label class="lbl">'+T('Animierte Symbole')+'</label>'+
+         '<select id="fIconAnim">'+['','on','off'].map(v=>'<option value="'+v+'"'+(((p.ui||{}).iconAnim||'')===v?' selected':'')+'>'+T(v===''?'Wie Standard':(v==='on'?'An':'Aus'))+'</option>').join('')+'</select></div>'+
      '</div><p class="hint">'+T('Schwächere Panels: Animation „Mittel“ oder „Keine“ und Kontrast „Aus“ entlasten das Gerät.')+'</p></div></section>';
 
 
-  // Speicherleiste: Löschen-Button je Panel
-  $('#delSlot').innerHTML = (cur==='default')?'' : '<button class="btn del" id="delBtn">Panel löschen</button>';
+  $('#delSlot').innerHTML='';   // Loeschen jetzt per ✕ am Panel in der linken Liste
 
   // Titel live
   $('#fTitle').oninput=e=>{ p.title=e.target.value; const h=$('#hTitle'); if(h)h.textContent=e.target.value||cur; markDirty(); };
@@ -1664,6 +1781,10 @@ function renderEditor(){
     p.ui=p.ui||{}; if(ng===2) p.ui.grid=2; else delete p.ui.grid;
     tbReset(); document.querySelectorAll('[data-pgrid]').forEach(x=>x.classList.toggle('on',x===b)); markDirty(); });
   // Panel-Groesse: 1 Panel (480x480) = split aus, 2 Panels (960x480) = split an
+  const apT=$('#apTone'); if(apT) apT.onchange=()=>{ if(apT.checked) p.alarmTone=true; else delete p.alarmTone; markDirty(); };
+  document.querySelectorAll('[data-apop]').forEach(b=>b.onchange=()=>{ const u=b.dataset.apop;
+    p.alarmPop=p.alarmPop||{}; if(b.checked===apDefault(p,u)) delete p.alarmPop[u]; else p.alarmPop[u]=b.checked;
+    if(!Object.keys(p.alarmPop).length) delete p.alarmPop; markDirty(); });
   document.querySelectorAll('[data-psize]').forEach(b=>b.onclick=()=>{ p.ui=p.ui||{};
     if(b.dataset.psize==='1') p.ui.split=false; else delete p.ui.split;
     document.querySelectorAll('[data-psize]').forEach(x=>x.classList.toggle('on',x===b));
@@ -1673,6 +1794,8 @@ function renderEditor(){
       if(e.target.value) p.ui.motion=e.target.value; else delete p.ui.motion; markDirty(); }; }
   { const fs=$('#fSceneLight'); if(fs) fs.onchange=e=>{ p.ui=p.ui||{};
       if(e.target.value) p.ui.sceneLight=e.target.value; else delete p.ui.sceneLight; markDirty(); }; }
+  { const fa=$('#fIconAnim'); if(fa) fa.onchange=e=>{ p.ui=p.ui||{};
+      if(e.target.value) p.ui.iconAnim=e.target.value; else delete p.ui.iconAnim; markDirty(); }; }
   { const fc=$('#fContrast'); if(fc) fc.onchange=e=>{ p.ui=p.ui||{};
       if(e.target.value) p.ui.contrast=e.target.value; else delete p.ui.contrast; markDirty(); }; }
   // Progressive Disclosure: "Aufhellen bei Beruehrung" nur zeigen, wenn ueberhaupt
@@ -1683,9 +1806,6 @@ function renderEditor(){
 
   renderTabList(p);
   $('#saveBtn').onclick=save;
-  const del=$('#delBtn'); if(del) del.onclick=()=>{ const id=cur, snap=JSON.stringify(PANELS[id]);
-    delete PANELS[id]; cur='default'; tbReset(); renderList(); setRubric('pconf'); markDirty();
-    snack(T('Panel „')+id+T('“ gelöscht – wirksam mit Speichern'), ()=>{ PANELS[id]=JSON.parse(snap); cur=id; tbReset(); renderList(); setRubric('pconf'); markDirty(); }); };
 
   renderSubtabs(); showSub(subPconf);
   if(window.I18N) I18N.autoChrome('h2, h3, label.lbl, .btn, .minibtn, .note, .hint, option, .stab');
@@ -1705,7 +1825,8 @@ const SV_W={
   energy:{label:'Energiefluss', sizes:[[2,2],[3,2],[3,3]], def:[3,3]},
   chart:{label:'Verlauf', sizes:[[2,1],[3,1],[2,2],[3,2]], def:[3,1]},
   player:{label:'Audio', sizes:[[2,2],[3,2],[3,3]], def:[3,2]},
-  camera:{label:'Kamera', sizes:[[1,1],[2,1],[2,2],[3,2],[3,3]], def:[3,2]}
+  camera:{label:'Kamera', sizes:[[1,1],[2,1],[2,2],[3,2],[3,3]], def:[3,2]},
+  status:{label:'Status (Ampel)', sizes:[[1,1],[2,1],[2,2],[3,1],[3,2]], def:[1,1]}
 };
 // Widgets mit Bausteinwahl: Typ -> Kandidaten (fuer Auswahl und Vorbelegung)
 const SV_PICK={
@@ -1720,7 +1841,7 @@ function svCfg(p){ if(!p.saver||typeof p.saver!=='object') p.saver={items:[],exi
 // ---- Raster 2x2 / 3x3 (Tabs und Dashboard) ----
 // Erlaubte Groessen im 2x2-Raster (Spiegel von GRID_SIZES[2] im Server).
 const SIZES2={clock:[[1,1],[2,1],[2,2]],weather:[[2,1],[2,2]],calendar:[[2,1],[2,2]],intercom:[[2,1],[2,2]],
-  tile:[[1,1],[2,1],[2,2]],room:[[1,1],[2,1],[2,2]],cat:[[1,1],[2,1],[2,2]],wxdetail:[[2,1],[2,2]],energy:[[1,1],[2,1],[2,2]],chart:[[1,1],[2,1],[2,2]],player:[[2,1],[2,2]],camera:[[1,1],[2,1],[2,2]]};
+  tile:[[1,1],[2,1],[2,2]],room:[[1,1],[2,1],[2,2]],cat:[[1,1],[2,1],[2,2]],wxdetail:[[2,1],[2,2]],energy:[[1,1],[2,1],[2,2]],chart:[[1,1],[2,1],[2,2]],player:[[2,1],[2,2]],camera:[[1,1],[2,1],[2,2]],status:[[1,1],[2,1],[2,2]]};
 // Dashboard mit zwei Panels: Kamera auch ueber beide Flaechen (Spiegel von SAVER_WIDE_SIZES)
 // Zwei Panels: Kamera/Intercom ueber beide Panels - im Dashboard und in allen Tabs gleich
 const DASH_WIDE={3:{camera:[[6,3]],intercom:[[6,3]]},2:{camera:[[4,2]],intercom:[[4,2]]}};
@@ -1995,7 +2116,8 @@ const WG_ICONS={clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>'
   chart:'<path d="M4 19h16"/><path d="M6 15l4-5 3 3 5-7"/>',
   player:'<path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/>',
   tile:'<rect x="4" y="4" width="16" height="16" rx="3"/>',
-  camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>'};
+  camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  status:'<circle cx="12" cy="12" r="8"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>'};
 let tbLibTab='blocks', tbLibQ='', tbHist={}, tbLast={};
 function tbFace(p,k){   // Kartenfarbe des Tabs wie am Panel (Design des Panels bzw. Standard)
   const ui=((p.ui||{}).design)?p.ui:((PANELS.__global__||{}).ui||{}), d=designOf(ui), col=x=>d.colors[x]||d.base[x];
@@ -2157,7 +2279,29 @@ function tbSideHTML(p){
   if(it.type==='weather'||it.type==='wxdetail') h+='<div class="hintp">'+T('Quelle: System → Miniserver → Wetter.')+'</div>';
   if(it.type==='calendar') h+='<div class="hintp">'+T('Quelle: System → Kalender.')+'</div>';
   if(it.type==='weather') h+='<div class="lbl2">'+T('Vorschau (Tage)')+'</div><div class="seg">'+
-    [1,2,3,4].map(n=>'<button data-wxd="'+n+'"'+((it.days||4)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
+    [1,2,3,4].map(n=>'<button data-wxd="'+n+'"'+((it.days||3)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
+  if(it.type==='status'){   // Status-Ampel: bis zu 4 Bausteine als Chips (Haken + Ziehen), optional Verlauf
+    const pri=['WindowMonitor','CentralAlarm','Alarm','SmokeAlarm','MailBox','TextState','InfoOnlyDigital','PresenceDetector','AalEmergency','Intercom'];
+    const cands=(META.controls||[]).filter(c=>pri.indexOf(c.type)>=0)
+      .sort((a,b)=>pri.indexOf(a.type)-pri.indexOf(b.type)||(a.name||'').localeCompare(b.name||''));
+    const sel=(it.ctls||[]).filter(u=>cands.some(c=>c.uuid===u));
+    const order=sel.map(u=>cands.find(c=>c.uuid===u)).concat(cands.filter(c=>sel.indexOf(c.uuid)<0));
+    const TL={WindowMonitor:'Fensterüberwachung',CentralAlarm:'Zentral-Alarm',Alarm:'Alarmanlage',SmokeAlarm:'Rauch-/Wassermelder',MailBox:'Briefkasten',
+      TextState:'Statusbaustein',InfoOnlyDigital:'Digitaler Status',PresenceDetector:'Präsenz',AalEmergency:'Notruf',Intercom:'Türklingel'};
+    h+='<div class="lbl2">'+T('Chips (max. 4)')+'</div>'+(cands.length?'<div class="camsel" id="tbStCh">'+order.map(c=>{ const k=sel.indexOf(c.uuid);
+      return '<div class="camopt'+(k>=0?' on':'')+'" draggable="true" data-id="'+esc(c.uuid)+'"><span class="grip" aria-hidden="true">⋮⋮</span>'+
+        '<label><input type="checkbox"'+(k>=0?' checked':'')+'> <span>'+esc(c.name)+'<small style="display:block;opacity:.6;font-size:11px">'+esc(T(TL[c.type]||c.type))+(c.roomName?' · '+esc(c.roomName):'')+'</small></span></label>'+
+        '<span class="cnum">'+(k>=0?k+1:'')+'</span></div>'; }).join('')+'</div>'
+      :'<div class="hintp">'+T('Keine passenden Bausteine in der Anlage.')+'</div>')+
+      '<div class="hintp">'+T('Farben und Logik kommen aus dem Miniserver: Fenster offen = gelb, Alarm/Rauch ausgelöst = rot, Alarm scharf = blau, Statusbausteine in ihrer Farbe aus Loxone Config.')+'</div>';
+    h+='<div class="lbl2">'+T('Darstellung')+'</div><div class="seg">'+
+      '<button data-stlook="auto"'+(it.look!=='color'?' class="on"':'')+'>'+T('Passend zum Design')+'</button>'+
+      '<button data-stlook="color"'+(it.look==='color'?' class="on"':'')+'>'+T('Farbig (Ampel)')+'</button></div>'+
+      '<div class="hintp">'+T('„Passend zum Design“ übernimmt die Farben des Tabs bzw. Dashboards; die Ampel zeigt sich über Akzentfarben. „Farbig“ färbt die ganze Kachel.')+'</div>';
+    const trks=(META.controls||[]).filter(c=>c.type==='Tracker');
+    if(trks.length) h+='<div class="lbl2">'+T('Verlauf (ab 2×2)')+'</div><select id="tbStTrk"><option value="">'+T('kein Verlauf')+'</option>'+
+      trks.map(c=>'<option value="'+esc(c.uuid)+'"'+(c.uuid===it.trk?' selected':'')+'>'+esc(c.name)+'</option>').join('')+'</select>';
+  }
   if(it.type==='camera'){   // Auswahl + Reihenfolge der Kameras (Haken = anzeigen, ziehen = Reihenfolge)
     const all=((SET&&SET.intercoms)||[]).filter(c=>c.url).map(c=>({id:c.uuid,name:c.name})).concat(((SET&&SET.cameras)||[]).filter(c=>c.url).map(c=>({id:c.id,name:c.name||T('Kamera')})));
     const sel=Array.isArray(it.cams)&&it.cams.length?it.cams.filter(id=>all.some(c=>c.id===id)):all.map(c=>c.id);
@@ -2183,7 +2327,20 @@ function tbBindSide(p){
       p.hide=p.hide||[]; if(p.hide.indexOf(it.uuid)<0) p.hide.push(it.uuid);
       items.splice(tbSel,1); tbSel=-1; tbCommit(p); renderTabList(p); }); }
   const host=$('#tbEd'), redo=()=>{ tbCommit(p); renderTabEditor(); };
-  host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===4) delete it.days; else it.days=n; redo(); });
+  host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===3) delete it.days; else it.days=n; redo(); });   // Standard 3 Tage
+  { const box=$('#tbStCh'); if(box){
+    const apply=()=>{ const rows=[...box.querySelectorAll('.camopt')], ids=rows.filter(r=>r.querySelector('input').checked).map(r=>r.dataset.id);
+      if(ids.length>4){ snack(T('Höchstens 4 Chips')); renderTabEditor(); return; }
+      it.ctls=ids; redo(); };
+    box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=apply);
+    let drag=null;
+    box.querySelectorAll('.camopt').forEach(r=>{
+      r.ondragstart=e=>{ drag=r; r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); }catch(x){} };
+      r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; };
+      r.ondragover=e=>{ if(!drag||drag===r) return; e.preventDefault(); const q=r.getBoundingClientRect(); box.insertBefore(drag,(e.clientY-q.top)>q.height/2?r.nextSibling:r); };
+      r.ondrop=e=>{ e.preventDefault(); apply(); }; }); } }
+  { const tr=$('#tbStTrk'); if(tr) tr.onchange=()=>{ if(tr.value) it.trk=tr.value; else delete it.trk; redo(); }; }
+  host.querySelectorAll('[data-stlook]').forEach(b=>b.onclick=()=>{ if(b.dataset.stlook==='color') it.look='color'; else delete it.look; redo(); });
   { const box=$('#tbCams'); if(box){
     // Auswahl aus der Liste lesen: angehakte in Listen-Reihenfolge; alle in Standardfolge = "alle" (auch kuenftige)
     const apply=()=>{ const rows=[...box.querySelectorAll('.camopt')], ids=rows.filter(r=>r.querySelector('input').checked).map(r=>r.dataset.id);
@@ -2327,7 +2484,7 @@ document.addEventListener('keydown',ev=>{
 function sizeField(label,key,ui){
   const v=(ui||{})[key];
   return '<div class="field"><label class="lbl">'+label+'</label>'+
-    '<input type="number" min="8" max="80" data-ui="'+key+'" value="'+(v==null?'':v)+'" placeholder="—"></div>';
+    '<input type="number" min="8" max="'+(key==='saverFcSize'?32:80)+'" data-ui="'+key+'" value="'+(v==null?'':v)+'" placeholder="—"></div>';
 }
 function statControls(){
   return (META.controls||[]).filter(c=>c.stat)
@@ -2337,8 +2494,35 @@ function defaultTabs(){ return (META.tabs||[]).filter(t=>!t.cat&&!t.room).slice(
 let dirtyN=0;
 function markDirty(){ dirty=true; dirtyN++; const t=$('#toast'); if(t){ t.className='toast'; t.textContent=''; } renderList(); saveInfo(); }
 // Speicherleiste: Anzahl Aenderungen + Verwerfen
+// Zuletzt gespeicherter Stand (nach Laden/Speichern) -> Liste der Aenderungen fuer die Speicherleiste
+let SAVED_SNAP=null;
+function snapSaved(){ try{ SAVED_SNAP=JSON.parse(JSON.stringify(PANELS)); }catch(e){ SAVED_SNAP=null; } }
+function stable(v){ return JSON.stringify(v,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.keys(x).sort().reduce((o,kk)=>(o[kk]=x[kk],o),{}):x); }
+const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
+  nightWake:'Nach Antippen hell',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
+  nudgeX:'Horizontaler Versatz',iconSize:'Symbolgröße',nameSize:'Namensgröße',subSize:'Zusatztext-Größe',bold:'Fett',dblTapOff:'Doppeltipp',alarmsEnabled:'Wecker',
+  lang:'Sprache',saverFcSize:'Wettervorschau-Größe',tileShadow:'Kachel-Schatten'};
+function changeList(){
+  const out=[], old=SAVED_SNAP||{}, ids=new Set(Object.keys(old).concat(Object.keys(PANELS)));
+  const ctl=u=>{ const c=tileRef?tileRef(u):null; return c?c.name:u.slice(0,8); };
+  ids.forEach(id=>{ const a=old[id], b=PANELS[id], pn=id==='__global__'?T('Darstellung global'):'„'+((b||a||{}).title||id)+'“';
+    if(!a){ out.push(T('Panel')+' '+pn+' '+T('neu angelegt')); return; }
+    if(!b){ out.push(T('Panel')+' '+pn+' '+T('gelöscht')); return; }
+    const keys=new Set(Object.keys(a).concat(Object.keys(b)));
+    keys.forEach(k=>{ if(stable(a[k])===stable(b[k])) return;
+      if(k==='ui'||k==='catColors'){ const ua=a[k]||{}, ub=b[k]||{};
+        new Set(Object.keys(ua).concat(Object.keys(ub))).forEach(u=>{ if(stable(ua[u])!==stable(ub[u])) out.push(pn+': '+T(k==='catColors'?'Kategorie-Farbe':(CHG_UI[u]||u))); }); return; }
+      if(k==='layouts'){ const la=a.layouts||{}, lb=b.layouts||{};
+        new Set(Object.keys(la).concat(Object.keys(lb))).forEach(t=>{ if(stable(la[t])!==stable(lb[t])) out.push(pn+': '+T('Tab')+' „'+(PANELS[id]&&typeof tbLabel==='function'?tbLabel(PANELS[id],t):t)+'“'); }); return; }
+      if(k==='tiles'){ const ta=a.tiles||{}, tb=b.tiles||{};
+        new Set(Object.keys(ta).concat(Object.keys(tb))).forEach(u=>{ if(stable(ta[u])!==stable(tb[u])) out.push(pn+': '+T('Kachel')+' „'+ctl(u)+'“ '+T('Aussehen')); }); return; }
+      const L={alarmPop:'Alarm-Vollbild',alarmTone:'Alarm-Ton',title:'Name',tabs:'Tabs (Auswahl/Reihenfolge)',saver:'Dashboard',hide:'Ausgeblendete Kacheln',tabIcons:'Tab-Symbole',favorites:'Favoriten',tileOrder:'Kachel-Reihenfolge',rooms:'Räume',cats:'Kategorien',states:'Zustandsfarben'}[k]||k;
+      out.push(pn+': '+T(L)); }); });
+  return out;
+}
 function saveInfo(){ const i=$('#saveInfo'), sb=$('#savebar'), d=$('#discardBtn'); if(!i) return;
-  i.textContent = dirty ? (dirtyN===1?T('1 Änderung'):dirtyN+' '+T('Änderungen')) : T('Alles gespeichert');
+  const n=dirty?(SAVED_SNAP?changeList().length:dirtyN):0;
+  i.textContent = dirty ? (n===1?T('1 Änderung'):(n||dirtyN)+' '+T('Änderungen')) : T('Alles gespeichert');
   if(sb) sb.classList.toggle('dirty',!!dirty); if(d) d.hidden=!dirty; }
 // Hinweis unten mit "Rueckgaengig" (statt Rueckfragen), verschwindet nach 7 s
 function snack(msg, undo){
@@ -2371,7 +2555,7 @@ async function save(){
                             body:JSON.stringify({ui:g.ui||{}, categories:g.catColors||{}})});
       const j2=await r2.json(); okT=j2.ok; errT=j2.error||'';
     }
-    if(j.ok&&okT){ dirty=false; dirtyN=0; saveInfo();
+    if(j.ok&&okT){ dirty=false; dirtyN=0; snapSaved(); saveInfo();
       // Was der Server nicht uebernommen hat (unbekannt/ungueltig), nennen statt
       // es still zu verlieren; die Warnung bleibt stehen (siehe unten). Upstream #59
       const weg=j.verworfen||[];
@@ -2554,15 +2738,157 @@ function paintLoxlib(box,tgt){
   else if(!list.length) note(T('Nichts gefunden.'));
 }
 
-$('#addBtn').onclick=()=>{
-  let id=prompt(T('ID des neuen Panels (klein, ohne Leerzeichen), z. B. wohnzimmer:'));
-  if(!id) return; id=id.trim().toLowerCase().replace(/[^a-z0-9-]/g,'');
-  if(!id){ alert(T('Ungültige ID.')); return; }
-  if(PANELS[id]){ alert('Panel „'+id+'" gibt es schon.'); return; }
-  // Neues Panel: Standardraster 2x2, Start auf der Profilseite (Groesse, Raster, Display)
-  PANELS[id]={title:id.charAt(0).toUpperCase()+id.slice(1), tabs:defaultTabs(), rooms:[], cats:[], ui:{grid:2}, states:{}, tiles:{}};
-  cur=id; tileSel=null; tbReset(); subPconf='profile'; renderList(); setRubric('pconf'); markDirty();
-};
+// ---- Neues Panel: Assistent (optional) oder leer anlegen ----
+// Schritt 0 fragt "mit Assistent" oder "leer anlegen". Der Assistent fuehrt durch
+// Groesse -> Tabs -> Dashboard -> Design -> Name -> Geraet und legt das Panel fertig an.
+const PW={};
+function pwId(s){ return String(s||'').trim().toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').normalize('NFD').replace(/[̀-ͯ]/g,'')
+  .replace(/ß/g,'ss').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,32); }
+function pwFreeId(base){ let id=base||'panel', n=2; while(PANELS[id]) id=(base||'panel')+'-'+(n++); return id; }
+const PW_FLOW=['start','groesse','tabs','dashboard','design','name','geraet'];
+const PW_TABS=[['favoriten','★ Favoriten','aus Loxone, vorbefüllt'],['raeume','Räume','Übersicht aller Räume'],
+  ['kategorien','Kategorien','Übersicht der Kategorien'],['zentral','Zentral','Zentralbausteine'],
+  ['room','Ein Raum','Bausteine eines Raums'],['free','Frei','leer, selbst belegen']];
+const PW_DASH=[['uhrwetter','Uhr & Wetter','ruhig, für jeden Raum'],['kamera','Uhr, Wetter & Kamera','Kamera-Bild im Blick'],
+  ['termine','Uhr, Wetter & Termine','Kalender auf dem Dashboard'],['klassisch','Klassisch','ohne eigene Belegung']];
+function pwOpen(){
+  Object.assign(PW,{step:0,split:true,grid:2,tabs:['favoriten','raeume'],room:'',dash:'uhrwetter',design:'',title:'',id:'',idTouched:false,blank:false});
+  let ov=$('#pwOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='pwOv'; ov.className='wzov';
+    ov.innerHTML='<div class="wzbox" role="dialog" aria-label="'+T('Neues Panel')+'">'+
+      '<div class="wzhd"><b>✨ '+T('Neues Panel')+'</b><span class="wzstep" id="pwStep"></span>'+
+      '<button class="wzx" id="pwX" type="button" aria-label="'+T('Schließen')+'">✕</button></div>'+
+      '<div class="pwsteps" id="pwSteps"></div><div class="wzbody" id="pwBody"></div>'+
+      '<div class="wzft"><button class="btn ghost" id="pwBack" type="button">← '+T('Zurück')+'</button>'+
+      '<button class="btn" id="pwNext" type="button">'+T('Weiter')+' →</button></div></div>';
+    document.body.appendChild(ov);
+    $('#pwX').onclick=pwClose; $('#pwBack').onclick=()=>{ if(PW.step>0){ PW.step--; if(PW.blank&&PW.step>0) PW.step=0; pwRender(); } };
+    $('#pwNext').onclick=pwNext;
+    ov.addEventListener('mousedown',e=>{ if(e.target===ov) pwClose(); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&$('#pwOv')&&!$('#pwOv').hidden) pwClose(); });
+  }
+  ov.hidden=false; pwRender();
+}
+function pwClose(){ const ov=$('#pwOv'); if(ov) ov.hidden=true; }
+function pwOpt(on,attr,title,sub){ return '<button type="button" class="mzopt'+(on?' on':'')+'" '+attr+'><b>'+title+'</b><span>'+sub+'</span></button>'; }
+function pwRender(){
+  const key=PW_FLOW[PW.step], b=$('#pwBody'), wiz=PW_FLOW.slice(1);
+  $('#pwStep').textContent=key==='start'?'':T('Schritt')+' '+PW.step+' / '+wiz.length;
+  $('#pwSteps').innerHTML=key==='start'?'':wiz.map((k,i)=>'<span class="'+(i+1<PW.step?'d':(i+1===PW.step?'a':''))+'"><i></i>'+
+    T({groesse:'Größe',tabs:'Tabs',dashboard:'Dashboard',design:'Design',name:'Name',geraet:'Gerät'}[k])+'</span>').join('');
+  if(key==='start'){
+    b.innerHTML='<p class="wzq">'+T('Wie möchtest du anfangen?')+'</p><div class="pwstart">'+
+      '<button type="button" class="pwbig" id="pwWiz"><b>✨ '+T('Mit Assistent')+'</b><span>'+T('In 6 kurzen Schritten zum fertigen Panel: Größe, Tabs, Dashboard, Design, Name und Gerät.')+'</span></button>'+
+      '<button type="button" class="pwbig" id="pwBlank"><b>'+T('Leer anlegen')+'</b><span>'+T('Ohne Assistent bei 0 anfangen – du landest direkt im Profil.')+'</span></button></div>'+
+      (PW.blank?'<div class="pwblank"><div class="field"><label class="lbl">'+T('Name des Panels')+'</label><input id="pwBlankName" placeholder="'+T('z. B. Küche')+'"></div>'+
+        '<div class="hintp" id="pwBlankId"></div></div>':'');
+    $('#pwWiz').onclick=()=>{ PW.blank=false; PW.step=1; pwRender(); };
+    $('#pwBlank').onclick=()=>{ PW.blank=true; pwRender(); setTimeout(()=>{ const n=$('#pwBlankName'); if(n) n.focus(); },0); };
+    const bn=$('#pwBlankName');
+    if(bn){ const upd=()=>{ $('#pwBlankId').textContent=T('Kennung:')+' ?panel='+pwFreeId(pwId(bn.value)||'panel'); };
+      bn.oninput=upd; bn.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pwNext(); } }; upd(); }
+  } else if(key==='groesse'){
+    b.innerHTML='<p class="wzq">'+T('Wie groß ist das Display?')+'</p><div class="mzopts">'+
+      pwOpt(!PW.split,'data-pwsplit="1"',T('1 Panel'),'480×480 – '+T('z. B. 4″-Wandpanel'))+
+      pwOpt(PW.split,'data-pwsplit="2"',T('2 Panels'),'960×480 – '+T('z. B. Shelly Wall Display X2'))+'</div>'+
+      '<p class="wzq" style="margin-top:16px">'+T('Raster je Fläche')+'</p><div class="mzopts">'+
+      pwOpt(PW.grid===2,'data-pwgrid="2"','2×2',T('große Kacheln, leicht zu treffen'))+
+      pwOpt(PW.grid===3,'data-pwgrid="3"','3×3',T('mehr Kacheln auf einen Blick'))+'</div>';
+  } else if(key==='tabs'){
+    const rooms=(META.tabs||[]).filter(t=>t.room);
+    b.innerHTML='<p class="wzq">'+T('Welche Tabs? (max. 4 – der erste ist die Startseite)')+'</p><div class="mzopts">'+
+      PW_TABS.map(([k,l,sub])=>pwOpt(PW.tabs.indexOf(k)>=0,'data-pwtab="'+k+'"',T(l),T(sub))).join('')+'</div>'+
+      (PW.tabs.indexOf('room')>=0?'<div class="field" style="margin-top:12px;max-width:280px"><label class="lbl">'+T('Raum')+'</label><select id="pwRoom">'+
+        rooms.map(t=>'<option value="'+esc(t.tab)+'"'+(PW.room===t.tab?' selected':'')+'>'+esc(t.label)+'</option>').join('')+'</select></div>':'')+
+      '<p class="wzq" style="margin-top:16px">'+T('So sieht die Tab-Leiste aus')+'</p><div class="pwbar"><span>'+T('Dashboard')+'</span><i></i>'+
+      PW.tabs.map((k,i)=>'<span class="on">'+esc(pwTabLabel(k))+' · '+(i+1)+'</span>').reverse().join('')+'</div>'+
+      '<div class="wznote">'+T('Reihenfolge = Reihenfolge der Auswahl. Später im Raster-Editor per Ziehen änderbar.')+'</div>';
+    const rs=$('#pwRoom'); if(rs){ if(!PW.room&&rooms[0]) PW.room=rooms[0].tab; rs.value=PW.room; rs.onchange=()=>{ PW.room=rs.value; pwRender(); }; }
+  } else if(key==='dashboard'){
+    b.innerHTML='<p class="wzq">'+T('Was zeigt das Dashboard (Ruhebildschirm)?')+'</p><div class="mzopts">'+
+      PW_DASH.map(([k,l,sub])=>{ // 1 Panel: nur zwei Widgets passen -> Kamera/Termine statt Wetter
+        if(!PW.split&&k==='kamera') l='Uhr & Kamera'; if(!PW.split&&k==='termine') l='Uhr & Termine';
+        if(PW.split&&k==='uhrwetter') sub='rechts die Termine';
+        return pwOpt(PW.dash===k,'data-pwdash="'+k+'"',T(l),T(sub)); }).join('')+'</div>'+
+      '<div class="wznote">'+T('Das Dashboard lässt sich danach im Raster-Editor frei belegen.')+'</div>';
+  } else if(key==='design'){
+    const pr=META.designPresets||{}, sw=k=>{ const c=pr[k]||{}; return '<span class="pwsw"><i style="background:'+esc(c.bezel||'#222')+'"></i><i style="background:'+esc(c.face1||'#eee')+'"></i><i style="background:'+esc(c.tile||'#fff')+'"></i></span>'; };
+    b.innerHTML='<p class="wzq">'+T('Welches Design?')+'</p><div class="mzopts">'+
+      pwOpt(PW.design==='','data-pwdesign=""',T('Wie alle Panels'),T('System → Darstellung global'))+
+      ['bunt','hell','dunkel'].map(k=>pwOpt(PW.design===k,'data-pwdesign="'+k+'"',sw(k)+' '+T(k.charAt(0).toUpperCase()+k.slice(1)),T('nur für dieses Panel'))).join('')+'</div>';
+  } else if(key==='name'){
+    b.innerHTML='<p class="wzq">'+T('Wie heißt das Panel?')+'</p><div class="pwname">'+
+      '<div class="field"><label class="lbl">'+T('Name')+'</label><input id="pwTitle" value="'+esc(PW.title)+'" placeholder="'+T('z. B. Küche')+'"></div>'+
+      '<div class="field"><label class="lbl">'+T('Kennung (für die Adresse)')+'</label><input id="pwIdIn" value="'+esc(PW.id)+'" placeholder="kueche"></div></div>'+
+      '<div class="wznote" id="pwUrl"></div>';
+    const ti=$('#pwTitle'), ii=$('#pwIdIn');
+    const upd=()=>{ if(!PW.idTouched) ii.value=pwFreeId(pwId(ti.value)||'panel'); PW.title=ti.value.trim(); PW.id=pwId(ii.value);
+      $('#pwUrl').innerHTML=T('Adresse am Gerät:')+' <code>http://'+esc(location.host)+'/?panel='+esc(PW.id||'…')+'</code>'+(PANELS[PW.id]?' <b class="bad">'+T('gibt es schon')+'</b>':''); pwBtns(); };
+    ti.oninput=upd; ii.oninput=()=>{ PW.idTouched=true; upd(); }; upd(); setTimeout(()=>ti.focus(),0);
+  } else if(key==='geraet'){
+    const url='http://'+location.host+'/?panel='+PW.id;
+    b.innerHTML='<p class="wzq">'+T('Gerät verbinden')+'</p>'+
+      '<div class="wznote" style="margin-top:0">'+T('Trage diese Start-URL in Fully Kiosk Browser (oder einem anderen Kiosk-Browser) ein. Mit „&device=Name“ erscheint das Gerät unter „Meine Geräte“.')+'</div>'+
+      '<pre class="cmdout" id="pwUrlTxt">'+esc(url)+'&amp;device='+esc(encodeURIComponent(PW.title||PW.id))+'</pre>'+
+      '<button type="button" class="btn ghost sm" id="pwCopy">'+T('Adresse kopieren')+'</button>'+
+      '<div class="wznote">'+T('Shelly Wall Display oder andere Android-Panels kannst du nach dem Anlegen auch per adb einrichten: Geräte → Gerät hinzufügen.')+'</div>'+
+      '<label class="chk" style="margin-top:12px"><input type="checkbox" id="pwGoDev"> <span>'+T('Danach „Gerät hinzufügen“ öffnen')+'</span></label>';
+    $('#pwCopy').onclick=()=>{ try{ navigator.clipboard.writeText($('#pwUrlTxt').textContent).then(()=>snack(T('Adresse kopiert'))); }catch(e){} };
+  }
+  b.querySelectorAll('[data-pwsplit]').forEach(x=>x.onclick=()=>{ PW.split=x.dataset.pwsplit==='2'; pwRender(); });
+  b.querySelectorAll('[data-pwgrid]').forEach(x=>x.onclick=()=>{ PW.grid=+x.dataset.pwgrid; pwRender(); });
+  b.querySelectorAll('[data-pwtab]').forEach(x=>x.onclick=()=>{ const k=x.dataset.pwtab, i=PW.tabs.indexOf(k);
+    if(k==='room'&&!PW.room){ const r0=(META.tabs||[]).find(t=>t.room); if(r0) PW.room=r0.tab; }
+    if(i>=0) PW.tabs.splice(i,1); else if(PW.tabs.length<4) PW.tabs.push(k); else snack(T('Höchstens 4 Tabs')); pwRender(); });
+  b.querySelectorAll('[data-pwdash]').forEach(x=>x.onclick=()=>{ PW.dash=x.dataset.pwdash; pwRender(); });
+  b.querySelectorAll('[data-pwdesign]').forEach(x=>x.onclick=()=>{ PW.design=x.dataset.pwdesign; pwRender(); });
+  pwBtns();
+}
+function pwTabLabel(k){ if(k==='room'){ const t=(META.tabs||[]).find(x=>x.tab===PW.room); return t?t.label:T('Raum'); }
+  return T((PW_TABS.find(x=>x[0]===k)||[k,k])[1]).replace('★ ',''); }
+function pwBtns(){
+  const key=PW_FLOW[PW.step];
+  $('#pwBack').style.visibility=PW.step===0?'hidden':'';
+  $('#pwNext').style.display=(key==='start'&&!PW.blank)?'none':'';
+  $('#pwNext').textContent=key==='start'?T('Anlegen'):(key==='geraet'?T('Panel anlegen ✓'):T('Weiter')+' →');
+  let ok=true;
+  if(key==='tabs') ok=PW.tabs.length>0;
+  if(key==='name') ok=!!PW.id && !PANELS[PW.id];
+  $('#pwNext').disabled=!ok;
+}
+// Dashboard-Vorlage im Raster (x ueber beide Flaechen bei 2 Panels)
+function pwDashItems(){
+  const g=PW.grid, two=PW.split, k=PW.dash; if(k==='klassisch') return [];
+  const third=k==='kamera'?'camera':(k==='termine'?'calendar':null);
+  if(g===2){ const it=[{type:'clock',x:0,y:0,w:2,h:1,align:'center',date:'long'},{type:'weather',x:0,y:1,w:2,h:1}];
+    if(third){ if(two) it.push({type:third,x:2,y:0,w:2,h:2}); else it[1]={type:third,x:0,y:1,w:2,h:1}; }
+    else if(two) it.push({type:'calendar',x:2,y:0,w:2,h:2});
+    return it; }
+  const it=[{type:'clock',x:0,y:0,w:3,h:1,align:'center',date:'long'},{type:'weather',x:0,y:1,w:3,h:2}];
+  if(third){ if(two) it.push({type:third,x:3,y:0,w:3,h:3}); else it[1]={type:third,x:0,y:1,w:3,h:2}; }
+  else if(two) it.push({type:'calendar',x:3,y:0,w:3,h:3});
+  return it;
+}
+async function pwNext(){
+  const key=PW_FLOW[PW.step];
+  if(key==='start'&&PW.blank){   // ohne Assistent: nur Name -> Profil
+    const nm=($('#pwBlankName').value||'').trim(), id=pwFreeId(pwId(nm)||'panel');
+    PANELS[id]={title:nm||id, tabs:defaultTabs(), rooms:[], cats:[], ui:{grid:2}, states:{}, tiles:{}};
+    pwClose(); cur=id; tileSel=null; tbReset(); subPconf='profile'; renderList(); setRubric('pconf'); markDirty(); return; }
+  if(PW.step<PW_FLOW.length-1){ PW.step++; pwRender(); return; }
+  // Panel aus den Antworten anlegen
+  const tabs=PW.tabs.map(k=>k==='room'?(PW.room||null):(k==='free'?tbNewId({tabs:[]}):k)).filter(Boolean);
+  const ui={grid:PW.grid}; if(!PW.split) ui.split=false;
+  if(PW.design) ui.design={preset:PW.design,colors:{}};
+  const p={title:PW.title||PW.id, tabs, rooms:[], cats:[], ui, states:{}, tiles:{}};
+  const items=pwDashItems(); if(items.length) p.saver={grid:PW.grid, exit:['x'], items};
+  PANELS[PW.id]=p; const goDev=!!($('#pwGoDev')&&$('#pwGoDev').checked);
+  pwClose(); cur=PW.id; tileSel=null; tbReset(); markDirty(); await save();
+  if(goDev){ goTo('devices','newpanel'); const n=$('#nk_name'); if(n) n.value=PW.title||PW.id; }
+  else { subPconf='tabs'; tbTab=DK; renderList(); setRubric('pconf'); }
+  snack(T('Panel „')+(PW.title||PW.id)+T('“ angelegt'));
+}
+$('#addBtn').onclick=()=>pwOpen();
 
 window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
 
@@ -2606,10 +2932,12 @@ async function loadSettings(){
             ' <button type="button" class="minibtn ic_soundtest">'+T('Klingeln testen')+'</button>'+
             '<span class="toast ic_soundtoast"></span>'+
           '</div></div>'+
-        '<p class="hint" style="margin-top:4px">'+T('MP3/OGG/WAV/M4A/AAC, max. 5 MB — wird hochgeladen, sobald eine Datei gewählt wird. „Klingeln testen" schickt ein echtes Klingel-Event ans Panel (unten „Alle Panels“/Panel wählen unter „Test-Ton“) — praktisch, um zu prüfen, ob der Ton auf einem bestimmten Gerät (z. B. Kiosk-Browser auf einem Shelly Wall Display) tatsächlich abspielt. Manche Kiosk-Apps erlauben automatische Audiowiedergabe nur bei aktivierter „Autoplay Audio“-Einstellung.')+'</p></div>'
+        '<p class="hint" style="margin-top:4px">'+T('MP3/OGG/WAV/M4A/AAC, max. 5 MB — wird hochgeladen, sobald eine Datei gewählt wird. „Klingeln testen" schickt ein echtes Klingel-Event ans Panel (unten „Alle Panels“/Panel wählen unter „Test-Ton“) — praktisch, um zu prüfen, ob der Ton auf einem bestimmten Gerät (z. B. Kiosk-Browser auf einem Shelly Wall Display) tatsächlich abspielt. Manche Kiosk-Apps erlauben automatische Audiowiedergabe nur bei aktivierter „Autoplay Audio“-Einstellung.')+'</p>'+
+        (ic.url?crpHTML(ic):'')+'</div>'
       ).join('');
       box.querySelectorAll('.ic').forEach(row=>{
         const uuid=row.dataset.uuid;
+        crpBind(row, SET.intercoms.find(x=>x.uuid===uuid));
         const fi=row.querySelector('.ic_soundfile');
         if(fi) fi.onchange=async()=>{
           const f=fi.files&&fi.files[0]; if(!f) return;
@@ -2743,6 +3071,51 @@ $('#ms_save').onclick=async()=>{
   $('#ms_save').disabled=false;
 };
 
+// Bildausschnitt einer Tuerstation: Fokuspunkt antippen/ziehen, Zoom, oder
+// ganzes Bild. Die Rahmen zeigen, was das Klingel-Popup davon zeigt.
+const CRP_FRAMES=[{k:'2',l:'Popup 2 Panels',a:2.9},{k:'1',l:'Popup 1 Panel',a:1.4}];
+function crpHTML(ic){
+  return '<div class="crp"><label class="lbl">'+T('Bildausschnitt')+'</label>'+
+    '<p class="hint" style="margin:0 0 6px">'+T('Ins Bild tippen oder ziehen, um den wichtigen Bereich festzulegen. Die Rahmen zeigen, was das Klingel-Popup zeigt.')+'</p>'+
+    '<div class="crpbox"><img alt="" class="crpimg">'+CRP_FRAMES.map(f=>'<div class="crpfr f'+f.k+'"><span>'+T(f.l)+'</span></div>').join('')+'<i class="crpdot"></i></div>'+
+    '<div class="crpctl"><label class="lbl" style="margin:0">'+T('Zoom')+'</label><input type="range" class="crpz" min="1" max="3" step="0.05">'+
+    '<span class="crpzv"></span>'+
+    '<label class="chk" style="margin:0"><input type="checkbox" class="crpfit"><span>'+T('Ganzes Bild zeigen (nicht beschneiden)')+'</span></label>'+
+    '<button type="button" class="minibtn crprst">'+T('Zurücksetzen')+'</button></div>'+
+    '<p class="hint" style="margin-top:4px">'+T('Wirksam mit Speichern – gilt für Popup, Dashboard-Widget und Kamera-Ansicht.')+'</p></div>';
+}
+function crpBind(row, ic){
+  const box=row.querySelector('.crpbox'); if(!box||!ic) return;
+  const img=box.querySelector('.crpimg'), dot=box.querySelector('.crpdot'), zr=row.querySelector('.crpz'),
+    zv=row.querySelector('.crpzv'), fit=row.querySelector('.crpfit');
+  let c=Object.assign({x:50,y:50,z:1,fit:'cover'}, ic.crop||{});
+  const A=()=> (img.naturalWidth&&img.naturalHeight)?img.naturalWidth/img.naturalHeight:16/9;
+  const paint=()=>{
+    box.style.aspectRatio=String(A()); zr.value=c.z; zv.textContent=(+c.z).toFixed(2).replace(/\.?0+$/,'')+'×';
+    fit.checked=c.fit==='contain'; zr.disabled=fit.checked; box.classList.toggle('whole',fit.checked);
+    dot.style.left=c.x+'%'; dot.style.top=c.y+'%';
+    CRP_FRAMES.forEach(f=>{ const fr=box.querySelector('.crpfr.f'+f.k), a=A(), x=c.x/100, y=c.y/100;
+      let fw=1, fh=1;
+      if(c.fit==='contain'){ fr.style.cssText='left:0;top:0;width:100%;height:100%'; return; }
+      if(f.a>a) fh=a/f.a; else fw=f.a/a;
+      let l=(1-fw)*x, t=(1-fh)*y; const z=+c.z||1;
+      if(z>1){ const px=l+x*fw, py=t+y*fh; fw/=z; fh/=z; l=px-x*fw; t=py-y*fh; }
+      fr.style.cssText='left:'+(l*100)+'%;top:'+(t*100)+'%;width:'+(fw*100)+'%;height:'+(fh*100)+'%'; });
+    row._crop=c;
+  };
+  img.onload=paint; img.src='/mjpeg?id='+encodeURIComponent(ic.uuid)+'&_t='+Date.now();
+  const at=e=>{ const r=box.getBoundingClientRect(), p=e.touches?e.touches[0]:e;
+    c.x=Math.round(Math.max(0,Math.min(100,(p.clientX-r.left)/r.width*100)));
+    c.y=Math.round(Math.max(0,Math.min(100,(p.clientY-r.top)/r.height*100))); paint(); };
+  let drag=false;
+  box.addEventListener('pointerdown',e=>{ drag=true; box.setPointerCapture(e.pointerId); at(e); e.preventDefault(); });
+  box.addEventListener('pointermove',e=>{ if(drag) at(e); });
+  box.addEventListener('pointerup',()=>{ drag=false; });
+  zr.oninput=()=>{ c.z=+zr.value; paint(); };
+  fit.onchange=()=>{ c.fit=fit.checked?'contain':'cover'; paint(); };
+  row.querySelector('.crprst').onclick=()=>{ c={x:50,y:50,z:1,fit:'cover'}; paint(); };
+  paint();
+}
 // Weitere Kameras (Settings -> Intercom / Kameras)
 let CAMS=[];
 function camRow(c,i){
@@ -2770,6 +3143,7 @@ $('#ic_save').onclick=async()=>{
     const e={url:n.querySelector('.ic_url').value.trim(),user:n.querySelector('.ic_user').value.trim(),
              sound:n.querySelector('.ic_sound').checked,
              reconnect:+(n.querySelector('.ic_reconnect')||{}).value||0};
+    if(n._crop) e.crop=n._crop;
     const p=n.querySelector('.ic_pass').value; if(p)e.pass=p;
     intercoms[n.dataset.uuid]=e;
   });
@@ -3012,6 +3386,113 @@ async function deviceAction(act, name, ip, panel, devip){
     flash($('#ag_toast'), ok?('✓ '+act+(n!==undefined?(' → '+n):'')):('Fehler: '+(j.error||(n===0?T('Panel nicht erreicht'):('HTTP '+j.status)))), ok);
   }catch(e){ flash($('#ag_toast'),'Fehler: '+e,false); }
 }
+// ---- Betriebsmodus-Assistent ----
+// Uebernommen aus LoxPanel (Lenardo1, PolyForm NC) und an diesen Fork angepasst.
+// Gefuehrt: Geraete -> Modi -> Ansicht je Modus -> fertige Loxone-Adresse. Schreibt in
+// dieselbe Struktur wie "Meine Geraete" (DEV[name].modes) und speichert ueber /api/devices.
+const MZ_PRESETS=[
+  {key:'anwesend',label:'Anwesend'},{key:'abwesend',label:'Abwesend'},
+  {key:'gaeste',label:'Gäste'},{key:'putzen',label:'Putzen'},
+  {key:'urlaub',label:'Urlaub'},{key:'nacht',label:'Nacht'}];
+const MZ={devices:[],modes:[],step:0,benannt:''};
+function mzKey(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,''); }
+const MZ_FLOW=['geraete','modi','zuordnung','fertig'];
+function mzDevNames(){ return Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort(); }
+function mzAnon(){ return ((LAST_DEVS||{}).anonymous)||[]; }
+function mzCustom(){ return MZ.modes.filter(m=>!MZ_PRESETS.some(p=>p.key===m.key)); }
+function mzOpen(){
+  let ov=$('#mzOv');
+  if(!ov){ ov=document.createElement('div'); ov.id='mzOv'; ov.className='wzov';
+    ov.innerHTML='<div class="wzbox" role="dialog" aria-label="'+T('Betriebsmodus-Assistent')+'">'+
+      '<div class="wzhd"><b>🧭 '+T('Betriebsmodus-Assistent')+'</b><span class="wzstep" id="mzStep"></span>'+
+      '<button class="wzx" id="mzX" type="button" aria-label="'+T('Schließen')+'">✕</button></div>'+
+      '<div class="wzprog"><i id="mzProg"></i></div><div class="wzbody" id="mzBody"></div>'+
+      '<div class="wzft"><button class="btn ghost" id="mzBack" type="button">← '+T('Zurück')+'</button>'+
+      '<button class="btn" id="mzNext" type="button">'+T('Weiter')+' →</button></div></div>';
+    document.body.appendChild(ov);
+    $('#mzBack').onclick=()=>{ if(MZ.step>0){ MZ.step--; mzRender(); } };
+    $('#mzNext').onclick=mzNext; $('#mzX').onclick=mzClose;
+    ov.addEventListener('mousedown',e=>{ if(e.target===ov) mzClose(); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&!$('#mzOv').hidden) mzClose(); });
+  }
+  MZ.devices=[]; MZ.modes=[]; MZ.step=0; MZ.benannt='';
+  // bestehende Modi der Geraete als Vorschlag uebernehmen
+  ov.hidden=false; mzRender();
+}
+function mzClose(){ const ov=$('#mzOv'); if(ov) ov.hidden=true; }
+function mzRender(){
+  const key=MZ_FLOW[MZ.step], b=$('#mzBody');
+  $('#mzStep').textContent=T('Schritt')+' '+(MZ.step+1)+' / '+MZ_FLOW.length;
+  $('#mzProg').style.width=((MZ.step+1)/MZ_FLOW.length*100)+'%';
+  if(key==='geraete'){
+    const names=mzDevNames(), anon=mzAnon();
+    b.innerHTML='<p class="wzq">'+T('Für welche Geräte?')+'</p>'+
+      (names.length?'<div class="mzchips">'+names.map(n=>'<button type="button" class="mzchip'+(MZ.devices.indexOf(n)>=0?' on':'')+'" data-mzdev="'+esc(n)+'">'+esc(n)+'</button>').join('')+'</div>'
+        :(anon.length?'':'<div class="wznote">'+esc(T('Noch kein Gerät bekannt. Ein Panel muss die Visu einmal mit ?device=<name> öffnen oder einen Agent haben.'))+'</div>'))+
+      (anon.length?'<div class="wznote">'+T('Verbunden, aber noch ohne Namen – erst benennen, dann auswählen:')+'</div>'+anon.map(a=>
+        '<div class="mzanon" data-mzanon="'+esc(a.ip)+'"><span class="agip">'+esc(a.ip)+'</span><input class="mzname" placeholder="'+T('Gerätename')+'">'+
+        '<button type="button" class="btn ghost sm" data-mzname>'+T('Namen vergeben')+'</button></div>').join(''):'')+
+      (MZ.benannt?'<div class="wznote">'+esc(T('✓ Name vergeben – das Gerät verbindet sich neu und erscheint gleich oben:')+' '+MZ.benannt)+'</div>':'')+
+      '<div class="wznote">'+T('Die Zuordnung gilt für alle gewählten Geräte gleich. Feinabstimmung danach unter „Meine Geräte“.')+'</div>';
+  } else if(key==='modi'){
+    b.innerHTML='<p class="wzq">'+T('Welche Betriebsmodi?')+'</p><div class="mzopts">'+
+      MZ_PRESETS.map(m=>{ const on=MZ.modes.some(x=>x.key===m.key);
+        return '<button type="button" class="mzopt'+(on?' on':'')+'" data-mzmode="'+esc(m.key)+'" data-mzlabel="'+esc(m.label)+'"><b>'+esc(T(m.label))+'</b><span>'+T('Loxone sendet')+' <code>'+esc(m.key)+'</code></span></button>'; }).join('')+'</div>'+
+      '<div class="mzadd"><div class="field"><label class="lbl">'+T('Eigener Modus')+'</label><input id="mzCustomIn" placeholder="'+T('z. B. Kino')+'"></div>'+
+        '<button type="button" class="btn ghost" id="mzAdd">＋ '+T('Hinzufügen')+'</button></div>'+
+      (mzCustom().length?'<div class="mzchips">'+mzCustom().map(m=>'<button type="button" class="mzchip on" data-mzdel="'+esc(m.key)+'">'+esc(m.label)+' <code>'+esc(m.key)+'</code> ✕</button>').join('')+'</div>':'');
+  } else if(key==='zuordnung'){
+    b.innerHTML='<p class="wzq">'+T('Welche Ansicht bei welchem Modus?')+'</p><div class="mztable">'+
+      MZ.modes.map(m=>'<div class="mzrow"><span><b>'+esc(T(m.label))+'</b> <code>'+esc(m.key)+'</code></span>'+
+        '<select class="mzprof" data-mzk="'+esc(m.key)+'"><option value="">'+T('unverändert lassen')+'</option>'+
+        PANEL_IDS.map(id=>'<option value="'+esc(id)+'"'+(m.profile===id?' selected':'')+'>'+esc((PANELS[id]||{}).title||id)+'</option>').join('')+'</select></div>').join('')+'</div>'+
+      '<div class="wznote">'+T('„Unverändert lassen“ heißt: dieser Modus schaltet die Geräte nicht um.')+'</div>';
+  } else {
+    const lines=MZ.modes.map(m=>'http://'+location.host+'/api/mode/'+m.key).join('\n');
+    const zuo=MZ.modes.filter(m=>m.profile).map(m=>'<div class="mzrow"><span><b>'+esc(T(m.label))+'</b></span><b>→ '+esc((PANELS[m.profile]||{}).title||m.profile)+'</b></div>').join('')
+      ||'<div class="wznote">'+T('Keine Zuordnung gewählt – es würde nichts umgeschaltet.')+'</div>';
+    b.innerHTML='<p class="wzq">'+T('Fertig – in Loxone einrichten')+'</p>'+
+      '<div class="wznote">'+T('In Loxone Config je Betriebsart einen virtuellen HTTP-Ausgang mit dieser Adresse anlegen (der Modusname am Ende zählt):')+'</div>'+
+      '<pre class="cmdout" id="mzLines">'+esc(lines)+'</pre>'+
+      '<button type="button" class="btn ghost sm" id="mzCopy">'+T('Adressen kopieren')+'</button>'+
+      '<p class="wzq" style="margin-top:16px">'+T('Zuordnung')+'</p><div class="mztable">'+zuo+'</div>'+
+      '<div class="wznote">'+T('Geräte:')+' <b>'+esc(MZ.devices.join(', ')||'—')+'</b>. '+T('„Übernehmen“ speichert das für alle gewählten Geräte.')+'</div>';
+  }
+  b.querySelectorAll('[data-mzdev]').forEach(el=>el.onclick=()=>{ const n=el.dataset.mzdev, i=MZ.devices.indexOf(n); if(i>=0) MZ.devices.splice(i,1); else MZ.devices.push(n); mzRender(); });
+  b.querySelectorAll('[data-mzanon]').forEach(row=>{ const inp=row.querySelector('.mzname'), btn=row.querySelector('[data-mzname]');
+    const go=async()=>{ const name=inp.value.trim(); if(!name){ inp.focus(); return; } btn.disabled=true;
+      await nameDevice(row.dataset.mzanon,name); MZ.benannt=name; mzRender(); };
+    btn.onclick=go; inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); go(); } }; });
+  b.querySelectorAll('[data-mzmode]').forEach(el=>el.onclick=()=>{ const k=el.dataset.mzmode, i=MZ.modes.findIndex(x=>x.key===k);
+    if(i>=0) MZ.modes.splice(i,1); else MZ.modes.push({key:k,label:el.dataset.mzlabel,profile:mzGuess(k)}); mzRender(); });
+  b.querySelectorAll('[data-mzdel]').forEach(el=>el.onclick=()=>{ const i=MZ.modes.findIndex(x=>x.key===el.dataset.mzdel); if(i>=0){ MZ.modes.splice(i,1); mzRender(); } });
+  { const add=$('#mzAdd'), inp=$('#mzCustomIn');
+    const go=()=>{ const lbl=(inp&&inp.value||'').trim(), k=mzKey(lbl); if(!k) return; if(!MZ.modes.some(x=>x.key===k)) MZ.modes.push({key:k,label:lbl,profile:mzGuess(k)}); mzRender(); };
+    if(add) add.onclick=go; if(inp) inp.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); go(); } }; }
+  b.querySelectorAll('.mzprof').forEach(sel=>sel.onchange=()=>{ const m=MZ.modes.find(x=>x.key===sel.dataset.mzk); if(m) m.profile=sel.value; });
+  { const cp=$('#mzCopy'); if(cp) cp.onclick=()=>{ try{ navigator.clipboard.writeText($('#mzLines').textContent).then(()=>snack(T('Adressen kopiert'))); }catch(e){} }; }
+  $('#mzBack').disabled=MZ.step===0;
+  $('#mzNext').textContent=MZ.step===MZ_FLOW.length-1?T('Übernehmen ✓'):T('Weiter')+' →';
+  $('#mzNext').disabled=(key==='geraete'&&!MZ.devices.length)||(key==='modi'&&!MZ.modes.length);
+}
+// Vorbelegung: bisherige Zuordnung der gewaehlten Geraete fuer diesen Modus
+function mzGuess(k){ for(const n of MZ.devices){ const hit=((DEV[n]||{}).modes||[]).find(([m])=>m===k); if(hit) return hit[1]; } return ''; }
+function mzNext(){ if(MZ.step<MZ_FLOW.length-1){ MZ.step++; mzRender(); return; } mzApply(); }
+// Neu benanntes Geraet: erscheint nach dem naechsten Abruf, gleich ausgewaehlt
+function mzGeraeteNeu(){
+  const ov=$('#mzOv'); if(!ov||ov.hidden||MZ_FLOW[MZ.step]!=='geraete') return;
+  if(MZ.benannt && mzDevNames().indexOf(MZ.benannt)>=0){ if(MZ.devices.indexOf(MZ.benannt)<0) MZ.devices.push(MZ.benannt); MZ.benannt=''; }
+  const b=$('#mzBody'); if(b&&b.contains(document.activeElement)&&document.activeElement.tagName==='INPUT') return;
+  mzRender();
+}
+function mzApply(){
+  readDevFromDom();      // offene Aenderungen in "Meine Geraete" nicht verlieren
+  MZ.devices.forEach(name=>{ const d=DEV[name]||(DEV[name]={auto:true,modes:[]});
+    const map=new Map((d.modes||[]).filter(([m])=>m));
+    MZ.modes.forEach(m=>{ if(m.profile) map.set(m.key,m.profile); else map.delete(m.key); });
+    d.modes=Array.from(map.entries()); d.auto=true; });
+  mzClose(); renderDevices(); $('#dev_save').click();   // speichert ueber /api/devices wie "Meine Geraete"
+}
 async function nameDevice(ip,name){
   if(!name){ flash($('#ag_toast'),T('Bitte einen Namen eingeben'),false); return; }
   try{
@@ -3030,6 +3511,7 @@ async function pollDevices(){
     const isNew=names.some(n=>KNOWN_NAMES.indexOf(n)<0);
     KNOWN_NAMES=Array.from(new Set(KNOWN_NAMES.concat(names)));
     if(isNew){ readDevFromDom(); renderDevices(); }   // neues Panel -> Block ergaenzen (Eingaben behalten)
+    if(typeof mzGeraeteNeu==='function') mzGeraeteNeu();   // offener Betriebsmodus-Assistent
     else renderDeviceList(j);
   }catch(e){}
 }

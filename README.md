@@ -27,6 +27,29 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Animierte Symbole (0.19.0-fav24)** — neuer Haken „Animierte Symbole“ (global, je Panel
+  überschreibbar): Klingel/Wecker/Alarm wackeln, Jalousie-Pfeil wippt beim Fahren, Heizung
+  pulsiert beim Heizen, Symbol ploppt beim Einschalten, neue Werte ticken ein, Ampel-Wechsel
+  wird kurz hervorgehoben.
+- **Feinschliff (0.19.0-fav23)** — Alarm-Vollbild neu (ganzer Bildschirm, Detail-Kopf, alle
+  Tasten als gleich große Pillen in einer Reihe, leichte Animation); Status-Ampel mit Schrift und
+  Form im Kachel-Standard; Fensterdetails zeigen offene Fenster zuerst.
+- **Alarm-Ton (0.19.0-fav22)** — optionaler Piepton zum Alarm-Vollbild je Panel; Ton wird beim
+  ersten Antippen freigeschaltet und fällt bei Sperre auf eine erzeugte WAV zurück (Tablets,
+  NSPanel, Shelly, Fully); gilt auch für Klingel- und Weckton.
+- **Alarm-Vollbild & Türstation (0.19.0-fav21)** — Alarmanlage/Rauchmelder lösen ein rotes
+  Vollbild mit Stumm/Quittieren/Unscharf aus (je Panel unter Profil wählbar); Türstation mit
+  Bildausschnitt (Fokus/Zoom, System → Intercom) und Tasten als Pillen auf dem Livebild;
+  Status-Ampel passt sich standardmäßig dem Design an; „Zurück“ führt wieder zum Dashboard.
+- **Status-Ampel (0.19.0-fav20)** — neues Widget „Status“: bis zu 4 Bausteine aus Loxone
+  (Fenster, Alarm, Rauch, Briefkasten, Statusbausteine) als Ampel mit Chips; Tipp öffnet die
+  Status-Seite bzw. den Baustein; Wetter-Widget standardmäßig 3 Tage Vorhersage.
+- **Wetter-Fix (0.19.0-fav19)** — Wettervorschau im Widget passt immer in ihre Kachel,
+  Schriftgröße der Vorschau auf 8–32 begrenzt; Panel-Assistent mit passenden Vorlagen-Namen
+  bei 1 Panel.
+- **Assistenten (0.19.0-fav18)** — Panel-Assistent beim Anlegen (Größe, Tabs, Dashboard,
+  Design, Name, Gerät) oder leer anlegen; Betriebsmodus-Assistent (aus dem Original
+  übernommen); Panel löschen per ✕ in der Liste; Speicherleiste zeigt die einzelnen Änderungen.
 - **Schnelle Kameras (0.19.0-fav17)** — Umschalten im Kamera-Widget ohne Wartezeit (bis 3
   Kameras laufen parallel, Server hält Kameras 60 s verbunden); neues Panel startet auf der
   Profilseite mit Standardraster 2×2.

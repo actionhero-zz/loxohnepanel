@@ -663,9 +663,11 @@
      waechst mit (max. 64 px), Schrift folgt "Vorhersage-Kacheln" (--sv-fc-size). */
   .svw .svw-wx .fore{gap:8px;flex:1;min-height:0;}
   .svw .svw-wx .fc{padding:6px 4px;gap:4px;border-radius:12px;justify-content:center;min-height:0;}
-  .svw .svw-wx .fc .d{font-size:calc(var(--sv-fc-size,12.5) * 0.8 * 1px);}
+  /* Schrift waechst mit der Einstellung, aber nie ueber die Kachel hinaus (Containerhoehe) */
+  .svw.svw-weather-cell{container-type:size;}
+  .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 9cqh);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   .svw .svw-wx .fc .ico{flex:1 1 auto;width:100%;height:auto;min-height:20px;max-height:64px;}
-  .svw .svw-wx .fc .tt{font-size:calc(var(--sv-fc-size,12.5) * 1 * 1px);}
+  .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 12cqh);white-space:nowrap;}
   .svw .svw-curve svg{width:100%;height:auto;max-height:150px;display:block;}
   .svw .svw-cal{justify-content:flex-start;gap:6px;}
   .svw .svw-cal .sv-ev{padding:7px 12px;gap:10px;border-radius:12px;}
@@ -899,7 +901,7 @@
     background:rgba(var(--wash,255,255,255),.06);}
   .moreb:active{transform:scale(.92);}
   /* PIN-Eingabe im Kartenstil: grosse Pillen, Punkte-Anzeige, Abbrechen = x oder daneben tippen */
-  .pinov{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.55);display:grid;place-items:center;}
+  .pinov{position:absolute;inset:0;z-index:45;background:rgba(0,0,0,.55);display:grid;place-items:center;}
   .pinbox{background:var(--face-1,var(--screen));color:var(--ink);border-radius:28px;padding:14px 16px 16px;
     width:min(92%,380px);max-height:96%;box-shadow:0 20px 50px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;}
   .pinhd{display:flex;align-items:center;justify-content:space-between;min-height:40px;}
@@ -1145,6 +1147,149 @@
   .saver{color:var(--bezel-ink,var(--ink));--ink:var(--bezel-ink,#e7ede7);--muted:var(--tab-idle,#9fb0a4);
     --wash:var(--bezel-ink-rgb,255,255,255);--line:rgba(var(--bezel-ink-rgb,255,255,255),.08);
     --tile:rgba(var(--bezel-ink-rgb,255,255,255),.06);}
+
+  /* ===== Status-Widget (Ampel) ===== */
+  .svw.svw-status-cell{container-type:size;}
+  .stw{height:100%;box-sizing:border-box;border-radius:var(--tile-r,18px);padding:clamp(8px,6cqmin,16px);display:flex;flex-direction:column;gap:clamp(5px,4cqmin,10px);cursor:pointer;overflow:hidden;}
+  .stw.lv-ok{background:#D2EDE0;color:#0F5132;} .stw.lv-hint{background:#FAE6B8;color:#633806;} .stw.lv-alarm{background:#F5C9C9;color:#791F1F;}
+  .sthd{display:flex;align-items:center;gap:clamp(5px,4cqmin,10px);font-weight:600;font-size:clamp(12px,9cqmin,22px);line-height:1.1;min-width:0;}
+  .sthd span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .sthi{width:1.15em;height:1.15em;flex:none;display:grid;}
+  .sthi svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
+  .stbody{flex:1;min-height:0;display:flex;gap:clamp(5px,4cqmin,10px);}
+  .stchips{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:clamp(4px,3cqmin,8px);flex:1;min-width:0;}
+  .stw.wide:not(.tall) .stchips{flex:0 0 46%;}
+  .stw.tall .stbody{flex-direction:column;} .stw.tall .stchips{flex:0 0 auto;grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;}
+  .stw.wide.tall .stchips{grid-template-columns:repeat(4,1fr);}
+  .stchip{border:0;border-radius:clamp(7px,5cqmin,12px);padding:clamp(4px,3cqmin,9px) clamp(5px,3.5cqmin,10px);display:flex;align-items:center;gap:clamp(4px,2.5cqmin,7px);min-width:0;font:inherit;
+    font-size:clamp(10px,6.5cqmin,15px);font-weight:600;cursor:pointer;background:rgba(255,255,255,.62);color:inherit;text-align:left;touch-action:manipulation;line-height:1.15;}
+  .stchip .stn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  .stchip .stt{font-weight:500;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stw.wide .stchip{flex-wrap:wrap;align-content:center;} .stw.wide .stchip .stn{flex:1;} .stw.wide .stchip .stt{width:100%;font-size:.88em;}
+  .stchip.lv-hint{background:#E8AE3C;color:#412402;} .stchip.lv-alarm{background:#DC5654;color:#fff;} .stchip.lv-info{background:#C2DAF2;color:#0C447C;}
+  .stci{width:1.15em;height:1.15em;flex:none;background:currentColor;-webkit-mask:var(--u) center/contain no-repeat;mask:var(--u) center/contain no-repeat;}
+  .stci.svg{background:none;-webkit-mask:none;mask:none;display:grid;} .stci.svg svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;}
+  .stlist{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:clamp(3px,2.5cqmin,6px);overflow:hidden;}
+  .stli{background:rgba(255,255,255,.62);border-radius:clamp(7px,5cqmin,12px);padding:clamp(4px,2.5cqmin,8px) clamp(6px,3.5cqmin,10px);font-size:clamp(10px,5.5cqmin,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;}
+  .stli.lv-hint{background:rgba(232,174,60,.45);} .stli.lv-alarm{background:rgba(220,86,84,.35);}
+  .stlog{font-size:clamp(9px,4.5cqmin,12px);opacity:.8;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stft{font-size:clamp(10px,5.5cqmin,14px);line-height:1.25;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;}
+  .stw.tall .stft{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  /* Standard: passend zum Hintergrund (wie die anderen Widgets: Kachelfarbe des Designs
+     bzw. dunkel im Dashboard); die Ampel zeigt sich ueber Akzentfarben */
+  .stw.look-auto{background:var(--tile);border:1px solid var(--line);color:var(--ink);
+    --st-ok:#43b581;--st-hint:#e0a24d;--st-alarm:#e25c5a;--st-info:#5b9bd5;}
+  .stw.look-auto .sthd{color:var(--st-ok);} .stw.look-auto.lv-hint .sthd{color:var(--st-hint);} .stw.look-auto.lv-alarm .sthd{color:var(--st-alarm);}
+  .stw.look-auto.lv-alarm{border-color:color-mix(in srgb,var(--st-alarm) 70%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--st-alarm) 50%,transparent);}
+  .stw.look-auto .stchip{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);}
+  .stw.look-auto .stchip .stci{color:var(--muted);}
+  .stw.look-auto .stchip.lv-hint{background:color-mix(in srgb,var(--st-hint) 26%,transparent);} .stw.look-auto .stchip.lv-hint .stci{color:var(--st-hint);}
+  .stw.look-auto .stchip.lv-alarm{background:color-mix(in srgb,var(--st-alarm) 34%,transparent);} .stw.look-auto .stchip.lv-alarm .stci{color:var(--st-alarm);}
+  .stw.look-auto .stchip.lv-info{background:color-mix(in srgb,var(--st-info) 24%,transparent);} .stw.look-auto .stchip.lv-info .stci{color:var(--st-info);}
+  .stw.look-auto .stli{background:color-mix(in srgb,var(--ink) 7%,transparent);}
+  .stw.look-auto .stli.lv-hint{background:color-mix(in srgb,var(--st-hint) 22%,transparent);} .stw.look-auto .stli.lv-alarm{background:color-mix(in srgb,var(--st-alarm) 28%,transparent);}
+  .stw.look-auto .stft,.stw.look-auto .stlog{color:var(--muted);opacity:1;}
+  /* Status-Seite (Tipp auf die Kachel) */
+  .stsheet{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.35);display:grid;place-items:center;padding:16px;}
+  .stsheet[hidden]{display:none;}
+  .stsbox{width:min(440px,100%);max-height:100%;overflow:auto;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 18px 40px rgba(0,0,0,.35);}
+  .stsbox.lv-ok{background:#D2EDE0;color:#0F5132;} .stsbox.lv-hint{background:#FAE6B8;color:#633806;} .stsbox.lv-alarm{background:#F5C9C9;color:#791F1F;}
+  .stsbox .sthd{font-size:20px;gap:10px;} .stsbox .sthi{width:24px;height:24px;}
+  .stx{margin-left:auto;border:0;background:rgba(255,255,255,.6);color:inherit;width:34px;height:34px;border-radius:50%;font-size:14px;cursor:pointer;}
+  .strow{display:flex;align-items:center;gap:10px;border:0;border-radius:14px;padding:12px 14px;font:inherit;font-size:15px;background:rgba(255,255,255,.7);color:#1f2440;cursor:pointer;text-align:left;}
+  .strow .stci{width:20px;height:20px;} .strow .stn{display:flex;flex-direction:column;min-width:0;font-weight:600;}
+  .strow .stn small{font-weight:400;font-size:12px;opacity:.75;} .strow .stt{margin-left:auto;font-size:13.5px;opacity:.85;white-space:nowrap;} .strow .stgo{opacity:.5;font-size:18px;}
+  .strow.lv-hint{background:#E8AE3C;color:#412402;} .strow.lv-alarm{background:#DC5654;color:#fff;} .strow.lv-info{background:#C2DAF2;color:#0C447C;}
+  .stsbox .stlog{font-size:12.5px;white-space:normal;background:rgba(255,255,255,.5);border-radius:12px;padding:10px 12px;opacity:1;}
+  .stsbox .stlog b{display:block;margin-bottom:4px;}
+
+  /* ===== Alarm-Vollbild =====
+     Deckt den ganzen Bildschirm ab; Karte wie eine Detailseite (Radius,
+     Kopf mit Raum/Name), Status gross in der Zahlen-Schrift, Aktionen als
+     Pillen. Rot bewusst fest und pulsierend - muss auffallen. */
+  .secal{position:absolute;inset:0;z-index:40;background:#2a0607;display:flex;gap:12px;padding:12px;overflow:auto;}
+  .secbox{flex:1 1 0;min-width:0;border-radius:36px;background:#C62F2D;color:#fff;display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px;
+    box-shadow:0 0 0 0 rgba(255,90,90,.6);animation:secpulse 1.6s ease-out infinite;}
+  .screen:not(.split) .secal{flex-direction:column;}
+  @keyframes secpulse{0%{box-shadow:0 0 0 0 rgba(255,90,90,.65);}100%{box-shadow:0 0 0 18px rgba(255,90,90,0);}}
+  .secbox .dhead .droom{color:rgba(255,255,255,.8);} .secbox .dhead .dname{color:#fff;}
+  .secstate{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:18px;}
+  .secico{width:64px;height:64px;flex:none;}
+  .secico svg{width:100%;height:100%;stroke:#fff;stroke-width:1.8;}
+  .secbig{font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));font-weight:600;font-size:56px;line-height:1;}
+  .secsub{font-size:var(--sub-size,15px);opacity:.9;margin-top:6px;}
+  /* Eine Reihe, alle Pillen gleich gross: aussen Zum Baustein/Ausblenden
+     (leicht transparent), innen die Befehle (weiss) */
+  .secrow{display:flex;gap:10px;}
+  .secpill{flex:1 1 0;min-width:0;height:56px;padding:0 10px;border-radius:28px;border:0;background:rgba(255,255,255,.16);color:rgba(255,255,255,.92);
+    font:inherit;font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .secpill:active{background:rgba(255,255,255,.3);}
+  @media (max-width:600px){ .secrow{gap:8px;} .secpill{font-size:13.5px;padding:0 4px;} .secopt{display:none;} }
+  .secpill.main{background:#fff;color:#8E1F1D;font-weight:700;}
+  .secpill.main:active,.secpill.main.sent{background:#f3d3d3;}
+  .sectap{display:none;width:max-content;margin-top:8px;font-size:13px;font-weight:600;background:rgba(0,0,0,.25);border-radius:999px;padding:4px 12px;}
+  html.tone-blocked .sectap{display:block;}
+  html[data-motion="off"] .secbox{animation:none;}
+
+  /* Tuerstation: Tasten auf dem Livebild (leicht transparent) */
+  .video .vrow{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;display:flex;flex-direction:column;gap:8px;}
+  .video .vrow .btn{opacity:.86;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.25);}
+  .video .vrow .btn:active,.video .vrow .btn.on{opacity:1;}
+  .video{overflow:hidden;}
+  .video .vhead{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2;max-width:calc(100% - 20px);
+    border-radius:999px;padding:6px 18px;opacity:.86;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.25);}
+  .video .vhead .dhead{margin:0;padding:0;}
+
+  /* ===== Status-Widget: Kachel-Standard =====
+     Schrift wie die Kacheln (Kopf = Kachelname: Zahlen-Schrift, Theme-Groesse
+     und -Staerke; Chips/Fusszeile = Statuszeile). Groessen folgen dem Theme,
+     werden aber auf kleinen Zellen (3x3-Raster) gedeckelt, damit nichts
+     ueberlaeuft. Form: Dashboard wie die anderen Widgets (Wetter),
+     in Tabs wie eine Kachel (Radius, Schatten, Innenabstand). */
+  .stw{border-radius:var(--r-tile,16px);padding:12px;gap:8px;}
+  .grid .stw{border-radius:26px;padding:16px;}
+  .grid .stw.look-auto{border:0;box-shadow:var(--tile-shadow,0 3px 10px rgba(0,0,0,.14));}
+  .grid.cells.g3 .svw[data-sz="1x1"] .stw,.grid.cells.g3 .svw[data-sz="2x1"] .stw,.grid.cells.g3 .svw[data-sz="3x1"] .stw{padding:10px 12px;gap:6px;}
+  .stw .sthd{font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));
+    font-size:min(var(--name-size,18px),12cqmin);font-weight:var(--name-weight,450);letter-spacing:-.01em;line-height:1.15;gap:.4em;}
+  .stw .sthi{width:1.15em;height:1.15em;}
+  .stw .stchip{font-size:min(calc(var(--sub-size,15px) * .87),8.5cqmin);font-weight:500;}
+  .stw .stchip .stci{width:1.1em;height:1.1em;}
+  .stw .stli{font-size:min(calc(var(--sub-size,15px) * .87),8cqmin);}
+  .stw .stft{font-size:min(var(--sub-size,15px),8cqmin);font-weight:400;}
+  .stw .stlog{font-size:min(calc(var(--sub-size,15px) * .8),7cqmin);}
+  .stw.tall .sthd,.stw.wide.tall .sthd{font-size:min(calc(var(--name-size,18px) * 1.3),11cqmin);}
+  .stsbox .sthd span{font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));font-weight:var(--name-weight,450);}
+
+  /* ===== Animierte Symbole =====
+     Nur mit Haken "Animierte Symbole" (html.ianim) und nicht bei Animation
+     "Keine". Dezent und nur transform/opacity/box-shadow (schwache Panels).
+     Einmalig: an-pop (eingeschaltet / Ampel kippt), an-val (neuer Wert),
+     an-chg (Ampel-Chip). Dauernd, solange es passiert: an-ring (Klingel,
+     Wecker, Alarm), an-up/an-down (Jalousie faehrt), an-heat (heizt). */
+  @keyframes icPop{0%{transform:scale(1);filter:brightness(1.3);}40%{transform:scale(1.12);}100%{transform:scale(1);filter:none;}}
+  @keyframes valTick{0%{opacity:.35;transform:translateY(3px);}100%{opacity:1;transform:none;}}
+  @keyframes chipFlash{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent);}100%{box-shadow:0 0 0 8px transparent;}}
+  @keyframes icRing{0%,55%,100%{transform:rotate(0);}8%{transform:rotate(-12deg);}16%{transform:rotate(11deg);}24%{transform:rotate(-8deg);}32%{transform:rotate(6deg);}40%{transform:rotate(-3deg);}}
+  @keyframes icBobUp{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
+  @keyframes icBobDown{0%,100%{transform:translateY(0);}50%{transform:translateY(2px);}}
+  @keyframes icHeat{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.72;transform:scale(.95);}}
+  @keyframes okDraw{from{stroke-dashoffset:14;}to{stroke-dashoffset:0;}}
+  html.ianim:not([data-motion="off"]) .an-pop{animation:icPop .5s ease-out;}
+  html.ianim:not([data-motion="off"]) .an-val{animation:valTick .5s ease-out;}
+  html.ianim:not([data-motion="off"]) .stchip.an-chg{animation:chipFlash .9s ease-out;}
+  html.ianim:not([data-motion="off"]) .stw.lv-ok .sthi.an-pop path:last-child{stroke-dasharray:14;animation:okDraw .5s ease-out;}
+  html.ianim:not([data-motion="off"]) .tile.an-ring .head>:first-child,
+  html.ianim:not([data-motion="off"]) .vbico,
+  html.ianim:not([data-motion="off"]) .dstate.tone-crit .sico,
+  html.ianim:not([data-motion="off"]) .secico{animation:icRing 1.6s ease-in-out infinite;transform-origin:50% 15%;}
+  html.ianim:not([data-motion="off"]) .tile.an-up .head>:first-child,
+  html.ianim:not([data-motion="off"]) .shade .sbar.on[data-dir="up"] svg{animation:icBobUp 1.1s ease-in-out infinite;}
+  html.ianim:not([data-motion="off"]) .tile.an-down .head>:first-child,
+  html.ianim:not([data-motion="off"]) .shade .sbar.on[data-dir="down"] svg{animation:icBobDown 1.1s ease-in-out infinite;}
+  html.ianim:not([data-motion="off"]) .tile.an-heat .head>:first-child{animation:icHeat 2.4s ease-in-out infinite;}
+  .vbell{display:inline-flex;align-items:center;gap:6px;}
+  .vbico{width:16px;height:16px;display:grid;} .vbico svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:2;}
 </style>
 </head>
 <body>
@@ -1258,12 +1403,58 @@ function key(r){return JSON.stringify(r||{});}
 // Nutzergeste. Zusaetzlich ein Failsafe, der nach 5 Min stoppt, falls das
 // Aus-Event mal ausbleibt (sonst piepte das Panel endlos).
 let _actx=null, _alarmTimer=null, _alarmFailsafe=null;
+// Ton fuer Wecker/Klingel/Alarm - so gebaut, dass er auch auf Tablets,
+// NSPanel & Co. (Android-WebView, Kiosk-Apps, Safari) zuverlaessig spielt:
+//  1. Browser geben Audio erst nach einer Beruehrung frei. Darum wird beim
+//     ERSTEN Antippen des Panels der Ton vorab freigeschaltet (WebAudio +
+//     <audio>-Element, beides stumm angespielt) - Wandpanels werden ohnehin
+//     regelmaessig beruehrt, danach darf das Panel jederzeit von selbst piepen.
+//  2. Weg A: erzeugter Piepton per WebAudio (keine Datei noetig).
+//     Weg B, falls WebAudio gesperrt/nicht da: derselbe Piepton als kleine
+//     WAV (im Browser erzeugt) in einem <audio>-Element in Schleife.
+//  3. Ist beides gesperrt, zeigt das Panel "Ton antippen" - die naechste
+//     Beruehrung startet den Ton sofort.
+let _toneEl=null, _toneBlocked=false;
+function _beepWavUrl(){
+  // 0,7 s Zyklus: 0,4 s Rechteck 880 Hz (leicht ein-/ausgeblendet), Rest Stille; 8 kHz 8 bit mono
+  const sr=8000, n=Math.round(sr*0.7), on=Math.round(sr*0.4), b=new Uint8Array(44+n), dv=new DataView(b.buffer);
+  const w=(o,t)=>{ for(let i=0;i<t.length;i++) b[o+i]=t.charCodeAt(i); };
+  w(0,'RIFF'); dv.setUint32(4,36+n,true); w(8,'WAVEfmt '); dv.setUint32(16,16,true); dv.setUint16(20,1,true);
+  dv.setUint16(22,1,true); dv.setUint32(24,sr,true); dv.setUint32(28,sr,true); dv.setUint16(32,1,true);
+  dv.setUint16(34,8,true); w(36,'data'); dv.setUint32(40,n,true);
+  for(let i=0;i<n;i++){ let v=0; if(i<on){ const env=Math.min(1,i/80,(on-i)/400); v=((Math.floor(i*880*2/sr)%2)?1:-1)*0.6*env; }
+    b[44+i]=Math.round(128+v*127); }
+  let bin=''; for(let i=0;i<b.length;i++) bin+=String.fromCharCode(b[i]);
+  return 'data:audio/wav;base64,'+btoa(bin);
+}
+function _toneElGet(){
+  if(!_toneEl){ try{ _toneEl=new Audio(_beepWavUrl()); _toneEl.loop=true; _toneEl.preload='auto'; }catch(e){ _toneEl=null; } }
+  return _toneEl;
+}
+function _actxGet(){
+  try{ _actx=_actx||new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ _actx=null; }
+  return _actx;
+}
+// Bei jeder Beruehrung (billig): Audio freischalten bzw. gesperrten Ton nachholen
+function audioUnlock(){
+  const a=_actxGet();
+  if(a&&a.state!=='running'){ try{ a.resume(); const bf=a.createBuffer(1,1,22050), s=a.createBufferSource(); s.buffer=bf; s.connect(a.destination); s.start(0); }catch(e){} }
+  const el2=_toneElGet();
+  if(el2&&!el2._unlocked&&!_alarmTimer){ el2.muted=true;
+    const p=el2.play(); const done=()=>{ el2.pause(); el2.currentTime=0; el2.muted=false; };
+    if(p&&p.then) p.then(()=>{ el2._unlocked=true; done(); }).catch(done); else done(); }
+  if(_toneBlocked&&_toneSources.size){ _toneBlocked=false; document.documentElement.classList.remove('tone-blocked'); _alarmTimer=null; startAlarmTone(); }
+}
+['pointerdown','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,audioUnlock,{capture:true,passive:true}));
 function startAlarmTone(){
   if(_alarmTimer) return;               // laeuft schon
-  try{
-    _actx = _actx || new (window.AudioContext||window.webkitAudioContext)();
-    if(_actx.state==='suspended') _actx.resume();
+  const blocked=()=>{ _toneBlocked=true; document.documentElement.classList.add('tone-blocked'); };
+  const viaEl=()=>{ const e=_toneElGet(); if(!e){ blocked(); return; }
+    e.muted=false; e.currentTime=0; const p=e.play();
+    if(p&&p.catch) p.catch(blocked); };
+  const viaCtx=()=>{
     const beep=()=>{
+      if(_actx.state!=='running'){ _actx.resume(); return; }
       const t=_actx.currentTime, o=_actx.createOscillator(), g=_actx.createGain();
       o.type='square'; o.frequency.value=880;
       g.gain.setValueAtTime(0.0001,t);
@@ -1272,15 +1463,23 @@ function startAlarmTone(){
       o.connect(g); g.connect(_actx.destination);
       o.start(t); o.stop(t+0.45);
     };
-    beep();
-    _alarmTimer=setInterval(beep,700);
-    clearTimeout(_alarmFailsafe);
-    _alarmFailsafe=setTimeout(stopAlarmTone,5*60*1000);
-  }catch(e){}
+    beep(); _alarmTimer=setInterval(beep,700);
+  };
+  _alarmTimer=-1;                       // Merker "Ton gewuenscht" (auch fuer Weg B)
+  const a=_actxGet();
+  if(a&&a.state==='running'){ _alarmTimer=null; viaCtx(); }
+  else if(a){ Promise.race([a.resume(), new Promise(r=>setTimeout(r,400))]).then(()=>{
+      if(_alarmTimer!==-1) return;      // inzwischen gestoppt
+      if(a.state==='running'){ _alarmTimer=null; viaCtx(); } else viaEl(); }).catch(viaEl); }
+  else viaEl();
+  clearTimeout(_alarmFailsafe);
+  _alarmFailsafe=setTimeout(stopAlarmTone,5*60*1000);
 }
 function stopAlarmTone(){
   _toneSources.clear();   // "Ton aus" ist immer vollstaendig - auch beim Failsafe (unten) synchron halten
-  if(_alarmTimer){ clearInterval(_alarmTimer); _alarmTimer=null; }
+  if(_alarmTimer&&_alarmTimer!==-1) clearInterval(_alarmTimer);
+  _alarmTimer=null; _toneBlocked=false; document.documentElement.classList.remove('tone-blocked');
+  if(_toneEl&&!_toneEl.paused){ _toneEl.pause(); _toneEl.currentTime=0; }
   clearTimeout(_alarmFailsafe); _alarmFailsafe=null;
 }
 // Mehrere Quellen koennen gleichzeitig einen Ton wollen (Wecker UND Klingel).
@@ -1433,7 +1632,7 @@ function crumbsHtml(nTabs){
   const wide=document.querySelector('.screen.split')||window.innerWidth>=900;
   const max=wide?3:(nTabs<=3?3:2);   // tiefste Seite: Tab > Raum > Baustein > Verlauf = 3 Ebenen
   if(!max) return '';
-  const lv=[]; for(let i=stack.length-1;i>=1&&lv.length<max;i--) lv.unshift(i);
+  const lv=[]; for(let i=stack.length-1;i>=1&&lv.length<max;i--) if(stack[i].view!=='saver') lv.unshift(i);
   const sep='<span class="crsep" aria-hidden="true">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span>';
   return lv.map((i,k)=>(k?sep:'')+'<div class="crumb'+(i===stack.length-1?' cur':'')+'" data-lvl="'+i+'">'+
     (_crumbs[i]||svg('<circle cx="12" cy="12" r="3"/>'))+'</div>').join('');
@@ -1444,13 +1643,53 @@ function crumbJump(i){
   stack=stack.slice(0,i+1); _crumbs.length=i+1; _zoomRects.length=Math.min(_zoomRects.length,i+1);
   send({t:'nav',route:stack[i]});
 }
+// ---- Alarm-Vollbild (Alarmanlage / Rauchmelder) ----
+// Der Server schickt nur Alarme, die dieses Panel zeigen soll (Profil -> Alarme).
+// Stumm/Quittieren/Unscharf gehen direkt an den Baustein; abgesicherte Bausteine
+// fragen wie ueblich den PIN ab. "Ausblenden" schliesst nur hier am Panel.
+const _secAl={};
+function secAlarm(m){
+  // Ton (falls fuer dieses Panel an): bis Stumm/Quittieren/Ausblenden oder Alarm-Ende
+  if(m.on){ _secAl[m.id]=m; wake(); if(m.sound) toneOn('sec:'+m.id); } else { delete _secAl[m.id]; toneOff('sec:'+m.id); }
+  secRender();
+}
+function secRender(){
+  const s=document.querySelector('.screen'); let ov=el('secAl');
+  const list=Object.values(_secAl).filter(a=>!a.hidden);
+  if(!list.length){ if(ov) ov.remove(); return; }
+  if(!ov){ ov=document.createElement('div'); ov.id='secAl'; ov.className='secal'; s.appendChild(ov); }
+  const shield='<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="M12 8v5"/><path d="M12 16.5h.01"/>';
+  ov.innerHTML=list.map(a=>'<div class="secbox" data-id="'+esc(a.id)+'">'+
+    '<div class="dhead"><div class="droom">'+esc((a.room?a.room+' · ':'')+(a.kind==='smoke'?'Rauchmelder':'Alarmanlage'))+'</div>'+
+      '<div class="dname">'+esc(a.name)+'</div></div>'+
+    '<div class="secstate"><div class="secico">'+svg(a.kind==='smoke'?ICONS.alarm:shield)+'</div>'+
+      '<div><div class="secbig">Alarm</div><div class="secsub">'+esc(a.sub)+'</div>'+
+      '<div class="sectap">🔇 Ton gesperrt – Bildschirm antippen</div></div></div>'+
+    '<div class="secrow"><button type="button" class="secpill" data-go><span class="secopt">Zum </span>Baustein</button>'+
+      (a.acts||[]).map(x=>'<button type="button" class="secpill main" data-cmd="'+esc(x.cmd)+'">'+esc(x.label)+'</button>').join('')+
+      '<button type="button" class="secpill" data-hide>Ausblenden</button></div>'+
+    '</div>').join('');
+  ov.querySelectorAll('.secbox').forEach(b=>{
+    const a=_secAl[b.dataset.id]; if(!a) return;
+    b.querySelectorAll('[data-cmd]').forEach(x=>x.onclick=()=>{ toneOff('sec:'+a.id); sendCmd(a.uuid,x.dataset.cmd,a.secured);
+      x.classList.add('sent'); setTimeout(()=>x.classList.remove('sent'),1500); });
+    b.querySelector('[data-go]').onclick=()=>{ toneOff('sec:'+a.id); a.hidden=true; secRender(); nav({view:'control',id:a.id}); };
+    b.querySelector('[data-hide]').onclick=()=>{ toneOff('sec:'+a.id); a.hidden=true; secRender(); };
+  });
+}
+// Vom Dashboard aus geoeffnet: "Zurueck" fuehrt wieder zum Dashboard.
+function saverNav(route){ hideSaver(); stack.push({view:'saver'}); nav(route); }
 function back(){
   if(stack.length>1){
     zoomBack();
     stack.pop(); _crumbs.length=stack.length;
     const top=stack[stack.length-1];
     // {view:'saver'} ist ein rein clientseitiger Merker (kein Server-Route).
-    if(top && top.view==='saver'){ showSaver(); renderTabs(); return; }
+    if(top && top.view==='saver'){
+      stack.pop(); _crumbs.length=stack.length;          // Merker entfernen, Seite darunter wiederherstellen
+      if(stack.length) send({t:'nav',route:stack[stack.length-1]});
+      showSaver(); renderTabs(); return;
+    }
     send({t:'nav',route:top});
     return;
   }
@@ -1650,7 +1889,7 @@ function patchLive(g,blocks){
   const kp=blocks.find(b=>b.k==='kpis'), ke=g.querySelector('.kpis');
   if(kp&&ke){ const h=(kp.items||[]).map(k=>'<div><span>'+esc(k.l)+'</span><b>'+esc(k.v)+'</b></div>').join(''); if(ke.innerHTML!==h) ke.innerHTML=h; }
   const vd=blocks.find(b=>b.k==='video'), ve=g.querySelector('.video');
-  if(vd&&ve){ let bl=ve.querySelector('.vbell'); if(vd.bell&&!bl){ bl=document.createElement('span'); bl.className='vbell'; bl.textContent='Es klingelt'; ve.appendChild(bl); } else if(!vd.bell&&bl) bl.remove(); }
+  if(vd&&ve){ let bl=ve.querySelector('.vbell'); if(vd.bell&&!bl){ bl=document.createElement('span'); bl.className='vbell'; bl.innerHTML=VBELL; ve.appendChild(bl); } else if(!vd.bell&&bl) bl.remove(); }
   const sc=blocks.find(b=>b.k==='scenes');
   if(sc){ g._scenes=sc.items; g.querySelectorAll('.scene').forEach(n=>{ const it=sc.items[+n.dataset.s]; if(!it) return;
     n.classList.toggle('on',!!it.on); const lb=n.querySelector('b'); if(lb&&lb.textContent!==it.label) lb.textContent=it.label;
@@ -1974,7 +2213,7 @@ function renderPanel(blocks){
       return '<div class="hero"><div class="circle">'+hic+'</div></div>'; }
     if(b.k==='dhead') return '<div class="dhead">'+(b.room?'<div class="droom">'+esc(b.room)+'</div>':'')+'<div class="dname">'+esc(b.name||'')+'</div></div>';
     if(b.k==='cover') return '<div class="cover"><div class="coverph">'+svg(ICONS.music)+'</div><img id="coverimg" alt=""></div>';
-    if(b.k==='video') return '<div class="video"><img alt="">'+(b.bell?'<span class="vbell">Es klingelt</span>':'')+'</div>';
+    if(b.k==='video') return '<div class="video"><img alt="">'+(b.bell?'<span class="vbell">'+VBELL+'</span>':'')+'</div>';
     if(b.k==='state') return '<div class="dstate tone-'+esc(b.tone||'idle')+'"><span class="sico">'+svg(ICONS[b.icon]||ICONS.info)+'</span>'+
       '<b class="pbig">'+fmtBig(b.text)+'</b>'+(b.sub?'<span class="ssub">'+esc(b.sub)+'</span>':'')+'</div>';
     if(b.k==='log') return '<div class="dlog">'+(b.rows||[]).map(r=>'<div><b>'+esc(r.t||'')+'</b><span>'+esc(r.text||'')+'</span></div>').join('')+'</div>';
@@ -2026,6 +2265,12 @@ function renderPanel(blocks){
     let top='',bot='';
     for(const b of blocks){ if(b.k==='more')continue; if(TOPK[b.k]) top+=bh(b); else bot+=bh(b); }
     g.innerHTML=coverHtml+bgHtml+'<div class="pantop">'+top+'</div><div class="panbot">'+bot+'</div>';
+    // Tuerstation: Tasten liegen auf dem Livebild, das Bild bekommt die volle Hoehe
+    const ve=g.querySelector('.pantop>.video'), pb=g.querySelector('.panbot');
+    if(ve&&pb&&pb.children.length){ const vr=document.createElement('div'); vr.className='vrow';
+      while(pb.firstChild) vr.appendChild(pb.firstChild); ve.appendChild(vr); }
+    const dh=ve&&g.querySelector('.pantop>.dhead');
+    if(dh){ const vh=document.createElement('div'); vh.className='vhead'; vh.style.background=getComputedStyle(g).backgroundColor; vh.appendChild(dh); ve.appendChild(vh); }
   } else {
     let html='';
     for(const b of blocks){ if(b.k!=='more') html+=bh(b); }
@@ -2332,8 +2577,12 @@ function updateGrid(items){
   let ok=true;
   items.forEach((it,i)=>{
     const n=nodes[i];
+    const prev=n._it;
     n._it=it;
-    const cls='tile'+tileTone(it)+(i%_pg===0?' snap':'')+[...n.classList].filter(c=>c.startsWith('spark')).map(c=>' '+c).join('');
+    // Animierte Symbole: Einschalten -> Symbol ploppt kurz; neuer Wert -> Statuszeile tickt
+    if(prev&&!prev.on&&it.on) animOnce(n.querySelector('.head>:first-child'),'an-pop');
+    else if(prev&&prev.sublabel&&it.sublabel&&prev.sublabel!==it.sublabel) setTimeout(()=>animOnce(n.querySelector('.body .sub'),'an-val'),0);
+    const cls='tile'+tileTone(it)+(it.anim?' an-'+it.anim:'')+(i%_pg===0?' snap':'')+[...n.classList].filter(c=>c.startsWith('spark')).map(c=>' '+c).join('');
     if(n.className!==cls) n.className=cls;
     const stStr=tileVarStyle(it);
     if((n.getAttribute('style')||'')!==stStr) n.setAttribute('style',stStr);
@@ -2414,7 +2663,7 @@ function tileHtml(it, extraCls){
   if(ts.weight) nsv.push('font-weight:'+ts.weight);
   if(ts.italic) nsv.push('font-style:italic');
   const nst = nsv.length?' style="'+esc(nsv.join(';'))+'"':'';
-  return '<div class="tile'+tone+(extraCls||'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
+  return '<div class="tile'+tone+(it.anim?' an-'+esc(it.anim):'')+(extraCls||'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
           '<div class="head">'+icoCell+(it.spark&&it.spark.badge?'<span class="tsbadge">'+esc(it.spark.badge)+'</span>':'')+
             chev+togg+tapb+updown+prevnext+'</div>'+
           (it.spark?'<div class="tspark"></div>':'')+   // Mini-Verlauf (gezeichnet in bindTile, erst dann ist die Groesse bekannt)
@@ -2487,7 +2736,7 @@ function bindTile(n, it){
   n.onclick=(e)=>{ if(justLeftSaver()) return;
     if(e.target.closest('.tctrls')||e.target.closest('.tswitch')||e.target.closest('.tapbtn')||e.target.closest('.updown')||e.target.closest('.prevnext')) return; const t=n._it||it;
     const act=()=>{ const u=n._it||t;
-      if(u.nav){ if(n.closest('#saver')) hideSaver(); else { zoomFrom(n); crumbFrom(n); } nav(u.nav); } else if(u.cmd) sendCmd(u.cmd.uuid,u.cmd.cmd,(view&&view.secured)||u.secured); };
+      if(u.nav){ if(n.closest('#saver')) saverNav(u.nav); else { zoomFrom(n); crumbFrom(n); nav(u.nav); } } else if(u.cmd) sendCmd(u.cmd.uuid,u.cmd.cmd,(view&&view.secured)||u.secured); };
     // Doppeltipp = Licht aus (nur wenn der Server dblOff mitliefert: Licht
     // an + Option aktiv). Eigene Erkennung ueber zwei 'click' statt
     // 'dblclick', das Android-WebViews (Shelly Wall Display) und iOS bei
@@ -2743,7 +2992,8 @@ function connect(){
     try{ msg=JSON.parse(e.data); }
     catch(err){ console.warn('LoxPanel: unlesbare Nachricht verworfen', err); return; }
     if(!msg || typeof msg!=='object') return;
-    if(msg.t==='theme'){ const v=msg.vars||{}; for(const k in v){ if(v[k]) document.documentElement.style.setProperty(k,v[k]); }
+    if(msg.t==='camcrop'){ CAM_CROP=msg.map||{}; camCropAll(); return; }
+    if(msg.t==='theme'){ if(msg.camCrop){ CAM_CROP=msg.camCrop; camCropAll(); } const v=msg.vars||{}; for(const k in v){ if(v[k]) document.documentElement.style.setProperty(k,v[k]); }
       profCols = (v['--cols']?(parseInt(v['--cols'])||2):2);
       profRows = (v['--rows']?(parseInt(v['--rows'])||2):2);
       gridCols = profCols; gridRows = profRows;
@@ -2761,6 +3011,7 @@ function connect(){
       // Animationsstufe: off = keine, mid = nur Ueberblendungen, full = alles
       document.documentElement.style.setProperty('--anim-scale', msg.motion==='off' ? 0 : 1);
       document.documentElement.dataset.motion = msg.motion||'full';
+      document.documentElement.classList.toggle('ianim', msg.iconAnim!==false);   // Animierte Symbole (Einstellung)
       document.documentElement.dataset.contrast = msg.contrast ? '1' : '0';   // Mehr Kontrast: Schatten an Kacheln/Knoepfen
       SCENE_LIGHT = !!msg.sceneLight;   // Lichtszenen: Piktogramm zeigt Lichtfarbe + Helligkeit
       if(saverOn()) applySaverSplit();      // Split-Erlaubnis kann sich geaendert haben -> Screensaver-Spaltigkeit nachziehen
@@ -2780,6 +3031,7 @@ function connect(){
       return;
     }   // Klingel: Display an, Uhr weg, optional (je Intercom) eigener Ton oder Wecker-Ton solange der bell-Impuls ansteht
     if(msg.t==='alarm'){ if(msg.on){ wake(); toneOn('alarm'); if(msg.id) nav({view:'control',id:msg.id}); } else { toneOff('alarm'); } return; }
+    if(msg.t==='secalarm'){ secAlarm(msg); return; }   // Alarmanlage/Rauchmelder ausgeloest -> Vollbild
     if(msg.t==='testtone'){ playTestTone(); return; }
     if(msg.t==='front'){ frontData=msg; renderFront(); if(view&&view.layout==='cells'&&el('grid').classList.contains('cells')) render(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
     if(msg.t==='player'){ renderPlayer(msg.blocks); return; }   // fester Player im Split-Layout
@@ -2985,13 +3237,27 @@ function svWidgetHTML(it, sd){
   const d=frontData||{};
   if(it.type==='clock') return svClockHTML(it);
   if(it.type==='weather') return d.weather
-    ? '<div class="sv-wx svw-wx" style="--fc:'+Math.max(1,Math.min(it.days||4,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather, it.days||4)+
+    ? '<div class="sv-wx svw-wx" style="--fc:'+Math.max(1,Math.min(it.days||3,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather, it.days||3)+
         (it.h>1&&Array.isArray(d.weather.hourly)?'<div class="fp-curve svw-curve">'+fpCurve(d.weather.hourly)+'</div>':'')+'</div>'
     : '<div class="svw-empty">Kein Wetter konfiguriert</div>';
   if(it.type==='calendar'){
     const n=it.h===1?2:(it.h===2?4:6), evs=(Array.isArray(d.events)?d.events:[]).slice(0,n);
     return evs.length ? '<div class="sv-cal svw-cal">'+svEvHTML(evs, d)+'</div>'
                       : '<div class="svw-empty">Keine Termine</div>';
+  }
+  if(it.type==='status'){
+    const st=((sd&&sd.statuses)||{})[(it.ctls||[]).join(',')+'#'+(it.trk||'')];
+    if(!st||!(st.chips||[]).length) return '<div class="svw-empty">'+((it.ctls||[]).length?'Status lädt …':'Keine Bausteine gewählt')+'</div>';
+    const wide=it.w>1, tall=it.h>1;
+    const chip=c=>'<button type="button" class="stchip lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+': '+c.text)+'">'+stIco(c)+
+      '<span class="stn">'+esc(c.name)+'</span>'+(wide?'<span class="stt">'+esc(c.text)+'</span>':'')+'</button>';
+    const list=wide?'<div class="stlist">'+(st.chips||[]).filter(c=>c.level!=='ok').flatMap(c=>(c.detail&&c.detail.length?c.detail:[c.name+': '+c.text]).map(d=>
+      '<div class="stli lv-'+esc(c.level)+'">'+esc(d)+'</div>')).slice(0,6).join('')+
+      ((st.log||[]).length&&tall?'<div class="stlog">'+st.log.slice(0,3).map(esc).join(' · ')+'</div>':'')+'</div>':'';
+    return '<div class="stw lv-'+esc(st.level)+(it.look==='color'?' look-color':' look-auto')+(wide?' wide':'')+(tall?' tall':'')+'" data-stkey="'+esc((it.ctls||[]).join(',')+'#'+(it.trk||''))+'">'+
+      '<div class="sthd">'+stHeadIco(st.level)+'<span>'+esc(st.head)+'</span></div>'+
+      '<div class="stbody"><div class="stchips">'+(st.chips||[]).slice(0,4).map(chip).join('')+'</div>'+list+'</div>'+
+      '<div class="stft">'+esc(st.foot||'')+'</div></div>';
   }
   if(it.type==='camera'){
     const cams=camList(it,sd);
@@ -3111,9 +3377,15 @@ function renderLayout(g, items, sd, place, camsOn){
     if(cell._html!==html){
       cell.querySelectorAll('.svw-cam img').forEach(camStop);
       cell._html=html; cell.innerHTML=html; cell._live=null;
-      if(it.type==='tile'||it.type==='room'||it.type==='cat'){ const n=cell.querySelector('.tile'); if(n) bindTile(n,((sd||{}).tiles||{})[it.uuid]); }
+      if(it.type==='tile'||it.type==='room'||it.type==='cat'){ const n=cell.querySelector('.tile'), nt=((sd||{}).tiles||{})[it.uuid], pt=cell._tileIt;
+        if(n) bindTile(n,nt);
+        // Animierte Symbole: eingeschaltet -> Symbol ploppt; neuer Wert -> Statuszeile tickt
+        if(n&&pt&&nt){ if(!pt.on&&nt.on) animOnce(n.querySelector('.head>:first-child'),'an-pop');
+          else if(pt.sublabel&&nt.sublabel&&pt.sublabel!==nt.sublabel) animOnce(n.querySelector('.body .sub'),'an-val'); }
+        cell._tileIt=nt; }
       if(it.type==='intercom' && camsOn) svStartCams(cell);
       if(it.type==='camera' && camsOn) camSwStart(cell);
+      if(it.type==='status') stBind(cell);
     }
     if(it.type==='energy'||it.type==='chart'||it.type==='player') svPaintLive(cell,it,sd);
   });
@@ -3133,6 +3405,52 @@ function svStartCams(root){
   });
   (r.classList.contains('svw-camera-cell') ? [r] : r.querySelectorAll('.svw-camera-cell')).forEach(cell=>{
     const img=cell.querySelector('.svw-cam img'); if(img&&!img.getAttribute('src')) camSwStart(cell); });
+}
+// ---- Animierte Symbole ----
+// Einmal-Animation neu starten (Klasse ab, Reflow, wieder dran). Ob sie
+// ueberhaupt laeuft, entscheidet das CSS (html.ianim + Animationsstufe).
+function animOnce(e,cls){ if(!e) return; e.classList.remove(cls); void e.offsetWidth; e.classList.add(cls);
+  clearTimeout(e['_t'+cls]); e['_t'+cls]=setTimeout(()=>e.classList.remove(cls),1200); }
+const VBELL='<span class="vbico">'+svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>')+'</span>Es klingelt';
+const _stPrev={};   // letzter Stand je Ampel (Gesamtstufe + Stufe je Chip)
+// ---- Status-Widget (Ampel) ----
+// Symbole: Kopf = Haken / i / !, Chips = Loxone-Icon des Bausteins (sonst eigenes Symbol).
+function stHeadIco(l){
+  const p=l==='alarm'?'<path d="M12 7v6"/><path d="M12 17h.01"/>':(l==='hint'?'<path d="M12 11v6"/><path d="M12 7h.01"/>':'<path d="m7.5 12.5 3 3 6-6.5"/>');
+  return '<span class="sthi">'+svg('<circle cx="12" cy="12" r="9"/>'+p)+'</span>';
+}
+function stIco(c){ return c.iconUrl ? '<span class="stci" style="--u:url(\''+esc(c.iconUrl)+'\')"></span>'
+                                    : '<span class="stci svg">'+svg(ICONS[c.icon]||ICONS.info)+'</span>'; }
+// Tipp auf einen Chip -> Detailseite des Bausteins (auch wenn er in keinem Tab liegt);
+// Tipp auf die Kachel -> Status-Seite mit allen Chips groß und dem Verlauf.
+function stBind(cell){
+  const w=cell.querySelector('.stw'); if(!w) return;
+  { // Zustandswechsel -> Kopf-Symbol ploppt, betroffener Chip leuchtet einmal auf
+    const k=w.dataset.stkey, lv=[...w.classList].find(c=>c.startsWith('lv-')), p=_stPrev[k], chips={};
+    w.querySelectorAll('.stchip[data-stid]').forEach(c=>{ const l=[...c.classList].find(x=>x.startsWith('lv-'));
+      chips[c.dataset.stid]=l; if(p&&p.chips[c.dataset.stid]&&p.chips[c.dataset.stid]!==l) animOnce(c,'an-chg'); });
+    if(p&&p.lv!==lv) animOnce(w.querySelector('.sthd .sthi'),'an-pop');
+    _stPrev[k]={lv,chips}; }
+  const go=id=>{ if(cell.closest('#saver')) saverNav({view:'control', id}); else { zoomFrom(cell); nav({view:'control', id}); } };
+  w.querySelectorAll('[data-stid]').forEach(b=>{
+    ['pointerdown','touchstart','mousedown'].forEach(ev=>b.addEventListener(ev,e=>e.stopPropagation()));
+    b.addEventListener('click',e=>{ e.stopPropagation(); if(justLeftSaver&&justLeftSaver()) return; go(b.dataset.stid); }); });
+  w.addEventListener('click',()=>{ if(typeof justLeftSaver==='function'&&justLeftSaver()) return;
+    const st=((cell._sd||saverData||{}).statuses||{})[w.dataset.stkey]; if(st) stSheet(st, go); });
+}
+function stSheet(st, go){
+  let ov=el('stSheet'); if(!ov){ ov=document.createElement('div'); ov.id='stSheet'; ov.className='stsheet'; document.querySelector('.screen').appendChild(ov); }
+  ov.innerHTML='<div class="stsbox lv-'+esc(st.level)+'"><div class="sthd">'+stHeadIco(st.level)+'<span>'+esc(st.head)+'</span>'+
+    '<button type="button" class="stx" aria-label="Schließen">✕</button></div>'+
+    (st.chips||[]).map(c=>'<button type="button" class="strow lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'">'+stIco(c)+
+      '<span class="stn">'+esc(c.name)+(c.detail&&c.detail.length?'<small>'+esc(c.detail.join(' · '))+'</small>':'')+'</span>'+
+      '<span class="stt">'+esc(c.text)+'</span><span class="stgo">›</span></button>').join('')+
+    ((st.log||[]).length?'<div class="stlog"><b>Verlauf</b>'+st.log.map(x=>'<div>'+esc(x)+'</div>').join('')+'</div>':'')+'</div>';
+  ov.hidden=false;
+  const close=()=>{ ov.hidden=true; };
+  ov.querySelector('.stx').onclick=e=>{ e.stopPropagation(); close(); };
+  ov.onclick=e=>{ if(e.target===ov) close(); };
+  ov.querySelectorAll('[data-stid]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); close(); go(b.dataset.stid); });
 }
 // Kamera-Widget: Live-Bild einer Kamera (Intercoms + eigene), Pillen oben rechts
 // schalten durch. Die Wahl bleibt je Widget erhalten, solange die Seite offen ist.
@@ -3213,8 +3531,19 @@ el('svClose').addEventListener('click', e=>{ e.stopPropagation(); hideSaver(); r
 //  - optional alle N Stunden Neuaufbau (Settings -> Kamera, je Intercom)
 const CAM_RETRY_MS=8000;
 const camImgs=new Set();
+// Bildausschnitt je Kamera (System -> Intercom): Fokuspunkt + Zoom bzw. ganzes Bild.
+let CAM_CROP={};
+function camCrop(img){
+  const c=CAM_CROP[img.dataset.camid||'']||null, st=img.style;
+  st.objectFit=c&&c.fit==='contain'?'contain':'';
+  st.objectPosition=c?(c.x+'% '+c.y+'%'):'';
+  st.transformOrigin=c?(c.x+'% '+c.y+'%'):'';
+  st.transform=(c&&c.fit!=='contain'&&c.z>1)?'scale('+c.z+')':'';
+}
+function camCropAll(){ document.querySelectorAll('img[data-camid]').forEach(camCrop); }
 function camStream(img, src, reconnectH, onErr, onOk){
   if(!img||!src) return;
+  const mid=/[?&]id=([^&]+)/.exec(src); img.dataset.camid=mid?decodeURIComponent(mid[1]):''; camCrop(img);
   const load=()=>{
     clearTimeout(img._camRetry); clearTimeout(img._camCycle);
     img.src=src+(src.indexOf('?')<0?'?':'&')+'_t='+Date.now();

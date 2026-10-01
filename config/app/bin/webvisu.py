@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav17"
+APP_VERSION = "0.19.0-fav24"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -164,6 +164,7 @@ JAL = JalousieAdapter()
 
 SWITCHY = {"Switch"}   # TimedSwitch wird eigen behandelt (anderer State)
 VALID_TABS = ["favoriten", "zentral", "raeume", "kategorien"]
+SEC_ALARM_TYPES = ("Alarm", "SmokeAlarm")   # Vollbild bei Ausloesung (s. sec_alarm_msg)
 # Display-Treiber fuer Kiosk-Apps (Android) mit Standard-Port ihrer HTTP-Schnittstelle
 DISPLAY_DRIVERS = {"fully": 2323, "wallpanel": 2971}
 # Geraetetypen (wie "Unterstuetzte Geraete" in der Config): Betriebssystem
@@ -354,6 +355,7 @@ SAVER_SIZES = {
     "chart": ((2, 1), (3, 1), (2, 2), (3, 2)),        # Verlauf eines Bausteins mit Statistik
     "player": ((2, 2), (3, 2), (3, 3)),               # Audio-Zone (Cover, Titel, Steuerung)
     "camera": ((1, 1), (2, 1), (2, 2), (3, 2), (3, 3)),   # Kameras (Intercoms + eigene), per Pillen umschaltbar
+    "status": ((1, 1), (2, 1), (2, 2), (3, 1), (3, 2)),   # Status-Ampel aus bis zu 4 Bausteinen
 }
 SAVER_UUID_TYPES = ("tile", "intercom", "energy", "chart", "player")
 SAVER_EXITS = ("x", "up", "down", "left", "right")   # Schliessen: X-Button und Wischrichtungen
@@ -369,7 +371,7 @@ GRID_SIZES = {
     2: {"clock": ((1, 1), (2, 1), (2, 2)), "weather": ((2, 1), (2, 2)), "calendar": ((2, 1), (2, 2)),
         "intercom": ((2, 1), (2, 2)), "tile": ((1, 1), (2, 1), (2, 2)), "wxdetail": ((2, 1), (2, 2)),
         "energy": ((1, 1), (2, 1), (2, 2)), "chart": ((1, 1), (2, 1), (2, 2)), "player": ((2, 1), (2, 2)),
-        "camera": ((1, 1), (2, 1), (2, 2))},
+        "camera": ((1, 1), (2, 1), (2, 2)), "status": ((1, 1), (2, 1), (2, 2))},
 }
 # Bei zwei Panels nebeneinander (z.B. Shelly X2): Kamera/Intercom ueber BEIDE Panels -
 # im Dashboard wie in den Tabs (dort von der linken, geraden Seite in die rechte).
@@ -385,6 +387,14 @@ def _tab_cells(x: int, y: int, w: int, h: int, g: int) -> set:
     return {(cx, cy) if cx < g else (cx - g, cy + g) for cx in range(x, x + w) for cy in range(y, y + h)}
 for _g in GRID_SIZES.values():               # Raum-/Kategorie-Kacheln wie Baustein-Kacheln
     _g["room"] = _g["cat"] = _g["tile"]
+
+
+def _fc_size(v) -> float:
+    """Schriftgroesse der Wettervorschau: 8..32 (aeltere Stande erlaubten bis 80)."""
+    try:
+        return max(8.0, min(32.0, float(v)))
+    except (TypeError, ValueError):
+        return 12.5
 
 
 def _grid(v, default: int = 3) -> int:
@@ -413,13 +423,23 @@ def _widget_entry(it: dict, x: int, y: int, w: int, h: int) -> dict | None:
                     ids.append(c)
             if ids:
                 e["cams"] = ids
+    if it["type"] == "status":
+        ids = []
+        for u in (it.get("ctls") or [])[:4]:
+            if isinstance(u, str) and _UUID_RE.match(u) and u not in ids:
+                ids.append(u)
+        e["ctls"] = ids                           # Chips (max. 4) in dieser Reihenfolge
+        if isinstance(it.get("trk"), str) and _UUID_RE.match(it["trk"]):
+            e["trk"] = it["trk"]                  # optional: Tracker fuer den Verlauf
+        if it.get("look") == "color":
+            e["look"] = "color"                   # kraeftig farbig statt passend zum Hintergrund
     if it["type"] == "weather":
         try:
             d = int(it.get("days"))
         except (TypeError, ValueError):
             d = 0
-        if 1 <= d <= 3:
-            e["days"] = d                         # Vorschau-Tage (Standard 4 = alle)
+        if d in (1, 2, 4):
+            e["days"] = d                         # Vorschau-Tage (Standard 3)
     if it["type"] == "clock":
         e["align"] = it.get("align") if it.get("align") in ("left", "center", "right") else "center"
         e["date"] = it.get("date") if it.get("date") in ("none", "short", "long") else "short"
@@ -521,7 +541,7 @@ _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 
 THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize",
                  "tileShadow", "font", "fontNum", "textColor", "baseColor", "design", "bold", "lang",
-                 "alarmsEnabled", "motion", "contrast", "sceneLight", "dblTapOff")
+                 "alarmsEnabled", "motion", "contrast", "sceneLight", "dblTapOff", "iconAnim")
 
 
 def _loxlib_names() -> list:
@@ -862,6 +882,23 @@ def _intercom_config() -> dict:
     return cfg
 
 
+def _clean_crop(v) -> dict | None:
+    """Bildausschnitt einer Kamera: Fokuspunkt x/y (0..100 %), Zoom z (1..3),
+    fit "cover" (fuellen, Standard) oder "contain" (ganzes Bild). None = Standard."""
+    if not isinstance(v, dict):
+        return None
+    try:
+        x = max(0.0, min(100.0, float(v.get("x", 50))))
+        y = max(0.0, min(100.0, float(v.get("y", 50))))
+        z = max(1.0, min(3.0, float(v.get("z", 1))))
+    except (TypeError, ValueError):
+        return None
+    fit = "contain" if v.get("fit") == "contain" else "cover"
+    if fit == "cover" and abs(x - 50) < 0.5 and abs(y - 50) < 0.5 and z < 1.01:
+        return None
+    return {"x": round(x, 1), "y": round(y, 1), "z": round(z, 2), "fit": fit}
+
+
 def _night_config() -> dict:
     """Nachtmodus-Block aus loxpanel.cfg `night`: {"control": "<uuid>"}. Der
     `active`-State dieses Bausteins schaltet den Nachtmodus. Leer = kein
@@ -1095,6 +1132,10 @@ class App:
         # 0->1/1->0 wird als {"t":"alarm",...} ans Panel gepusht (Weckton an/aus).
         self.alarm_map: dict[str, str] = {}
         self._alarm_prev: dict[str, object] = {}
+        # Sicherheits-Alarme (Alarmanlage, Rauchmelder): State "level" -> Baustein
+        self.sec_map: dict[str, str] = {}
+        self._sec_prev: dict[str, object] = {}
+        self._pending_sec: list[dict] = []
         self._pending_alarm: list[dict] = []
         self.agents: dict[str, dict] = {}   # ip -> Panel-Agent (Fernstart)
         self.bg_tasks: set = set()          # laufende Hintergrund-Tasks (z.B. Favs anfordern)
@@ -1197,6 +1238,7 @@ class App:
             key=lambda c: self.cats[c].get("name", ""))
         self.bell_map = {}
         self.alarm_map = {}
+        self.sec_map = {}
         # Betriebsarten (id -> Name) fuer die Wecker-Wiederholung: die `modes`
         # eines Eintrags verweisen hierauf (z.B. Wochentage Mo-So).
         self.op_modes = {str(k): v for k, v in (st.get("operatingModes") or {}).items()}
@@ -1218,6 +1260,10 @@ class App:
                 _bu = (_c.get("states") or {}).get("bell")
                 if _bu:
                     self.bell_map[_bu] = _u
+            elif _c.get("type") in SEC_ALARM_TYPES:
+                _lu = (_c.get("states") or {}).get("level")
+                if _lu:
+                    self.sec_map[_lu] = _u
             elif _c.get("type") == "AlarmClock":
                 _au = (_c.get("states") or {}).get("isAlarmActive")
                 if _au:
@@ -1873,7 +1919,7 @@ class App:
              "--sub-size": f"{ui.get('subSize', 15)}px",
              # Vorhersage-Kacheln im Screensaver (Symbol/Datum/Temperatur
              # skalieren proportional mit) - unitless fuer calc() im CSS.
-             "--sv-fc-size": str(ui.get("saverFcSize", 12.5)),
+             "--sv-fc-size": str(_fc_size(ui.get("saverFcSize", 12.5))),
              "--tile-shadow": str(ui.get("tileShadow") or "0 3px 10px rgba(0,0,0,.14)")[:200],
              "--name-weight": "700" if ui.get("bold") else "450"})
         # Zustands-Farben zusaetzlich als R,G,B-Tripel (Fuellung/Rahmen der
@@ -1920,6 +1966,8 @@ class App:
             "vars": self._theme_vars(states, ui),
             "tiles": prof.get("tiles") or {},
             "layouts": prof.get("layouts") or {},   # Kachel-Raster je Tab (s. _tab_layout)
+            "alarmPop": prof.get("alarmPop") or {},  # Alarm-Vollbild je Baustein an/aus
+            "alarmTone": bool(prof.get("alarmTone")),  # Ton am Panel beim Alarm-Vollbild
             "tabIcons": prof.get("tabIcons") or {},  # eigenes Symbol je Tab (s. _tab_meta)
             "roomCats": [c for c in (prof.get("roomCats") or []) if isinstance(c, str)],
             "hide": {u for u in (prof.get("hide") or []) if isinstance(u, str)},
@@ -1955,6 +2003,9 @@ class App:
             "contrast": ui.get("contrast") == "on",
             # Lichtszenen: Piktogramm zeigt Lichtfarbe + Helligkeit (lernend)
             "sceneLight": ui.get("sceneLight") == "on",
+            # Animierte Symbole (Klingel wackelt, Jalousie-Pfeil wippt ...):
+            # global an (Standard) mit Pro-Panel-Ueberschreibung wie motion.
+            "iconAnim": ui.get("iconAnim") != "off",
             # Eigene Screensaver-Belegung (None = bisheriger Screensaver).
             "grid": _grid(ui.get("grid")),      # Standardraster des Panels (2x2 / 3x3)
             "saver": _sanitize_saver(prof.get("saver"), _grid(ui.get("grid"))),
@@ -1983,6 +2034,157 @@ class App:
             return None
         return {"t": "saver", **self._widgets_data(sv["items"], prof)}
 
+    # ---- Status-Ampel (Widget "status") ----
+    # Die Logik kommt aus dem Miniserver: Fensterueberwachung, Alarm, Rauchmelder,
+    # Briefkasten, Statusbausteine (deren Farbe aus Loxone Config) usw. Das Panel
+    # zeigt nur an. Stufen: alarm (rot) > hint (gelb) > ok; "info" (blau) zaehlt
+    # nicht zur Ampel (z.B. Alarmanlage scharf).
+    _ST_RANK = {"alarm": 3, "hint": 2, "info": 1, "ok": 0}
+
+    @staticmethod
+    def _color_level(col) -> str | None:
+        """Farbe eines Statusbausteins -> Stufe (rot -> alarm, gelb/orange -> hint,
+        gruen -> ok, sonst info). None ohne verwertbare Farbe."""
+        m = re.match(r"#?([0-9a-fA-F]{6})", str(col or "").strip())
+        if not m:
+            return None
+        r, g, b = (int(m.group(1)[i:i + 2], 16) / 255 for i in (0, 2, 4))
+        mx, mn = max(r, g, b), min(r, g, b)
+        if mx - mn < 0.15:
+            return "info"                         # grau/weiss: neutral
+        if mx == r:
+            h = (60 * ((g - b) / (mx - mn))) % 360
+        elif mx == g:
+            h = 60 * ((b - r) / (mx - mn)) + 120
+        else:
+            h = 60 * ((r - g) / (mx - mn)) + 240
+        if h < 20 or h >= 330:
+            return "alarm"
+        if h < 65:
+            return "hint"
+        if h < 170:
+            return "ok"
+        return "info"
+
+    def status_chip(self, uuid: str) -> dict | None:
+        c = self.controls.get(uuid)
+        if not c:
+            return None
+        t = c.get("type") or ""
+        name = _clean(c.get("name")) or t
+        lvl, txt, icon, detail = "ok", "", "info", []
+        if t == "WindowMonitor":
+            op = int(self._state(c, "numOpen") or 0)
+            ti = int(self._state(c, "numTilted") or 0)
+            n = op + ti
+            lvl, icon = ("hint" if n else "ok"), "window"
+            txt = f"{n} offen" if n else "zu"
+            # welche Fenster? windowStates = Bitmaske je Fenster (2 gekippt, 4 offen)
+            wins = (c.get("details") or {}).get("windows") or []
+            raw = str(self._state(c, "windowStates") or "")
+            for i, v in enumerate(x for x in raw.split(",") if x != ""):
+                try:
+                    bits = int(float(v))
+                except ValueError:
+                    continue
+                if bits & 6 and i < len(wins):
+                    w = wins[i] or {}
+                    detail.append(f"{_clean(w.get('name')) or 'Fenster'}"
+                                  + (f" ({_clean(w.get('installPlace'))})" if w.get("installPlace") else "")
+                                  + (" offen" if bits & 4 else " gekippt"))
+            detail.sort(key=lambda d: 0 if d.endswith(" offen") else 1)   # offene vor gekippten
+        elif t == "Alarm":
+            armed, lv = bool(self._state(c, "armed")), self._state(c, "level") or 0
+            icon = "shield"
+            lvl, txt = ("alarm", "Ausgelöst") if lv else (("info", "Scharf") if armed else ("ok", "Unscharf"))
+        elif t == "CentralAlarm":
+            mem = [self.controls.get(m.get("uuid")) for m in ((c.get("details") or {}).get("controls") or [])]
+            mem = [m for m in mem if m]
+            icon = "shield"
+            if any(self._state(m, "level") for m in mem):
+                lvl, txt = "alarm", "Ausgelöst"
+            elif any(self._state(m, "armed") for m in mem):
+                lvl, txt = "info", "Scharf"
+            else:
+                lvl, txt = "ok", "Unscharf"
+        elif t == "SmokeAlarm":
+            lv = self._state(c, "level") or 0
+            icon = "alarm"
+            lvl, txt = ("alarm", "Alarm") if lv else ("ok", "ok")
+        elif t == "MailBox":
+            mail, pk = bool(self._state(c, "mailReceived")), bool(self._state(c, "packetReceived"))
+            icon = "info"
+            txt = " · ".join(x for x, f in (("Post", mail), ("Paket", pk)) if f) or "leer"
+            lvl = "hint" if (mail or pk) else "ok"
+        elif t in ("TextState", "InfoOnlyText"):
+            txt = str(self._state(c, "textAndIcon") or self._state(c, "text") or "")
+            ic = self._json_state(c, "iconAndColor") if "iconAndColor" in (c.get("states") or {}) else None
+            lvl = (self._color_level(ic.get("color")) if isinstance(ic, dict) else None) or "info"
+        else:
+            it = self._control_item(uuid, None, show_room=False) or {}
+            tone = it.get("tone")
+            lvl = {"crit": "alarm", "warn": "hint", "good": "ok"}.get(tone) or ("info" if it.get("on") else "ok")
+            txt, icon = str(it.get("sublabel") or ""), it.get("icon") or "info"
+        return {"id": uuid, "name": name, "level": lvl, "text": txt[:60], "icon": icon,
+                "iconUrl": self._control_icon_url(c), "detail": detail[:6]}
+
+    # ---- Alarm-Vollbild ----
+    # Loest eine Alarmanlage oder ein Rauchmelder aus, zeigt jedes Panel, das
+    # diesen Baustein "sieht", ein Vollbild mit Stumm/Quittieren. Je Panel
+    # abweichend einstellbar (Profil -> Alarme): alarmPop {uuid: true|false}.
+    def cam_crops(self) -> dict:
+        """Bildausschnitte je Kamera-ID (Intercom-UUID) fuer die Panels."""
+        out = {}
+        for k, e in self.intercom_cfg.items():
+            cr = _clean_crop(e.get("crop")) if isinstance(e, dict) else None
+            if cr:
+                out[k] = cr
+        return out
+
+    def sec_alarm_wanted(self, prof: dict | None, uuid: str) -> bool:
+        ov = ((prof or {}).get("alarmPop") or {}).get(uuid)
+        if isinstance(ov, bool):
+            return ov
+        return self._room_ok(uuid, prof) and self._shown(uuid, prof)
+
+    def sec_alarm_msg(self, uuid: str, on: bool) -> dict:
+        c = self.controls.get(uuid) or {}
+        t = c.get("type") or ""
+        ua = c.get("uuidAction") or uuid
+        if t == "SmokeAlarm":
+            kind, sub = "smoke", self._text(c, "alarmCause") or "Melder ausgelöst"
+            acts = [{"label": "Stumm", "cmd": "mute"}, {"label": "Quittieren", "cmd": "confirm"}]
+        else:
+            kind, sub = "alarm", "Alarmanlage ausgelöst"
+            acts = [{"label": "Quittieren", "cmd": "quit"}, {"label": "Unscharf", "cmd": "off"}]
+        room = (self.rooms.get(c.get("room")) or {}).get("name") or ""
+        return {"t": "secalarm", "id": uuid, "on": on, "kind": kind,
+                "name": _clean(c.get("name")) or t, "room": _clean(room), "sub": sub,
+                "uuid": ua, "secured": bool(c.get("isSecured")), "acts": acts}
+
+    def sec_alarms_active(self) -> list:
+        return [u for su, u in self.sec_map.items() if self.states.get(su)]
+
+    def status_data(self, ctls: list, trk: str | None) -> dict:
+        chips = [x for x in (self.status_chip(u) for u in ctls) if x]
+        worst = max((x["level"] for x in chips if x["level"] != "info"),
+                    key=lambda v: self._ST_RANK[v], default="ok")
+        hints = [x for x in chips if x["level"] == "hint"]
+        alarms = [x for x in chips if x["level"] == "alarm"]
+        head = ("Alarm" if worst == "alarm" else
+                ((f"{len(hints)} Hinweis" if len(hints) == 1 else f"{len(hints)} Hinweise") if worst == "hint" else "Alles ok"))
+        lead = (alarms or hints or [None])[0]
+        if lead:
+            foot = (lead["detail"][0] if lead["detail"] else f"{lead['name']}: {lead['text']}")
+        else:
+            foot = "Nichts offen, Haus im Normalbetrieb"
+        lines = []
+        tc = self.controls.get(trk) if trk else None
+        if tc:
+            raw = self._text(tc, "entries")
+            lines = [e.strip() for e in raw.split("|") if e.strip()][:6]
+        return {"level": worst, "head": head, "foot": foot, "chips": chips, "log": lines}
+
     def camera_list(self) -> list:
         """Alle Kameras mit Video-URL fuer das Kamera-Widget: zuerst die
         Intercoms aus Loxone, dann die eigenen Kameras (Settings)."""
@@ -2004,6 +2206,15 @@ class App:
         Tuerstationen, Energiefluss, Verlaeufe, Audio, Kameras."""
         tiles, cams, energy, charts, players = {}, {}, {}, {}, {}
         cameras = self.camera_list() if any(it.get("type") == "camera" for it in items) else []
+        statuses = {}
+        for it in items:
+            if it.get("type") == "status":
+                key = ",".join(it.get("ctls") or []) + "#" + (it.get("trk") or "")
+                if key not in statuses:
+                    try:
+                        statuses[key] = self.status_data(it.get("ctls") or [], it.get("trk"))
+                    except Exception:
+                        log.exception("Status-Widget fehlgeschlagen")
         for it in items:
             if it.get("type") in FOLDER_TYPES:
                 f = self._folder_item(it["type"], it.get("uuid"))
@@ -2038,7 +2249,7 @@ class App:
             except Exception:
                 # Ein fehlerhaftes Widget darf den Rest des Screensavers nicht mitreissen.
                 log.exception("Screensaver-Widget %s (%s) fehlgeschlagen", it["type"], u)
-        return {"tiles": tiles, "intercoms": cams, "cameras": cameras,
+        return {"tiles": tiles, "intercoms": cams, "cameras": cameras, "statuses": statuses,
                 "energy": energy, "charts": charts, "players": players}
 
     def _folder_item(self, kind: str, fid) -> dict | None:
@@ -2760,7 +2971,7 @@ class App:
                        "cols", "rows", "fill", "baseColor", "design",
                        "textColor", "bold", "lang", "player", "panes", "split",
                        "saverFcSize",
-                       "motion", "contrast", "sceneLight", "grid")}
+                       "motion", "contrast", "sceneLight", "iconAnim", "grid")}
         # Split-Pane je Tab: nur gueltige Tab-Kennung -> "weather"|"calendar".
         if isinstance(ui.get("panes"), dict):
             ui["panes"] = {str(k): v for k, v in ui["panes"].items()
@@ -2785,6 +2996,9 @@ class App:
             # auf die Loxone-eigenen isFavorite-Bausteine), [] = bewusst leer.
             "favorites": ([u for u in raw.get("favorites") if isinstance(u, str) and u in self.controls]
                           if isinstance(raw.get("favorites"), list) else None),
+            "alarmPop": {k: v for k, v in (raw.get("alarmPop") or {}).items()
+                         if isinstance(v, bool) and k in self.controls},
+            "alarmTone": bool(raw.get("alarmTone")),
             "tileOrder": {str(k): [u for u in v if isinstance(u, str) and u in self.controls]
                           for k, v in (raw.get("tileOrder") or {}).items()
                           if isinstance(k, str) and isinstance(v, list)},
@@ -2846,6 +3060,13 @@ class App:
                         seen.add(x)
                         fav.append(x)
                 e["favorites"] = fav[:300]
+            if isinstance(p.get("alarmPop"), dict):
+                ap = {k: v for k, v in p["alarmPop"].items()
+                      if isinstance(k, str) and _UUID_RE.match(k) and isinstance(v, bool)}
+                if ap:
+                    e["alarmPop"] = dict(list(ap.items())[:100])
+            if p.get("alarmTone") is True:
+                e["alarmTone"] = True
             # Kachel-Anordnung je Scope: Dict scope->Liste UUIDs, dedupliziert,
             # pro Scope gedeckelt. Nicht-String-Keys/Werte fallen raus.
             if isinstance(p.get("tileOrder"), dict):
@@ -2884,7 +3105,8 @@ class App:
             # und wie die Nachbarfelder unten - sonst nimmt der Panel-Override
             # jeden Wert an, waehrend die globale Einstellung auf 8..80 begrenzt
             # ist.
-            cui = {k: max(8, min(80, int(ui[k]))) for k in ("iconSize", "nameSize", "subSize", "saverFcSize")
+            cui = {k: max(8, min(32 if k == "saverFcSize" else 80, int(ui[k])))
+                   for k in ("iconSize", "nameSize", "subSize", "saverFcSize")
                    if isinstance(ui.get(k), (int, float))}
             if ui.get("tileShadow"):
                 cui["tileShadow"] = str(ui["tileShadow"])[:200]
@@ -2937,6 +3159,8 @@ class App:
                 cui["contrast"] = ui["contrast"]  # Mehr Kontrast NUR fuer dieses Panel (Override)
             if ui.get("sceneLight") in ("on", "off"):
                 cui["sceneLight"] = ui["sceneLight"]  # Szenen-Licht NUR fuer dieses Panel (Override)
+            if ui.get("iconAnim") in ("on", "off"):
+                cui["iconAnim"] = ui["iconAnim"]      # Animierte Symbole NUR fuer dieses Panel (Override)
             if ui.get("grid") in (2, "2"):
                 cui["grid"] = 2                         # Standardraster 2x2 (Tabs + Dashboard)
             lang = _clean_lang(ui.get("lang"))
@@ -3133,7 +3357,7 @@ class App:
         out: dict = {}
         for k in ("iconSize", "nameSize", "subSize", "saverFcSize"):
             if isinstance(ui.get(k), (int, float)):
-                out[k] = max(8, min(80, int(ui[k])))
+                out[k] = max(8, min(32 if k == "saverFcSize" else 80, int(ui[k])))   # Wettervorschau: max. 32
         if ui.get("tileShadow"):
             out["tileShadow"] = str(ui["tileShadow"])[:200]
         if ui.get("font"):
@@ -3165,6 +3389,9 @@ class App:
             out["contrast"] = "on"
         if ui.get("sceneLight") == "on":
             out["sceneLight"] = "on"
+        # Animierte Symbole: Default an; nur explizites "off" speichern.
+        if ui.get("iconAnim") == "off":
+            out["iconAnim"] = "off"
         # Licht per Doppeltipp aus. Default an; nur explizites False speichern.
         if ui.get("dblTapOff") is False:
             out["dblTapOff"] = False
@@ -3666,6 +3893,8 @@ class App:
                          "down": {"cmd": {"uuid": c.get("uuidAction"), "cmd": "Stop" if down_move else "Down"}}}
             it.update(on=r["on"], sublabel=sub, icon="blind",
                       nav={"view": "control", "id": uuid}, updown=it_updown)
+            if up_move or down_move:
+                it["anim"] = "up" if up_move else "down"   # Symbol wippt in Fahrtrichtung
             _p = _pos_pct(r.get("pct"))
             if _p is not None:
                 # Dynamisches Piktogramm statt Positionsring (wie in der
@@ -3692,6 +3921,8 @@ class App:
                 sub += " · " + " · ".join(bits)
             it.update(icon="thermo", nav={"view": "control", "id": uuid},
                       on=bool(prep), sublabel=sub)
+            if "heizt" in bits:
+                it["anim"] = "heat"                       # Symbol flackert dezent
         elif t == "Intercom":
             ring = bool(self._state(c, "bell"))
             it.update(icon="cam", on=ring,
@@ -3699,6 +3930,7 @@ class App:
                       nav={"view": "control", "id": uuid})
             if ring:
                 it["tone"] = "crit"
+                it["anim"] = "ring"                       # Symbol wackelt wie eine Glocke
         elif t in SWITCHY:
             on = bool(self._state(c, "active"))
             it.update(on=on, sublabel="Ein" if on else "Aus", icon="switch",
@@ -3904,6 +4136,8 @@ class App:
             rn = _clean((self.rooms.get(c.get("room")) or {}).get("name"))
             if rn:
                 it["room"] = rn   # Raum auf der Kachel zeigen (mehrere Wecker unterscheidbar)
+            if ringing:
+                it["anim"] = "ring"
             it.update(icon="alarm", on=ringing, tone=("crit" if ringing else None),
                       nav={"view": "control", "id": uuid},
                       sublabel=("Weckt!" if ringing else
@@ -5070,7 +5304,9 @@ class App:
                     b = 0
                 items.append({"id": f"{uuid}:{i}", "icon": "blind", "on": bool(b & 6),
                               "label": _clean(w.get("name") or f"Fenster {i + 1}"),
-                              "sublabel": wtext(b)})
+                              "sublabel": wtext(b), "_r": 0 if b & 4 else (1 if b & 2 else 2)})
+            # Offene zuerst, dann gekippte, dann der Rest (sonst Loxone-Reihenfolge)
+            items.sort(key=lambda x: x.pop("_r"))
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "layout": "list", "items": items}
         if t == "Jalousie":
@@ -6200,6 +6436,12 @@ class App:
                 if self.theme.get("ui", {}).get("alarmsEnabled", True):
                     self._pending_alarm.append({"id": self.alarm_map[uuid], "on": now})
             self._alarm_prev[uuid] = value
+        if uuid in self.sec_map:
+            now = bool(value)
+            if now != bool(self._sec_prev.get(uuid)):
+                # Beide Flanken: an -> Vollbild auf den Panels, aus -> schliessen
+                self._pending_sec.append({"id": self.sec_map[uuid], "on": now})
+            self._sec_prev[uuid] = value
 
     def _on_weather(self, uuid: str, entries: list) -> None:
         """Wetter-Tabelle vom Miniserver uebernehmen (nur mit Wetterdienst).
@@ -6344,6 +6586,16 @@ class App:
                 self._spawn(self.display_drivers(True))
             for ws in list(self.conn_route):
                 await self._send_or_drop(ws, {"t": "alarm", "id": ev["id"], "on": ev["on"]})
+        while self._pending_sec:
+            ev = self._pending_sec.pop(0)
+            msg = self.sec_alarm_msg(ev["id"], ev["on"])
+            targets = [ws for ws, p in list(self.conn_prof.items()) if self.sec_alarm_wanted(p, ev["id"])]
+            log.info("Sicherheits-Alarm %s → %s (%d Panels)", "an" if ev["on"] else "aus", ev["id"], len(targets))
+            if ev["on"] and targets:
+                self._spawn(self.display_drivers(True))
+            for ws in targets:
+                # Ton je Panel (Profil -> Alarm-Vollbild -> "Ton am Panel")
+                await self._send_or_drop(ws, {**msg, "sound": bool((self.conn_prof.get(ws) or {}).get("alarmTone"))})
         if self._front_dirty:
             # Front (Kalender/Wetter) an alle Panels. Neu verbundene bekommen den
             # aktuellen Stand ausserdem direkt beim Verbinden (ws_handler).
@@ -6855,6 +7107,7 @@ async def api_settings(request: web.Request) -> web.Response:
                 # ploetzlich unaufgefordert piepen.
                 "sound": bool(e.get("sound")),
                 "reconnect": app._cam_reconnect_h(uuid),
+                "crop": _clean_crop(e.get("crop")),
                 # Eigener hochgeladener Klingelton (MP3/OGG/WAV/M4A/AAC) statt
                 # des generischen Weckertons - nur der Vorhanden-Status, die
                 # Datei selbst liefert /api/sound?id=<uuid>.
@@ -7061,6 +7314,12 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
         if e.get("pass"):
             cur["pass"] = str(e["pass"])
         cur["sound"] = bool(e.get("sound"))   # Ton bei Klingeln (generischer Wecker-Ton)
+        if "crop" in e:
+            cr = _clean_crop(e.get("crop"))
+            if cr:
+                cur["crop"] = cr                  # Bildausschnitt (Fokus/Zoom)
+            else:
+                cur.pop("crop", None)
         try:
             rc = int(e.get("reconnect") or 0)
         except (TypeError, ValueError):
@@ -7100,6 +7359,9 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": str(err)}, status=500)
     app.intercom_cfg = _intercom_config()
     log.info("Intercom-Settings gespeichert (%d Einträge)", len(ic))
+    _cm = {"t": "camcrop", "map": app.cam_crops()}
+    for _ws in list(app.conn_route):
+        app._spawn(app._send_or_drop(_ws, _cm))     # Ausschnitt sofort an alle Panels
     return web.json_response({"ok": True})
 
 
@@ -8115,9 +8377,11 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "reloadHours": app.panel_reload(prof["id"]),
                             "night": {**app.panel_night(prof["id"]), "on": app._night_on},
                             "screensaverCam": app._screensaver_cam(),
+                            "camCrop": app.cam_crops(),
                             "motion": prof["motion"],
                             "contrast": prof["contrast"],
                             "sceneLight": prof["sceneLight"],
+                            "iconAnim": prof["iconAnim"],
                             "saver": prof.get("saver"),
                             "agent": app._has_agent(dev)})
         _first = app.render(app.conn_route[ws], prof)
@@ -8132,6 +8396,10 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
         if _sv is not None:
             await ws.send_json(_sv)
             app._last_sent.setdefault(ws, {})["saver"] = _sv
+        # Laeuft gerade ein Alarm, zeigt auch ein neu verbundenes Panel das Vollbild
+        for _au in app.sec_alarms_active():
+            if app.sec_alarm_wanted(prof, _au):
+                await ws.send_json({**app.sec_alarm_msg(_au, True), "sound": bool(prof.get("alarmTone"))})
         async for msg in ws:
             if msg.type != WSMsgType.TEXT:
                 continue

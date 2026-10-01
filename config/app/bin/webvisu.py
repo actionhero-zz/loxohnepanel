@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import calendar
 import contextlib
+import copy
 import hashlib
 import hmac
 import ipaddress
@@ -27,13 +29,14 @@ import os
 import re
 import shlex
 import shutil
+import struct
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import ssl as _ssl
-from urllib.parse import quote, unquote, urlencode
+from urllib.parse import quote, unquote, urlencode, urlparse
 
 import aiohttp
 from aiohttp import WSMsgType, web
@@ -62,7 +65,7 @@ def _make_client(host, user, password, port, verify_tls) -> LoxoneClient:
 from adapters import JalousieAdapter, LightControllerV2Adapter  # noqa: E402
 from audioserver import make_backend, AudioBackend  # noqa: E402
 from audioserver_events import AudioEventClient  # noqa: E402
-import front_info  # noqa: E402  # Kalender (iCal-Abo) + Wetter (Open-Meteo) fuer die Front
+import front_info  # noqa: E402  # Kalender (iCal-Abos) + Wetter (Open-Meteo) fuer die Front
 import loxone_weather  # noqa: E402  # Wetter vom Loxone-Wetterserver (Vorrang vor Open-Meteo)
 import theme_colors  # noqa: E402  # Panel-Theme aus einer Grundfarbe herleiten
 
@@ -73,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.14.0-fav1"
+APP_VERSION = "0.19.0-fav17"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -82,6 +85,8 @@ I18N_JS = _WEB / "i18n.js"
 INSTALL_SH = Path(__file__).resolve().parent.parent / "deploy" / "install-agent.sh"
 _CFGDIR = Path(__file__).resolve().parent.parent / "config"
 PANELS_FILE = _CFGDIR / "panels.json"
+# Gelerntes Licht je Lichtszene (Helligkeit + Farbe), s. App._scene_light_learn
+SCENE_LIGHT_FILE = _CFGDIR / "scene_light.json"
 CFG_FILE = _CFGDIR / "loxpanel.cfg"
 CFG_EXAMPLE = _CFGDIR / "loxpanel.cfg.example"
 # Eigene Klingelton-Dateien (Upload je Intercom) - persistiert im selben
@@ -161,25 +166,89 @@ SWITCHY = {"Switch"}   # TimedSwitch wird eigen behandelt (anderer State)
 VALID_TABS = ["favoriten", "zentral", "raeume", "kategorien"]
 # Display-Treiber fuer Kiosk-Apps (Android) mit Standard-Port ihrer HTTP-Schnittstelle
 DISPLAY_DRIVERS = {"fully": 2323, "wallpanel": 2971}
+# Geraetetypen (wie "Unterstuetzte Geraete" in der Config): Betriebssystem
+# bestimmt, was sich fernsteuern laesst - Android per adb (Fully neu starten,
+# Geraet neu starten), Shelly zusaetzlich per eigener Schnittstelle, Linux per Agent.
+DEVICE_MODELS = {
+    "shelly-x2": {"label": "Shelly Wall Display X2 / X2i", "os": "android", "shelly": True},
+    "shelly-x1": {"label": "Shelly Wall Display X1i", "os": "android", "shelly": True},
+    "nspro86": {"label": "Sonoff NSPanel Pro 86", "os": "android"},
+    "nspro120": {"label": "Sonoff NSPanel Pro 120", "os": "android"},
+    "sm41-android": {"label": "4″-Standardpanel YC-SM41 (Android)", "os": "android"},
+    "sm41-debian": {"label": "4″-Standardpanel YC-SM41 (Debian + Agent)", "os": "linux"},
+    "sm55": {"label": "YC-SM55P", "os": "android"},
+    "tablet": {"label": "Android-Tablet", "os": "android"},
+    "other": {"label": "Anderes Gerät / PC-Browser", "os": "browser"},
+}
 # Nachtmodus: Rueckfall-Fenster, wenn keine Sonnenzeiten vorliegen (kein Wetter
 # konfiguriert). Sobald Sonnenauf-/-untergang bekannt sind, gelten die.
 NIGHT_FROM, NIGHT_TO = "22:00", "06:00"
 
 
+_FREE_TAB = re.compile(r"^free:[a-z0-9]{1,12}$")
+# Weitere Instanzen von Uebersicht/Zentral (z.B. zwei Raum-Uebersichten "EG"/"OG")
+_MULTI_TAB = re.compile(r"^(raeume|kategorien|zentral):[a-z0-9]{1,12}$")
+
+
+def _tab_base(t) -> str:
+    """Grundtyp eines Tabs: "raeume:ab12" -> "raeume"; sonst unveraendert."""
+    return t.split(":", 1)[0] if isinstance(t, str) and _MULTI_TAB.match(t) else t
+
+
 def _is_tab(t) -> bool:
-    """Gueltiges Tab-Kennzeichen: einer der 4 Standard-Tabs ODER eine einzelne
-    Kategorie bzw. ein einzelner Raum als Direkt-Tab (`cat:<uuid>`/`room:<uuid>`)."""
+    """Gueltiges Tab-Kennzeichen: einer der 4 Standard-Tabs, eine einzelne
+    Kategorie bzw. ein einzelner Raum als Direkt-Tab (`cat:<uuid>`/`room:<uuid>`)
+    ODER ein frei belegter Tab (`free:<id>`)."""
     if t in VALID_TABS:
         return True
     if not isinstance(t, str):
         return False
     return ((t.startswith("cat:") and len(t) > 4)
-            or (t.startswith("room:") and len(t) > 5))
+            or (t.startswith("room:") and len(t) > 5)
+            or bool(_FREE_TAB.match(t)) or bool(_MULTI_TAB.match(t)))
+
+
+def _is_layout_tab(t) -> bool:
+    """Tabs mit frei belegbarem Kachel-Raster (Editor wie das Dashboard):
+    Frei (favoriten/free:), Raum, Kategorie, Zentral und die Uebersichten
+    "raeume"/"kategorien" (Raum- bzw. Kategorie-Kacheln, antippen oeffnet sie)."""
+    return _tab_base(t) in ("favoriten", "zentral", "raeume", "kategorien") or (isinstance(t, str) and (
+        t.startswith("room:") or t.startswith("cat:") or bool(_FREE_TAB.match(t))))
 # Reine Anzeige-Bausteine: keine Steuer-2.-Ebene -> Antippen zeigt eine
 # grosse 1/1-Wertseite (_view_control -> _big_view).
 STATUS_BIG = {"Meter", "InfoOnlyAnalog", "TextState", "InfoOnlyText",
               "InfoOnlyDigital", "SmokeAlarm", "PresenceDetector",
               "ClimateControllerUS", "Hourcounter"}
+# Verlaufs-Diagramme fuer Bausteine mit `statistic` in der Struktur. Die Daten
+# liegen am Miniserver als Monatsdateien /stats/<uuidAction>.<JJJJMM>.xml (so
+# listet sie /stats/, und so fuehrt sie die Loxone-App: STATISTIC-Befehle in
+# scripts4.js, ermittelt mit bin/statistic_probe.py). Der Zeitraum laeuft in der
+# Route mit: {"view": "control", "id": uuid, "range": "7d"}.
+STAT_RANGES = {"24h": ("24 h", 86400), "7d": ("7 Tage", 7 * 86400), "30d": ("30 Tage", 30 * 86400)}
+STAT_DEFAULT_RANGE = "24h"
+STAT_MAX_POINTS = 240    # Punkte je Linie nach dem Ausduennen (Diagramm ~440 px breit)
+STAT_REFRESH = 300       # Monatsdatei, die noch waechst, nach so vielen Sekunden neu holen
+STAT_RETRY = 60          # nach einem Abruffehler fruehestens wieder versuchen
+STAT_CACHE_MAX = 240     # Monatsdateien im Speicher (abgeschlossene Monate aendern sich nicht)
+# visuType der Statistik-Ausgaenge, wie an der Anlage beobachtet: 0 Analogwert
+# (Temperatur, Leistung ...), 1 Digitalwert (Regen, Sonnenschein), 2 Zaehlerstand
+# (Gesamtverbrauch kWh). Zaehlerstaende zeigen den Verbrauch je Stunde/Tag als Balken.
+STAT_KIND = {1: "digital", 2: "counter"}
+# Darstellung des Mini-Verlaufs in der Kachel (tiles.<uuid>.chartStyle). Fehlt der
+# Schluessel, gilt "trend". Tagesmuster und Tagesspanne zeigen immer 7 Tage.
+STAT_TILE_STYLES = ("trend", "pattern", "span")
+STAT_WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
+# Anfragen an den Miniserver (Befehle, Verlaeufe, Icons) tragen das Token der
+# Anmeldung. Es laeuft nach einiger Zeit ab, die WebSocket-Verbindung fuer die
+# Anzeige braucht es danach aber nicht mehr - ohne Erneuerung zeigte das Panel
+# nach 1-2 Tagen weiter Werte an, nahm aber keine Befehle mehr an. Meldet der
+# Miniserver 401, meldet _ms_http() sich neu an und wiederholt die Anfrage.
+MS_CMD_TIMEOUT = 10      # s: ein Befehl blockiert solange die Nachrichten seines Panels
+TOKEN_RENEW_MIN = 60     # s: nicht oefter neu anmelden (401 kann auch fehlende Rechte heissen)
+MS_RETRY = (5, 10, 20, 40, 60)   # s: Wartezeiten zwischen Verbindungsversuchen zum Miniserver
+ICON_CACHE_MAX = 500     # Icons im Speicher (Loxone-SVGs, je wenige KB)
+COVER_TIMEOUT = 10       # s: Albumcover vom Audioserver/aus dem Netz (sonst haengt die Anfrage offen)
+FRONT_INTERVAL = 900     # s: Kalender + Open-Meteo so oft neu holen; Wetter-Pushes dazwischen ohne Abruf
 # Reine Wert-/Analog-Anzeigen (kein an/aus) -> keine Kategorie-Ampel, neutral.
 _ANALOG = {"InfoOnlyAnalog", "Slider", "Meter", "TextState", "InfoOnlyText", "Hourcounter",
            "EFM", "EnergyManager2", "PvProductionForecast", "SteakThermo"}
@@ -187,15 +256,60 @@ _ANALOG = {"InfoOnlyAnalog", "Slider", "Meter", "TextState", "InfoOnlyText", "Ho
 # offiziellen Loxone-Sauna-Dokumentation. Als Klartext auf Kachel und Detailseite.
 SAUNA_MODES = {0: "Manuell", 1: "Finnisch manuell", 2: "Feuchte manuell",
                3: "Finnische Sauna", 4: "Kräutersauna", 5: "Sanftdampfbad", 6: "Warmluftbad"}
+# Alte Raumregelung (IRoomController, v1) laut Loxone-Strukturdoku: Nummern der
+# Temperaturen fuer settemp/starttimer und currHeatTempIx/currCoolTempIx. Die
+# Struktur liefert dazu je Nummer einen State (Liste "temperatures") und in
+# details.temperatures, ob der Wert absolut ist oder von Komfort abhaengt.
+IRC1_TEMPS = {0: "Eco", 1: "Komfort Heizen", 2: "Komfort Kühlen", 3: "Haus leer",
+              4: "Hitzeschutz", 5: "Erhöhte Wärme", 6: "Party", 7: "Manuell"}
+IRC1_ECO, IRC1_KOMFORT_HEIZEN, IRC1_KOMFORT_KUEHLEN = 0, 1, 2
+# State "mode": 2 = Autopilot kuehlt gerade, 4 = Autopilot Kuehlen, 6 = Manuell
+# Kuehlen; alle anderen Betriebsarten heizen (bzw. 0 = keine Periode aktiv).
+IRC1_KUEHL_MODI = {2, 4, 6}
+# 5 = Manuell Heizen, 6 = Manuell Kuehlen: dann gilt die manuelle Temperatur.
+IRC1_MANUELL_MODI, IRC1_MANUELL = {5, 6}, 7
+# Eco/Komfort-Knoepfe halten die Temperatur so lange wie der Override beim V2.
+IRC1_TIMER_S = 3600
+# Betriebsart der alten Raumregelung, waehlbar per mode/<Nr> (Loxone-Strukturdoku):
+# 1 und 2 ("Automatik, heizt/kuehlt gerade") meldet nur der State, gesendet
+# werden 3 und 4. details.restrictedToMode: 1 = nur Kuehlen, 2 = nur Heizen.
+IRC1_BETRIEBSARTEN = {0: "Automatik", 3: "Automatik Heizen", 4: "Automatik Kühlen",
+                      5: "Manuell Heizen", 6: "Manuell Kühlen"}
+IRC1_NUR_KUEHLEN, IRC1_NUR_HEIZEN = 1, 2
+# Betriebsart des IRoomControllerV2 (State operatingMode, setOperatingMode/<Nr>),
+# Bedeutung wie in der openHAB-Loxone-Anbindung; 3..5 sind manuell.
+IRC2_BETRIEBSARTEN = {0: "Automatik Heizen & Kühlen", 1: "Automatik nur Heizen",
+                      2: "Automatik nur Kühlen", 3: "Manuell Heizen & Kühlen",
+                      4: "Manuell nur Heizen", 5: "Manuell nur Kühlen"}
+IRC2_MANUELL = {3, 4, 5}
 # Bausteintypen, die nur teilweise umgesetzt sind (Anzeige ohne volle Bedienung);
 # Grundlage fuer den Status in /api/types. Vollstaendig = Kachel hat nav/cmd/
 # controls/sublabel, unbekannt = nichts davon (tote Kachel).
 PARTIAL_TYPES = {"AudioZone", "AlarmClock", "Intercom", "TextInput", "UpDownAnalog", "Ventilation",
                  "Irrigation"}   # Irrigation: nur Anzeige (keine Bedienung)
+# Panel-Angaben, die _sanitize_panels bewusst NICHT speichert, weil sie der
+# Standard sind - beim Speichern kein Verlust (siehe _panels_verworfen).
+# Pfad-Muster, "*" steht fuer einen beliebigen Schluessel (z. B. Kachel-UUID).
+PANEL_STANDARD = {("ui", "split"): True, ("tiles", "*", "chartStyle"): "trend"}
 _COLOR_RE = re.compile(r"^(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,%\s]+\)|[a-zA-Z]{3,20})$")
 # Tracker-Zeile: fuehrender Zeitstempel (TT.MM.JJ[JJ] HH:MM[:SS]) wird vom Text
 # getrennt, damit er als Untertitel erscheint. Matcht sonst nichts -> ganze Zeile.
-_TS_RE = re.compile(r"^\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}[ ,]+\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)$")
+_TS_RE = re.compile(r"^\s*(\d{1,2}[.\-/]\d{1,2}[.\-/]\d{2,4}[ ,]+\d{1,2}:\d{2}(?::\d{2})?"
+                    r"|\d{4}-\d{2}-\d{2}[ T]\d{1,2}:\d{2}(?::\d{2})?)\s+(.+)$")
+
+
+def _short_ts(ts: str | None) -> str:
+    """Zeitstempel des Protokolls kurz: heute nur 'HH:MM', sonst 'TT.MM. HH:MM'."""
+    if not ts:
+        return ""
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%dT%H:%M:%S", "%d.%m.%Y %H:%M:%S",
+                "%d.%m.%Y %H:%M", "%d.%m.%y %H:%M:%S", "%d.%m.%y %H:%M"):
+        try:
+            dt = datetime.strptime(ts.strip(), fmt)
+        except ValueError:
+            continue
+        return dt.strftime("%H:%M") if dt.date() == datetime.now().date() else dt.strftime("%d.%m. %H:%M")
+    return ts
 
 
 def _color_ok(v) -> bool:
@@ -224,63 +338,190 @@ _LOXLIB_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}\.svg$")
 
 # Globale Darstellungs-Schluessel in theme.json "ui" - EINE Liste fuer
 # Speichern (_write_theme) und Ausliefern an den Editor (api_meta).
-# ---- Screensaver-Raster je Panel-Profil ----
-# Raster: 3 Spalten x 3 Zeilen je 480er-Display, 6x3 bei Split (z.B. Shelly
-# X2i). Widgets belegen ganze Zellen; erlaubt sind nur diese Groessen (w, h).
-SAVER_COLS, SAVER_ROWS = 6, 3
+# ---- Dashboard-Raster je Panel-Profil ----
+# 3x3 (Standard) oder 2x2 Zellen je 480er-Flaeche, bei 2 Flaechen (z.B. Shelly
+# X2i) doppelt so breit. Widgets belegen ganze Zellen; erlaubt sind nur diese
+# Groessen (w, h) - fuer 2x2 siehe GRID_SIZES.
 SAVER_SIZES = {
     "clock": ((1, 1), (2, 1), (3, 1), (2, 2)),
     "weather": ((3, 1), (3, 2)),
     "calendar": ((3, 1), (3, 2), (3, 3)),
-    "intercom": ((2, 2), (3, 3)),
+    "intercom": ((2, 2), (3, 2), (3, 3)),
     "tile": ((1, 1), (2, 1)),
+    # Widgets wie im Original 0.6 (dort Pane 2 / Uhr-Seite), hier frei im Raster
+    "wxdetail": ((3, 1), (3, 2)),                     # Wetter-Details (Verlauf, Wind, Sonne ...)
+    "energy": ((2, 2), (3, 2), (3, 3)),               # Energiefluss (EFM / EnergyManager2)
+    "chart": ((2, 1), (3, 1), (2, 2), (3, 2)),        # Verlauf eines Bausteins mit Statistik
+    "player": ((2, 2), (3, 2), (3, 3)),               # Audio-Zone (Cover, Titel, Steuerung)
+    "camera": ((1, 1), (2, 1), (2, 2), (3, 2), (3, 3)),   # Kameras (Intercoms + eigene), per Pillen umschaltbar
 }
+SAVER_UUID_TYPES = ("tile", "intercom", "energy", "chart", "player")
 SAVER_EXITS = ("x", "up", "down", "left", "right")   # Schliessen: X-Button und Wischrichtungen
+# ---- Tab-Raster: dasselbe 3x3-Grundraster wie der Screensaver ----
+# Ein Tab ist eine Folge von Seiten zu je 3x3 Zellen (y 0-2 = Seite 1, 3-5 =
+# Seite 2 ...). Kacheln 1x1 (Standard), 2x1 oder 2x2; Widgets wie im Screensaver.
+TAB_MAX_ROWS = 60                      # Zeilen je Tab (= 20 Seiten bei 3x3)
+FOLDER_TYPES = ("room", "cat")          # Raum-/Kategorie-Kachel der Uebersichten
+# Erlaubte Groessen je Raster: 3x3 (160 px-Zellen) wie bisher, 2x2 (240 px-Zellen,
+# grosse Kacheln wie die Detailseiten) - dort hoechstens 2 Zellen breit/hoch.
+GRID_SIZES = {
+    3: {**SAVER_SIZES, "tile": ((1, 1), (2, 1), (2, 2))},
+    2: {"clock": ((1, 1), (2, 1), (2, 2)), "weather": ((2, 1), (2, 2)), "calendar": ((2, 1), (2, 2)),
+        "intercom": ((2, 1), (2, 2)), "tile": ((1, 1), (2, 1), (2, 2)), "wxdetail": ((2, 1), (2, 2)),
+        "energy": ((1, 1), (2, 1), (2, 2)), "chart": ((1, 1), (2, 1), (2, 2)), "player": ((2, 1), (2, 2)),
+        "camera": ((1, 1), (2, 1), (2, 2))},
+}
+# Bei zwei Panels nebeneinander (z.B. Shelly X2): Kamera/Intercom ueber BEIDE Panels -
+# im Dashboard wie in den Tabs (dort von der linken, geraden Seite in die rechte).
+# Bei 1-Panel-Profil bleiben solche Widgets gespeichert, aber unsichtbar.
+SAVER_WIDE_SIZES = {3: {"camera": ((6, 3),), "intercom": ((6, 3),)},
+                    2: {"camera": ((4, 2),), "intercom": ((4, 2),)}}
 
 
-def _sanitize_saver(sv) -> dict | None:
-    """Screensaver-Belegung eines Profils pruefen: {items:[...], exit:[...]}.
-    Ungueltige, zu grosse oder ueberlappende Widgets fallen weg. None = keine
-    eigene Belegung (das Panel zeigt dann den bisherigen Screensaver)."""
-    if not isinstance(sv, dict):
+def _tab_cells(x: int, y: int, w: int, h: int, g: int) -> set:
+    """Belegte Zellen eines Tab-Eintrags. Ein breites Widget (ueber beide Panels)
+    beginnt auf einer geraden Seite; sein Teil rechts von Spalte g liegt auf der
+    folgenden (ungeraden) Seite, die am Panel rechts daneben steht."""
+    return {(cx, cy) if cx < g else (cx - g, cy + g) for cx in range(x, x + w) for cy in range(y, y + h)}
+for _g in GRID_SIZES.values():               # Raum-/Kategorie-Kacheln wie Baustein-Kacheln
+    _g["room"] = _g["cat"] = _g["tile"]
+
+
+def _grid(v, default: int = 3) -> int:
+    """Rastermass eines Tabs/Dashboards: 2 (2x2) oder 3 (3x3). Ohne eigene
+    Angabe gilt das Standardraster des Panel-Profils (ui.grid, sonst 3x3)."""
+    if v in (2, "2"):
+        return 2
+    if v in (3, "3"):
+        return 3
+    return 2 if default == 2 else 3
+
+
+def _widget_entry(it: dict, x: int, y: int, w: int, h: int) -> dict | None:
+    """Gepruefter Raster-Eintrag (Screensaver und Tabs) mit den typabhaengigen
+    Zusatzfeldern; None bei ungueltigem Baustein-Bezug."""
+    e = {"type": it["type"], "x": x, "y": y, "w": w, "h": h}
+    if it["type"] == "camera":
+        cam = it.get("cam")
+        if isinstance(cam, str) and _CAM_ID_RE.match(cam):
+            e["cam"] = cam                        # Startkamera (sonst die erste)
+        sel = it.get("cams")
+        if isinstance(sel, list):                 # Auswahl + Reihenfolge der Kameras (leer = alle)
+            ids = []
+            for c in sel[:16]:
+                if isinstance(c, str) and _CAM_ID_RE.match(c) and c not in ids:
+                    ids.append(c)
+            if ids:
+                e["cams"] = ids
+    if it["type"] == "weather":
+        try:
+            d = int(it.get("days"))
+        except (TypeError, ValueError):
+            d = 0
+        if 1 <= d <= 3:
+            e["days"] = d                         # Vorschau-Tage (Standard 4 = alle)
+    if it["type"] == "clock":
+        e["align"] = it.get("align") if it.get("align") in ("left", "center", "right") else "center"
+        e["date"] = it.get("date") if it.get("date") in ("none", "short", "long") else "short"
+    elif it["type"] in SAVER_UUID_TYPES or it["type"] in FOLDER_TYPES:
+        if not (isinstance(it.get("uuid"), str) and _UUID_RE.match(it["uuid"])):
+            return None
+        e["uuid"] = it["uuid"]
+        if it["type"] == "chart":
+            e["range"] = it.get("range") if it.get("range") in STAT_RANGES else STAT_DEFAULT_RANGE
+    return e
+
+
+def _sanitize_layout(lay, dg: int = 3) -> dict | None:
+    """Belegung eines Tabs pruefen: {items:[...], removed:[uuid], label}.
+    items wie beim Screensaver, aber 3 Spalten und beliebig viele Seiten; ein
+    Eintrag darf keine Seitengrenze ueberragen. removed = aus einer Vorbefuellung
+    (Raum/Kategorie/Zentral/Favoriten) bewusst entfernte Bausteine."""
+    if not isinstance(lay, dict):
         return None
+    g = _grid(lay.get("grid"), dg)
+    sizes = GRID_SIZES[g]
     taken: set = set()
     items = []
-    for it in (sv.get("items") or [])[:SAVER_COLS * SAVER_ROWS]:
-        if not isinstance(it, dict) or it.get("type") not in SAVER_SIZES:
+    for it in (lay.get("items") or [])[:g * TAB_MAX_ROWS]:
+        if not isinstance(it, dict) or it.get("type") not in sizes:
             continue
         try:
             x, y, w, h = (int(it.get(k)) for k in ("x", "y", "w", "h"))
         except (TypeError, ValueError):
             continue
-        if (w, h) not in SAVER_SIZES[it["type"]] or x < 0 or y < 0 \
-                or x + w > SAVER_COLS or y + h > SAVER_ROWS:
+        wide = (w, h) in SAVER_WIDE_SIZES[g].get(it["type"], ()) and (y // g) % 2 == 0
+        if ((w, h) not in sizes[it["type"]] and not wide) or x < 0 or y < 0 \
+                or x + w > (2 * g if wide else g) or y + h > TAB_MAX_ROWS \
+                or y // g != (y + h - 1) // g:
+            continue
+        cells = _tab_cells(x, y, w, h, g)
+        if cells & taken:
+            continue
+        e = _widget_entry(it, x, y, w, h)
+        if e is None:
+            continue
+        taken |= cells
+        items.append(e)
+    out: dict = {"items": items}
+    if lay.get("grid") in (2, 3, "2", "3"):
+        out["grid"] = g                    # eigenes Raster; sonst Standard des Profils
+    pick = [u for u in (lay.get("pick") or []) if isinstance(u, str) and _UUID_RE.match(u)][:300]
+    if pick:
+        out["pick"] = pick                 # Uebersicht: ausgewaehlte Raeume/Kategorien
+    rem = [u for u in (lay.get("removed") or []) if isinstance(u, str) and _UUID_RE.match(u)][:500]
+    if rem:
+        out["removed"] = rem
+    label = str(lay.get("label") or "").strip()[:24]
+    if label:
+        out["label"] = label
+    return out
+
+
+def _sanitize_saver(sv, dg: int = 3) -> dict | None:
+    """Screensaver-Belegung eines Profils pruefen: {items:[...], exit:[...]}.
+    Ungueltige, zu grosse oder ueberlappende Widgets fallen weg. None = keine
+    eigene Belegung (das Panel zeigt dann den bisherigen Screensaver)."""
+    if not isinstance(sv, dict):
+        return None
+    g = _grid(sv.get("grid"), dg)
+    sizes = GRID_SIZES[g] if g == 2 else SAVER_SIZES
+    cols, rows = 2 * g, g                    # breite Displays: zwei Flaechen nebeneinander
+    taken: set = set()
+    items = []
+    for it in (sv.get("items") or [])[:cols * rows]:
+        if not isinstance(it, dict) or it.get("type") not in sizes:
+            continue
+        try:
+            x, y, w, h = (int(it.get(k)) for k in ("x", "y", "w", "h"))
+        except (TypeError, ValueError):
+            continue
+        if ((w, h) not in sizes[it["type"]] and (w, h) not in SAVER_WIDE_SIZES[g].get(it["type"], ())) \
+                or x < 0 or y < 0 or x + w > cols or y + h > rows:
             continue
         cells = {(cx, cy) for cx in range(x, x + w) for cy in range(y, y + h)}
         if cells & taken:
             continue
-        e = {"type": it["type"], "x": x, "y": y, "w": w, "h": h}
-        if it["type"] == "clock":
-            e["align"] = it.get("align") if it.get("align") in ("left", "center", "right") else "center"
-            e["date"] = it.get("date") if it.get("date") in ("none", "short", "long") else "short"
-        elif it["type"] in ("tile", "intercom"):
-            if not (isinstance(it.get("uuid"), str) and _UUID_RE.match(it["uuid"])):
-                continue
-            e["uuid"] = it["uuid"]
+        e = _widget_entry(it, x, y, w, h)
+        if e is None:
+            continue
         taken |= cells
         items.append(e)
     exits = [x for x in SAVER_EXITS if x in (sv.get("exit") or [])]
     if not items:
         return None
-    return {"items": items, "exit": exits}
+    out = {"items": items, "exit": exits}
+    if sv.get("grid") in (2, 3, "2", "3"):
+        out["grid"] = g
+    return out
 
 
 CAM_RECONNECT_HOURS = (6, 12, 24)   # waehlbare Intervalle fuer den Kamera-Neuaufbau
 _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 
-THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize", "ringSize", "ringThick",
-                 "tileShadow", "font", "textColor", "baseColor", "bold", "lang",
-                 "alarmsEnabled", "motion", "dblTapOff")
+THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize",
+                 "tileShadow", "font", "fontNum", "textColor", "baseColor", "design", "bold", "lang",
+                 "alarmsEnabled", "motion", "contrast", "sceneLight", "dblTapOff")
 
 
 def _loxlib_names() -> list:
@@ -359,6 +600,164 @@ def _clean(name: str) -> str:
     return re.sub(r"^[^0-9A-Za-zÄÖÜäöü]+", "", name or "").strip() or (name or "")
 
 
+_STAT_ROW = re.compile(r"<S\s([^>]*?)/?>")
+_STAT_ATTR = re.compile(r'(\w+)="([^"]*)"')
+
+
+def _parse_stat_xml(text: str) -> list:
+    """Loxone-Statistik-Monatsdatei -> [(sekunden, [werte ...])], zeitlich sortiert.
+
+    Jede Zeile ist <S T="JJJJ-MM-TT hh:mm:ss" V="1.23"/>; bei mehreren
+    Ausgaengen stehen weitere Wert-Attribute in Ausgangsreihenfolge dahinter.
+    Gelesen wird deshalb jedes Attribut ausser T in Dokumentreihenfolge, ohne
+    Annahme ueber seinen Namen. Per Regex statt XML-Parser: die Datei ist flach,
+    und so gibt es keine Entitaeten-Aufloesung. Zeitstempel sind Ortszeit des
+    Miniservers und werden als Wanduhr-Sekunden (timegm) gefuehrt, damit Server
+    und Panel ohne Zeitzonenrechnung dieselbe Uhrzeit zeigen."""
+    out = []
+    for m in _STAT_ROW.finditer(text or ""):
+        ts, vals = None, []
+        for name, raw in _STAT_ATTR.findall(m.group(1)):
+            if name == "T":
+                try:
+                    ts = calendar.timegm(datetime.strptime(raw, "%Y-%m-%d %H:%M:%S").timetuple())
+                except ValueError:
+                    ts = None
+            else:
+                try:
+                    vals.append(float(raw))
+                except ValueError:
+                    vals.append(None)
+        if ts is not None and vals:
+            out.append((ts, vals))
+    out.sort(key=lambda r: r[0])
+    return out
+
+
+def _stat_fmt(fmt) -> tuple[int, str]:
+    """Loxone-Zahlenformat -> (Nachkommastellen, Einheit). Zwei Schreibweisen:
+    printf wie bei `statistic` ("%.1f °C", "%.0f%", "%.0fLx") und die Maske von
+    `statisticV2` ("0,000kW", "0,0kWh", "0,00€"). Ohne Format -> (0, "")."""
+    s = str(fmt or "")
+    m = re.search(r"%(?:\.(\d+))?[fd]", s)
+    if m:
+        return int(m.group(1) or 0), s[m.end():].replace("%%", "%").strip()
+    m = re.match(r"^[#0]+(?:[.,]([#0]+))?(.*)$", s.strip())
+    if m:
+        return len(m.group(1) or ""), m.group(2).strip()
+    return 0, ""
+
+
+def _parse_stat2_bin(body: bytes, nvals: int = 1) -> list | None:
+    """Antwort von jdev/sps/getStatistic/.../raw/... -> [(sekunden, [werte])].
+
+    Binaer, je Eintrag 4 Byte Zeitstempel (uint32, Unix-UTC) und je Wert 8 Byte
+    (float64), little-endian - an der Anlage so gemessen (PV 7,42 kW, Netz
+    -6,26 kW, Eintraege im Abstand der Gruppe). Die Zeit wird wie bei den
+    Monatsdateien in Wanduhr-Sekunden der Container-Zeitzone umgerechnet.
+    Passt die Laenge nicht zum Eintragsformat -> None (unbekannte Antwort)."""
+    size = 4 + 8 * nvals
+    if len(body) % size:
+        return None
+    out = []
+    for off in range(0, len(body), size):
+        ts, *vals = struct.unpack_from("<I" + "d" * nvals, body, off)
+        vals = [v if math.isfinite(v) else None for v in vals]
+        out.append((calendar.timegm(time.localtime(ts)), vals))
+    out.sort(key=lambda r: r[0])
+    return out
+
+
+def _stat_thin(pts: list, t0: int, t1: int, n: int, digital: bool) -> list:
+    """Linie auf hoechstens n Punkte ausduennen: je Zeitfenster der Mittelwert
+    (Analog) bzw. das Maximum (Digital: ein kurzes "Ein" soll sichtbar bleiben)."""
+    if len(pts) <= n or t1 <= t0:
+        return pts
+    w = (t1 - t0) / n
+    buckets: dict[int, list] = {}
+    for t, v in pts:
+        buckets.setdefault(min(n - 1, max(0, int((t - t0) / w))), []).append((t, v))
+    out = []
+    for b in sorted(buckets):
+        items = buckets[b]
+        if digital:
+            out.append((items[-1][0], max(v for _, v in items)))
+        else:
+            out.append((int(sum(t for t, _ in items) / len(items)),
+                        sum(v for _, v in items) / len(items)))
+    return out
+
+
+def _stat_buckets(pts: list, edges: list, t_end: int) -> list:
+    """Zeitgewichteter Mittelwert je Abschnitt [edges[i], edges[i+1]). Ein Messwert
+    gilt bis zum naechsten (Treppe) - so stimmt das auch fuer Digitalwerte, die nur
+    bei Aenderung aufgezeichnet werden: der Mittelwert ist dann der Ein-Anteil.
+    Abschnitte ohne bekannten Wert oder nach t_end -> None."""
+    out, k, n = [], 0, len(pts)
+    for a, b in zip(edges, edges[1:]):
+        b2 = min(b, t_end)
+        while k + 1 < n and pts[k + 1][0] <= a:
+            k += 1
+        if b2 <= a or not n or pts[0][0] >= b2:
+            out.append(None)
+            continue
+        acc = dur = 0.0
+        j = k
+        while j < n and pts[j][0] < b2:
+            t, v = pts[j]
+            lo, hi = max(a, t), min(b2, pts[j + 1][0] if j + 1 < n else t_end)
+            if hi > lo:
+                acc += v * (hi - lo)
+                dur += hi - lo
+            j += 1
+        out.append(acc / dur if dur else None)
+    return out
+
+
+def _stat_day_range(pts: list, edges: list, t_end: int) -> list:
+    """Tiefst- und Hoechstwert je Abschnitt, mit dem Stand, der zu Beginn des
+    Abschnitts galt. Abschnitte ohne bekannten Wert oder nach t_end -> None."""
+    out = []
+    for a, b in zip(edges, edges[1:]):
+        if a >= t_end:
+            out.append(None)
+            continue
+        vals = [v for t, v in pts if a <= t < min(b, t_end + 1)]
+        prev = [v for t, v in pts if t < a]
+        if prev:
+            vals.append(prev[-1])
+        out.append((min(vals), max(vals)) if vals else None)
+    return out
+
+
+def _stat_bars(pts: list, edges: list) -> list:
+    """Zaehlerstaende -> Verbrauch je Abschnitt [edges[i], edges[i+1]).
+
+    Summiert von Messpunkt zu Messpunkt: Grundlage ist der letzte Stand davor
+    (pts beginnt mit dem letzten Wert vor dem Fenster, falls bekannt; sonst ist
+    der erste Stand die Basis). Faellt der Stand auf weniger als die Haelfte,
+    wurde der Zaehler zurueckgesetzt und zaehlt ab 0 weiter. Ein kleiner
+    Ruecksprung (Rundung, 1000,5 -> 1000,4) ist kein Verbrauch, sonst ergaebe
+    er einen Balken in Hoehe des ganzen Zaehlerstands."""
+    out, i, prev = [], 0, None
+    while i < len(pts) and pts[i][0] < edges[0]:
+        prev = pts[i][1]
+        i += 1
+    for a, b in zip(edges, edges[1:]):
+        use = 0.0
+        while i < len(pts) and pts[i][0] < b:
+            v = pts[i][1]
+            if prev is not None:
+                if v >= prev:
+                    use += v - prev
+                elif v < prev / 2:
+                    use += v              # zurueckgesetzt: ab 0 weitergezaehlt
+            prev = v
+            i += 1
+        out.append((a, use))
+    return out
+
+
 def _hex_rgb(value) -> str | None:
     """#RRGGBB / #RGB -> \"r,g,b\" (fuer rgba() mit variabler Deckkraft). None bei ungueltig."""
     h = str(value or "").lstrip("#")
@@ -370,63 +769,6 @@ def _hex_rgb(value) -> str | None:
         return f"{int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)}"
     except ValueError:
         return None
-
-
-def _overlay_alphas(ov: dict) -> tuple[float, float, int]:
-    """Overlay-Config -> (Fuellung-Alpha, Rahmen-Alpha, Rahmenbreite px).
-
-    Defaults entsprechen dem bisherigen fest verdrahteten Aussehen. `mode`
-    schaltet Fuellung bzw. Rahmen komplett ab (Rahmen/Fuellung/Beides).
-    """
-    ov = ov if isinstance(ov, dict) else {}
-    def _num(key, default):
-        try:
-            return float(ov.get(key, default))
-        except (TypeError, ValueError):
-            return float(default)
-    fill = max(0.0, min(1.0, _num("fill", 16) / 100.0))
-    bord = max(0.0, min(1.0, _num("bord", 55) / 100.0))
-    bw = max(1, min(4, int(_num("bw", 1))))
-    mode = ov.get("mode")
-    if mode == "border":
-        fill = 0.0
-    elif mode == "fill":
-        bord = 0.0
-    return fill, bord, bw
-
-
-def _inactive_border(ov: dict) -> tuple[float, int]:
-    """Overlay-Config -> (Rahmen-Alpha, Rahmenbreite px) fuer NICHT aktive Kacheln.
-
-    Defaults entsprechen dem bisherigen fest verdrahteten --line (weiss 8%) und
-    1px, damit sich ohne Konfiguration nichts aendert. `ibord`/`ibw` machen den
-    sonst kaum sichtbaren Kachelrahmen (z.B. auf hellen Shelly-Displays) staerker.
-    """
-    ov = ov if isinstance(ov, dict) else {}
-    def _num(key, default):
-        try:
-            return float(ov.get(key, default))
-        except (TypeError, ValueError):
-            return float(default)
-    alpha = max(0.0, min(1.0, _num("ibord", 8) / 100.0))
-    bw = max(1, min(4, int(_num("ibw", 1))))
-    return alpha, bw
-
-
-def _sanitize_overlay(ov) -> dict:
-    """Overlay-Config aus der Config-Seite auf erlaubte Werte eindampfen."""
-    if not isinstance(ov, dict):
-        return {}
-    out: dict = {}
-    if ov.get("mode") in ("off", "on", "both", "border", "fill"):
-        out["mode"] = ov["mode"]
-    for k in ("fill", "bord", "ibord"):
-        if isinstance(ov.get(k), (int, float)):
-            out[k] = max(0, min(100, int(ov[k])))
-    for k in ("bw", "ibw"):
-        if isinstance(ov.get(k), (int, float)):
-            out[k] = max(1, min(4, int(ov[k])))
-    return out
 
 
 def _config() -> dict:
@@ -498,6 +840,11 @@ def _audiometa_config() -> dict:
     return cfg if isinstance(cfg, dict) else {}
 
 
+# Eigene Kameras (reine Ueberwachungskameras) liegen mit im intercom-Block der
+# loxpanel.cfg unter "cam_<id>" mit Namen; Intercoms unter ihrer Loxone-UUID.
+_CAM_ID_RE = re.compile(r"^(cam_[a-z0-9]{4,16}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16})$")
+
+
 def _intercom_config() -> dict:
     base = Path(__file__).resolve().parent.parent / "config"
     f = base / "loxpanel.cfg"
@@ -532,8 +879,11 @@ def _night_config() -> dict:
 
 def _calendar_config() -> dict:
     """Kalender-/Wetter-Block aus loxpanel.cfg `calendar`:
-    {"ical_url": "...", "name": "Family", "lat": 47.07, "lon": 15.44,
-     "days": 14, "fore_days": 4}. Steuert die Front (Screensaver)."""
+    {"sources": [{"name": "Familie", "url": "...", "color": "#e0a24d"}, ...],
+     "holiday_url": "...", "name": "Family", "colors": true, "sv_events": 3,
+     "lat": 47.07, "lon": 15.44, "days": 14, "fore_days": 4}.
+    Steuert die Front (Screensaver). Eine aeltere einzelne `ical_url` wird von
+    front_info.calendar_sources() als erste Quelle mitgelesen."""
     base = Path(__file__).resolve().parent.parent / "config"
     f = base / "loxpanel.cfg"
     if not f.is_file():
@@ -650,12 +1000,23 @@ class App:
         self.conn_player: dict[web.WebSocketResponse, str] = {}   # ws -> AudioZone-UUID der aktiven Player-Pane (via setplayer)
         self.conn_energy: dict[web.WebSocketResponse, str] = {}   # ws -> EFM/EnergyManager2-UUID der aktiven Energiefluss-Pane (via setenergy)
         self.conn_camera: dict[web.WebSocketResponse, str] = {}   # ws -> Intercom-UUID der aktiven Kamera-Pane (via setcamera)
+        self.conn_chart: dict[web.WebSocketResponse, tuple[str, str]] = {}   # ws -> (Baustein-UUID, Zeitraum) der Verlaufs-Pane (via setchart)
         self.panels = load_panels()
         self.devices = load_devices()   # Agent-Name -> {auto, modes:{modus:profil}}
         self.last_mode = ""             # zuletzt gesetzter Betriebsmodus (fuer Nachziehen beim Verbinden)
         self._struct_sig: str | None = None   # Signatur der Loxone-Struktur (erkennt Config-Aenderungen)
         self._pending_reload = False          # -> Panels beim naechsten Tick neu laden ({t:"reload"})
         self.global_states: dict = {}   # globale States der Anlage (Name -> UUID), s. _apply_structure
+        self.op_modes: dict = {}        # Betriebsarten der Anlage (Id -> Name), s. _apply_structure
+        # Lichtszenen: gelernte Helligkeit/Farbe {lc-uuid: {mood-id: {"b":0-100,"c":"#rrggbb"}}}
+        try:
+            self.scene_light: dict = json.loads(SCENE_LIGHT_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            self.scene_light = {}
+        self._sl_seen: dict = {}        # lc-uuid -> [mood-id, seit, gemessen]
+        self._sl_next = 0.0             # naechste Pruefung (alle 3 s)
+        self._sl_dirty = False
+        self._sl_saved = 0.0
         self._night_on = False          # Nachtmodus aktiv? (-> {t:"night"} an die Panels)
         self.night_cfg = _night_config()  # {"control": uuid} -> dessen active-State = Nacht
         self._dirty = True
@@ -667,15 +1028,30 @@ class App:
         self._last_sent: dict = {}
         self.jwt: str | None = None
         self.alg: str = "SHA1"
+        self._auth_gen = 0               # zaehlt jede Anmeldung (-> _renew_token)
+        self._auth_at = 0.0              # monotonic der letzten Anmeldung
+        self._auth_lock = asyncio.Lock()
         self.icon_session: aiohttp.ClientSession | None = None
         self.icon_cache: dict[str, tuple[bytes, str]] = {}
+        # Verlaufsdaten: (uuidAction, "JJJJMM") -> (monotonic, JJJJMM beim Abruf,
+        # [(sekunden, [werte])] oder None nach Abruffehler). Ein Monat, der beim
+        # Abruf schon vorbei war, aendert sich nicht mehr.
+        self.stat_cache: dict[tuple[str, str], tuple[float, str, list | None]] = {}
+        self.stat_pending: set[tuple] = set()
+        # statisticV2 (Energie-Zaehler): (uuidAction, Gruppe, Ausgang, Zeitraum) ->
+        # (monotonic, [(sekunden, [wert])] oder None nach Abruffehler). Hoechstens
+        # zwei Abrufe gleichzeitig; die Loxone-App erlaubt 4 (Gen 2) bzw. 1 (Gen 1).
+        self.stat2_cache: dict[tuple, tuple[float, list | None]] = {}
+        self.stat2_sem = asyncio.Semaphore(2)
+        self.stat_gen = 0              # zaehlt jeden Abruf, Schluessel fuer stat_memo
+        self.stat_memo: dict[tuple, list] = {}
         self.theme = load_theme()
         self.intercom_cfg = _intercom_config()
         # Front (Screensaver): Kalender + Wetter. front_task() laedt periodisch,
         # _front ist die zuletzt gebaute Nachricht ({"t":"front",...}), _front_key
         # ihr Abbild zum Vergleich (nur bei Aenderung neu senden), _front_meta der
-        # Status fuer die Config-Seite. _front_refresh stoesst ein sofortiges
-        # Neuladen an (nach dem Speichern).
+        # Status fuer die Config-Seite. _front_refresh weckt front_task (nach dem
+        # Speichern und bei neuem Wetter vom Miniserver).
         self.calendar_cfg = _calendar_config()
         # Loxone-Wetterserver: Konfiguration aus der Struktur, Rohdaten je
         # State-UUID (kommen ueber den WS als eigene Tabelle) und die zuletzt
@@ -690,12 +1066,23 @@ class App:
         self._front: dict | None = None
         self._front_key: str | None = None
         self._front_meta: dict = {}
-        # Letzter erfolgreich geladener Stand je Teil (Termine, Feiertage,
-        # Wetter) plus dessen Uhrzeit. Ueberbrueckt Aussetzer der Quellen,
-        # siehe _front_keep().
+        # Letzter erfolgreich geladener Stand je Teil (Feiertage, Wetter) plus
+        # dessen Uhrzeit. Ueberbrueckt Aussetzer der Quellen, siehe _front_keep().
         self._front_good: dict = {}
+        # Dasselbe fuer die Termine, aber JE KALENDER: {Quellenschluessel ->
+        # {"events": [...], "zeit": "HH:MM"}}. Mit mehreren Abos reicht ein
+        # gemeinsamer Stand nicht — faellt iCloud aus und Google liefert, waere
+        # die Terminliste nicht leer und der alte Stand (mit den iCloud-
+        # Terminen darin) wuerde ueberschrieben.
+        self._front_good_cal: dict = {}
         self._front_dirty = False
         self._front_refresh = asyncio.Event()
+        # Letzter fertig gebauter Front-Stand (nach _front_keep) und ab wann der
+        # Kalender wieder aus dem Netz geholt wird (time.monotonic(), 0 = sofort).
+        # Ein Wetter-Push des Miniservers baut die Front aus diesem Stand neu und
+        # ruft KEINEN Kalender ab, siehe front_task().
+        self._front_last: dict | None = None
+        self._front_cal_due = 0.0
         self._front_session: aiohttp.ClientSession | None = None
         self.bell_map: dict[str, str] = {}
         self._bell_prev: dict[str, object] = {}
@@ -712,7 +1099,7 @@ class App:
         self.agents: dict[str, dict] = {}   # ip -> Panel-Agent (Fernstart)
         self.bg_tasks: set = set()          # laufende Hintergrund-Tasks (z.B. Favs anfordern)
         self._item_errors: set[str] = set()   # Bausteine, deren Kachel schon einmal fehlschlug (Log nur einmal)
-        self._mjpeg_tasks: dict[str, asyncio.Task] = {}   # Kamera-UUID -> laufender /mjpeg-Stream
+        self._cam_hubs: dict[str, "CamHub"] = {}           # Kamera-UUID -> Verteiler (eine Verbindung je Kamera)
         # Dynamisches Song-Cover (iTunes) fuer Zonen, die nur ein Sender-Logo
         # liefern (z.B. Sonn/Audioserver): "artist\ntitle" -> (url|None, expiry).
         self._cover_cache: dict[str, tuple[str | None, float]] = {}
@@ -724,7 +1111,8 @@ class App:
         fuenf Stellen einzeln und unterschiedlich vollstaendig gepflegt, der
         Sende-Cache (_last_sent) wurde beim normalen Trennen nie geleert."""
         for d in (self.conn_route, self.conn_prof, self.conn_dev, self.conn_info,
-                  self.conn_player, self.conn_energy, self.conn_camera, self._last_sent):
+                  self.conn_player, self.conn_energy, self.conn_chart, self.conn_camera,
+                  self._last_sent):
             d.pop(ws, None)
 
     def _spawn(self, coro) -> None:
@@ -895,7 +1283,7 @@ class App:
                                        self.port, self.verify_tls)
             await self.client.__aenter__()
             self.alg = (await self.client.getkey2()).hashAlg
-            self.jwt = await self.client.authenticate()
+            self._set_token(await self.client.authenticate())
             st = await self.client.load_structure()
             # Reconnect nach Miniserver-Reboot (z.B. Loxone-Config hochgeladen):
             # hat sich die Struktur geaendert, Panels neu laden lassen. Beim
@@ -947,7 +1335,8 @@ class App:
         self.user, self.password = ms["user"], ms["pass"]
         self.verify_tls = ms.get("verify_tls", False)
         old_client, self.client = self.client, newc
-        self.alg, self.jwt = alg, jwt
+        self.alg = alg
+        self._set_token(jwt)
         # Anderer/geaenderter Miniserver -> Struktur evtl. anders, dann Panels neu laden.
         if self._adopt_structure(st):
             self._pending_reload = True
@@ -955,6 +1344,8 @@ class App:
         old_is, self.icon_session = self.icon_session, \
             aiohttp.ClientSession(connector=aiohttp.TCPConnector(ssl=self._ssl_ctx()))
         self.icon_cache = {}
+        self.stat_cache, self.stat2_cache, self.stat_memo = {}, {}, {}   # anderer Miniserver -> andere Verlaeufe
+        self.stat_gen += 1
         old_ws, self.ws = self.ws, None   # stream_task baut WS mit neuen Daten neu auf
         self.intercom_cfg = _intercom_config()
         self._dirty = True
@@ -972,10 +1363,65 @@ class App:
                            secure=_ms_https(self.port))
         await self.ws.connect()
 
+    def _set_token(self, jwt: str) -> None:
+        self.jwt = jwt
+        self._auth_gen += 1
+        self._auth_at = time.monotonic()
+
     async def _reauth(self) -> None:
         # Token erneuern (kann nach langer Laufzeit ablaufen)
         if self.client:
-            self.jwt = await self.client.authenticate()
+            self._set_token(await self.client.authenticate())
+
+    async def _renew_token(self, seen_gen: int) -> bool:
+        """Nach einem 401 neu anmelden. Hat eine parallele Anfrage das schon
+        getan (Zaehler weiter als seen_gen), genuegt es, erneut zu senden. Innerhalb
+        von TOKEN_RENEW_MIN nach der letzten Anmeldung nicht noch einmal: dann liegt
+        der 401 nicht am Token. -> True, wenn sich ein Neuversuch lohnt."""
+        async with self._auth_lock:
+            if self._auth_gen != seen_gen:
+                return True
+            if not self.client or time.monotonic() - self._auth_at < TOKEN_RENEW_MIN:
+                return False
+            self._auth_at = time.monotonic()     # auch ein Fehlversuch sperrt fuer TOKEN_RENEW_MIN
+            try:
+                self._set_token(await self.client.authenticate())
+            except Exception as err:            # z. B. Passwort geaendert, Miniserver startet neu
+                log.warning("Neuanmeldung am Miniserver fehlgeschlagen: %s", err or type(err).__name__)
+                return False
+            log.info("Miniserver-Token abgelaufen -> neu angemeldet")
+            return True
+
+    async def _ms_http(self, path: str, timeout: float, renew: bool = True) -> tuple[int, bytes, str]:
+        """GET an den Miniserver mit dem aktuellen Token; bei 401 (und renew)
+        einmal neu anmelden und wiederholen. -> (HTTP-Status, Inhalt, Content-Type). Wirft
+        ConnectionError ohne Verbindung, sonst aiohttp.ClientError/TimeoutError."""
+        async def once() -> tuple[int, bytes, str]:
+            if self.icon_session is None:
+                raise ConnectionError("keine Verbindung zum Miniserver")
+            scheme = "https" if _ms_https(self.port) else "http"
+            headers = {"Authorization": f"Bearer {self.jwt}"} if self.jwt else {}
+            async with self.icon_session.get(f"{scheme}://{self.host}:{self.port}/{path.lstrip('/')}",
+                                             headers=headers,
+                                             timeout=aiohttp.ClientTimeout(total=timeout)) as r:
+                return r.status, await r.read(), r.headers.get("Content-Type", "")
+        gen = self._auth_gen
+        res = await once()
+        if res[0] == 401 and renew and await self._renew_token(gen):
+            res = await once()
+        return res
+
+    async def _ms_jdev(self, path: str, timeout: float = MS_CMD_TIMEOUT,
+                       renew: bool = True) -> tuple[str, object]:
+        """jdev-Befehl ueber _ms_http. -> (Code, LL.value); Code ist der
+        LL-Code der Antwort, ohne lesbares JSON der HTTP-Status."""
+        status, body, _ = await self._ms_http("jdev/" + path.lstrip("/"), timeout, renew)
+        try:
+            ll = json.loads(body.decode("utf-8", "replace").lstrip("\ufeff").strip("\x00")).get("LL") or {}
+        except (ValueError, AttributeError):
+            ll = {}
+        code = ll.get("Code") or ll.get("code")
+        return (str(code) if code is not None else str(status)), ll.get("value")
 
     # ---- Zustands-Helfer ----
     def _state(self, control: dict, name: str):
@@ -1021,14 +1467,17 @@ class App:
                 out.append((str(key if isinstance(key, str) else i + 1), {"value": e}))
         return out
 
-    def _flow_text(self, value, fmt: str, pos: str, neg: str) -> str:
+    def _flow_text(self, value, fmt: str, pos: str, neg: str, zero: str | None = None) -> str:
         """Leistung mit Richtung: Vorzeichen -> Text (z.B. Bezug/Einspeisung).
-        Annahme wie in der Loxone-App: positiv = Bezug bzw. Laden."""
+        Loxone zaehlt aus Sicht des Hauses: positiv = fliesst ins Haus, also
+        Netzbezug bzw. Speicher entlaedt; negativ = Einspeisung bzw. Laden.
+        zero: Text fuer 0 (ohne Richtung), sonst gilt 0 als positiv."""
         try:
             v = float(value)
         except (TypeError, ValueError):
             return ""
-        return f"{pos if v >= 0 else neg} {self._fmt_num(abs(v), fmt)}"
+        text = zero if (zero and v == 0) else (pos if v >= 0 else neg)
+        return f"{text} {self._fmt_num(abs(v), fmt)}"
 
     def _tracker_lines(self, control: dict) -> list[str]:
         """Ereignis-Zeilen eines Tracker-Bausteins (State 'entries'). Loxone
@@ -1092,6 +1541,91 @@ class App:
         if win:
             bits.append("Fenster")
         return bits
+
+    def _irc1(self, c: dict) -> dict:
+        """Zustand der alten Raumregelung (IRoomController, v1):
+          kuehlen   laeuft die Kuehlperiode (State mode, IRC1_KUEHL_MODI)
+          ix/name   aktive Temperatur (currCoolTempIx bzw. currHeatTempIx)
+          stell_ix  Temperatur, die -/+ verstellt: manuell die manuelle, sonst
+                    Komfort der Periode
+          stell     ihr aktueller Wert; None, wenn unbekannt oder relativ zu
+                    Komfort (dann gibt es kein -/+, statt einen Wert zu raten)
+          komfort_ix Komfort der Periode (fuer den Komfort-Knopf)
+          prep      fuer _irc_activity: Ventil Heizen > 0 = 1, Kuehlen > 0 = -1"""
+        def num(name):
+            try:
+                return float(self._state(c, name))
+            except (TypeError, ValueError):
+                return None
+
+        mode = num("mode")
+        mode = int(mode) if mode is not None else None
+        kuehlen = mode in IRC1_KUEHL_MODI
+        ix = num("currCoolTempIx" if kuehlen else "currHeatTempIx")
+        ix = int(ix) if ix is not None else None
+        komfort_ix = IRC1_KOMFORT_KUEHLEN if kuehlen else IRC1_KOMFORT_HEIZEN
+        if mode in IRC1_MANUELL_MODI:
+            stell_ix, stell = IRC1_MANUELL, num("tempTarget")
+        else:
+            stell_ix = komfort_ix
+            stell = self._irc1_temp(c, komfort_ix) if self._irc1_absolut(c, komfort_ix) else None
+        prep = 1 if (num("valveHeat") or 0) > 0 else (-1 if (num("valveCool") or 0) > 0 else 0)
+        return {"kuehlen": kuehlen, "ix": ix, "name": IRC1_TEMPS.get(ix), "stell_ix": stell_ix,
+                "stell": stell, "komfort_ix": komfort_ix, "prep": prep}
+
+    def _irc_betriebsart(self, c: dict) -> tuple[dict | None, str | None]:
+        """Aufklapper "Betriebsart" einer Raumregelung und der Name fuer die
+        Statuszeile, wenn manuell geregelt wird (dann laeuft kein Zeitplan).
+        V2: State operatingMode, setOperatingMode/<Nr>. Alt: State mode,
+        mode/<Nr>; "Automatik, heizt/kuehlt gerade" (1/2) gilt als Automatik,
+        details.restrictedToMode blendet Heizen bzw. Kuehlen aus.
+        (None, None), wenn der Baustein den State nicht hat."""
+        v2 = c.get("type") == "IRoomControllerV2"
+        name = "operatingMode" if v2 else "mode"
+        ua = c.get("uuidAction")
+        if not ua or name not in (c.get("states") or {}):
+            return None, None
+        try:
+            cur = int(float(self._state(c, name)))
+        except (TypeError, ValueError):
+            cur = None
+        if v2:
+            arten, befehl, manuell = IRC2_BETRIEBSARTEN, "setOperatingMode", IRC2_MANUELL
+            markiert = cur
+        else:
+            nur = (c.get("details") or {}).get("restrictedToMode")
+            weg = {IRC1_NUR_KUEHLEN: {3, 5}, IRC1_NUR_HEIZEN: {4, 6}}.get(nur, set())
+            arten = {n: nm for n, nm in IRC1_BETRIEBSARTEN.items() if n not in weg}
+            befehl, manuell = "mode", IRC1_MANUELL_MODI
+            markiert = 0 if cur in (1, 2) else cur
+        zelle = {"label": "Betriebsart", "menu": [
+            {"label": nm, "on": n == markiert, "cmd": {"uuid": ua, "cmd": f"{befehl}/{n}"}}
+            for n, nm in arten.items()]}
+        return zelle, (arten.get(cur) if cur in manuell else None)
+
+    def _irc1_temp(self, c: dict, ix: int):
+        """Wert der Temperatur Nr. ix: der State "temperatures" ist bei der
+        alten Raumregelung eine Liste mit einer UUID je Nummer."""
+        lst = (c.get("states") or {}).get("temperatures")
+        if not isinstance(lst, list) or not 0 <= ix < len(lst):
+            return None
+        try:
+            return float(self.states.get(lst[ix]))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _irc1_absolut(c: dict, ix: int) -> bool:
+        """details.temperatures[ix].isAbsolute: True = fester Wert, False =
+        haengt von Komfort ab. Nummern als Schluessel ("0".."6") oder Liste."""
+        tt = (c.get("details") or {}).get("temperatures")
+        if isinstance(tt, dict):
+            e = tt.get(str(ix), tt.get(ix))
+        elif isinstance(tt, list) and 0 <= ix < len(tt):
+            e = tt[ix]
+        else:
+            e = None
+        return bool(isinstance(e, dict) and e.get("isAbsolute"))
 
     def _audio_favs(self, c: dict) -> list:
         """Raum-Favoriten (Radio/Playlist/Spotify) aus dem sourceList-State.
@@ -1293,7 +1827,12 @@ class App:
         # Grundfarbe zuerst: daraus faellt der ganze Satz ab - Flaechen, Schrift,
         # Zweitzeile, Icon- und Zustandsfarben. Ohne Grundfarbe bleibt v leer und
         # es aendert sich nichts gegenueber frueher.
-        v = dict(theme_colors.derive(ui["baseColor"]) or {}) if ui.get("baseColor") else {}
+        # Design (Tab-Leiste oben, Karte je Tab) hat Vorrang. Ohne Design und
+        # ohne Grundfarbe gilt die Standard-Vorlage ("bunt").
+        if isinstance(ui.get("design"), dict) or not ui.get("baseColor"):
+            v = theme_colors.design_vars(ui.get("design"))
+        else:
+            v = dict(theme_colors.derive(ui["baseColor"]) or {})
         # Ausdruecklich eingestellte Zustandsfarben schlagen die Herleitung.
         # Aber: "nicht gesetzt" gibt es bei states gar nicht - load_theme()
         # fuellt sie immer aus DEFAULT_THEME, und theme.example.json liefert
@@ -1335,39 +1874,19 @@ class App:
              # Vorhersage-Kacheln im Screensaver (Symbol/Datum/Temperatur
              # skalieren proportional mit) - unitless fuer calc() im CSS.
              "--sv-fc-size": str(ui.get("saverFcSize", 12.5)),
-             "--ring-size": f"{ui.get('ringSize', 260)}px",
-             "--ring-thick": f"{ui.get('ringThick', 14)}px",
              "--tile-shadow": str(ui.get("tileShadow") or "0 3px 10px rgba(0,0,0,.14)")[:200],
              "--name-weight": "700" if ui.get("bold") else "450"})
-        # Zustands-Farben zusaetzlich als R,G,B-Tripel, damit das Aktiv-Overlay
-        # (Fuellung/Rahmen) die konfigurierte Farbe mit variabler Deckkraft nutzt.
+        # Zustands-Farben zusaetzlich als R,G,B-Tripel (Fuellung/Rahmen der
+        # good/crit-Kacheln mit fester Deckkraft).
         for skey, rvar in (("active", "--on-rgb"), ("good", "--good-rgb"),
                            ("crit", "--crit-rgb"), ("warn", "--warn-rgb")):
             rgb = _hex_rgb(_gewaehlt(skey))
             if rgb:
                 v[rvar] = rgb
-        # Aussehen des Aktiv-Overlays (global fuers Panel; pro Kachel ueberschreibbar).
-        if isinstance(ui.get("overlay"), dict):
-            fill, bord, bw = _overlay_alphas(ui["overlay"])
-            v["--ov-fill"] = f"{fill:.3g}"
-            v["--ov-bord"] = f"{bord:.3g}"
-            # Aktiv-Overlay der EIN-Kacheln getrennt steuerbar: seit die
-            # Piktogramme/Icon-Farben den Zustand selbst zeigen, ist es
-            # standardmaessig aus (CSS-Default 0). mode "on" holt es zurueck.
-            # good/crit (Alarm, Rauchmelder, Stoerung) behalten ihr Overlay
-            # immer - die Warnfarbe soll nicht abschaltbar sein.
-            # "both" ist der alte Wert bestehender Konfigurationen -> weiter
-            # als "an" verstehen, sonst verlieren Bestandspanels ihr Overlay.
-            if ui["overlay"].get("mode") in ("on", "both", "border", "fill"):
-                v["--ov-on-fill"] = f"{fill:.3g}"
-                v["--ov-on-bord"] = f"{bord:.3g}"
-            v["--ov-bw"] = f"{bw}px"
-            # Rahmen der NICHT aktiven Kacheln (sonst kaum sichtbar auf hellen Displays).
-            ialpha, ibw = _inactive_border(ui["overlay"])
-            v["--tile-bord"] = f"rgba(255,255,255,{ialpha:.3g})"
-            v["--tile-bw"] = f"{ibw}px"
         if ui.get("font"):
             v["--font"] = ui["font"]
+        if ui.get("fontNum"):
+            v["--font-num"] = ui["fontNum"]     # Zahlen & Titel (Standard Sora)
         if ui.get("textColor"):
             v["--name-color"] = ui["textColor"]
         if ui.get("cols") == 3:
@@ -1384,9 +1903,10 @@ class App:
                 pass
         return {k: val for k, val in v.items() if val}
 
-    def resolve_profile(self, pid: str | None) -> dict:
-        """Aufgeloestes Panel-Profil: Theme-Vars, Tabs, Raum-/Kategorie-Filter."""
-        prof = self.panels.get(pid or "") or self.panels.get("default") or {}
+    def resolve_profile(self, pid: str | None, raw: dict | None = None) -> dict:
+        """Aufgeloestes Panel-Profil: Theme-Vars, Tabs, Raum-/Kategorie-Filter.
+        raw: ungespeichertes Profil aus dem Konfigurator (Vorschau im Tab-Editor)."""
+        prof = raw if isinstance(raw, dict) else (self.panels.get(pid or "") or self.panels.get("default") or {})
         ui = {**self.theme.get("ui", {}), **(prof.get("ui") or {})}
         states = {**self.theme.get("states", {}), **(prof.get("states") or {})}
         tabs = [t for t in (prof.get("tabs") or ui.get("tabs") or []) if _is_tab(t)] or \
@@ -1399,6 +1919,8 @@ class App:
             "cats": self._resolve_ids(prof.get("cats"), self.cats),
             "vars": self._theme_vars(states, ui),
             "tiles": prof.get("tiles") or {},
+            "layouts": prof.get("layouts") or {},   # Kachel-Raster je Tab (s. _tab_layout)
+            "tabIcons": prof.get("tabIcons") or {},  # eigenes Symbol je Tab (s. _tab_meta)
             "roomCats": [c for c in (prof.get("roomCats") or []) if isinstance(c, str)],
             "hide": {u for u in (prof.get("hide") or []) if isinstance(u, str)},
             # Eigene Favoriten durchreichen (siehe _panel_export): Liste = eigene
@@ -1412,19 +1934,30 @@ class App:
             "tileOrder": {str(k): [u for u in v if isinstance(u, str)]
                           for k, v in (prof.get("tileOrder") or {}).items()
                           if isinstance(k, str) and isinstance(v, list)},
-            "lang": (ui.get("lang") or "de"),   # Panel-Sprache (Datum/Uhr; spaeter i18n der Texte)
+            # Sprache fuer Datum/Uhr: immer die der Konfiguration (Backend, rechts oben) -
+            # keine eigene Einstellung mehr je Panel bzw. unter "Bedienung"
+            "lang": (_clean_lang(self.theme.get("ui", {}).get("lang")) or "de"),
             "fill": bool(ui.get("fill")),       # Visu fuellt grosse Screens (quadratische Kacheln)
             # Split-Screen an/aus (aus = 4"-Panel: nur die Visu, keine Pane 2, keine
             # Verdopplung). Default an; nur bei explizitem False aus.
             "split": ui.get("split") is not False,
             # Split-Pane pro Tab: Tab-Kennung -> "weather"|"calendar"|"player:<uuid>".
             # Nur wirksam, wenn split an ist. Das Panel rendert die passende Pane.
-            "panes": (ui.get("panes") if isinstance(ui.get("panes"), dict) else {}),
-            # Animationen an/aus - global (Settings) mit optionaler Pro-Panel-
-            # Ueberschreibung (ui.motion in panels.json), wie split/fill.
-            "motion": ("off" if ui.get("motion") == "off" else "normal"),
+            # Zusatzflaeche je Tab (Pane 2) entfaellt: Widgets liegen jetzt frei im
+            # Raster, breite Displays zeigen zwei Seiten nebeneinander.
+            "panes": {},
+            # Animationen in drei Stufen - global (Settings) mit optionaler
+            # Pro-Panel-Ueberschreibung (ui.motion in panels.json):
+            # "off" keine, "mid" nur Ueberblendungen, "full" alles (Standard).
+            "motion": (ui.get("motion") if ui.get("motion") in ("off", "mid") else "full"),
+            # Mehr Kontrast: Kacheln/Knoepfe mit weichem Schatten (global mit
+            # Pro-Panel-Ueberschreibung wie motion). Kostet etwas Rechenleistung.
+            "contrast": ui.get("contrast") == "on",
+            # Lichtszenen: Piktogramm zeigt Lichtfarbe + Helligkeit (lernend)
+            "sceneLight": ui.get("sceneLight") == "on",
             # Eigene Screensaver-Belegung (None = bisheriger Screensaver).
-            "saver": _sanitize_saver(prof.get("saver")),
+            "grid": _grid(ui.get("grid")),      # Standardraster des Panels (2x2 / 3x3)
+            "saver": _sanitize_saver(prof.get("saver"), _grid(ui.get("grid"))),
         }
 
     def player_blocks(self, uuid: str):
@@ -1448,15 +1981,188 @@ class App:
         sv = (prof or {}).get("saver")
         if not sv:
             return None
-        tiles, cams = {}, {}
-        for it in sv["items"]:
+        return {"t": "saver", **self._widgets_data(sv["items"], prof)}
+
+    def camera_list(self) -> list:
+        """Alle Kameras mit Video-URL fuer das Kamera-Widget: zuerst die
+        Intercoms aus Loxone, dann die eigenen Kameras (Settings)."""
+        out = []
+        for u, c in self.controls.items():
+            if c.get("type") == "Intercom":
+                e = self.intercom_cfg.get(u)
+                if (e.get("url") if isinstance(e, dict) else e):
+                    out.append({"id": u, "name": _clean(c.get("name")) or "Intercom",
+                                "src": f"/mjpeg?id={quote(u)}", "reconnectH": self._cam_reconnect_h(u)})
+        for k, e in self.intercom_cfg.items():
+            if k.startswith("cam_") and isinstance(e, dict) and e.get("url"):
+                out.append({"id": k, "name": str(e.get("name") or "Kamera")[:40],
+                            "src": f"/mjpeg?id={quote(k)}", "reconnectH": 0})
+        return out
+
+    def _widgets_data(self, items: list, prof: dict | None, show_room: bool = True) -> dict:
+        """Live-Daten der Raster-Eintraege (Screensaver und Tabs): Kacheln,
+        Tuerstationen, Energiefluss, Verlaeufe, Audio, Kameras."""
+        tiles, cams, energy, charts, players = {}, {}, {}, {}, {}
+        cameras = self.camera_list() if any(it.get("type") == "camera" for it in items) else []
+        for it in items:
+            if it.get("type") in FOLDER_TYPES:
+                f = self._folder_item(it["type"], it.get("uuid"))
+                if f:
+                    # eigenes Aussehen je Raum-/Kategorie-Kachel (Designer im Raster-Editor)
+                    tiles[it["uuid"]] = self._apply_tile_style(f, it["uuid"], prof)
+                continue
             u = it.get("uuid")
-            if it["type"] == "tile" and u in self.controls:
-                tiles[u] = self._control_item(u, prof)
-            elif it["type"] == "intercom" and u in self.controls:
-                cams[u] = {"name": _clean(self.controls[u].get("name")),
-                           "blocks": self.intercom_blocks(u) or []}
-        return {"t": "saver", "tiles": tiles, "intercoms": cams}
+            if u not in self.controls:
+                continue
+            try:
+                if it["type"] == "tile":
+                    # Raum zeigen, wenn Kacheln aus verschiedenen Raeumen
+                    # gemischt sind (Screensaver, Favoriten, freie Tabs).
+                    tiles[u] = self._control_item(u, prof, show_room=show_room)
+                elif it["type"] == "intercom":
+                    cams[u] = {"name": _clean(self.controls[u].get("name")),
+                               "blocks": self.intercom_blocks(u) or []}
+                elif it["type"] == "energy":
+                    eb = self.energy_blocks(u)
+                    if eb is not None:
+                        energy[u] = eb
+                elif it["type"] == "chart":
+                    rng = it.get("range") or STAT_DEFAULT_RANGE
+                    cb = self.chart_blocks(u, rng)   # aus dem Cache, Abruf laeuft im Hintergrund
+                    if cb is not None:
+                        charts[u + "|" + rng] = cb
+                elif it["type"] == "player":
+                    pb = self.player_blocks(u)
+                    if pb is not None:
+                        players[u] = pb
+            except Exception:
+                # Ein fehlerhaftes Widget darf den Rest des Screensavers nicht mitreissen.
+                log.exception("Screensaver-Widget %s (%s) fehlgeschlagen", it["type"], u)
+        return {"tiles": tiles, "intercoms": cams, "cameras": cameras,
+                "energy": energy, "charts": charts, "players": players}
+
+    def _folder_item(self, kind: str, fid) -> dict | None:
+        """Raum- bzw. Kategorie-Kachel (Ordner) wie in der Loxone-App: antippen
+        oeffnet den Raum/die Kategorie."""
+        if kind == "room" and fid in self.rooms:
+            r = self.rooms[fid]
+            return {"id": fid, "label": _clean(r.get("name")), "icon": "folder",
+                    "iconUrl": self._icon_url(r.get("image")),
+                    "on": False, "nav": {"view": "group", "kind": "room", "id": fid}}
+        if kind == "cat" and fid in self.cats:
+            c = self.cats[fid]
+            return {"id": fid, "label": _clean(c.get("name")), "icon": "folder",
+                    "iconUrl": self._icon_url(c.get("image")), "color": self._cat_color(fid),
+                    "on": False, "nav": {"view": "group", "kind": "cat", "id": fid}}
+        return None
+
+    # ---- Tabs mit Kachel-Raster -------------------------------------------
+    def _tab_seed(self, tab: str, prof: dict | None) -> list:
+        """Vorbefuellung eines Tabs in Loxone-Reihenfolge (wie bisher der Tab):
+        Favoriten = eigene Auswahl bzw. Loxone-Favoriten, Zentral = Zentral-
+        bausteine, Raum/Kategorie = deren Bausteine. Freie Tabs: nichts."""
+        to = ((prof or {}).get("tileOrder") or {})
+        lay = (((prof or {}).get("layouts") or {}).get(tab) or {})
+        pick = lay.get("pick") or None          # eigene Auswahl je Uebersichts-Tab
+        tab = _tab_base(tab)
+        if tab == "favoriten":
+            fav = prof.get("favorites") if prof else None
+            if fav is not None:
+                return [u for u in fav if u in self.controls and self._shown(u, prof)]
+            return [u for u, c in self.controls.items()
+                    if c.get("isFavorite") and self._room_ok(u, prof) and self._shown(u, prof)]
+        if tab == "zentral":
+            uu = [u for u, c in self.controls.items()
+                  if (c.get("type") or "").startswith("Central") and self._shown(u, prof)]
+            return _apply_order(uu, to.get("tab:zentral"))
+        if tab.startswith("cat:"):
+            cu = tab[4:]
+            uu = [u for u, c in self.controls.items()
+                  if c.get("cat") == cu and self._room_ok(u, prof) and self._shown(u, prof)]
+            return _apply_order(uu, to.get(f"cat:{cu}"))
+        ar = prof.get("rooms") if prof else None
+        if tab == "raeume":
+            if pick:
+                return [ru for ru in pick if ru in self.rooms]
+            return _apply_order([ru for ru in self.rooms_with if ar is None or ru in ar], to.get("tab:raeume"))
+        if tab == "kategorien":
+            if pick:
+                return [cu for cu in pick if cu in self.cats]
+            ac = prof.get("cats") if prof else None
+            if ac is not None:
+                cats = [cu for cu in self.cats_with if cu in ac]
+            elif ar is not None:
+                present = {c.get("cat") for c in self.controls.values() if c.get("room") in ar}
+                cats = [cu for cu in self.cats_with if cu in present]
+            else:
+                cats = list(self.cats_with)
+            return _apply_order(cats, to.get("tab:kategorien"))
+        if tab.startswith("room:"):
+            ru = tab[5:]
+            uu = [u for u, c in self.controls.items()
+                  if c.get("room") == ru and self._cat_ok(u, prof) and self._shown(u, prof)]
+            uu = _apply_order(uu, to.get(f"room:{ru}"))
+            # Loxone-Standard: im Raum nach Kategorie gruppiert
+            rank = {cu: i for i, cu in enumerate(self.cats_with)}
+            return sorted(uu, key=lambda u: rank.get(self.controls[u].get("cat"), len(rank)))
+        return []
+
+    def _tab_layout(self, tab: str, prof: dict | None) -> list:
+        """Wirksame Belegung eines Tabs: gespeicherte Eintraege (geloeschte
+        Bausteine fallen weg) + alle Bausteine der Vorbefuellung, die weder
+        platziert noch bewusst entfernt sind, als 1x1-Kacheln hinten angehaengt
+        (so erscheinen auch spaeter in Loxone angelegte Bausteine)."""
+        lay = ((prof or {}).get("layouts") or {}).get(tab) or {}
+        g = _grid(lay.get("grid"), (prof or {}).get("grid", 3))
+        removed = set(lay.get("removed") or [])
+        items, taken, placed = [], set(), set()
+        seed_type = {"raeume": "room", "kategorien": "cat"}.get(_tab_base(tab), "tile")
+        seeds = self._tab_seed(tab, prof)
+        seed_set = set(seeds)
+        for it in lay.get("items") or []:
+            u = it.get("uuid")
+            if it["type"] in SAVER_UUID_TYPES and (u not in self.controls or
+                                                   (it["type"] == "tile" and not self._shown(u, prof))):
+                continue
+            # Raum-/Kategorie-Kachel nur, solange Raum/Kategorie existiert und
+            # (in der Uebersicht) ausgewaehlt ist
+            if it["type"] in FOLDER_TYPES and (u not in (self.rooms if it["type"] == "room" else self.cats)
+                                               or (it["type"] == seed_type and u not in seed_set)):
+                continue
+            items.append(dict(it))
+            taken |= _tab_cells(it["x"], it["y"], it["w"], it["h"], g)
+            if it["type"] == seed_type:
+                placed.add(u)
+        pos = (max(cy * g + cx for cx, cy in taken) + 1) if taken else 0
+        for u in seeds:
+            if u in placed or u in removed:
+                continue
+            while pos < g * TAB_MAX_ROWS and (pos % g, pos // g) in taken:
+                pos += 1
+            if pos >= g * TAB_MAX_ROWS:
+                break
+            x, y = pos % g, pos // g
+            items.append({"type": seed_type, "uuid": u, "x": x, "y": y, "w": 1, "h": 1, "auto": True})
+            taken.add((x, y))
+            pos += 1
+        return items
+
+    def _tab_title(self, tab: str, prof: dict | None) -> str:
+        lbl = (((prof or {}).get("layouts") or {}).get(tab) or {}).get("label")
+        if lbl:
+            return lbl
+        base = _tab_base(tab)
+        if base == "favoriten":
+            return "Favoriten"
+        if base == "zentral":
+            return "Zentral"
+        if base in ("raeume", "kategorien"):
+            return "Räume" if base == "raeume" else "Kategorien"
+        if tab.startswith("cat:"):
+            return _clean(self.cats.get(tab[4:], {}).get("name")) or "Kategorie"
+        if tab.startswith("room:"):
+            return _clean(self.rooms.get(tab[5:], {}).get("name")) or "Raum"
+        return "Tab"
 
     def _cam_reconnect_h(self, uuid: str) -> int:
         """Automatischer Neuaufbau des Kamera-Streams alle N Stunden (0 = aus),
@@ -1489,7 +2195,7 @@ class App:
         nur wenn kein iCal-Kalender genutzt wird (Settings -> Kalender & Wetter)
         UND dort eine Intercom mit gesetzter Video-URL dafuer ausgewaehlt ist.
         None = aus (das Panel zeigt dann wie bisher nur Uhr/Wetter/Kalender)."""
-        if (self.calendar_cfg or {}).get("ical_url"):
+        if front_info.calendar_sources(self.calendar_cfg or {}):
             return None
         uuid = (self.calendar_cfg or {}).get("screensaverIntercom") or ""
         if not uuid:
@@ -1514,10 +2220,11 @@ class App:
         WATT, Flussrichtung fuers Diagramm. None bei ungueltiger Kachel. Reine
         Anzeige, keine Steuerung. max_cons = Loxones Grenze (actual0..5, max. 6).
 
-        Vorzeichen wie in der Loxone-App (siehe _flow_text): Gpwr>0 = Netzbezug
-        (rein), <0 = Einspeisung (raus); Spwr>0 = Speicher laedt (raus), <0 =
-        entlaedt (rein); Ppwr = Erzeugung (rein). flow: "in" = zur Mitte (gruen),
-        "out" = nach aussen (orange), None = 0/inaktiv (grau)."""
+        Vorzeichen wie bei Loxone aus Sicht des Hauses (siehe _flow_text):
+        Gpwr>0 = Netzbezug (rein), <0 = Einspeisung (raus); Spwr>0 = Speicher
+        entlaedt (rein), <0 = laedt (raus); Ppwr = Erzeugung (rein). Dasselbe
+        gilt fuer EFM-Knoten mit nodeType Storage. flow: "in" = zur Mitte
+        (gruen), "out" = nach aussen (orange), None = 0/inaktiv (grau)."""
         c = self.controls.get(uuid or "")
         if not c or c.get("type") not in ("EFM", "EnergyManager2"):
             return None
@@ -1540,8 +2247,8 @@ class App:
               kind "load" = Verbraucher, orange (Load/Group; Speicher laden)
               kind "idle" = 0 W, grau
             PV/Production ist immer Quelle (kann nie beziehen). Netz: Bezug (v>0)
-            rein/rot, Einspeisung (v<0) raus/gruen. Speicher: laden (v>0) raus/orange,
-            entladen (v<0) rein/gruen."""
+            rein/rot, Einspeisung (v<0) raus/gruen. Speicher wie das Netz aus
+            Sicht des Hauses: entladen (v>0) rein/gruen, laden (v<0) raus/orange."""
             ntl = (nt or "").lower()
             if not v:
                 return (None, "idle")
@@ -1550,12 +2257,12 @@ class App:
             if ntl == "grid":
                 return ("in", "grid") if v > 0 else ("out", "prod")
             if ntl in ("storage", "battery"):
-                return ("out", "load") if v > 0 else ("in", "prod")
+                return ("in", "prod") if v > 0 else ("out", "load")
             return ("out", "load") if v > 0 else ("in", "prod")
 
         pv = watt("Ppwr")                       # Erzeugung
         g = watt("Gpwr")                        # Netz: >0 Bezug (rein), <0 Einspeisung (raus)
-        sp = watt("Spwr")                       # Speicher: >0 laedt (raus), <0 entlaedt (rein)
+        sp = watt("Spwr")                       # Speicher: >0 entlaedt (rein), <0 laedt (raus)
         try:
             soc = float(self._state(c, "Ssoc"))
         except (TypeError, ValueError):
@@ -1582,8 +2289,26 @@ class App:
         # Liste (inkl. PV/Netz/Speicher, falls dort angelegt). Daher KEINE
         # zusaetzlichen Summen-Knoten oben drauf (sonst Dopplung). Name, Icon UND
         # Rolle (nodeType) kommen vom Miniserver; 0-W-Knoten bleiben (grau).
+        def bilanz():
+            """Hausverbrauch aus der Energiebilanz (Sicht des Hauses: was
+            hereinkommt, wird verbraucht) = Erzeugung + Netz + Speicher. Ohne
+            Netzwert unbekannt (None), ebenso solange PV oder Speicher angelegt
+            sind, aber noch keinen Wert haben. Fehlt der State ganz (beim EM2
+            auch HasSpwr false), hat die Anlage keinen: Beitrag 0."""
+            if g is None:
+                return None
+            summe = g
+            for key, val, da in (("Ppwr", pv, True), ("Spwr", sp, det.get("HasSpwr", True))):
+                if not da or key not in (c.get("states") or {}):
+                    continue
+                if val is None:
+                    return None
+                summe += val
+            return max(0.0, summe)
+
         cons = []
         prod_sum = cons_sum = 0.0
+        hat_verbraucher = False
         if c.get("type") == "EFM":
             for i, (label, nd) in enumerate(self._named_items(det.get("nodes"))[:max_cons]):
                 v = watt(f"actual{i}")
@@ -1597,35 +2322,70 @@ class App:
                 ntl = (nt or "").lower()
                 if ntl == "production":
                     prod_sum += abs(v)
-                elif ntl in ("load", "group") and v > 0:
-                    cons_sum += abs(v)
+                elif ntl in ("load", "group"):
+                    hat_verbraucher = True
+                    if v > 0:
+                        cons_sum += abs(v)
         if cons:
             cons.sort(key=lambda n: (n["flow"] is None, -n["w"]))   # aktiv zuerst, 0 W ans Ende
             nodes = cons
             prod_total = prod_sum or (abs(pv) if pv else 0.0)
-            cons_total = cons_sum
+            # gemessene Verbraucher-Knoten, sonst die Bilanz
+            cons_total = cons_sum if hat_verbraucher else bilanz()
         else:
             nodes = agg_nodes()   # EM2 oder EFM ohne eigene Knoten
             prod_total = abs(pv) if pv else 0.0
-            cons_total = 0.0
+            cons_total = bilanz()
         return {"control": uuid, "name": _clean(c.get("name")) or "Energiefluss",
                 "nodes": nodes,
                 "totals": {"prod": prod_total, "cons": cons_total, "grid": g or 0.0}}
 
-    def _tab_meta(self, tab_keys) -> dict:
-        """Label + Icon fuer dynamische Tabs (Kategorie- und Raum-Direkt-Tabs).
-        Die 4 Standard-Tabs kennt das Frontend selbst; hier nur `cat:`/`room:`."""
+    def _icon_ref(self, ic) -> dict:
+        """Symbol-Referenz (Konfigurator) -> {icon}|{iconUrl}|{iconImg} fuers Panel."""
+        s = ic.get("src") if isinstance(ic, dict) else None
+        if s == "builtin" and ic.get("id"):
+            return {"icon": ic["id"]}
+        if s == "loxone" and ic.get("p"):
+            u = self._icon_url(ic["p"])
+            return {"iconUrl": u} if u else {}
+        if s == "loxlib" and ic.get("name"):
+            return {"iconUrl": "/loxlib?n=" + quote(str(ic["name"]))}
+        if s == "google" and ic.get("name"):
+            return {"iconUrl": "/gicon?name=" + quote(str(ic["name"]))}
+        if s == "custom" and ic.get("file"):
+            return {"iconImg": "/uicon?f=" + quote(str(ic["file"]))}
+        return {}
+
+    def _tab_meta(self, tab_keys, prof: dict | None = None) -> dict:
+        """Label + Symbol je Tab. Eigene Symbole (tabIcons) gehen vor; sonst Raum-/
+        Kategorie-Symbol aus Loxone, die Standard-Tabs kennt das Frontend selbst."""
         meta = {}
+        own = ((prof or {}).get("tabIcons") or {})
         for t in tab_keys or []:
-            if isinstance(t, str) and t.startswith("cat:"):
-                cat = self.cats.get(t[4:], {})
-                meta[t] = {"label": _clean(cat.get("name")) or "Kategorie",
-                           "iconUrl": self._icon_url(cat.get("image")) or ""}
-            elif isinstance(t, str) and t.startswith("room:"):
-                room = self.rooms.get(t[5:], {})
-                meta[t] = {"label": _clean(room.get("name")) or "Raum",
-                           "iconUrl": self._icon_url(room.get("image")) or ""}
+            meta.update(self._tab_meta_one(t, prof))
+            if t in own:
+                ref = self._icon_ref(own[t])
+                if ref:
+                    m = meta.setdefault(t, {"label": self._tab_title(t, prof) if _is_layout_tab(t) else ""})
+                    m.pop("iconUrl", None)
+                    m.update(ref)
         return meta
+
+    def _tab_meta_one(self, t, prof: dict | None) -> dict:
+        """Standard-Label/-Symbol eines Tabs (freier Tab, Kategorie, Raum)."""
+        if not isinstance(t, str):
+            return {}
+        if _FREE_TAB.match(t) or _MULTI_TAB.match(t):
+            return {t: {"label": self._tab_title(t, prof), "iconUrl": ""}}
+        if t.startswith("cat:"):
+            cat = self.cats.get(t[4:], {})
+            return {t: {"label": _clean(cat.get("name")) or "Kategorie",
+                        "iconUrl": self._icon_url(cat.get("image")) or ""}}
+        if t.startswith("room:"):
+            room = self.rooms.get(t[5:], {})
+            return {t: {"label": _clean(room.get("name")) or "Raum",
+                        "iconUrl": self._icon_url(room.get("image")) or ""}}
+        return {}
 
     def panel_dpms(self, pid: str | None):
         """Display-Abschaltzeit (Sek.) fuer ein Panel aus dem Profil (0=nie,
@@ -1772,7 +2532,15 @@ class App:
         for name in self.devices:
             entry(name)["configured"] = True
         for e in devs.values():
-            e["type"] = "agent" if e["agent"] else ("fully" if e["kiosk"] == "fully" else "browser")
+            cfg = self.devices.get(e["name"]) if isinstance(self.devices.get(e["name"]), dict) else {}
+            model = cfg.get("model") or ""
+            fully = bool(cfg.get("fully")) or e["kiosk"] == "fully"
+            e["model"] = model
+            e["type"] = "agent" if e["agent"] else ("fully" if fully else "browser")
+            # Aktionen je Geraetetyp: Android -> adb; Fully nur wenn angegeben
+            os_ = (DEVICE_MODELS.get(model) or {}).get("os")
+            e["caps"] = ([c for c, ok in (("kioskrestart", os_ == "android" and fully),
+                                          ("reboot", os_ == "android")) if ok])
             if e["agent"] and not e["profile"]:
                 e["profile"] = e["agent"]["panel"]
         anonymous.sort(key=lambda a: a["ip"])
@@ -1839,6 +2607,72 @@ class App:
             log.warning("Display-Treiber %s (%s): %s", name, drv, res["error"])
         return res
 
+    def _device_ip(self, device: str) -> str:
+        """Letzte bekannte IP eines Geraets: offene Visu-Verbindung, sonst
+        Display-Treiber oder Agent."""
+        for info in self.conn_info.values():
+            if info.get("dev") == device and info.get("ip"):
+                return info["ip"]
+        cfg = self.devices.get(device)
+        disp = cfg.get("display") if isinstance(cfg, dict) else None
+        if isinstance(disp, dict) and disp.get("host"):
+            return str(disp["host"])
+        for a in self.agents.values():
+            if a.get("name") == device and a.get("ip"):
+                return a["ip"]
+        return ""
+
+    async def kiosk_restart(self, device: str, action: str = "app", ip: str = "") -> dict:
+        """Android-Panel per adb neu starten (ohne Fully-PLUS-Lizenz):
+        action "app"    - Fully beenden und ueber den LoxPanel-Launcher (mit der
+                          gespeicherten Panel-URL) neu starten,
+        action "reboot" - ganzes Geraet neu starten (wenn das Display haengt).
+        Voraussetzung: adb ueber WLAN am Panel aktiv und diesem Server erlaubt
+        (einmalig bei der Einrichtung des Launchers bestaetigt)."""
+        ip = ip or self._device_ip(device)
+        try:
+            ip = str(ipaddress.ip_address(ip.strip()))
+        except (ValueError, AttributeError):
+            return {"ok": False, "error": "IP des Geraets unbekannt - Visu am Panel einmal öffnen"}
+        model = ((self.devices.get(device) or {}) if isinstance(self.devices.get(device), dict) else {}).get("model")
+        if action == "reboot" and (DEVICE_MODELS.get(model) or {}).get("shelly"):
+            # Shelly Wall Display: eigene lokale Schnittstelle (Shelly-RPC) -
+            # klappt ohne adb; sonst weiter unten per adb.
+            try:
+                sess = self._drv_session
+                if sess is None or sess.closed:
+                    sess = self._drv_session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6))
+                async with sess.get(f"http://{ip}/rpc/Shelly.Reboot") as r:
+                    if r.status == 200:
+                        log.info("Shelly %s (%s) per Shelly-RPC neu gestartet", device, ip)
+                        return {"ok": True, "via": "shelly"}
+            except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+                pass
+        if not shutil.which("adb"):
+            return {"ok": False, "error": "adb fehlt im Container"}
+        target = f"{ip}:5555"
+        async with _adb_lock:
+            code, out = await _adb("connect", target, timeout=15)
+            if "connected" not in out or "failed" in out:
+                return {"ok": False, "error": "Panel per adb nicht erreichbar - ADB über WLAN am Panel aktiv?"}
+            code, out = await _adb("-s", target, "get-state", timeout=10)
+            if out != "device":
+                return {"ok": False, "error": "adb nicht freigegeben - am Panel \"USB-Debugging zulassen\" bestätigen"}
+            if action == "reboot":
+                code, out = await _adb("-s", target, "reboot", timeout=15)
+                log.info("Geraet %s (%s) per adb neu gestartet: %s", device, target, out or code)
+                return {"ok": code == 0, "via": "adb", **({} if code == 0 else {"error": out})}
+            await _adb("-s", target, "shell", "am", "force-stop", "de.ozerov.fully", timeout=15)
+            # Ueber den Launcher starten (oeffnet Fully mit der Panel-URL); fehlt er,
+            # Fully direkt starten - es laedt dann seine eigene Start-URL.
+            code, out = await _adb("-s", target, "shell", "am", "start", "-n", f"{LAUNCHER_PKG}/.Main", timeout=15)
+            if code != 0 or "rror" in out:
+                code, out = await _adb("-s", target, "shell", "monkey", "-p", "de.ozerov.fully",
+                                       "-c", "android.intent.category.LAUNCHER", "1", timeout=15)
+        ok = code == 0 and "rror" not in out
+        log.info("Fully auf %s (%s) neu gestartet: %s", device, target, "ok" if ok else out)
+        return {"ok": ok, "via": "adb", **({} if ok else {"error": out[-300:]})}
+
     async def _agent_start(self, agent: dict, profile: str) -> bool:
         """Startet den Kiosk eines Panel-Agenten mit einem Profil (Fernbefehl)."""
         url = f"http://{agent['ip']}:{agent['port']}/start"
@@ -1881,11 +2715,8 @@ class App:
                     if (self.conn_prof.get(ws) or {}).get("id") == profile:
                         sent += 1            # zeigt bereits das richtige Profil
                         continue
-                    try:
-                        await ws.send_json({"t": "switch", "panel": profile})
+                    if await self._send_or_drop(ws, {"t": "switch", "panel": profile}):
                         sent += 1
-                    except Exception as err:   # nicht nur ConnectionError (F3)
-                        log.debug("switch-Push an Panel fehlgeschlagen: %s", err)
                 results.append({"panel": name, "profile": profile,
                                 "ok": sent > 0, "via": "ws"})
                 continue
@@ -1924,16 +2755,16 @@ class App:
         c = self._resolve_ids(raw.get("cats"), self.cats)
         tabs = [t for t in (raw.get("tabs") or VALID_TABS) if _is_tab(t)]
         ui = {k: v for k, v in (raw.get("ui") or {}).items()
-              if k in ("iconSize", "nameSize", "subSize", "font", "nudgeX",
+              if k in ("iconSize", "nameSize", "subSize", "font", "fontNum", "nudgeX",
                        "dpmsOff", "reloadHours", "nightDim", "nightWake",
-                       "cols", "rows", "fill", "baseColor",
-                       "overlay", "textColor", "bold", "lang", "player", "panes", "split",
+                       "cols", "rows", "fill", "baseColor", "design",
+                       "textColor", "bold", "lang", "player", "panes", "split",
                        "saverFcSize",
-                       "motion")}
+                       "motion", "contrast", "sceneLight", "grid")}
         # Split-Pane je Tab: nur gueltige Tab-Kennung -> "weather"|"calendar".
         if isinstance(ui.get("panes"), dict):
             ui["panes"] = {str(k): v for k, v in ui["panes"].items()
-                           if isinstance(k, str) and _is_tab(k) and (v in ("weather", "calendar") or (isinstance(v, str) and (v.startswith("player:") or v.startswith("energy:") or v.startswith("camera:")) and len(v) > 7))}
+                           if isinstance(k, str) and _is_tab(k) and (v in ("weather", "calendar") or (isinstance(v, str) and (v.startswith("player:") or v.startswith("energy:") or v.startswith("camera:") or v.startswith("chart:")) and len(v) > 7))}
             if not ui["panes"]:
                 ui.pop("panes", None)
         else:
@@ -1957,7 +2788,12 @@ class App:
             "tileOrder": {str(k): [u for u in v if isinstance(u, str) and u in self.controls]
                           for k, v in (raw.get("tileOrder") or {}).items()
                           if isinstance(k, str) and isinstance(v, list)},
-            "saver": _sanitize_saver(raw.get("saver")),
+            "saver": _sanitize_saver(raw.get("saver"), _grid((raw.get("ui") or {}).get("grid"))),
+            "tabIcons": {k: ic for k, ic in ((k, _clean_icon(v)) for k, v in (raw.get("tabIcons") or {}).items()
+                                             if _is_tab(k)) if ic},
+            "layouts": {k: lay for k, lay in ((k, _sanitize_layout(v, _grid((raw.get("ui") or {}).get("grid")))) for k, v in
+                                              (raw.get("layouts") or {}).items()
+                                              if _is_tab(k) and _is_layout_tab(k)) if lay},
         }
 
     def _loxone_icons(self) -> list:
@@ -2026,9 +2862,23 @@ class App:
                         to[k] = lst[:300]
                 if to:
                     e["tileOrder"] = to
-            sv = _sanitize_saver(p.get("saver"))
+            dg = _grid((p.get("ui") or {}).get("grid"))    # Standardraster des Profils
+            sv = _sanitize_saver(p.get("saver"), dg)
             if sv:
                 e["saver"] = sv            # eigene Screensaver-Belegung
+            if isinstance(p.get("tabIcons"), dict):
+                ti = {k: ic for k, ic in ((k, _clean_icon(v)) for k, v in p["tabIcons"].items() if _is_tab(k)) if ic}
+                if ti:
+                    e["tabIcons"] = ti     # eigenes Symbol je Tab
+            if isinstance(p.get("layouts"), dict):
+                lays = {}
+                for k, v in p["layouts"].items():
+                    if _is_tab(k) and _is_layout_tab(k):
+                        lay = _sanitize_layout(v, dg)
+                        if lay:
+                            lays[k] = lay
+                if lays:
+                    e["layouts"] = lays    # Kachel-Raster je Tab
             ui = p.get("ui") or {}
             # Groessen genauso klemmen wie der globale Pfad (_sanitize_theme_ui)
             # und wie die Nachbarfelder unten - sonst nimmt der Panel-Override
@@ -2036,14 +2886,12 @@ class App:
             # ist.
             cui = {k: max(8, min(80, int(ui[k]))) for k in ("iconSize", "nameSize", "subSize", "saverFcSize")
                    if isinstance(ui.get(k), (int, float))}
-            if isinstance(ui.get("ringSize"), (int, float)):
-                cui["ringSize"] = max(120, min(400, int(ui["ringSize"])))
-            if isinstance(ui.get("ringThick"), (int, float)):
-                cui["ringThick"] = max(6, min(30, int(ui["ringThick"])))
             if ui.get("tileShadow"):
                 cui["tileShadow"] = str(ui["tileShadow"])[:200]
             if ui.get("font"):
                 cui["font"] = str(ui["font"])[:120]
+            if ui.get("fontNum"):
+                cui["fontNum"] = str(ui["fontNum"])[:120]
             if isinstance(ui.get("nudgeX"), (int, float)):
                 cui["nudgeX"] = max(-40, min(40, ui["nudgeX"]))  # horiz. Versatz px
             if isinstance(ui.get("dpmsOff"), (int, float)):
@@ -2066,7 +2914,7 @@ class App:
                 cui["player"] = ui["player"]    # Split-Layout: AudioZone-UUID fuer den festen Player
             if isinstance(ui.get("panes"), dict):
                 pn = {str(k): v for k, v in ui["panes"].items()
-                      if isinstance(k, str) and _is_tab(k) and (v in ("weather", "calendar") or (isinstance(v, str) and (v.startswith("player:") or v.startswith("energy:") or v.startswith("camera:")) and len(v) > 7))}
+                      if isinstance(k, str) and _is_tab(k) and (v in ("weather", "calendar") or (isinstance(v, str) and (v.startswith("player:") or v.startswith("energy:") or v.startswith("camera:") or v.startswith("chart:")) and len(v) > 7))}
                 if pn:
                     cui["panes"] = pn           # Split-Pane je Tab: Wetter/Kalender/Vollbreit
             if _color_ok(ui.get("textColor")):
@@ -2078,16 +2926,22 @@ class App:
                 _base = ui["baseColor"].strip()
                 if theme_colors.derive(_base):
                     cui["baseColor"] = _base
+            _dz = theme_colors.clean_design(ui.get("design"))
+            if _dz:
+                cui["design"] = _dz             # Design: Vorlage + eigene Farben
             if ui.get("bold"):
                 cui["bold"] = True                            # Kachel-Namen fett
-            if ui.get("motion") == "off":
-                cui["motion"] = "off"           # Animationen NUR fuer dieses Panel aus (Override)
+            if ui.get("motion") in ("off", "mid", "full"):
+                cui["motion"] = ui["motion"]    # Animationsstufe NUR fuer dieses Panel (Override)
+            if ui.get("contrast") in ("on", "off"):
+                cui["contrast"] = ui["contrast"]  # Mehr Kontrast NUR fuer dieses Panel (Override)
+            if ui.get("sceneLight") in ("on", "off"):
+                cui["sceneLight"] = ui["sceneLight"]  # Szenen-Licht NUR fuer dieses Panel (Override)
+            if ui.get("grid") in (2, "2"):
+                cui["grid"] = 2                         # Standardraster 2x2 (Tabs + Dashboard)
             lang = _clean_lang(ui.get("lang"))
             if lang:
                 cui["lang"] = lang                            # Panel-Sprache (Datum/Uhr, i18n)
-            ovc = _sanitize_overlay(ui.get("overlay"))
-            if ovc:
-                cui["overlay"] = ovc            # Aussehen des Aktiv-Overlays
             if cui:
                 e["ui"] = cui
             st = p.get("states") or {}
@@ -2110,17 +2964,85 @@ class App:
                     for bk in ("bold", "italic"):
                         if ov.get(bk) is True:
                             e2[bk] = True
-                    tov = _sanitize_overlay(ov.get("overlay"))
-                    if tov:
-                        e2["overlay"] = tov     # Aktiv-Overlay nur fuer diese Kachel
                     icc = _clean_icon(ov.get("icon"))
                     if icc:
                         e2["icon"] = icc
+                    if ov.get("chart") in STAT_RANGES:
+                        e2["chart"] = ov["chart"]   # Mini-Verlauf in der Kachel, Wert = Zeitraum
+                        if ov.get("chartStyle") in STAT_TILE_STYLES and ov["chartStyle"] != "trend":
+                            e2["chartStyle"] = ov["chartStyle"]   # Tagesmuster / Tagesspanne
                     if e2:
                         ct[cu] = e2
                 if ct:
                     e["tiles"] = ct
             out[pid] = e
+        return out
+
+    @staticmethod
+    def _panels_verworfen(roh: dict, sauber: dict, namen: dict | None = None) -> list[str]:
+        """Was _sanitize_panels nicht uebernommen hat, als lesbare Pfade
+        ("<Panel>: ui.cols", "<Panel>: tabs: foo"), damit der Konfigurator es
+        meldet statt es still zu verlieren. Gemeldet wird nur, was einen Inhalt
+        hatte: leere Werte (None, False, "", [], {}) nicht, begrenzte oder
+        gekuerzte Werte (Groesse 100 -> 80, Titel auf 40 Zeichen) auch nicht -
+        die kommen ja an. Standardwerte, die bewusst nicht gespeichert werden,
+        stehen in PANEL_STANDARD. namen: UUID -> Bausteinname fuer lesbare
+        Pfade (Kachel-Einstellungen stehen unter der UUID)."""
+        namen = namen or {}
+
+        def leer(v) -> bool:
+            return v is None or v is False or (isinstance(v, str) and not v.strip()) \
+                or (isinstance(v, (list, dict)) and not any(not leer(x) for x in
+                                                            (v.values() if isinstance(v, dict) else v)))
+
+        def standard(pfad: tuple, v) -> bool:
+            for muster, wert in PANEL_STANDARD.items():
+                if len(muster) == len(pfad) and all(m in ("*", p) for m, p in zip(muster, pfad)) \
+                        and v == wert:
+                    return True
+            return False
+
+        def kurz(xs: list) -> str:
+            return ", ".join(str(x) for x in xs[:3]) + (f" … (+{len(xs) - 3})" if len(xs) > 3 else "")
+
+        out: list[str] = []
+
+        def vergleich(r, s, pfad: tuple, name: str):
+            if isinstance(r, dict):
+                for k, v in r.items():
+                    if leer(v) or standard(pfad + (str(k),), v):
+                        continue
+                    p = pfad + (str(k),)
+                    if isinstance(s, dict) and k in s:
+                        vergleich(v, s[k], p, name)
+                    elif isinstance(v, (dict, list)):
+                        # ganz weggefallen (z. B. ui nur mit Unbekanntem): die
+                        # einzelnen Angaben darin nennen
+                        vergleich(v, {} if isinstance(v, dict) else [], p, name)
+                    else:
+                        out.append(f"{name}: {'.'.join(namen.get(x, x) for x in p)}")
+            elif isinstance(r, list) and isinstance(s, list):
+                werte = [x for x in r if not leer(x)]
+                if all(isinstance(x, (str, int, float)) for x in werte):
+                    fehlt = [x for x in werte if x not in s]
+                    if fehlt:
+                        out.append(f"{name}: {'.'.join(namen.get(x, x) for x in pfad)}: "
+                                   f"{kurz([namen.get(x, x) for x in fehlt])}")
+                elif len(s) < len(werte):
+                    out.append(f"{name}: {'.'.join(namen.get(x, x) for x in pfad)}: "
+                               f"{len(werte) - len(s)} von {len(werte)}")
+                else:
+                    for i, (x, y) in enumerate(zip(werte, s)):
+                        vergleich(x, y, pfad + (str(i + 1),), name)
+
+        for pid, p in (roh or {}).items():
+            if leer(p):
+                continue
+            if pid not in sauber:
+                out.append(f"Panel „{pid}“")
+            else:
+                titel = str(p.get("title") or "").strip() if isinstance(p, dict) else ""
+                vergleich(p, sauber[pid], (), titel or pid)
         return out
 
     def _persist_panels_file(self, panels: dict, devices: dict) -> None:
@@ -2172,11 +3094,16 @@ class App:
                 if mode and prof and prof in panel_ids:
                     modes[mode] = prof
             display = App._sanitize_display(cfg.get("display"))
-            if not modes and not display:
+            model = cfg.get("model") if cfg.get("model") in DEVICE_MODELS else ""
+            if not modes and not display and not model:
                 continue
             entry = {"auto": bool(cfg.get("auto", True)), "modes": modes}
             if display:
                 entry["display"] = display
+            if model:
+                entry["model"] = model                 # Geraetetyp (s. DEVICE_MODELS)
+                if DEVICE_MODELS[model]["os"] == "android" and cfg.get("fully"):
+                    entry["fully"] = True              # Fully Kiosk laeuft darauf
             out[name.strip()[:60]] = entry
         return out
 
@@ -2207,18 +3134,19 @@ class App:
         for k in ("iconSize", "nameSize", "subSize", "saverFcSize"):
             if isinstance(ui.get(k), (int, float)):
                 out[k] = max(8, min(80, int(ui[k])))
-        if isinstance(ui.get("ringSize"), (int, float)):
-            out["ringSize"] = max(120, min(400, int(ui["ringSize"])))
-        if isinstance(ui.get("ringThick"), (int, float)):
-            out["ringThick"] = max(6, min(30, int(ui["ringThick"])))
         if ui.get("tileShadow"):
             out["tileShadow"] = str(ui["tileShadow"])[:200]
         if ui.get("font"):
             out["font"] = str(ui["font"])[:120]
+        if ui.get("fontNum"):
+            out["fontNum"] = str(ui["fontNum"])[:120]
         if _color_ok(ui.get("textColor")):
             out["textColor"] = ui["textColor"].strip()
         if _color_ok(ui.get("baseColor")) and theme_colors.derive(ui["baseColor"].strip()):
             out["baseColor"] = ui["baseColor"].strip()
+        _dz = theme_colors.clean_design(ui.get("design"))
+        if _dz:
+            out["design"] = _dz
         if ui.get("bold"):
             out["bold"] = True
         lang = _clean_lang(ui.get("lang"))
@@ -2230,8 +3158,13 @@ class App:
             out["alarmsEnabled"] = False
         # Animationen global an/aus (ein Schalter fuer alle --anim-*-Dauern im
         # Panel). Default an; nur bei explizitem "off" gespeichert.
-        if ui.get("motion") == "off":
-            out["motion"] = "off"
+        if ui.get("motion") in ("off", "mid"):
+            out["motion"] = ui["motion"]
+        # Mehr Kontrast (Schatten an Kacheln/Knoepfen). Default aus.
+        if ui.get("contrast") == "on":
+            out["contrast"] = "on"
+        if ui.get("sceneLight") == "on":
+            out["sceneLight"] = "on"
         # Licht per Doppeltipp aus. Default an; nur explizites False speichern.
         if ui.get("dblTapOff") is False:
             out["dblTapOff"] = False
@@ -2288,24 +3221,83 @@ class App:
 
     async def fetch_icon(self, path: str) -> tuple[bytes, str] | None:
         if path in self.icon_cache:
-            return self.icon_cache[path]
-        if not self.icon_session:
-            return None
-        scheme = "https" if _ms_https(self.port) else "http"
-        url = f"{scheme}://{self.host}:{self.port}/{path.lstrip('/')}"
-        headers = {"Authorization": f"Bearer {self.jwt}"} if self.jwt else {}
+            hit = self.icon_cache.pop(path)       # neu einsortieren = zuletzt benutzt
+            self.icon_cache[path] = hit
+            return hit
         try:
-            async with self.icon_session.get(
-                    url, headers=headers,
-                    timeout=aiohttp.ClientTimeout(total=6)) as r:
-                if r.status != 200:
-                    return None
-                body = await r.read()
-                ctype = r.headers.get("Content-Type", "application/octet-stream")
-        except (aiohttp.ClientError, asyncio.TimeoutError):
+            status, body, ctype = await self._ms_http(path, 6)
+        except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError):
             return None
+        if status != 200:
+            return None
+        ctype = ctype or "application/octet-stream"
         self.icon_cache[path] = (body, ctype)
+        while len(self.icon_cache) > ICON_CACHE_MAX:
+            self.icon_cache.pop(next(iter(self.icon_cache)))   # am laengsten unbenutzt
         return self.icon_cache[path]
+
+    async def _stat_load(self, ua: str, ym: str) -> None:
+        """Eine Statistik-Monatsdatei holen (/stats/<uuidAction>.<JJJJMM>.xml,
+        Bearer-Token wie bei den Icons) und in stat_cache legen. 404 heisst:
+        fuer diesen Monat gibt es keine Aufzeichnung (leere Liste). Andere
+        Fehler legen None ab, dann wird erst nach STAT_RETRY erneut versucht.
+        Danach neu rendern lassen, damit offene Detailseiten das Diagramm zeigen."""
+        key = (ua, ym)
+        rows: list | None = None
+        try:
+            status, body, _ = await self._ms_http(f"stats/{ua}.{ym}.xml", 20)
+            if status == 404:
+                rows = []
+            elif status == 200:
+                rows = _parse_stat_xml(body.decode("utf-8", "replace"))
+            else:
+                log.info("Statistik %s.%s: HTTP %s", ua, ym, status)
+        except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError) as err:
+            log.info("Statistik %s.%s nicht abrufbar: %s", ua, ym, err)
+        finally:
+            self.stat_pending.discard(key)
+        self.stat_cache.pop(key, None)          # neu einsortieren = zuletzt benutzt
+        self.stat_cache[key] = (time.monotonic(), datetime.now().strftime("%Y%m"), rows)
+        while len(self.stat_cache) > STAT_CACHE_MAX:
+            self.stat_cache.pop(next(iter(self.stat_cache)))
+        self.stat_gen += 1
+        self.stat_memo = {}
+        self._dirty = True
+
+    async def _stat2_load(self, key: tuple, ua: str, gid: str, out: str, span: int) -> None:
+        """Verlauf eines statisticV2-Ausgangs holen: jdev/sps/getStatistic/<uuid>/raw/
+        <vonUnixUtc>/<bisUnixUtc>/all/<gruppe>/<ausgang> (so baut ihn die Loxone-App,
+        StatisticV2Ext.getStatisticRaw). Eine Stunde Vorlauf liefert den Stand vor
+        dem ersten Balken. Leere Antwort oder JSON statt Binaerdaten heisst: keine
+        Aufzeichnung (leere Liste); andere Fehler legen None ab."""
+        rows: list | None = None
+        now = int(time.time())
+        path = f"jdev/sps/getStatistic/{ua}/raw/{now - span - 3600}/{now}/all/{quote(gid)}/{quote(out)}"
+        try:
+            async with self.stat2_sem:
+                status, body, _ = await self._ms_http(path, 30)
+            if status != 200:
+                log.info("Statistik V2 %s: HTTP %s", path, status)
+            elif not body:
+                rows = []
+            elif body[:1] == b"{":
+                rows = []
+                log.info("Statistik V2 %s: keine Daten (%s)", path, body[:160].decode("utf-8", "replace"))
+            else:
+                rows = _parse_stat2_bin(body)
+                if rows is None:
+                    log.info("Statistik V2 %s: unerwartete Antwort, %d Bytes", path, len(body))
+        except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError) as err:
+            log.info("Statistik V2 %s nicht abrufbar: %s", path, err)
+        finally:
+            self.stat_pending.discard(key)
+        self.stat2_cache.pop(key, None)
+        self.stat2_cache[key] = (time.monotonic(), rows)
+        while len(self.stat2_cache) > STAT_CACHE_MAX:
+            self.stat2_cache.pop(next(iter(self.stat2_cache)))
+        self.stat_gen += 1
+        self.stat_memo = {}
+        self._dirty = True
 
     async def fetch_cover(self, url: str) -> tuple[bytes, str] | None:
         if not self.icon_session:
@@ -2315,7 +3307,7 @@ class App:
         # liesse sich darueber jede Seite im Netz abrufen bzw. fremdes HTML
         # unter der Panel-Adresse ausliefern.
         try:
-            async with self.icon_session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as r:
+            async with self.icon_session.get(url, timeout=aiohttp.ClientTimeout(total=COVER_TIMEOUT)) as r:
                 ctype = r.headers.get("Content-Type", "image/jpeg")
                 if r.status != 200 or not ctype.lower().startswith("image/"):
                     return None
@@ -2381,7 +3373,8 @@ class App:
         if not isinstance(seq, (list, tuple)) and not hasattr(seq, "__iter__"):
             return []
         out = []
-        for e in seq:
+        ids = list(data.keys()) if isinstance(data, dict) else list(range(len(seq)))
+        for eid, e in zip(ids, seq):
             if not isinstance(e, dict):
                 continue
             try:
@@ -2390,7 +3383,9 @@ class App:
                 secs = 0
             hm = "%02d:%02d" % ((secs // 3600) % 24, (secs % 3600) // 60)
             repeat = self._alarm_repeat(e)
-            out.append({"name": _clean(e.get("name")) or "Weckzeit", "hm": hm,
+            out.append({"id": str(eid), "name": _clean(e.get("name")) or "Weckzeit", "hm": hm,
+                        "secs": secs, "modes": [str(m) for m in (e.get("modes") or [])],
+                        "daily": bool(e.get("daily")),
                         "active": bool(e.get("isActive")), "repeat": repeat})
         out.sort(key=lambda x: (not x["active"], x["hm"]))
         return out
@@ -2408,7 +3403,7 @@ class App:
         modes = e.get("modes")
         if not isinstance(modes, list) or not modes:
             return ""
-        op = getattr(self, "op_modes", {})
+        op = self.op_modes
         names = []
         for m in modes:
             nm = _clean(op.get(str(m)))
@@ -2464,6 +3459,14 @@ class App:
         import colorsys
         r, g, b = colorsys.hsv_to_rgb((h % 360) / 360.0, s / 100.0, v / 100.0)
         return "#%02x%02x%02x" % (round(r * 255), round(g * 255), round(b * 255))
+
+    @classmethod
+    def _icon_hex(cls, h, s, v) -> str:
+        """Live-Farbe fuers Kachel-Piktogramm: wie _hsv_hex, aber mit
+        Mindesthelligkeit (45 %..100 %), sonst verschwindet ein tief gedimmtes
+        RGB-Licht (z.B. Nachtszene) auf dunklem Grund. Gleiche Idee wie
+        _dim_yellow fuer Dimmer: dunkler bleibt dunkler, aber sichtbar."""
+        return cls._hsv_hex(h, s, 45 + 0.55 * max(0, min(100, v)))
 
     def types_overview(self) -> dict:
         """Diagnose fuer /api/types: alle Bausteintypen der geladenen Anlage mit
@@ -2610,7 +3613,7 @@ class App:
                     if sc.get("type") in ("Colorpicker", "ColorPickerV2"):
                         mode, ca, cb, cv = self._color_parse(self._state(sc, "color"))
                         if mode == "rgb" and cv > 0:
-                            it["colorFixed"] = self._hsv_hex(ca, cb, cv)
+                            it["colorFixed"] = self._icon_hex(ca, cb, cv)
                         break
             # Horizontale </>-Mini-Buttons oben rechts zum Szenen-Durchschalten
             # (wie die Auf/Ab-Buttons bei Jalousien, nur seitlich statt
@@ -2677,9 +3680,11 @@ class App:
                       blindShape="gate",
                       sublabel=("Offen" if pct >= 100 else
                                 ("Geschlossen" if pct <= 0 else f"{pct}% offen")))
-        elif t == "IRoomControllerV2":
+        elif t in ("IRoomControllerV2", "IRoomController"):
             ta = self._state(c, "tempActual"); tt = self._state(c, "tempTarget")
-            prep = self._state(c, "prepareState")
+            # heizt/kuehlt: V2 meldet es in prepareState, die alte Raumregelung
+            # ueber ihre Ventile (siehe _irc1)
+            prep = self._state(c, "prepareState") if t == "IRoomControllerV2" else self._irc1(c)["prep"]
             bits = self._irc_activity(prep, self._state(c, "openWindow"))
             sub = (f"{self._fmt_num(ta, '%.1f')}° → {self._fmt_num(tt, '%.1f')}°"
                    if ta is not None else "Heizung")
@@ -2779,7 +3784,7 @@ class App:
             it.update(icon="bulb", on=on, nav={"view": "control", "id": uuid},
                       sublabel=(f"{bright} %" if on else "Aus"))
             if mode == "rgb" and on:
-                it["colorFixed"] = self._hsv_hex(a, b, v)   # Icon in aktueller Farbe
+                it["colorFixed"] = self._icon_hex(a, b, v)   # Icon in aktueller Farbe
         elif t == "AudioZone":
             playing = self._state(c, "playState") == 2
             ua = c.get("uuidAction")
@@ -2932,7 +3937,7 @@ class App:
                       sublabel=(last or "Keine Einträge"))
         elif t == "EFM":
             # Energieflussmonitor: Ppwr Erzeugung, Gpwr Netz (+Bezug/-Einspeisung),
-            # Spwr Speicher (+Laden/-Entladen), actual0..5 = Knoten aus details.nodes
+            # Spwr Speicher (+Entladen/-Laden), actual0..5 = Knoten aus details.nodes
             fmt = (c.get("details") or {}).get("actualFormat") or "%.2f kW"
             bits = []
             p = self._state(c, "Ppwr")
@@ -3055,14 +4060,6 @@ class App:
             style["weight"] = 700
         if ov.get("italic"):
             style["italic"] = True
-        if isinstance(ov.get("overlay"), dict):
-            fill, bord, bw = _overlay_alphas(ov["overlay"])
-            style["ovFill"] = f"{fill:.3g}"     # ueberschreibt --ov-* nur fuer diese Kachel
-            style["ovBord"] = f"{bord:.3g}"
-            style["ovBw"] = bw
-            ialpha, ibw = _inactive_border(ov["overlay"])
-            style["tileBord"] = f"rgba(255,255,255,{ialpha:.3g})"   # inaktiver Rahmen nur fuer diese Kachel
-            style["tileBw"] = ibw
         if style:
             it["style"] = style
         ic = ov.get("icon")
@@ -3086,118 +4083,29 @@ class App:
             elif s == "custom" and ic.get("file"):
                 it["iconImg"] = "/uicon?f=" + quote(str(ic["file"]))
                 it.pop("iconUrl", None)
+        # Mini-Verlauf in der Kachel (tiles.<uuid>.chart = Zeitraum), nur fuer
+        # Bausteine mit Aufzeichnung. Ein Tipp oeffnet wie bisher die Detailseite.
+        rng = ov.get("chart")
+        c = self.controls.get(uuid) or {}
+        if rng in STAT_RANGES and (c.get("statistic") or c.get("statisticV2")):
+            style = ov.get("chartStyle") if ov.get("chartStyle") in STAT_TILE_STYLES else "trend"
+            sp = self._stat_spark(c, rng, style)
+            if sp:
+                it["spark"] = sp
         return it
 
     # ---- Views ----
     def _view_tab(self, tab: str, prof: dict | None = None) -> dict:
-        ar = prof.get("rooms") if prof else None
-        ac = prof.get("cats") if prof else None
-        if isinstance(tab, str) and tab.startswith("cat:"):
-            # Kategorie-Direkt-Tab: dieselben Controls wie im Kategorie-Drilldown
-            cu = tab[4:]
-            uuids = [u for u, c in self.controls.items()
-                     if c.get("cat") == cu and self._room_ok(u, prof) and self._shown(u, prof)]
-            uuids = _apply_order(uuids, ((prof.get("tileOrder") or {}) if prof else {}).get(f"cat:{cu}"))
-            sr = self._spans_rooms(uuids)
-            items = [self._control_item(u, prof, show_room=sr) for u in uuids]
-            title = _clean(self.cats.get(cu, {}).get("name")) or "Kategorie"
-            return {"t": "view", "title": title, "tab": tab,
-                    "route": {"view": "tab", "tab": tab}, "items": items}
-        if isinstance(tab, str) and tab.startswith("room:"):
-            # Raum-Direkt-Tab: dieselben Controls wie im Raum-Drilldown. Als
-            # ERSTER Tab ist er die Startseite - dann weckt das Panel direkt in
-            # diesem Raum auf, ohne vorher Raum oder Kategorie zu waehlen.
-            # Der Raumname steht schon im Tab, deshalb nicht noch an jeder Kachel.
-            ru = tab[5:]
-            uuids = [u for u, c in self.controls.items()
-                     if c.get("room") == ru and self._cat_ok(u, prof) and self._shown(u, prof)]
-            uuids = _apply_order(uuids, ((prof.get("tileOrder") or {}) if prof else {}).get(f"room:{ru}"))
-            # Raum-Panel: nach Kategorie gruppieren, damit die untere Leiste die
-            # im Raum vorkommenden Kategorien als Tabs zeigt und ein Tipp zur
-            # jeweiligen Kachel-Gruppe scrollt (keine Ueberschriften, Kacheln
-            # bleiben normal 2x2). Die erste Kachel jeder Gruppe traegt catKey als
-            # Scroll-Anker. Reihenfolge = cats_with; Bausteine ohne bekannte
-            # Kategorie kommen ans Ende. Tabs: die ersten 4 Kategorien.
-            by_cat: dict = {}
-            for u in uuids:
-                cu = self.controls[u].get("cat")
-                by_cat.setdefault(cu if cu in self.cats else None, []).append(u)
-            present = [c for c in self.cats_with if c in by_cat]
-            # Gewaehlte Tab-Kategorien (Config) vor die uebrigen; leer = automatisch.
-            chosen = [c for c in (prof.get("roomCats") or []) if c in by_cat] if prof else []
-            if chosen:
-                order = chosen + [c for c in present if c not in chosen]
-                tab_cats = chosen[:4]
-            else:
-                order = present
-                tab_cats = present[:4]
-            items = []
-            for cu in order:
-                for j, u in enumerate(by_cat[cu]):
-                    it = self._control_item(u, prof)
-                    if j == 0:
-                        it["catKey"] = cu       # Scroll-Anker fuer den Kategorie-Tab
-                    items.append(it)
-            cat_tabs = [{"key": cu,
-                         "label": _clean(self.cats.get(cu, {}).get("name")) or "Kategorie",
-                         "iconUrl": self._icon_url(self.cats.get(cu, {}).get("image")) or ""}
-                        for cu in tab_cats]
-            for u in by_cat.get(None, []):
-                items.append(self._control_item(u, prof))
-            title = _clean(self.rooms.get(ru, {}).get("name")) or "Raum"
-            return {"t": "view", "title": title, "tab": tab,
-                    "route": {"view": "tab", "tab": tab}, "items": items,
-                    "catTabs": cat_tabs}
-        if tab == "favoriten":
-            # Eigene Favoriten (im Konfig-Editor unter "Favoriten" gepflegt):
-            # frei gewaehlte Bausteine, absichtlich UNABHAENGIG von Raum/
-            # Kategorie (kein _room_ok/_cat_ok) - genau die eigene Auswahl, in
-            # der gewaehlten Reihenfolge. Nur einzeln ausgeblendete Kacheln
-            # (_shown) und geloeschte Bausteine fallen raus. Ist fuer dieses
-            # Profil noch keine eigene Auswahl hinterlegt (favorites is None),
-            # zeigt der Tab wie bisher die in der Loxone-App markierten
-            # Favoriten (isFavorite), gefiltert auf die Raum-Whitelist des
-            # Panels.
-            fav = prof.get("favorites") if prof else None
-            if fav is not None:
-                uuids = [u for u in fav if u in self.controls and self._shown(u, prof)]
-            else:
-                uuids = [u for u, c in self.controls.items()
-                         if c.get("isFavorite") and self._room_ok(u, prof) and self._shown(u, prof)]
-            sr = self._spans_rooms(uuids)
-            items = [self._control_item(u, prof, show_room=sr) for u in uuids]
-            title = "Favoriten"
-        elif tab == "zentral":
-            uuids = [u for u, c in self.controls.items()
-                     if (c.get("type") or "").startswith("Central") and self._shown(u, prof)]
-            uuids = _apply_order(uuids, ((prof.get("tileOrder") or {}) if prof else {}).get("tab:zentral"))
-            items = [self._control_item(u, prof) for u in uuids]
-            title = "Zentral"
-        elif tab == "raeume":
-            rooms = [ru for ru in self.rooms_with if ar is None or ru in ar]
-            rooms = _apply_order(rooms, ((prof.get("tileOrder") or {}) if prof else {}).get("tab:raeume"))
-            items = [{"id": ru, "label": _clean(self.rooms[ru].get("name")), "icon": "folder",
-                      "iconUrl": self._icon_url(self.rooms[ru].get("image")),
-                      "on": False, "nav": {"view": "group", "kind": "room", "id": ru}}
-                     for ru in rooms]
-            title = "Räume"
-        else:
-            if ac is not None:
-                cats = [cu for cu in self.cats_with if cu in ac]
-            elif ar is not None:
-                present = {c.get("cat") for c in self.controls.values() if c.get("room") in ar}
-                cats = [cu for cu in self.cats_with if cu in present]
-            else:
-                cats = list(self.cats_with)
-            cats = _apply_order(cats, ((prof.get("tileOrder") or {}) if prof else {}).get("tab:kategorien"))
-            items = [{"id": cu, "label": _clean(self.cats[cu].get("name")), "icon": "folder",
-                      "iconUrl": self._icon_url(self.cats[cu].get("image")),
-                      "color": self._cat_color(cu),
-                      "on": False, "nav": {"view": "group", "kind": "cat", "id": cu}}
-                     for cu in cats]
-            title = "Kategorien"
-        return {"t": "view", "title": title, "tab": tab, "route": {"view": "tab", "tab": tab},
-                "items": items}
+        if _is_layout_tab(tab):
+            # Kachel-Raster (2x2 oder 3x3 je Seite) wie das Dashboard: Kacheln und
+            # Widgets. Raum-Tab: Raumname steht schon im Tab, nicht an jeder Kachel.
+            cells = self._tab_layout(tab, prof)
+            wd = self._widgets_data(cells, prof, show_room=not tab.startswith("room:"))
+            g = _grid((((prof or {}).get("layouts") or {}).get(tab) or {}).get("grid"), (prof or {}).get("grid", 3))
+            return {"t": "view", "layout": "cells", "grid": g, "title": self._tab_title(tab, prof), "tab": tab,
+                    "route": {"view": "tab", "tab": tab}, "cells": cells, "wd": wd,
+                    "items": list(wd["tiles"].values())}
+        return {"t": "view", "title": "", "tab": tab, "route": {"view": "tab", "tab": tab}, "items": []}
 
     def _view_group(self, route: dict, prof: dict | None = None) -> dict:
         kind, gid = route.get("kind"), route.get("id")
@@ -3222,6 +4130,9 @@ class App:
             uuids = [m.get("uuid") for m in members
                      if m.get("uuid") in self.controls and self._shown(m.get("uuid"), prof)]
             title = _clean(c.get("name")); tab = "zentral"
+            cv = self._central_view(gid, c, uuids, prof, route)
+            if cv:
+                return cv
             if c.get("type") == "CentralAudioZone":
                 layout = "list"
         else:
@@ -3244,8 +4155,11 @@ class App:
         # ist bei vielen Setups leer, dies ist der zuverlaessige Weg. Der
         # Abspiel-Index (`play`) beruecksichtigt, dass Musikserver per `slot` und
         # Sonn per Item-`id` adressiert (siehe AudioEventClient._apply_favs).
+        # Nur wenn der Kanal die Favoriten auch liefern darf: ein gekoppelter
+        # Audioserver ohne geglueckte Anmeldung schickt keine (dieselbe Bedingung
+        # wie beim Anfordern in prime_favs) -> dann die des Miniservers.
         _cl, _pid = self._audio_client_for(c) if c.get("type") in ("AudioZone", "AudioZoneV2") else (None, None)
-        if _cl is not None and _pid is not None:
+        if _cl is not None and _pid is not None and (not _cl.paired or _cl.authed):
             favs = _cl.favs.get(_pid, [])
             items = [{"label": f["name"],
                       "cmd": {"uuid": ua, "cmd": f"roomfav/play/{f.get('play', f['slot'])}"},
@@ -3292,6 +4206,284 @@ class App:
             blocks.append({"k": "status", "text": sub})
         return {"t": "view", "title": _clean(c.get("name")),
                 "route": {"view": "control", "id": uuid}, "blocks": blocks}
+
+    @staticmethod
+    def _stat_months(t0: int, t1: int) -> list[str]:
+        """Monatsschluessel JJJJMM, die das Fenster [t0, t1] (Wanduhr-Sekunden) beruehrt."""
+        a = datetime(1970, 1, 1) + timedelta(seconds=t0)
+        b = datetime(1970, 1, 1) + timedelta(seconds=t1)
+        y, m, out = a.year, a.month, []
+        while (y, m) <= (b.year, b.month):
+            out.append(f"{y:04d}{m:02d}")
+            y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+        return out
+
+    @staticmethod
+    def _stat_edges(rng: str, t1: int) -> list[int]:
+        """Abschnittsgrenzen der Verbrauchsbalken: bei 24 h je volle Stunde, sonst
+        je Tag ab Mitternacht. Der letzte Abschnitt laeuft bis jetzt."""
+        if rng == "24h":
+            step, n = 3600, 24
+        else:
+            step, n = 86400, STAT_RANGES[rng][1] // 86400
+        start = t1 - t1 % step - (n - 1) * step
+        return [start + k * step for k in range(n)] + [t1 + 1]
+
+    def _stat_rows(self, ua: str, t0: int, t1: int) -> tuple[list, bool, bool]:
+        """Zeilen im Fenster aus stat_cache, vorneweg der letzte Stand davor (falls
+        bekannt). Fehlende oder noch wachsende Monate werden im Hintergrund
+        nachgeladen. -> (zeilen, laedt_noch, abruffehler)"""
+        allrows, loading, error = [], False, False
+        now = time.monotonic()
+        for ym in self._stat_months(t0, t1):
+            key = (ua, ym)
+            ent = self.stat_cache.get(key)
+            if ent is None:
+                want = True
+            elif ent[2] is None:
+                want = now - ent[0] >= STAT_RETRY
+            else:
+                want = ent[1] <= ym and now - ent[0] >= STAT_REFRESH
+            if want and key not in self.stat_pending:
+                self.stat_pending.add(key)
+                self._spawn(self._stat_load(ua, ym))
+            if ent is None:
+                loading = True
+            elif ent[2] is None:
+                error = True
+            else:
+                allrows.extend(ent[2])
+        allrows.sort(key=lambda r: r[0])
+        before = [r for r in allrows if r[0] < t0]
+        return ([before[-1]] if before else []) + [r for r in allrows if t0 <= r[0] <= t1], loading, error
+
+    def _stat2_rows(self, ua: str, gid: str, out: str, rng: str, t0: int, t1: int) -> tuple[list, bool, bool]:
+        """Wie _stat_rows, fuer einen statisticV2-Ausgang: Zeilen im Fenster, vorneweg
+        der letzte Stand davor; fehlend oder aelter als STAT_REFRESH -> im
+        Hintergrund neu holen. -> (zeilen, laedt_noch, abruffehler)"""
+        key = (ua, gid, out, rng)
+        ent = self.stat2_cache.get(key)
+        age = time.monotonic() - ent[0] if ent else 0.0
+        if ent is None or age >= (STAT_RETRY if ent[1] is None else STAT_REFRESH):
+            if key not in self.stat_pending:
+                self.stat_pending.add(key)
+                self._spawn(self._stat2_load(key, ua, gid, out, STAT_RANGES[rng][1]))
+        if ent is None:
+            return [], True, False
+        if ent[1] is None:
+            return [], False, True
+        before = [r for r in ent[1] if r[0] < t0]
+        return ([before[-1]] if before else []) + [r for r in ent[1] if t0 <= r[0] <= t1], False, False
+
+    @staticmethod
+    def _stat_series_defs(c: dict) -> list:
+        """Alle aufgezeichneten Reihen eines Bausteins als (name, art, stellen,
+        einheit, quelle). `statistic`: je Ausgang, Art aus visuType, Quelle
+        ("v1", index in der Monatsdatei). `statisticV2`: je Datenpunkt einer
+        Gruppe, `accumulated` = Zaehlerstand, Quelle ("v2", gruppe, ausgang).
+        Gleiche Titel in einer Gruppe (Netz: zweimal "Zaehlerstand") bekommen
+        den Ausgangsnamen dazu."""
+        defs = []
+        for i, o in enumerate((c.get("statistic") or {}).get("outputs") or []):
+            if isinstance(o, dict):
+                dec, unit = _stat_fmt(o.get("format"))
+                defs.append((_clean(o.get("name")) or f"Wert {i + 1}",
+                             STAT_KIND.get(o.get("visuType"), "line"), dec, unit, ("v1", i)))
+        for g in (c.get("statisticV2") or {}).get("groups") or []:
+            if not isinstance(g, dict):
+                continue
+            dps = [d for d in (g.get("dataPoints") or []) if isinstance(d, dict) and d.get("output")]
+            titles = [d.get("title") for d in dps]
+            for d in dps:
+                dec, unit = _stat_fmt(d.get("format"))
+                name = _clean(d.get("title")) or d["output"]
+                if titles.count(d.get("title")) > 1:
+                    name = f"{name} · {d['output']}"
+                defs.append((name, "counter" if g.get("accumulated") else "line", dec, unit,
+                             ("v2", str(g.get("id")), str(d["output"]))))
+        return defs
+
+    def _stat_blocks(self, c: dict, rng: str) -> list:
+        """Diagramm-Bloecke fuer einen Baustein mit `statistic` oder `statisticV2`.
+        Reihen gleicher Art und Einheit teilen sich ein Diagramm (zwei Grillfuehler,
+        Netz-Bezug und -Einspeisung), sonst je eines (Zaehler: Leistung als Linie,
+        Verbrauch als Balken)."""
+        defs = self._stat_series_defs(c)
+        ua = c.get("uuidAction")
+        if not (ua and defs):
+            return []
+        now = calendar.timegm(datetime.now().timetuple())
+        t1 = now - now % 60                    # Fenster rueckt je Minute vor
+        mkey = (ua, rng, t1, self.stat_gen)
+        if mkey in self.stat_memo:
+            return self.stat_memo[mkey]
+        t0 = t1 - STAT_RANGES[rng][1]
+        v1 = None                              # Monatsdateien: eine Abfrage fuer alle Ausgaenge
+        groups: dict[tuple[str, str], list] = {}
+        for d in defs:
+            groups.setdefault((d[1], d[3]), []).append(d)
+        blocks = []
+        for kind, unit in groups:
+            edges = self._stat_edges(rng, t1) if kind == "counter" else None
+            series, any_rows, loading, error = [], False, False, False
+            for name, _kind, dec, _unit, src in groups[(kind, unit)]:
+                if src[0] == "v1":
+                    if v1 is None:
+                        v1 = self._stat_rows(ua, t0, t1)
+                    rows, ld, er = v1
+                    i = src[1]
+                    pts = [(r[0], r[1][i]) for r in rows if i < len(r[1]) and r[1][i] is not None]
+                else:
+                    rows, ld, er = self._stat2_rows(ua, src[1], src[2], rng, t0, t1)
+                    pts = [(r[0], r[1][0]) for r in rows if r[1] and r[1][0] is not None]
+                any_rows, loading, error = any_rows or bool(rows), loading or ld, error or er
+                if kind == "counter":
+                    pts = _stat_bars(pts, edges)
+                else:
+                    if pts and pts[0][0] < t0:
+                        pts[0] = (t0, pts[0][1])   # letzter Stand vor dem Fenster = Startwert
+                    pts = _stat_thin(pts, t0, t1, STAT_MAX_POINTS, kind == "digital")
+                series.append({"name": name, "dec": dec,
+                               "pts": [[int(t), round(v, dec + 2)] for t, v in pts]})
+            has = any_rows if kind == "counter" else any(s["pts"] for s in series)
+            blk = {"k": "chart", "kind": kind, "unit": unit, "series": series,
+                   "t0": edges[0] if edges else t0, "t1": t1,
+                   "state": "ok" if has else ("loading" if loading else ("error" if error else "empty"))}
+            if not blocks:                     # Zeitraum-Wahl nur am ersten Diagramm der Seite
+                blk.update(range=rng, ranges=[[k, v[0]] for k, v in STAT_RANGES.items()])
+            blocks.append(blk)
+        if len(self.stat_memo) > 64:
+            self.stat_memo = {}
+        self.stat_memo[mkey] = blocks
+        return blocks
+
+    def chart_blocks(self, uuid: str, rng: str | None = None) -> dict | None:
+        """Inhalt der Verlaufs-Pane im Split-Layout (panes "chart:<uuid>"): Name,
+        aktueller Wert wie auf der Detailseite und die Diagramme aus
+        _stat_blocks (dieselben Abrufe, Caches und Zustaende). None, wenn der
+        Baustein fehlt oder nichts aufzeichnet."""
+        c = self.controls.get(uuid)
+        if not c or not (c.get("statistic") or c.get("statisticV2")):
+            return None
+        rng = rng if rng in STAT_RANGES else STAT_DEFAULT_RANGE
+        v = self._view_control_inner(uuid)
+        big = next((b.get("text") or "" for b in v.get("blocks") or [] if b.get("k") == "big"), "")
+        return {"control": uuid, "name": _clean(c.get("name")), "value": big,
+                "range": rng, "blocks": self._stat_blocks(c, rng)}
+
+    def _stat_primary(self, c: dict) -> tuple | None:
+        """Die Reihe, die eine Kachel zeigt: die erste Linie, sonst die erste Reihe."""
+        defs = self._stat_series_defs(c)
+        return next((d for d in defs if d[1] == "line"), defs[0] if defs else None)
+
+    def _stat_raw(self, c: dict, d: tuple, rng: str, t0: int, t1: int) -> tuple[list, bool, bool]:
+        """Rohpunkte einer Reihe im Fenster, vorneweg der letzte Stand davor, aus
+        denselben Caches wie die Diagramme. -> (punkte, laedt_noch, abruffehler)"""
+        ua, src = c.get("uuidAction"), d[4]
+        if src[0] == "v1":
+            rows, ld, er = self._stat_rows(ua, t0, t1)
+            i = src[1]
+            return [(r[0], r[1][i]) for r in rows if i < len(r[1]) and r[1][i] is not None], ld, er
+        rows, ld, er = self._stat2_rows(ua, src[1], src[2], rng, t0, t1)
+        return [(r[0], r[1][0]) for r in rows if r[1] and r[1][0] is not None], ld, er
+
+    @staticmethod
+    def _stat_dur(sec: float) -> str:
+        """Dauer als "3 h 20 min" bzw. "40 min"."""
+        h, m = int(sec // 3600), int(round(sec % 3600 / 60))
+        if m == 60:
+            h, m = h + 1, 0
+        return f"{h} h" + (f" {m} min" if m else "") if h else f"{m} min"
+
+    def _stat_spark(self, c: dict, rng: str, style: str = "trend") -> dict | None:
+        """Mini-Verlauf fuer eine Kachel (tiles.<uuid>.chart/.chartStyle).
+
+        trend    Verlauf im gewaehlten Zeitraum: Linie mit Tiefst-/Hoechstwert,
+                 Digitalwert als Stufen, Zaehlerstand als Verbrauchsbalken.
+        pattern  Tagesmuster: 7 Tage x 24 Stunden, je Stunde der zeitgewichtete
+                 Mittelwert (Digital: Ein-Anteil, Zaehler: Verbrauch der Stunde).
+        span     Tagesspanne (nur Linien): je Tag Tiefst-, Hoechst- und Mittelwert.
+
+        `badge` ist die kurze Angabe im Kopf der Kachel; die Visu zeigt sie nur an."""
+        d = self._stat_primary(c)
+        ua = c.get("uuidAction")
+        if not (d and ua):
+            return None
+        name, kind, dec, unit, src = d
+        if style == "span" and kind != "line":
+            style = "trend"
+        now = calendar.timegm(datetime.now().timetuple())
+        t1 = now - now % 60
+        mkey = ("spark", ua, rng, style, t1, self.stat_gen)
+        if mkey in self.stat_memo:
+            return self.stat_memo[mkey]
+        fmt = f"%.{dec}f{unit}"
+        out: dict | None = None
+        if style == "trend":
+            blocks = self._stat_blocks(c, rng)
+            b = next((x for x in blocks if x.get("kind") == kind and x.get("unit") == unit), None)
+            if b is None:
+                return None
+            se = next((x for x in b.get("series") or [] if x.get("name") == name), (b.get("series") or [{}])[0])
+            full = [tuple(p) for p in se.get("pts") or []]
+            out = {"style": "trend", "kind": kind, "state": b.get("state"), "t0": b.get("t0"),
+                   "t1": b.get("t1"), "dec": dec}
+            if kind == "counter":
+                out["pts"] = [list(p) for p in full]
+                if full:
+                    out["badge"] = "Σ " + self._fmt_num(sum(v for _, v in full), fmt)
+            else:
+                out["pts"] = [[int(t), round(v, dec + 2)]
+                              for t, v in _stat_thin(full, b["t0"], b["t1"], 48, kind == "digital")]
+                if full and kind == "line":
+                    lo, hi = min(full, key=lambda p: p[1]), max(full, key=lambda p: p[1])
+                    out["lo"], out["hi"] = [int(lo[0]), lo[1]], [int(hi[0]), hi[1]]
+                    ago = [v for t, v in full if t <= t1 - 86400]
+                    if ago:
+                        delta = full[-1][1] - ago[-1]
+                        step = 10 ** -dec / 2
+                        arrow = "▲" if delta >= step else ("▼" if delta <= -step else "=")
+                        out["badge"] = f"{arrow} {self._fmt_num(abs(delta), fmt)} in 24 h"
+                elif full:
+                    t0 = b["t0"]
+                    raw, _ld, _er = self._stat_raw(c, d, rng, t0, t1)
+                    share = _stat_buckets(raw, [t0, t1], t1)[0]
+                    if share is not None:
+                        out["badge"] = "Ein " + self._stat_dur(share * (t1 - t0))
+        else:
+            start = t1 - t1 % 86400 - 6 * 86400        # Mitternacht vor 6 Tagen
+            raw, loading, error = self._stat_raw(c, d, "7d", start, t1)
+            days = [STAT_WEEKDAYS[((start // 86400) + i + 3) % 7] for i in range(7)]   # 1.1.1970 = Do
+            state = "ok" if raw else ("loading" if loading else ("error" if error else "empty"))
+            out = {"style": style, "kind": kind, "state": state, "dec": dec, "days": days}
+            if style == "pattern":
+                edges = [start + h * 3600 for h in range(7 * 24 + 1)]
+                if kind == "counter":
+                    cells = [None if a >= t1 else v for (a, v) in _stat_bars(raw, edges)]
+                else:
+                    cells = _stat_buckets(raw, edges, t1)
+                out["cells"] = [None if v is None else round(v, dec + 2) for v in cells]
+                vals = [v for v in cells if v is not None]
+                if vals and kind == "counter":
+                    out["badge"] = "7 Tage · Σ " + self._fmt_num(sum(vals), fmt)
+                elif vals and kind == "line":
+                    out["badge"] = "7 Tage · max " + self._fmt_num(max(vals), fmt)
+                elif vals:
+                    out["badge"] = "7 Tage"
+            else:
+                edges = [start + i * 86400 for i in range(8)]
+                rngs = _stat_day_range(raw, edges, t1)
+                avgs = _stat_buckets(raw, edges, t1)
+                out["spans"] = [None if r is None else [round(r[0], dec + 2), round(r[1], dec + 2),
+                                                        None if a is None else round(a, dec + 2)]
+                                for r, a in zip(rngs, avgs)]
+                if rngs[-1] is not None:
+                    lo, hi = rngs[-1]
+                    out["badge"] = "heute " + self._fmt_num(lo, f"%.{dec}f") + "–" + self._fmt_num(hi, fmt)
+        if len(self.stat_memo) > 64:
+            self.stat_memo = {}
+        self.stat_memo[mkey] = out
+        return out
 
     def _irrigation_zone_name(self, c: dict) -> str:
         """Name der aktuellen Bewaesserungszone (currentZone = Index oder Id
@@ -3406,11 +4598,376 @@ class App:
                 "sw": sz.get("width") or 1300, "sh": sz.get("height") or 866,
                 "items": items}
 
-    def _view_control(self, uuid: str) -> dict:
-        v = self._view_control_inner(uuid)
-        if self.controls.get(uuid, {}).get("isSecured"):
-            v["secured"] = True   # Client fragt vor Befehlen die Visu-PIN ab
+    @staticmethod
+    def _audio_view(v: dict, c: dict) -> dict:
+        """Audio-Seiten nach dem Entwurf: Cover transparent im Hintergrund,
+        Titel mittig, Lautstaerke als schmaler Balken rechts (+ ueber, - unter),
+        unten Transport + klein "Quellen"."""
+        if c.get("type") not in ("AudioZone", "AudioZoneV2") or not isinstance(v.get("blocks"), list):
+            return v
+        out, vol, more = [], None, None
+        for b in v["blocks"]:
+            k = b.get("k")
+            if k == "cover":
+                v["bgCover"] = b.get("src")
+            elif k == "hero":
+                continue
+            elif k == "slider":
+                vol = b
+            elif k == "more":
+                more = b.get("route")
+            else:
+                out.append(b)
+        title = next((b for b in out if b.get("k") == "title"), None)
+        rows = [b for b in out if b.get("k") == "row"]
+        rest = [b for b in out if b.get("k") not in ("title", "row")]
+        mid = {"k": "audiomid", "title": (title or {}).get("text", ""), "sub": (title or {}).get("sub", "")}
+        if vol:
+            mid["vol"] = {"value": vol.get("value", 0), "min": vol.get("min", 0), "max": vol.get("max", 100),
+                          "cmd": vol.get("cmd")}
+        if rows and more:
+            rows[-1]["cells"] = rows[-1]["cells"] + [{"label": "Quellen ›", "nav": more, "minor": True}]
+        v["blocks"] = rest + [mid] + rows
+        v["anchor"] = "bottom"
         return v
+
+    def _alarm_edit_view(self, uuid: str, eid: str) -> dict:
+        """Wecker-Eintrag bearbeiten: Uhrzeit (+/- ueber/unter Stunde und Minute),
+        Wochentage, An/Aus, Speichern. Wochentage = Betriebsarten der Anlage
+        (operatingModes) mit Wochentag-Namen."""
+        c = self.controls.get(uuid, {})
+        e = next((x for x in self._alarm_entries(c) if x["id"] == str(eid)), None)
+        if not e:
+            return self._view_control(uuid)
+        order = ["montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag"]
+        wd = {}
+        for mid, nm in (self.op_modes or {}).items():
+            n = str(nm).strip().lower()
+            if n in order:
+                wd[n] = str(mid)
+        days = [{"k": self._WD_ABBR[n], "mode": wd.get(n, ""), "on": e["daily"] or (wd.get(n, "") in e["modes"])}
+                for n in order]
+        return {"t": "view", "title": e["name"], "anchor": "bottom",
+                "route": {"view": "control", "id": uuid, "entry": str(eid)},
+                "blocks": [{"k": "dhead", "room": _clean(c.get("name")), "name": e["name"]},
+                           {"k": "alarmedit", "uuid": c.get("uuidAction"), "eid": str(eid), "name": e["name"],
+                            "secs": e["secs"], "active": e["active"], "days": days,
+                            "other": [m for m in e["modes"] if m not in wd.values()]}]}
+
+    def _view_control(self, uuid: str, rng: str | None = None, chart: bool = False) -> dict:
+        c = self.controls.get(uuid, {})
+        if chart and (c.get("statistic") or c.get("statisticV2")):
+            # Eigene Verlaufs-Seite (aus der Aktionsreihe der Detailseite geoeffnet)
+            cb = self.chart_blocks(uuid, rng) or {}
+            blocks = ([{"k": "status", "text": cb["value"]}] if cb.get("value") else []) + (cb.get("blocks") or [])
+            return self._with_head({"t": "view", "title": _clean(c.get("name")),
+                    "route": {"view": "control", "id": uuid, "chart": 1, "range": cb.get("range") or STAT_DEFAULT_RANGE},
+                    "blocks": blocks}, c)
+        v = self._audio_view(self._std_view(self._view_control_inner(uuid)), c)
+        if c.get("isSecured"):
+            v["secured"] = True   # Client fragt vor Befehlen die Visu-PIN ab
+        # Verlaufs-Diagramme unter die Detailseite haengen, wenn der Baustein eine
+        # Aufzeichnung hat. Nur bei Block-Seiten; die Route traegt dann den Zeitraum.
+        if (c.get("statistic") or c.get("statisticV2")) and isinstance(v.get("blocks"), list):
+            rng = rng if rng in STAT_RANGES else STAT_DEFAULT_RANGE
+            charts = self._stat_blocks(c, rng)
+            if charts:
+                # Verlauf NIE unter dem Wert, sondern immer eine Ebene tiefer:
+                # Knopf in der Aktionsreihe (letzte Zeile) -> eigene Seite. Seiten
+                # ohne Aktionsreihe (reine Anzeige) bekommen eine mit nur diesem
+                # Knopf; der Wert steht dann gross in der Mitte darueber.
+                btn = {"icon": "chart", "nav": {"view": "control", "id": uuid, "chart": 1}}
+                rows = [b for b in v["blocks"] if b.get("k") == "row" and b.get("act")]
+                if rows:
+                    rows[-1]["cells"] = rows[-1]["cells"] + [btn]
+                else:
+                    v["blocks"] = v["blocks"] + [{"k": "row", "act": True, "cells": [btn]}]
+                    v["anchor"] = "bottom"
+        return self._with_head(v, c)
+
+    # Bloecke, die eine Seite zum "Spezialbaustein" machen (Bedienung/Medien)
+    _SPECIAL_KINDS = {"dim", "scenes", "shade", "title", "alarmlist", "video", "favs",
+                      "cover", "eflow", "slider", "chart", "web", "state", "audiomid",
+                      "log", "kpis", "alarmedit"}
+
+    def _with_head(self, v: dict, c: dict) -> dict:
+        """Kopf jeder Detailseite: Raum + Bausteinname oben, kein Symbol-Kreis.
+        Reine Anzeigen (nur Wert/Status, hoechstens der Verlaufs-Knopf) bekommen
+        stattdessen ihr Piktogramm uebergross im Hintergrund (v["bgIcon"])."""
+        blocks = v.get("blocks") if isinstance(v, dict) else None
+        if not isinstance(blocks, list):
+            return v
+        hero = next((b for b in blocks if b.get("k") == "hero"), None)
+        blocks = [b for b in blocks if b.get("k") not in ("hero", "dhead")]
+        kinds = {b.get("k") for b in blocks}
+        rows = [b for b in blocks if b.get("k") == "row"]
+        simple = not (kinds & self._SPECIAL_KINDS) and all(
+            all(cell.get("nav") for cell in (r.get("cells") or [])) for r in rows)
+        if simple and hero:
+            v["bgIcon"] = {k: hero[k] for k in ("icon", "iconUrl", "iconImg") if hero.get(k)}
+        room = _clean((self.rooms.get(c.get("room")) or {}).get("name"))
+        blocks.insert(0, {"k": "dhead", "room": room, "name": _clean(c.get("name"))})
+        v["blocks"] = blocks
+        v["anchor"] = "bottom"   # Kopf immer oben, Wert mittig, Aktionsreihe unten
+        return v
+
+    # Kurze Beschriftungen fuer die Aktionsreihe (Platz auf 480 px).
+    _ACT_SHORT = {"Einschalten": "Ein", "Ausschalten": "Aus", "Automatik": "Auto",
+                  "Ganz Auf": "Ganz auf", "Ganz Ab": "Ganz ab"}
+
+    @classmethod
+    def _std_view(cls, v: dict) -> dict:
+        """Mockup-Standards fuer JEDE Detailseite an einer Stelle durchsetzen,
+        statt sie in jedem Baustein-Zweig einzeln nachzuziehen:
+          * Zustandstext ("value") wird zur grossen Zahl/zum grossen Wort, wenn
+            die Seite noch keinen grossen Wert hat.
+          * Grosser Wert + Schieberegler -> Regler-Flaeche wie beim Dimmer
+            (Ziehen stellt ein, grosse Zahl darin). Nicht bei Audio (Titel).
+          * Knopf-Zeilen -> Aktionsreihe (runde Icon-Knoepfe, Text als Pille),
+            lange Beschriftungen gekuerzt. Aufklapp- und Umbruch-Zeilen
+            (Farbvorwahl, Wochentage) bleiben wie sie sind.
+        Der Verlauf wandert dadurch automatisch auf eine eigene Seite (siehe
+        _view_control)."""
+        blocks = v.get("blocks") if isinstance(v, dict) else None
+        if not isinstance(blocks, list):
+            return v
+        kinds = {b.get("k") for b in blocks}
+        has_big = bool(kinds & {"big", "dim", "shade", "scenes", "state", "audiomid", "alarmedit", "log"})
+        out = []
+        for b in blocks:
+            if b.get("k") == "value" and not has_big:
+                b = {"k": "big", "text": b.get("text", "")}
+                has_big = True
+            elif b.get("k") == "astat" and not has_big:
+                # Status-Wert (Wecker, Schaltuhr) ebenfalls gross, Zusatz darunter
+                nb = {"k": "big", "text": b.get("text", "")}
+                if b.get("tone"):
+                    nb["tone"] = b["tone"]
+                out.append(nb)
+                has_big = True
+                if b.get("sub"):
+                    out.append({"k": "status", "text": b["sub"]})
+                continue
+            out.append(b)
+        # grosser Wert + Schieberegler -> Regler-Flaeche
+        if "title" not in kinds and "dim" not in kinds:
+            bi = next((i for i, b in enumerate(out) if b.get("k") == "big"), None)
+            si = next((i for i, b in enumerate(out) if b.get("k") == "slider"
+                       and isinstance((b.get("cmd") or {}).get("tmpl"), str)), None)
+            if bi is not None and si is not None:
+                bt, sl = str(out[bi].get("text") or ""), out[si]
+                m = re.match(r"^\s*[-−]?\d+(?:[.,]\d+)?(.*)$", bt)
+                unit = m.group(1) if m else " %"
+                try:
+                    dim = {"k": "dim", "value": float(sl.get("value") or 0),
+                           "min": float(sl.get("min") or 0), "max": float(sl.get("max") if sl.get("max") is not None else 100),
+                           "step": float(sl.get("step") or 1), "unit": unit, "cmd": sl["cmd"]}
+                    if dim["step"] >= 1:
+                        dim.update(value=round(dim["value"]), min=round(dim["min"]), max=round(dim["max"]), step=round(dim["step"]))
+                    out[bi] = dim
+                    out = [b for i, b in enumerate(out) if i != si and b.get("k") != "hero"]
+                    v["anchor"] = "bottom"
+                except (TypeError, ValueError):
+                    pass
+        # Statuszeile, die nur den grossen Wert wiederholt, entfaellt
+        bigt = {str(b.get("text") or "").strip().lower() for b in out if b.get("k") == "big"}
+        out = [b for b in out if not (b.get("k") == "status" and str(b.get("text") or "").strip().lower() in bigt)]
+        for b in out:
+            # Umbruch-Zeilen mit bis zu 4 Knoepfen (z.B. Timer 15/30/60/90 min)
+            # passen ebenfalls in die Aktionsreihe; laengere (Farbvorwahl) nicht.
+            if b.get("k") == "row" and b.get("wrap") and len(b.get("cells") or []) <= 4:
+                b.pop("wrap")
+            if b.get("k") == "row" and not b.get("wrap") and not b.get("hidden") and not b.get("id"):
+                b["act"] = True
+                for c in b.get("cells") or []:
+                    if c.get("label") in cls._ACT_SHORT:
+                        c["label"] = cls._ACT_SHORT[c["label"]]
+        v["blocks"] = out
+        return v
+
+    # Sammelaktionen der Zentralbausteine: je Mitglied ein bekannter Einzelbefehl
+    _CENTRAL_ACT = {"lightoff": {"LightControllerV2": "changeTo/778"},
+                    "up": {"Jalousie": "FullUp"}, "down": {"Jalousie": "FullDown"},
+                    "shade": {"Jalousie": "shade"},
+                    "arm": {"Alarm": "on"},
+                    "pause": {"AudioZone": "pause", "AudioZoneV2": "pause"}}
+
+    def _central_view(self, gid: str, c: dict, uuids: list, prof, route: dict) -> dict | None:
+        """Zentralbaustein als Seite: Zusammenfassung gross, Mitglieder als
+        Kacheln (antippen = Mitglied oeffnen), Sammelaktion(en) unten."""
+        t = c.get("type")
+        items, on = [], 0
+        its = [self._control_item(u, prof, show_room=True) for u in uuids]
+        rooms = [it.get("room") or "" for it in its]
+        by_room = all(rooms) and len(set(rooms)) == len(rooms)   # Raum nur, wenn eindeutig
+        for u, it in zip(uuids, its):
+            lbl = (it.get("room") if by_room else it.get("label")) or it.get("label") or ""
+            items.append({"id": u, "label": lbl, "sub": it.get("sublabel") or "", "on": bool(it.get("on")),
+                          "icon": it.get("icon") or "info", "nav": {"view": "control", "id": u}})
+            on += 1 if it.get("on") else 0
+        cells = []
+        if t == "CentralLightController":
+            summary = f"{on} Räume an" if on != 1 else "1 Raum an"
+            cells = [{"label": "Alle aus", "cmd": {"uuid": gid, "cmd": "__central/lightoff"}}]
+        elif t == "CentralJalousie":
+            opn = sum(1 for u in uuids if (self._state(self.controls[u], "position") or 0) < 0.02)
+            summary = ("Alle offen" if opn == len(uuids) else
+                       ("Alle zu" if opn == 0 else f"{opn} von {len(uuids)} offen"))
+            cells = [{"label": "Alle auf", "cmd": {"uuid": gid, "cmd": "__central/up"}},
+                     {"label": "Beschatten", "cmd": {"uuid": gid, "cmd": "__central/shade"}},
+                     {"label": "Alle zu", "cmd": {"uuid": gid, "cmd": "__central/down"}}]
+        elif t == "CentralAlarm":
+            summary = f"{on} von {len(uuids)} scharf" if uuids else "Keine Anlagen"
+            cells = [{"label": "Alle scharf", "cmd": {"uuid": gid, "cmd": "__central/arm"}}]
+        elif t == "CentralAudioZone":
+            summary = f"Spielt in {on} Räumen" if on != 1 else "Spielt in 1 Raum"
+            cells = [{"label": "Alle Pause", "cmd": {"uuid": gid, "cmd": "__central/pause"}}]
+        else:
+            return None
+        blocks = [{"k": "dhead", "room": "Zentral", "name": _clean(c.get("name"))},
+                  {"k": "big", "text": summary}, {"k": "scenes", "items": items},
+                  {"k": "row", "act": True, "cells": cells}]
+        return {"t": "view", "title": _clean(c.get("name")), "tab": "zentral", "route": route,
+                "anchor": "bottom", "blocks": blocks}
+
+    async def _central_do(self, gid: str, action: str) -> None:
+        c = self.controls.get(gid) or {}
+        by_type = self._CENTRAL_ACT.get(action) or {}
+        for m in ((c.get("details") or {}).get("controls") or []):
+            mc = self.controls.get(m.get("uuid")) or {}
+            cmd = by_type.get(mc.get("type"))
+            if cmd and mc.get("uuidAction"):
+                await self.command(mc["uuidAction"], cmd)
+
+    # ---- Lichtszenen: Licht je Szene (lernend) --------------------------------
+    # Loxone liefert nur die Live-Werte der Leuchten, nicht die gespeicherten
+    # Werte jeder Szene. Deshalb: laeuft eine Szene 6 s unveraendert, wird ihr
+    # Licht einmal gemessen und gemerkt. Bis dahin Schaetzung aus dem Namen.
+    _SL_GUESS = ((("aus", "off"), 0, None),
+                 (("nacht", "night", "schlaf", "orientier"), 10, "#ff9a5a"),
+                 (("kino", "tv", "film", "fernseh"), 20, "#7a93ff"),
+                 (("abend", "gemütlich", "gemuetlich", "relax", "essen", "dinner", "kerze", "lounge"), 40, "#ffb45e"),
+                 (("morgen", "früh", "frueh", "aufsteh", "wach"), 60, "#ffd9a0"),
+                 (("party", "disco", "farb", "bunt"), 80, "#c070ff"),
+                 (("tag", "hell", "arbeit", "putz", "lesen", "voll", "kochen"), 100, "#fff4e0"))
+    _SL_WARM = (255, 226, 176)          # Farbe fuer Leuchten ohne Farbinfo (warmweiss)
+
+    @staticmethod
+    def _kelvin_rgb(k: float) -> tuple:
+        """Farbtemperatur (K) -> RGB (Naeherung nach Tanner Helland)."""
+        t = max(1000.0, min(40000.0, float(k))) / 100.0
+        r = 255.0 if t <= 66 else 329.698727446 * ((t - 60) ** -0.1332047592)
+        g = (99.4708025861 * math.log(t) - 161.1195681661) if t <= 66 else 288.1221695283 * ((t - 60) ** -0.0755148492)
+        b = 255.0 if t >= 66 else (0.0 if t <= 19 else 138.5177312231 * math.log(t - 10) - 305.0447927307)
+        return tuple(int(max(0, min(255, x))) for x in (r, g, b))
+
+    def _lc_light_now(self, c: dict) -> dict | None:
+        """Aktuelles Licht einer Lichtsteuerung aus ihren Leuchten:
+        b = mittlere Helligkeit aller Leuchten (0-100), c = nach Helligkeit
+        gewichtete Mischfarbe. None, wenn keine auswertbare Leuchte da ist."""
+        import colorsys
+        vals = []
+        for sc in (c.get("subControls") or {}).values():
+            t = sc.get("type")
+            if t in ("Dimmer", "EIBDimmer"):
+                try:
+                    pos = float(self._state(sc, "position") or 0)
+                    mx = float(self._state(sc, "max") or 100) or 100.0
+                except (TypeError, ValueError):
+                    continue
+                vals.append((max(0.0, min(100.0, pos / mx * 100)), self._SL_WARM))
+            elif t in ("Switch", "Pushbutton"):
+                vals.append((100.0 if self._state(sc, "active") else 0.0, self._SL_WARM))
+            elif t in ("Colorpicker", "ColorPickerV2"):
+                mode, a, bb, v = self._color_parse(self._state(sc, "color"))
+                if mode == "rgb":
+                    r, g, b = colorsys.hsv_to_rgb((a % 360) / 360.0, bb / 100.0, 1.0)
+                    vals.append((float(v), (int(r * 255), int(g * 255), int(b * 255))))
+                elif mode == "temp":
+                    vals.append((float(a), self._kelvin_rgb(bb)))
+        if not vals:
+            return None
+        bright = sum(v for v, _ in vals) / len(vals)
+        w = sum(v for v, _ in vals)
+        if w <= 0:
+            return {"b": 0, "c": None}
+        rgb = [round(sum(v * col[i] for v, col in vals) / w) for i in range(3)]
+        return {"b": round(bright), "c": "#%02x%02x%02x" % tuple(rgb)}
+
+    def _scene_guess(self, name: str) -> dict | None:
+        n = (name or "").strip().lower()
+        for keys, b, col in self._SL_GUESS:
+            if any(k in n for k in keys):
+                return {"b": b, "c": col}
+        return None
+
+    def _scene_light_learn(self, now: float) -> None:
+        for uuid, c in self.controls.items():
+            if c.get("type") != "LightControllerV2" or not c.get("subControls"):
+                continue
+            cu = self._with_uuid(uuid)
+            off = LIGHT._off_ids(cu, self.states)
+            act = [m for m in LIGHT.active_moods(cu, self.states) if m not in off]
+            if len(act) != 1:                    # aus oder mehrere Szenen gemischt
+                self._sl_seen.pop(uuid, None)
+                continue
+            seen = self._sl_seen.get(uuid)
+            if not seen or seen[0] != act[0]:
+                self._sl_seen[uuid] = [act[0], now, False]
+                continue
+            if seen[2] or now - seen[1] < 6:     # einmal je Einschalten, nach 6 s
+                continue
+            seen[2] = True
+            val = self._lc_light_now(c)
+            if not val:
+                continue
+            store = self.scene_light.setdefault(uuid, {})
+            if store.get(str(act[0])) != val:
+                store[str(act[0])] = val
+                self._sl_dirty = True
+        if self._sl_dirty and now - self._sl_saved > 30:
+            self._sl_dirty, self._sl_saved = False, now
+            try:
+                _atomic_write(SCENE_LIGHT_FILE, json.dumps(self.scene_light, ensure_ascii=False))
+            except Exception:
+                log.exception("Szenen-Licht nicht gespeichert")
+
+    def _scene_light(self, uuid: str, c: dict, mood: dict, active: list, off: set) -> dict | None:
+        """Licht einer Szene fuers Piktogramm: live (aktiv), gelernt, geschaetzt."""
+        mid = mood.get("id")
+        if mid in off:
+            return {"b": 0, "c": None, "k": "live"}
+        if mid in active and len([m for m in active if m not in off]) == 1:
+            val = self._lc_light_now(c)
+            if val:
+                return {**val, "k": "live"}
+        val = (self.scene_light.get(uuid) or {}).get(str(mid))
+        if val:
+            return {**val, "k": "learned"}
+        g = self._scene_guess(mood.get("name"))
+        return {**g, "k": "guess"} if g else None
+
+    def _dim_subs(self, c: dict) -> list:
+        """Dimmbare Leuchten (Dimmer) einer Lichtsteuerung."""
+        return [sc for sc in (c.get("subControls") or {}).values()
+                if sc.get("type") in ("Dimmer", "EIBDimmer") and sc.get("uuidAction")]
+
+    async def _dim_all(self, ua: str, delta: int) -> None:
+        """Alle Dimmer einer Lichtsteuerung gemeinsam heller/dunkler (Aktionsreihe
+        der Lichtszenen). Ausgeschaltete Leuchten bleiben beim Dunklerstellen aus;
+        beim Hellerstellen starten sie bei delta %."""
+        c = next((x for x in self.controls.values() if x.get("uuidAction") == ua), None)
+        if not c:
+            return
+        for sc in self._dim_subs(c):
+            try:
+                pos = float(self._state(sc, "position") or 0)
+            except (TypeError, ValueError):
+                pos = 0.0
+            if pos <= 0 and delta < 0:
+                continue
+            new = max(0, min(100, round((pos + delta) / 10) * 10))
+            await self.command(sc["uuidAction"], str(new))
 
     def _view_control_inner(self, uuid: str) -> dict:
         """Duenner Wrapper um _view_control_body: haengt die Kategoriefarbe
@@ -3433,13 +4990,33 @@ class App:
         if t == "LightControllerV2":
             cu = self._with_uuid(uuid)
             active = LIGHT.active_moods(cu, self.states)
+            _off = LIGHT._off_ids(cu, self.states)
             items = [{"id": f"{uuid}:{m.get('id')}", "label": m.get("name", str(m.get("id"))),
                       "on": m.get("id") in active, "icon": "mood",
+                      "light": self._scene_light(uuid, c, m, active, _off),   # Szenen-Licht (Option am Panel)
                       "cmd": {"uuid": c.get("uuidAction"), "cmd": f"changeTo/{m.get('id')}"}}
                      for m in LIGHT.moods(cu, self.states)]
             r = LIGHT.render(cu, self.states)
+            # Aktionsreihe nur mit dem, was der Baustein kann: "Aus" (es gibt eine
+            # Aus-Szene) und heller/dunkler (es gibt dimmbare Leuchten; setzt alle
+            # gemeinsam um 10 %, siehe command() "__dimall").
+            off_ids = LIGHT._off_ids(cu, self.states)
+            cells = []
+            if any(m.get("id") in off_ids for m in LIGHT.moods(cu, self.states)) or 778 in off_ids:
+                off_id = next((m.get("id") for m in LIGHT.moods(cu, self.states) if m.get("id") in off_ids), 778)
+                cells.append({"icon": "power", "plain": True,
+                              "cmd": {"uuid": c.get("uuidAction"), "cmd": f"changeTo/{off_id}"}})
+            if self._dim_subs(c):
+                cells += [{"icon": "minus", "cmd": {"uuid": c.get("uuidAction"), "cmd": "__dimall/-10"}},
+                          {"icon": "plus", "cmd": {"uuid": c.get("uuidAction"), "cmd": "__dimall/10"}}]
+            # Aus-Szene steht schon in der Aktionsreihe -> nicht doppelt als Kachel
+            scenes = [i for i in items if not (cells and cells[0].get("icon") == "power"
+                                               and i["cmd"]["cmd"] == cells[0]["cmd"]["cmd"])]
+            blocks = [{"k": "status", "text": r["label"]}, {"k": "scenes", "items": scenes}]
+            if cells:
+                blocks.append({"k": "row", "act": True, "cells": cells})
             return {"t": "view", "title": _clean(c.get("name")), "subtitle": r["label"],
-                    "route": route, "layout": "list", "items": items}
+                    "route": route, "anchor": "bottom", "blocks": blocks}
         if t == "Radio":
             ua = c.get("uuidAction")
             det = c.get("details") or {}
@@ -3452,8 +5029,10 @@ class App:
             for k in sorted(outs, key=lambda x: int(x)):
                 items.append({"id": f"{uuid}:{k}", "label": outs[k], "on": ao == int(k),
                               "icon": "mood", "cmd": {"uuid": ua, "cmd": str(k)}})
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "layout": "list", "items": items}
+            # Wie die Lichtszenen: grosse Auswahl-Kacheln 2x2, aktive dunkel.
+            cur = next((i["label"] for i in items if i["on"]), "")
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom",
+                    "blocks": ([{"k": "status", "text": cur}] if cur else []) + [{"k": "scenes", "items": items}]}
         if t == "LightController":
             ua = c.get("uuidAction")
             scenes = self._lc_scenes(c)
@@ -3511,16 +5090,16 @@ class App:
             # Fahrt sendet Stop (haelt an); im Stand startet er die Fahrt.
             auf = {"label": "Auf", "on": up_move, "cmd": {"uuid": ua, "cmd": "Stop" if moving else "Up"}}
             ab = {"label": "Ab", "on": down_move, "cmd": {"uuid": ua, "cmd": "Stop" if moving else "Down"}}
+            # Drei gestapelte Flaechen wie im Mockup: oben fahren, Mitte Stellung
+            # (Fuellstand von oben, grosse Zahl), unten fahren.
             blocks = [
-                {"k": "hero", "icon": "blind"},
-                {"k": "status", "text": self._jal_status(cu)},
-                {"k": "value", "text": val},
-                {"k": "row", "cells": [auf, ab]},
-                {"k": "row", "cells": [
-                    {"label": "Ganz Auf", "cmd": {"uuid": ua, "cmd": "FullUp"}},
-                    {"label": "Ganz Ab", "cmd": {"uuid": ua, "cmd": "FullDown"}},
+                {"k": "status", "text": " · ".join(x for x in (self._jal_status(cu), val) if x)},
+                {"k": "shade", "pct": pct, "up": auf, "down": ab},
+                {"k": "row", "act": True, "cells": [
+                    {"label": "Ganz auf", "cmd": {"uuid": ua, "cmd": "FullUp"}},
+                    {"label": "Beschatten", "cmd": {"uuid": ua, "cmd": "shade"}},
+                    {"label": "Ganz ab", "cmd": {"uuid": ua, "cmd": "FullDown"}},
                 ]},
-                {"k": "row", "cells": [{"label": "Beschatten", "cmd": {"uuid": ua, "cmd": "shade"}}]},
             ]
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": blocks}
@@ -3615,9 +5194,10 @@ class App:
             ua = c.get("uuidAction")
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
+                # Wie Fuehler/Fenster: Zustand gross, Aktion in der Aktionsreihe
                 {"k": "hero", "icon": "switch"},
-                {"k": "status", "text": "Taster"},
-                {"k": "row", "cells": [{"label": "Auslösen", "cmd": {"uuid": ua, "cmd": "pulse"}}]},
+                {"k": "big", "text": "Taster"},
+                {"k": "row", "act": True, "cells": [{"label": "Auslösen", "cmd": {"uuid": ua, "cmd": "pulse"}}]},
             ]}
         if t in SWITCHY:
             ua = c.get("uuidAction")
@@ -3625,10 +5205,10 @@ class App:
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
                 {"k": "hero", "icon": "switch"},
-                {"k": "status", "text": "Eingeschaltet" if on else "Ausgeschaltet"},
-                {"k": "row", "cells": [
-                    {"label": "Einschalten", "on": on, "cmd": {"uuid": ua, "cmd": "on"}},
-                    {"label": "Ausschalten", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
+                {"k": "big", "text": "Eingeschaltet" if on else "Ausgeschaltet", "tone": "good" if on else ""},
+                {"k": "row", "act": True, "cells": [
+                    {"label": "Ein", "on": on, "cmd": {"uuid": ua, "cmd": "on"}},
+                    {"label": "Aus", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
                 ]},
             ]}
         if t == "TimedSwitch":
@@ -3648,37 +5228,32 @@ class App:
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
                 {"k": "hero", "icon": "bulb"},
-                {"k": "status", "text": status},
-                {"k": "row", "cells": [
-                    {"label": "Einschalten", "on": on, "cmd": {"uuid": ua, "cmd": "pulse"}},
-                    {"label": "Ausschalten", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
+                {"k": "big", "text": status[:1].upper() + status[1:], "tone": "good" if on else ""},
+                {"k": "row", "act": True, "cells": [
+                    {"label": "Ein", "on": on, "cmd": {"uuid": ua, "cmd": "pulse"}},
+                    {"label": "Aus", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
                 ]},
             ]}
         if t == "Gate":
             ua = c.get("uuidAction")
             pct = round((self._state(c, "position") or 0) * 100)
             active = self._state(c, "active") or 0
-            postext = "Offen" if pct >= 100 else ("Geschlossen" if pct <= 0 else f"{pct}% offen")
-            status = "öffnet …" if active > 0 else ("schließt …" if active < 0 else postext)
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "anchor": "bottom", "blocks": [
-                {"k": "hero", "icon": "gate"},
+            moving = active != 0
+            # Wie die Beschattung: oben oeffnen, Mitte Stellung (Fuellstand von
+            # unten = offen), unten schliessen. Tippen waehrend der Fahrt stoppt.
+            up = {"label": "Öffnen", "on": active > 0, "cmd": {"uuid": ua, "cmd": "stop" if moving else "open"}}
+            dn = {"label": "Schließen", "on": active < 0, "cmd": {"uuid": ua, "cmd": "stop" if moving else "close"}}
+            status = "öffnet …" if active > 0 else ("schließt …" if active < 0 else
+                                                   ("Offen" if pct >= 100 else ("Geschlossen" if pct <= 0 else "Teilweise offen")))
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": [
                 {"k": "status", "text": status},
-                {"k": "value", "text": postext},
-                {"k": "row", "cells": [
-                    {"label": "Öffnen", "cmd": {"uuid": ua, "cmd": "open"}},
-                    {"label": "Stop", "cmd": {"uuid": ua, "cmd": "stop"}},
-                    {"label": "Schließen", "cmd": {"uuid": ua, "cmd": "close"}},
-                ]},
+                {"k": "shade", "pct": pct, "dir": "open", "up": up, "down": dn},
+                {"k": "row", "act": True, "cells": [{"label": "Stopp", "cmd": {"uuid": ua, "cmd": "stop"}}]},
             ]}
         if t == "IRoomControllerV2":
             ua = c.get("uuidAction")
             ta = self._fmt_num(self._state(c, "tempActual"), "%.1f")
             tt = self._fmt_num(self._state(c, "tempTarget"), "%.1f")
-            try:
-                tt_raw = float(self._state(c, "tempTarget"))
-            except (TypeError, ValueError):
-                tt_raw = 20.0
             try:
                 comfort = float(self._state(c, "comfortTemperature")
                                 or self._state(c, "tempTarget") or 20)
@@ -3690,42 +5265,84 @@ class App:
                 am = int(am) if am is not None else None
             except (TypeError, ValueError):
                 am = None
-            # Status: aktiver Modus + heizt/kuehlt/Fenster (Soll-Temp steht
-            # schon gross im Ring, nicht nochmal im Status-Text wiederholen)
+            art, manuell = self._irc_betriebsart(c)
+            # Status: aktiver Modus + manuelle Betriebsart + heizt/kuehlt/Fenster
             sbits = []
             if am is not None and am in modes:
                 sbits.append(modes[am])
+            if manuell:
+                sbits.append(manuell)
             sbits += self._irc_activity(self._state(c, "prepareState"),
                                         self._state(c, "openWindow"))
             status = " · ".join(sbits)
-            blocks = [
-                # Ring-Regler statt grosser Ist-Temp-Zahl: Sollwert per Ziehen
-                # entlang des Kreisbogens einstellen (siehe .ring im Client) -
-                # angelehnt an die Loxone Touch Pure Display-Optik. Ist-Temp
-                # steht als Unterzeile im Ring. 12-28 Grad deckt normale
-                # Wohnraum-Heizungen ab (Miniserver liefert kein separates
-                # Min/Max fuer diesen Baustein).
-                {"k": "ring", "value": tt_raw, "min": 12, "max": 28, "step": 0.5,
-                 "unit": "°", "sub": f"aktuell {ta} °C",
-                 "cmd": {"uuid": ua, "tmpl": "setComfortTemperature/{v}"}},
-            ]
+            # Sollwert (Komfort) wie beim Dimmer als Flaeche: fuellt sich im
+            # Bereich 12-28 Grad, Ziehen stellt ein (0,5er-Schritte); grosse Zahl
+            # = Soll, darunter Ist und aktuelles Ziel. - / + in der Aktionsreihe.
+            blocks = []
             if status:
                 blocks.append({"k": "status", "text": status})
-            blocks.append({"k": "row", "cells": [
-                    {"label": "−", "cmd": {"uuid": ua, "cmd": f"setComfortTemperature/{comfort - 0.5:.1f}"}},
-                    {"label": "+", "cmd": {"uuid": ua, "cmd": f"setComfortTemperature/{comfort + 0.5:.1f}"}},
+            blocks.append({"k": "dim", "value": round(comfort * 2) / 2, "min": 12, "max": 28, "step": 0.5,
+                           "unit": "°", "tone": "heat", "cap": "Komfort-Soll",
+                           "sub": f"Ist {ta} °C · Ziel {tt} °C",
+                           "cmd": {"uuid": ua, "tmpl": "setComfortTemperature/{v}"}})
+            blocks.append({"k": "row", "act": True, "cells": [
+                    {"icon": "minus", "cmd": {"uuid": ua, "cmd": f"setComfortTemperature/{comfort - 0.5:.1f}"}},
+                    *([art] if art else []),     # Betriebsart (Aufklapper), Upstream #57
+                    {"icon": "plus", "cmd": {"uuid": ua, "cmd": f"setComfortTemperature/{comfort + 0.5:.1f}"}},
                 ]})
             # Betriebsmodi in EINER Zeile: Temperatur-Modi (Eco/Komfort) als
             # 1-h-Override + Automatik (zurueck zur Zeitschaltung). Namen aus MS
             # (details.timerModes). Gebaeudeschutz wird ausgelassen (aufgeraeumt).
             if modes:
-                cells = [{"label": nm, "on": (mid == am),
+                def _kurz(nm):   # "Eco-Temperatur" -> "Eco", "Komfort-Temperatur" -> "Komfort"
+                    low = (nm or "").lower()
+                    return "Eco" if "eco" in low else ("Komfort" if "komfort" in low else nm)
+                cells = [{"label": _kurz(nm), "on": (mid == am),
                           "cmd": {"uuid": ua, "cmd": f"override/{mid}"}}
                          for mid, nm in sorted(modes.items())
                          if "schutz" not in (nm or "").lower()]
-                cells.append({"label": "Automatik",
+                cells.append({"label": "Auto",
                               "cmd": {"uuid": ua, "cmd": "stopOverride"}})
                 blocks.append({"k": "row", "cells": cells})
+            return {"t": "view", "title": _clean(c.get("name")), "route": route,
+                    "anchor": "bottom", "blocks": blocks}
+        if t == "IRoomController":
+            # Alte Raumregelung (v1), Befehle laut Loxone-Strukturdoku:
+            # settemp/<Nr>/<Wert>, starttimer/<Nr>/<Sekunden>, stoptimer.
+            ua = c.get("uuidAction")
+            z = self._irc1(c)
+            art, manuell = self._irc_betriebsart(c)
+            ta = self._fmt_num(self._state(c, "tempActual"), "%.1f")
+            tt = self._fmt_num(self._state(c, "tempTarget"), "%.1f")
+            # manuell: die Betriebsart ("Manuell Heizen") statt der Temperatur "Manuell"
+            sbits = [z["name"]] if z["name"] and not (manuell and z["ix"] == IRC1_MANUELL) else []
+            if manuell:
+                sbits.append(manuell)
+            sbits += self._irc_activity(z["prep"], self._state(c, "openWindow"))
+            status = f"Soll {tt} °C" + (" · " + " · ".join(sbits) if sbits else "")
+            blocks = [
+                {"k": "big", "text": f"{ta} °C"},
+                {"k": "status", "text": status},
+            ]
+            # -/+ verstellt Komfort der Periode (manuell: die manuelle
+            # Temperatur) - nur mit bekanntem, absolutem Wert. Dazwischen
+            # die Betriebsart (mode/<Nr>).
+            reihe = [art] if art else []
+            if z["stell"] is not None:
+                ix, v = z["stell_ix"], z["stell"]
+                reihe = [{"label": "−", "cmd": {"uuid": ua, "cmd": f"settemp/{ix}/{v - 0.5:.1f}"}},
+                         *reihe,
+                         {"label": "+", "cmd": {"uuid": ua, "cmd": f"settemp/{ix}/{v + 0.5:.1f}"}}]
+            if reihe:
+                blocks.append({"k": "row", "cells": reihe})
+            # Eco/Komfort fuer eine Stunde halten, Automatik beendet den Timer.
+            blocks.append({"k": "row", "cells": [
+                {"label": IRC1_TEMPS[IRC1_ECO], "on": z["ix"] == IRC1_ECO,
+                 "cmd": {"uuid": ua, "cmd": f"starttimer/{IRC1_ECO}/{IRC1_TIMER_S}"}},
+                {"label": "Komfort", "on": z["ix"] == z["komfort_ix"],
+                 "cmd": {"uuid": ua, "cmd": f"starttimer/{z['komfort_ix']}/{IRC1_TIMER_S}"}},
+                {"label": "Automatik", "cmd": {"uuid": ua, "cmd": "stoptimer"}},
+            ]})
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": blocks}
         if t == "Intercom":
@@ -3735,28 +5352,26 @@ class App:
             cells = [{"label": _clean(sc.get("name")),
                       "cmd": {"uuid": sc.get("uuidAction"), "cmd": "pulse"}}
                      for sc in subs.values()]
-            blocks = []
-            if self._state(c, "bell"):
-                blocks.append({"k": "astat", "text": "Es klingelt", "tone": "crit"})
-            blocks += [{"k": "video", "src": f"/mjpeg?id={quote(uuid)}",
-                        "reconnectH": self._cam_reconnect_h(uuid)}] if has_url else \
-                      [{"k": "status", "text": "Kein Video konfiguriert (loxpanel.cfg → intercom)"}]
+            # Livebild fuellt die Karte, Klingel-Hinweis im Bild; Tuer-Knoepfe
+            # in der Aktionsreihe (einfacher Tipp).
+            bell = bool(self._state(c, "bell"))
+            blocks = [{"k": "video", "src": f"/mjpeg?id={quote(uuid)}", "bell": bell,
+                       "reconnectH": self._cam_reconnect_h(uuid)}] if has_url else \
+                     [{"k": "state", "icon": "cam", "tone": "crit" if bell else "idle",
+                       "text": "Es klingelt" if bell else "Kein Video", "sub": "" if bell else "Video-URL unter Einstellungen → Kamera"}]
             if cells:
-                blocks.append({"k": "row", "cells": cells})
-            return {"t": "view", "title": _clean(c.get("name")), "route": route, "blocks": blocks}
+                blocks.append({"k": "row", "act": True, "cells": cells[:4]})
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": blocks}
         if t == "Tracker":
             lines = self._tracker_lines(c)
             if not lines:
                 return self._big_view(uuid, "list", "Keine Einträge")
-            items = []
-            for i, ln in enumerate(lines):
+            rows = []
+            for ln in lines:
                 ts, txt = self._split_ts(ln)
-                entry = {"id": f"{uuid}:{i}", "icon": "list", "label": txt}
-                if ts:
-                    entry["sublabel"] = ts
-                items.append(entry)
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "layout": "list", "items": items}
+                rows.append({"t": _short_ts(ts), "text": txt})
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom",
+                    "blocks": [{"k": "log", "rows": rows}]}
         # --- Status-Bausteine: grosse 1/1-Wertseite ---
         if t == "Meter":
             det = c.get("details") or {}
@@ -3803,8 +5418,31 @@ class App:
                                   (tx.get("on") if on else tx.get("off")) or ("Ein" if on else "Aus"))
         if t == "SmokeAlarm":
             ok = (self._state(c, "level") or 0) == 0
-            return self._big_view(uuid, "alarm", "Alles ok" if ok else "Alarm!",
-                                  tone=("good" if ok else "crit"))
+            if ok:
+                return self._big_view(uuid, "alarm", "Ruhe", tone="good")
+            ua = c.get("uuidAction")
+            cause = self._text(c, "alarmCause")
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": [
+                {"k": "state", "icon": "alarm", "tone": "crit", "text": "Alarm", "sub": cause or "Melder ausgelöst"},
+                {"k": "row", "act": True, "cells": [
+                    {"label": "Stumm", "cmd": {"uuid": ua, "cmd": "mute"}},
+                    {"label": "Quittieren", "cmd": {"uuid": ua, "cmd": "confirm"}}]},
+            ]}
+        if t == "AalEmergency":
+            stt = self._state(c, "status") or 0
+            return self._big_view(uuid, "alarm", "Notruf ausgelöst" if stt else "Kein Notruf",
+                                  tone=("crit" if stt else "good"))
+        if t == "NfcCodeTouch":
+            who = self._text(c, "lastuser") or self._text(c, "lasttag") or ""
+            return self._big_view(uuid, "info", who or "–", "Letzter Zutritt" if who else "Noch kein Zutritt")
+        if t == "PulseAt":
+            stv = self._state(c, "startTime")
+            try:
+                sec = int(float(stv)) % 86400
+                nxt = "%02d:%02d" % (sec // 3600, (sec % 3600) // 60)
+            except (TypeError, ValueError):
+                nxt = "–"
+            return self._big_view(uuid, "info", nxt, "Nächster Impuls" + ("" if self._state(c, "isActive") else " · inaktiv"))
         if t == "PresenceDetector":
             on = bool(self._state(c, "active"))
             itxt = self._text(c, "infoText")
@@ -3814,51 +5452,41 @@ class App:
             ua = c.get("uuidAction")
             armed = bool(self._state(c, "armed"))
             lvl = self._state(c, "level") or 0
-            big = {"k": "big", "text": ("Alarm!" if lvl else ("Scharf" if armed else "Unscharf"))}
+            delay = self._state(c, "armedDelay") or 0
             if lvl:
-                big["tone"] = "crit"
-            elif not armed:
-                big["tone"] = "good"
-            if lvl:                                   # Alarm ausgeloest
-                sub = "Alarm ausgelöst"
+                st = {"k": "state", "icon": "alarm", "tone": "crit", "text": "Alarm", "sub": "Alarm ausgelöst"}
                 cells = [{"label": "Quittieren", "cmd": {"uuid": ua, "cmd": "quit"}},
                          {"label": "Unscharf", "cmd": {"uuid": ua, "cmd": "off"}}]
-            elif armed:                               # scharf -> nur entschaerfen
-                sub = "Anlage ist scharf"
-                cells = [{"label": "Unscharf", "cmd": {"uuid": ua, "cmd": "off"}}]
-            else:                                     # unscharf -> scharfschalten
-                sub = "Bereit zum Scharfschalten"
-                cells = [{"label": "Scharf", "cmd": {"uuid": ua, "cmd": "on"}},
-                         {"label": "Verzögert", "cmd": {"uuid": ua, "cmd": "delayedon"}}]
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "anchor": "bottom", "blocks": [
-                {"k": "hero", "icon": "alarm"},
-                big,
-                {"k": "status", "text": sub},
-                {"k": "row", "cells": cells},
-            ]}
+            else:
+                st = {"k": "state", "icon": "shield", "tone": "good" if armed else "idle",
+                      "text": "Scharf" if armed else ("Wird scharf" if delay else "Unscharf"),
+                      "sub": "Alle Melder überwacht" if armed else ("Verzögerung läuft" if delay else "Bereit zum Scharfschalten")}
+                # Aktueller Zustand dunkel hinterlegt (wie die Modi der Heizung)
+                cells = [{"label": "Scharf", "on": armed, "cmd": {"uuid": ua, "cmd": "on"}},
+                         {"label": "Verzögert", "on": bool(delay) and not armed, "cmd": {"uuid": ua, "cmd": "delayedon"}},
+                         {"label": "Unscharf", "on": not armed and not delay, "cmd": {"uuid": ua, "cmd": "off"}}]
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom",
+                    "blocks": [st, {"k": "row", "act": True, "cells": cells}]}
         if t == "AlarmClock":
             ua = c.get("uuidAction")
             ringing = bool(self._state(c, "isAlarmActive"))
             nxt = self._alarm_next_text(c)
             entries = self._alarm_entries(c)
-            room = _clean((self.rooms.get(c.get("room")) or {}).get("name"))
-            # Layout wie IRR/Klima (anchor:bottom): Statuszeile mittig oben (Raum
-            # als Unterzeile), die Weckzeit-Eintraege unten angedockt. Keine
-            # Eintrags-Bearbeitung; klingelt der Wecker, gibt es Schlummer (Loxone
-            # 'snooze') und Wecker aus ('dismiss' -> isAlarmActive 0 -> Weckton stoppt).
-            stat = {"k": "astat", "text": ("Weckt jetzt" if ringing else (nxt or "Keine Weckzeit aktiv"))}
             if ringing:
-                stat["tone"] = "crit"
-            if room:
-                stat["sub"] = room
-            blocks = [{"k": "hero", "icon": "alarm"}, stat, {"k": "alarmlist", "entries": entries}]
-            if ringing:
-                blocks.append({"k": "row", "cells": [
-                    {"label": "Schlummer", "cmd": {"uuid": ua, "cmd": "snooze"}},
-                    {"label": "Wecker aus", "cmd": {"uuid": ua, "cmd": "dismiss"}}]})
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "anchor": "bottom", "blocks": blocks}
+                return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": [
+                    {"k": "state", "icon": "alarm", "tone": "crit", "text": "Weckt", "sub": nxt or ""},
+                    {"k": "row", "act": True, "cells": [
+                        {"label": "Schlummern", "cmd": {"uuid": ua, "cmd": "snooze"}},
+                        {"label": "Aus", "cmd": {"uuid": ua, "cmd": "dismiss"}}]}]}
+            # Eintraege als Kacheln (wie Lichtszenen); Antippen oeffnet die Bearbeitung
+            items = [{"id": f"{uuid}:{e['id']}", "label": e["hm"], "sub": f"{e['name']} · {e['repeat']}",
+                      "on": e["active"], "icon": "alarm",
+                      "nav": {"view": "control", "id": uuid, "entry": e["id"]}} for e in entries]
+            blocks = [{"k": "status", "text": "Nächster Wecker"},
+                      {"k": "big", "text": nxt or "Kein Wecker aktiv"}]
+            if items:
+                blocks.append({"k": "scenes", "items": items})
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": blocks}
         if t == "Daytimer":
             ua = c.get("uuidAction")
             ov = bool(self._state(c, "override"))
@@ -3891,15 +5519,18 @@ class App:
             mn = 0 if mn is None else mn
             mx = 100 if mx is None else mx
             stp = stp if isinstance(stp, (int, float)) and stp else 1
+            # Karte = Regler (Mockup): fuellt sich von unten bis zur Helligkeit,
+            # grosse Zahl, Ziehen stellt ein; - / + in 10er-Schritten.
+            step10 = max(stp, 10)
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
-                {"k": "hero", "icon": "bulb"},
-                {"k": "big", "text": f"{round(pos)} %"},
-                {"k": "slider", "icon": "bulb", "value": round(pos), "min": round(mn),
-                 "max": round(mx), "step": stp, "cmd": {"uuid": ua, "tmpl": "{v}"}},
-                {"k": "row", "cells": [
-                    {"label": "Aus", "cmd": {"uuid": ua, "cmd": "off"}},
-                    {"label": "Ein", "cmd": {"uuid": ua, "cmd": "on"}}]},
+                {"k": "dim", "value": round(pos), "min": round(mn), "max": round(mx), "step": stp,
+                 "cmd": {"uuid": ua, "tmpl": "{v}"}},
+                {"k": "row", "act": True, "cells": [
+                    {"icon": "power", "plain": True, "cmd": {"uuid": ua, "cmd": "off"}},
+                    {"icon": "minus", "cmd": {"uuid": ua, "cmd": str(max(mn, round(pos) - step10))}},
+                    {"icon": "plus", "cmd": {"uuid": ua, "cmd": str(min(mx, round(pos) + step10))}},
+                    {"label": f"{round(mx)} %", "cmd": {"uuid": ua, "cmd": "on"}}]},
             ]}
         if t == "ValueSelector":
             ua = c.get("uuidAction")
@@ -3930,9 +5561,25 @@ class App:
                     {"label": "Auf", "cmd": {"uuid": ua, "cmd": "fullopen"}}]},
             ]}
         if t == "Ventilation":
+            det = c.get("details") or {}
             spd = self._state(c, "speed") or 0
-            return self._big_view(uuid, "fan", (f"{round(spd)} %" if spd else "Aus"),
-                                  sub="Lüftung")
+            am = self._state(c, "activeMode")
+            mode = next((_clean(m.get("name")) for m in (det.get("modes") or [])
+                         if isinstance(m, dict) and str(m.get("id")) == str(am)), "")
+            bits = [mode] if mode else []
+            aq = self._state(c, "airQualityIndoor")
+            if det.get("hasAirQuality") and aq is not None:
+                bits.append(f"Luftqualität {self._fmt_num(aq, '%.0f ppm')}")
+            hu = self._state(c, "humidityIndoor")
+            if det.get("hasIndoorHumidity") and hu is not None:
+                bits.append(f"Feuchte {self._fmt_num(hu, '%.0f %%')}")
+            # Stufe wie beim Dimmer als Flaeche. Nur Anzeige: die Stell-Befehle
+            # dieses Bausteins sind noch nicht an einer echten Anlage geprueft.
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": [
+                *([{"k": "status", "text": " · ".join(bits)}] if bits else []),
+                {"k": "dim", "value": round(spd), "min": 0, "max": 100, "step": 1, "unit": " %", "ro": True,
+                 "cap": "Lüfterstufe", "cmd": {"uuid": c.get("uuidAction"), "tmpl": ""}},
+            ]}
         if t == "UpDownAnalog":
             det = c.get("details") or {}
             return self._big_view(uuid, "switch",
@@ -4117,7 +5764,8 @@ class App:
             g = self._flow_text(self._state(c, "Gpwr"), fmt, "Netzbezug", "Einspeisung")
             if g:
                 rows.append({"k": "status", "text": g})
-            sp = self._flow_text(self._state(c, "Spwr"), det.get("storageFormat") or fmt, "Speicher lädt", "Speicher entlädt")
+            sp = self._flow_text(self._state(c, "Spwr"), det.get("storageFormat") or fmt,
+                                 "Speicher entlädt", "Speicher lädt", "Speicher")
             if sp:
                 rows.append({"k": "status", "text": sp})
             nodes = self._named_items(det.get("nodes"))
@@ -4128,7 +5776,17 @@ class App:
                 rows += [{"k": "status", "text": f"{label}: {self._fmt_num(v, fmt)}"} for label, v in vals]
             eb = self.energy_blocks(uuid)   # Radial auch beim Antippen (4"-Panel ohne Split)
             if eb:
-                blocks = [{"k": "eflow", "e": eb}]   # zeigt PV/Netz/Speicher + Verbraucher live, wie in der Loxone-App
+                # Radial gross, darunter bis zu drei Kennzahlen als kleine Kacheln
+                kp = []
+                if p is not None:
+                    kp.append({"l": "Erzeugung", "v": self._fmt_num(p, fmt)})
+                gp = self._state(c, "Gpwr")
+                if gp is not None:
+                    kp.append({"l": "Netzbezug" if gp >= 0 else "Einspeisung", "v": self._fmt_num(abs(gp), fmt)})
+                sc = self._state(c, "selfConsumption")
+                if sc is not None:
+                    kp.append({"l": "Eigenverbrauch", "v": self._fmt_num(sc, "%.0f %%")})
+                blocks = [{"k": "eflow", "e": eb}] + ([{"k": "kpis", "items": kp[:3]}] if kp else [])
             else:
                 blocks = [{"k": "hero", "icon": "central"},
                           {"k": "big", "text": (self._fmt_num(p, fmt) if p is not None else "–")},
@@ -4142,7 +5800,7 @@ class App:
             if g:
                 rows.append({"k": "status", "text": g})
             if det.get("HasSpwr", True):
-                sp = self._flow_text(self._state(c, "Spwr"), "%.2f kW", "Speicher lädt", "Speicher entlädt")
+                sp = self._flow_text(self._state(c, "Spwr"), "%.2f kW", "Speicher entlädt", "Speicher lädt", "Speicher")
                 if sp:
                     rows.append({"k": "status", "text": sp})
             soc = self._state(c, "Ssoc")
@@ -4191,41 +5849,33 @@ class App:
             ua = c.get("uuidAction")
             act = bool(self._state(c, "active"))
             rain = bool(self._state(c, "rainActive"))
-            big = "Bewässert" if act else ("Regenpause" if rain else "Bereit")
-            rows = []
             zone = self._irrigation_zone_name(c)
-            if act and zone:
-                rows.append({"k": "status", "text": "Aktive Zone: " + zone})
+            # Aktive Zone gross, Zonen als Kacheln (laufende dunkel), Steuerung
+            # unten. Befehle aus der Loxone-Structure-File-Doku: start, startForce
+            # (Regen ignorieren), stop. Einzelne Zonen (select/<n>) sind noch
+            # nicht belegt (Nummerierung an der Anlage zu pruefen) - die Kacheln
+            # sind deshalb reine Anzeige.
+            big = (zone or "Bewässert") if act else ("Regenpause" if rain else "Bereit")
+            bits = []
             ep = self._state(c, "expectedPrecipitation")
             if ep is not None:
-                rows.append({"k": "status", "text": f"Erwarteter Niederschlag {self._fmt_num(ep, '%.1f mm')}"})
+                bits.append(f"{self._fmt_num(ep, '%.1f mm')} Regen erwartet")
             zones = self._named_items(self._json_state(c, "zones"))
-            if zones:
-                rows.append({"k": "head", "text": "Zonen"})
-                rows += [{"k": "status", "text": (label + (" ← aktiv" if act and label == zone else ""))}
-                         for label, _z in zones]
-            # Steuerung. Befehle aus der offiziellen Loxone-Structure-File-Doku
-            # (Irrigation): start = nur wenn noetig, startForce = erwarteten/
-            # vergangenen Regen ignorieren, stop, select/9 = alle Zonen an,
-            # select/0 = alle aus. Die Auswahl EINZELNER Zonen (select/<n>) ist
-            # noch nicht belegt (Zonennummerierung an der Anlage zu pruefen) und
-            # daher hier bewusst weggelassen.
-            rows.append({"k": "row", "cells": [
+            items = [{"id": f"{uuid}:{i}", "label": label, "on": bool(act and label == zone),
+                      "sub": "läuft" if (act and label == zone) else "", "icon": "drop"}
+                     for i, (label, _z) in enumerate(zones)]
+            blocks = [{"k": "big", "text": big, **({"tone": "good"} if act else {})}]
+            if bits:
+                blocks.append({"k": "status", "text": " · ".join(bits)})
+            if items:
+                blocks.append({"k": "scenes", "items": items})
+            blocks.append({"k": "row", "act": True, "cells": [
                 {"label": "Start", "on": act, "cmd": {"uuid": ua, "cmd": "start"}},
                 {"label": "Erzwingen", "cmd": {"uuid": ua, "cmd": "startForce"}},
-                {"label": "Stopp", "on": not act, "cmd": {"uuid": ua, "cmd": "stop"}},
-            ]})
-            rows.append({"k": "row", "cells": [
-                {"label": "Alle Zonen", "cmd": {"uuid": ua, "cmd": "select/9"}},
-                {"label": "Alles aus", "cmd": {"uuid": ua, "cmd": "select/0"}},
+                {"label": "Stopp", "cmd": {"uuid": ua, "cmd": "stop"}},
             ]})
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "anchor": "bottom", "blocks": [
-                {"k": "hero", "icon": "info"},
-                {"k": "big", "text": big, **({"tone": "good"} if act else {})},
-                {"k": "status", "text": "Bewässerung"},
-                *rows,
-            ]}
+                    "anchor": "bottom", "blocks": blocks}
         if t == "MailBox":
             mail = bool(self._state(c, "mailReceived"))
             pk = bool(self._state(c, "packetReceived"))
@@ -4332,7 +5982,9 @@ class App:
         if v == "group":
             return self._view_group(route, prof)
         if v == "control":
-            return self._view_control(route.get("id"))
+            if route.get("entry") is not None:
+                return self._alarm_edit_view(route.get("id"), route.get("entry"))
+            return self._view_control(route.get("id"), route.get("range"), bool(route.get("chart")))
         if v == "sources":
             return self._view_sources(route.get("id"))
         return self._view_tab(route.get("tab", "favoriten"), prof)
@@ -4437,6 +6089,15 @@ class App:
         """Fuehrt einen Befehl aus. Mit pin: gesicherter Befehl (Visu-Passwort)."""
         if not (self.client and uuid and cmd):
             return None
+        if cmd.startswith("__central/"):
+            await self._central_do(uuid, cmd.split("/", 1)[1])
+            return "200"
+        if cmd.startswith("__dimall/"):
+            try:
+                await self._dim_all(uuid, int(cmd.split("/", 1)[1]))
+            except ValueError:
+                pass
+            return "200"
         try:
             if pin is not None:
                 return await self._secured_command(uuid, cmd, pin)
@@ -4478,25 +6139,30 @@ class App:
                 return None
             # Miniserver: gekoppelte Zonen (Transport + roomfav-Fallback),
             # unbekannter Kopplungsstatus, roomfav/get und Nicht-Audio-Befehle.
-            log.info("cmd %s/%s", uuid, cmd)
-            await self.client.jdev_get(f"sps/io/{uuid}/{cmd}")
-            return "200"
+            code, _ = await self._ms_jdev(f"sps/io/{uuid}/{cmd}")
+            if code == "200":
+                log.info("cmd %s/%s", uuid, cmd)
+            else:
+                log.warning("cmd %s/%s -> Code %s", uuid, cmd, code)
+            return code
         except Exception as err:  # Befehl darf den Server nicht killen
-            log.warning("cmd fehlgeschlagen: %s", err)
+            log.warning("cmd %s/%s fehlgeschlagen: %s", uuid, cmd, err or type(err).__name__)
             return None
 
     async def _secured_command(self, uuid: str, cmd: str, pin: str) -> str | None:
         """Loxone secured-command: getvisusalt -> Hash(visuPw:salt) -> HMAC(key) -> ios."""
-        r = await self.client.jdev_get(f"sys/getvisusalt/{quote(self.user)}")
-        val = (r.get("LL") or {}).get("value") or {}
+        # Ein abgelaufenes Token faellt hier auf (und wird erneuert), nicht erst
+        # beim ios-Aufruf: dort hiesse ein Fehler "Visu-Passwort falsch".
+        _, val = await self._ms_jdev(f"sys/getvisusalt/{quote(self.user)}")
+        val = val if isinstance(val, dict) else {}
         key, salt = val.get("key", ""), val.get("salt", "")
         alg = (val.get("hashAlg") or "SHA1").upper()
         digest = hashlib.sha256 if alg == "SHA256" else hashlib.sha1
         pwhash = digest(f"{pin}:{salt}".encode()).hexdigest().upper()
         h = hmac.new(bytes.fromhex(key), pwhash.encode(), digest).hexdigest()
-        resp = await self.client.jdev_get(f"sps/ios/{h}/{uuid}/{cmd}")
-        ll = resp.get("LL") or {}
-        code = str(ll.get("Code") or ll.get("code") or "")
+        # Der Hash gilt nur einmal, und ein Fehler hier heisst meist falsches
+        # Visu-Passwort -> nicht neu anmelden (das Token war eben noch gueltig).
+        code, _ = await self._ms_jdev(f"sps/ios/{h}/{uuid}/{cmd}", renew=False)
         log.info("secured cmd %s/%s -> Code %s", uuid, cmd, code)
         return code
 
@@ -4539,9 +6205,9 @@ class App:
         """Wetter-Tabelle vom Miniserver uebernehmen (nur mit Wetterdienst).
 
         Die Front wird sofort neu gebaut, statt bis zum naechsten 15-Minuten-Takt
-        zu warten. Nur bei echter Aenderung — sonst wuerde jeder Wiederholungs-
-        Push auch den Kalender neu laden, und wie oft der Miniserver schickt,
-        bestimmt er selbst."""
+        zu warten: aus dem letzten Stand, mit neuem Wetter und OHNE neuen
+        Kalenderabruf (siehe _front_nur_wetter()). Nur bei echter Aenderung,
+        sonst baute jeder Wiederholungs-Push die Front umsonst neu."""
         if self._lox_wx.get(uuid) == entries:
             return
         self._lox_wx[uuid] = entries
@@ -4575,10 +6241,7 @@ class App:
             return None
         forecast = self._lox_wx.get(states.get("forecast")) or []
         sr, ss = self._ms_sun_hhmm()
-        try:
-            fore = int((self.calendar_cfg or {}).get("fore_days") or 4)
-        except (TypeError, ValueError):
-            fore = 4
+        fore = 4                                  # Widgets zeigen 1-4 Tage davon
         try:
             return loxone_weather.build(self.weather_cfg, actual, forecast,
                                         sunrise=sr, sunset=ss, fore_days=fore)
@@ -4590,6 +6253,11 @@ class App:
         # Dauer-Loop: Erstverbindung + Reconnect zum Miniserver. Bricht NIEMALS
         # den HTTP-Server ab — auch wenn der Miniserver (noch) nicht erreichbar
         # oder das Passwort falsch ist (dann bleibt /settings bedienbar).
+        # Wartezeit zwischen Versuchen waechst (MS_RETRY). Von vorn beginnt sie
+        # erst, wenn eine Verbindung mindestens so lange hielt wie die laengste
+        # Wartezeit - sonst liefe ein Miniserver, der sofort wieder trennt, in
+        # eine Anmeldung alle paar Sekunden.
+        retry, connected_at = 0, None
         while True:
             try:
                 if not self.host:
@@ -4611,12 +6279,18 @@ class App:
                     except Exception:
                         log.exception("Struktur-Refresh beim Reconnect uebersprungen")
                     await self._connect_ws()    # WS neu (Settings-Reconnect / nach Abriss)
+                connected_at = time.monotonic()
                 await self.ws.stream(self._on_value, self._on_weather)
                 raise ConnectionError("WS-Stream regulär beendet")
             except asyncio.CancelledError:
                 raise
             except Exception as err:
-                log.warning("Miniserver nicht verbunden (%s) — neuer Versuch in 10s", err)
+                if connected_at is not None and time.monotonic() - connected_at >= MS_RETRY[-1]:
+                    retry = 0
+                connected_at = None
+                wait = MS_RETRY[min(retry, len(MS_RETRY) - 1)]
+                retry += 1
+                log.warning("Miniserver nicht verbunden (%s) — neuer Versuch in %ss", err, wait)
                 try:
                     if self.ws:
                         await self.ws.close()
@@ -4628,7 +6302,7 @@ class App:
                         await self._reauth()    # Token erneuern, Client behalten
                 except Exception:
                     await self._close_conn()    # Client kaputt -> harter Reset (start() baut neu)
-                await asyncio.sleep(10)
+                await asyncio.sleep(wait)
 
     async def _send_or_drop(self, ws, payload) -> bool:
         """Sendet an ein Panel; bei JEDEM Fehler ODER Haenger (Timeout) wird die
@@ -4648,6 +6322,10 @@ class App:
             return False
 
     async def _broadcast_tick(self) -> None:
+        now = time.time()
+        if now >= self._sl_next:
+            self._sl_next = now + 3
+            self._scene_light_learn(now)
         while self._pending_ring:
             ev = self._pending_ring.pop(0)
             log.info("Klingel → %s: %s%s", "an" if ev["on"] else "aus", ev["id"],
@@ -4717,6 +6395,16 @@ class App:
                         energy_msg = {"t": "energy", **eb} if eb is not None else None
                     except Exception:
                         log.exception("energy_blocks fehlgeschlagen (%s)", _euid)
+                # Split-Layout: Verlaufs-Pane (chart:<uuid>) des aktiven Tabs
+                # mitrendern (kommt vom Client via setchart -> conn_chart).
+                chart_msg = None
+                _chart = self.conn_chart.get(ws)
+                if _chart:
+                    try:
+                        cb = self.chart_blocks(*_chart)
+                        chart_msg = {"t": "chart", **cb} if cb is not None else None
+                    except Exception:
+                        log.exception("chart_blocks fehlgeschlagen (%s)", _chart)
                 # Split-Layout: Kamera-Pane (Intercom-Vollansicht) des aktiven Tabs
                 # mitrendern (kommt vom Client via setcamera -> conn_camera).
                 camera_msg = None
@@ -4754,6 +6442,12 @@ class App:
                     if not await self._send_or_drop(ws, saver_msg):
                         continue
                     last["saver"] = saver_msg
+                if chart_msg is not None and chart_msg != last.get("chart"):
+                    if await self._send_or_drop(ws, chart_msg):
+                        last["chart"] = chart_msg
+                    else:
+                        self._last_sent.pop(ws, None)
+                        continue
                 if camera_msg is not None and camera_msg != last.get("camera"):
                     if await self._send_or_drop(ws, camera_msg):
                         last["camera"] = camera_msg
@@ -4774,7 +6468,64 @@ class App:
     def _front_payload(self, data: dict) -> dict:
         return {"t": "front", "weather": data.get("weather"),
                 "events": data.get("events") or [], "holidays": data.get("holidays") or {},
-                "calName": data.get("calName") or "Family"}
+                "calName": data.get("calName") or "Family",
+                # Legende der Kalender (Name + Farbe, ohne die Abo-URLs) und
+                # die Anzeigeoptionen, die das Panel dafuer braucht.
+                "cals": data.get("cals") or [],
+                "calColors": bool(data.get("colors", True)),
+                "svEvents": data.get("sv_events") or 3}
+
+    def _front_cached_events(self, events: list) -> list:
+        """Gespeicherte Termine auf HEUTE umschreiben.
+
+        Der gespeicherte Stand kann von gestern sein — dauert der Aussetzer
+        ueber Mitternacht, zeigt sein "Heute" auf den Vortag und laengst
+        vergangene Tage stehen noch in der Liste. Beides hier richtigstellen,
+        statt einen falschen Tag aufs Panel zu schicken.
+        """
+        heute = date.today()
+        raus = []
+        for e in events:
+            try:
+                d = date.fromisoformat(e.get("date") or "")
+            except (ValueError, TypeError):
+                continue
+            if d < heute:
+                continue
+            label = front_info.day_label(d, heute)
+            raus.append(e if e.get("day") == label else dict(e, day=label))
+        return raus
+
+    def _front_wetter(self, data: dict, wx: dict | None) -> None:
+        """Wetter vom Loxone-Wetterserver einsetzen (Vorrang vor Open-Meteo) und
+        die tatsaechlich verwendete Quelle fuer die Diagnose festhalten."""
+        if wx is not None:
+            data["weather"] = wx
+            data["meta"]["wx_configured"] = True
+            data["meta"]["wx_error"] = None
+        data["meta"]["wx_source"] = "miniserver" if wx is not None else "open-meteo"
+        self._wx_source = data["meta"]["wx_source"]
+
+    def _front_nur_wetter(self, wx: dict | None) -> dict | None:
+        """Front aus dem letzten Stand neu bauen, nur mit frischem Wetter.
+
+        So reagiert die Front auf einen Wetter-Push des Miniservers, ohne
+        Kalender und Open-Meteo erneut abzufragen. Wie oft der Miniserver
+        schickt, bestimmt er selbst. Hing daran ein Kalenderabruf, fragte
+        LoxPanel iCloud Durchgang an Durchgang an, und iCloud sperrte das Abo
+        mit 503 und Retry-After. Der letzte Stand ist schon durch _front_keep()
+        gelaufen; ein zweiter Durchgang wuerde die Uhrzeit des letzten guten
+        Kalenderstands verfaelschen.
+        """
+        if self._front_last is None:
+            return None
+        data = copy.deepcopy(self._front_last)
+        # Liefert der Wetterserver gerade nichts Brauchbares, bleibt der letzte
+        # Stand samt seiner Quelle stehen; Open-Meteo kommt im naechsten Takt.
+        if wx is not None:
+            self._front_wetter(data, wx)
+        self._front_meta = data.get("meta", {})
+        return self._front_payload(data)
 
     def _front_keep(self, data: dict) -> dict:
         """Bei einem fehlgeschlagenen Abruf den letzten guten Stand behalten.
@@ -4786,10 +6537,45 @@ class App:
         503 gesagt hat. Der alte Stand ist in dem Fall die bessere Auskunft als
         gar keiner; die Einstellungsseite nennt den Fehler weiterhin und sagt
         jetzt dazu, von wann die gezeigten Daten sind.
+
+        Die Termine werden JE KALENDER ueberbrueckt: bei mehreren Abos ist die
+        Liste auch dann gefuellt, wenn eine Quelle ausfaellt — ein gemeinsamer
+        Stand wuerde genau dann ueberschrieben und die Termine der ausgefallenen
+        Quelle verschwinden lassen.
         """
         meta = data.get("meta") or {}
-        for fehler, feld in (("cal_error", "events"),
-                             ("hol_error", "holidays"),
+
+        quellen = meta.get("cal_sources") or []
+        if quellen:
+            frisch: dict = {}
+            for e in data.get("events") or []:
+                frisch.setdefault(e.get("ck") or "", []).append(e)
+            zusammen, stale = [], None
+            for q in quellen:
+                k = q.get("key") or ""
+                gut = self._front_good_cal.get(k)
+                if q.get("error") and not frisch.get(k) and gut:
+                    zusammen.extend(self._front_cached_events(gut["events"]))
+                    q["stale"] = gut["zeit"]
+                    stale = gut["zeit"]
+                else:
+                    ev = frisch.get(k, [])
+                    zusammen.extend(ev)
+                    if not q.get("error"):
+                        self._front_good_cal[k] = {"events": ev, "zeit": time.strftime("%H:%M")}
+            # Quellen einzeln sortiert -> zusammengefuehrt neu ordnen.
+            zusammen.sort(key=front_info.event_sort_key)
+            data["events"] = zusammen
+            meta["cal_count"] = len(zusammen)
+            if stale:
+                meta["events_stale"] = stale
+        # Entfernte Kalender nicht ewig im Speicher mitschleppen.
+        aktuell = {q.get("key") for q in quellen}
+        for k in list(self._front_good_cal):
+            if k not in aktuell:
+                del self._front_good_cal[k]
+
+        for fehler, feld in (("hol_error", "holidays"),
                              ("wx_error", "weather")):
             if meta.get(fehler) and not data.get(feld) and self._front_good.get(feld):
                 data[feld] = self._front_good[feld]
@@ -4801,9 +6587,16 @@ class App:
 
     async def front_task(self) -> None:
         """Kalender + Wetter periodisch laden und an die Panels schicken. Laeuft nur
-        aktiv, wenn eine iCal-URL ODER Koordinaten gesetzt sind. Ein sofortiges
-        Neuladen wird ueber _front_refresh (nach dem Speichern) ausgeloest."""
-        self._front_session = aiohttp.ClientSession()
+        aktiv, wenn mindestens ein iCal-Abo ODER Koordinaten gesetzt sind.
+
+        _front_refresh weckt die Schleife vorzeitig. Nach dem Speichern holt sie
+        alles neu; bei neuem Wetter vom Miniserver tauscht sie nur das Wetter und
+        laesst den Kalender bis zum naechsten Takt in Ruhe."""
+        # Grenze je Host: mehrere Abos liegen oft beim selben Anbieter (iCloud,
+        # Google). Acht gleichzeitige Verbindungen dorthin sehen nach einem
+        # Ansturm aus — genau das beantwortet iCloud gern mit 503.
+        self._front_session = aiohttp.ClientSession(
+            connector=aiohttp.TCPConnector(limit_per_host=3))
         try:
             while True:
                 cfg = dict(self.calendar_cfg or {})
@@ -4813,22 +6606,27 @@ class App:
                 # Wetter vom Miniserver hat Vorrang; Open-Meteo bleibt Rueckfall
                 # fuer Anlagen ohne Loxone-Wetterdienst. Liefert der Wetterserver
                 # Wetter, braucht es weder Koordinaten noch einen zweiten Abruf.
-                wx = self._loxone_weather()
-                configured = bool((cfg.get("ical_url") or "").strip()) or wx is not None or (
+                cfg["fore_days"] = 4                 # Vorschau-Tage waehlt jedes Wetter-Widget selbst (max. 4)
+                wx = self._loxone_weather() if cfg.get("weather_ms", True) is not False else None
+                configured = bool(front_info.calendar_sources(cfg)) or wx is not None or (
                     cfg.get("lat") not in (None, "") and cfg.get("lon") not in (None, ""))
                 if configured:
                     try:
-                        data = await front_info.load_front(self._front_session, cfg,
-                                                           skip_weather=wx is not None)
-                        if wx is not None:
-                            data["weather"] = wx
-                            data["meta"]["wx_configured"] = True
-                            data["meta"]["wx_error"] = None
-                        data["meta"]["wx_source"] = "miniserver" if wx is not None else "open-meteo"
-                        self._wx_source = data["meta"]["wx_source"]
-                        data = self._front_keep(data)   # Aussetzer loescht nichts
-                        self._front_meta = data.get("meta", {})
-                        payload = self._front_payload(data)
+                        if time.monotonic() < self._front_cal_due:
+                            # Geweckt vom Wetter-Push, der Kalender ist noch nicht
+                            # wieder faellig: nur das Wetter tauschen.
+                            payload = self._front_nur_wetter(wx)
+                        else:
+                            # Vor dem Abruf vormerken: auch ein unerwarteter Fehler
+                            # darf keinen Abruf nach dem anderen nach sich ziehen.
+                            self._front_cal_due = time.monotonic() + FRONT_INTERVAL
+                            data = await front_info.load_front(self._front_session, cfg,
+                                                               skip_weather=wx is not None)
+                            self._front_wetter(data, wx)
+                            data = self._front_keep(data)   # Aussetzer loescht nichts
+                            self._front_last = copy.deepcopy(data)
+                            self._front_meta = data.get("meta", {})
+                            payload = self._front_payload(data)
                     except Exception:
                         log.exception("front_task: Laden fehlgeschlagen")
                         payload = None
@@ -4836,6 +6634,8 @@ class App:
                     self._front_meta = {}
                     self._wx_source = "open-meteo"
                     payload = {"t": "front", "weather": None, "events": [],
+                               "holidays": {}, "cals": [], "calColors": True,
+                               "svEvents": 3,
                                "calName": (cfg.get("name") or "Family")}
                 # Nur bei echter Aenderung senden (spart Broadcasts bei gleichem Stand).
                 if payload is not None:
@@ -4844,9 +6644,15 @@ class App:
                         self._front = payload
                         self._front_key = key
                         self._front_dirty = True
-                # Bis zum naechsten Intervall (15 Min) ODER bis ein Speichern weckt.
+                # Bis der Kalender wieder faellig ist (hoechstens FRONT_INTERVAL) ODER
+                # bis ein Speichern oder neues Wetter vom Miniserver weckt. Nach einem
+                # Wetter-Push nur die RESTzeit warten, sonst schoebe jeder Push den
+                # naechsten Kalenderabruf weiter hinaus.
+                warte = FRONT_INTERVAL
+                if configured:
+                    warte = min(FRONT_INTERVAL, max(1.0, self._front_cal_due - time.monotonic()))
                 try:
-                    await asyncio.wait_for(self._front_refresh.wait(), timeout=900)
+                    await asyncio.wait_for(self._front_refresh.wait(), timeout=warte)
                 except asyncio.TimeoutError:
                     pass
                 self._front_refresh.clear()
@@ -4879,9 +6685,20 @@ class App:
 _NOCACHE = {"Cache-Control": "no-cache, no-store, must-revalidate"}
 
 
+def _web_file(path: Path, ctype: str) -> web.Response:
+    """Eine der Oberflaechen-Dateien ausliefern. Fehlt sie (kaputtes Image,
+    falsch gemountetes Volume), gibt es einen 404 mit Dateinamen statt eines
+    Stacktrace als 500."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as err:
+        log.error("%s nicht lesbar: %s", path, err)
+        return web.Response(status=404, text=f"{path.name} fehlt im LoxPanel-Image")
+    return web.Response(text=text, content_type=ctype, headers=_NOCACHE)
+
+
 async def index(request: web.Request) -> web.Response:
-    return web.Response(text=HTML.read_text(encoding="utf-8"),
-                        content_type="text/html", headers=_NOCACHE)
+    return _web_file(HTML, "text/html")
 
 
 async def version_handler(request: web.Request) -> web.Response:
@@ -4894,14 +6711,12 @@ async def version_handler(request: web.Request) -> web.Response:
 
 
 async def config_index(request: web.Request) -> web.Response:
-    return web.Response(text=CONFIG_HTML.read_text(encoding="utf-8"),
-                        content_type="text/html", headers=_NOCACHE)
+    return _web_file(CONFIG_HTML, "text/html")
 
 
 async def i18n_js(request: web.Request) -> web.Response:
     """Gemeinsamer Uebersetzungs-Katalog fuer /settings und /config."""
-    return web.Response(text=I18N_JS.read_text(encoding="utf-8"),
-                        content_type="application/javascript", headers=_NOCACHE)
+    return _web_file(I18N_JS, "application/javascript")
 
 
 async def api_meta(request: web.Request) -> web.Response:
@@ -4923,9 +6738,22 @@ async def api_meta(request: web.Request) -> web.Response:
             "roomName": _clean((app.rooms.get(room) or {}).get("name", "")) if room else "",
             "cat": c.get("cat"),
             "iconUrl": app._control_icon_url(c),
+            # Zeichnet der Baustein auf? Dann bietet der Konfigurator ihn fuer
+            # die Verlaufs-Pane und den Mini-Verlauf in der Kachel an.
+            "stat": bool(c.get("statistic") or c.get("statisticV2")),
+            # Art der Reihe, die die Kachel zeigt (line/digital/counter): die
+            # Tagesspanne gibt es nur fuer Linien.
+            "statKind": (app._stat_primary(c) or (None, None))[1],
         })
     return web.json_response({
         "rooms": rooms, "cats": cats, "controls": controls,
+        # Zeitraeume der Verlaufs-Diagramme (Schluessel, Anzeige) fuer die Auswahl
+        # "Verlauf in der Kachel" — eine Quelle mit der Visu (STAT_RANGES).
+        "statRanges": [[k, v[0]] for k, v in STAT_RANGES.items()],
+        # Design-Vorlagen (Farbwaehler im Konfigurator): eine Quelle mit dem Server.
+        "designPresets": theme_colors.DESIGN_PRESETS,
+        "deviceModels": [{"key": k, **v} for k, v in DEVICE_MODELS.items()],
+        "designKeys": list(theme_colors.DESIGN_KEYS),
         "icons": {"loxone": app._loxone_icons(), "loxlib": len(_loxlib_names())},
         "tabs": [{"tab": "favoriten", "label": "Favoriten"},
                  {"tab": "zentral", "label": "Zentral"},
@@ -4957,13 +6785,19 @@ async def api_save_panels(request: web.Request) -> web.Response:
     if not isinstance(panels, dict):
         return web.json_response({"ok": False, "error": "Feld 'panels' fehlt"}, status=400)
     clean = App._sanitize_panels(panels)
+    # Was der Server nicht uebernimmt, meldet er (Konfigurator zeigt es an),
+    # statt es still zu verlieren.
+    weg = App._panels_verworfen(panels, clean,
+                                {u: _clean(c.get("name")) or u for u, c in app.controls.items()})
     try:
         app._write_panels(clean)
     except OSError as err:
         return web.json_response({"ok": False, "error": str(err)}, status=500)
     n = await _push(app, {"t": "reload"})   # offene Panels sofort neu laden
     log.info("panels.json gespeichert: %d Profile (%d Panels neu geladen)", len(clean), n)
-    return web.json_response({"ok": True, "count": len(clean), "reloaded": n})
+    if weg:
+        log.warning("panels.json: nicht übernommen: %s", "; ".join(weg))
+    return web.json_response({"ok": True, "count": len(clean), "reloaded": n, "verworfen": weg})
 
 
 async def api_save_theme(request: web.Request) -> web.Response:
@@ -4990,8 +6824,7 @@ async def api_save_theme(request: web.Request) -> web.Response:
 
 
 async def settings_index(request: web.Request) -> web.Response:
-    return web.Response(text=SETTINGS_HTML.read_text(encoding="utf-8"),
-                        content_type="text/html", headers=_NOCACHE)
+    return _web_file(SETTINGS_HTML, "text/html")
 
 
 async def install_script(request: web.Request) -> web.Response:
@@ -5029,6 +6862,9 @@ async def api_settings(request: web.Request) -> web.Response:
 
     intercoms = [{"uuid": u, "name": _clean(c.get("name")), **icv(u)}
                  for u, c in app.controls.items() if c.get("type") == "Intercom"]
+    cameras = [{"id": k, "name": str(e.get("name") or ""), "url": (e.get("url") or "").strip(),
+                "user": e.get("user", ""), "hasPass": bool(e.get("pass"))}
+               for k, e in ic.items() if k.startswith("cam_") and isinstance(e, dict)]
     am = cfg.get("audiometa", {}) if isinstance(cfg.get("audiometa"), dict) else {}
     cal = cfg.get("calendar", {}) if isinstance(cfg.get("calendar"), dict) else {}
     return web.json_response({
@@ -5040,16 +6876,27 @@ async def api_settings(request: web.Request) -> web.Response:
             "hasPass": bool(ms.get("pass")) or env_ms,
         },
         "intercoms": intercoms,
+        "cameras": cameras,
         "audiometa": {"enabled": bool(am.get("enabled", True)),
                       "servers": sorted(app.mediaservers.values())},
         "calendar": {
-            "ical_url": (cal.get("ical_url") or "").strip(),
+            # Quellen normalisiert (inkl. Migration einer alten einzelnen
+            # ical_url), damit die Einstellungsseite genau das sieht, womit der
+            # Server auch arbeitet.
+            "sources": [{"name": q["name"], "url": q["url"], "color": q["color"],
+                         "key": q["key"]}
+                        for q in front_info.calendar_sources(cal)],
             "holiday_url": (cal.get("holiday_url") or "").strip(),
             "name": cal.get("name") or "Family",
+            "colors": bool(cal.get("colors", True)),
+            "sv_events": cal.get("sv_events", 3),
+            "palette": front_info.CAL_COLORS,
+            "max_sources": front_info.MAX_SOURCES,
             "lat": cal.get("lat"),
             "lon": cal.get("lon"),
             "days": cal.get("days", 14),
             "fore_days": cal.get("fore_days", 4),
+            "weather_ms": cal.get("weather_ms", True) is not False,
             # Screensaver-Kamera ("Fenster zur Aussenwelt"): nur relevant/anzeigbar,
             # wenn kein iCal genutzt wird - die UI blendet das Feld sonst aus.
             "screensaverIntercom": cal.get("screensaverIntercom") or "",
@@ -5223,6 +7070,29 @@ async def api_settings_intercom(request: web.Request) -> web.Response:
             ic[uuid] = cur
         else:
             ic.pop(uuid, None)
+    # Eigene Kameras: Liste ersetzt die bisherigen cam_-Eintraege komplett
+    cams = data.get("cameras")
+    if isinstance(cams, list):
+        keep = set()
+        for e in cams[:16]:
+            if not isinstance(e, dict):
+                continue
+            cid = str(e.get("id") or "")
+            if not re.match(r"^cam_[a-z0-9]{4,16}$", cid):
+                cid = "cam_" + os.urandom(4).hex()
+            url, user = str(e.get("url", "")).strip(), str(e.get("user", "")).strip()
+            if not url:
+                continue
+            cur = ic.get(cid) if isinstance(ic.get(cid), dict) else {}
+            ent = {"name": str(e.get("name") or "Kamera").strip()[:40], "url": url, "user": user}
+            if e.get("pass"):
+                ent["pass"] = str(e["pass"])
+            elif cur.get("pass") and (url, user) == (cur.get("url"), cur.get("user", "")):
+                ent["pass"] = cur["pass"]           # Passwort nur bei gleicher URL/gleichem Benutzer behalten
+            ic[cid] = ent
+            keep.add(cid)
+        for k in [k for k in ic if k.startswith("cam_") and k not in keep]:
+            ic.pop(k, None)
     cfg["intercom"] = ic
     try:
         _write_cfg(cfg)
@@ -5320,8 +7190,44 @@ async def api_sound(request: web.Request) -> web.Response:
     return web.Response(body=body, content_type=ctype, headers={"Cache-Control": "no-cache"})
 
 
+async def api_settings_weather(request: web.Request) -> web.Response:
+    """Wetterquelle (System -> Miniserver): {ms: bool, lat, lon}. ms = Wetter vom
+    Loxone-Wetterserver; sonst Open-Meteo mit den Koordinaten (leer = Standort
+    des Miniservers)."""
+    app: App = request.app["app"]
+    try:
+        data = await request.json()
+    except (ValueError, aiohttp.ContentTypeError):
+        return web.json_response({"ok": False, "error": "kein gültiges JSON"}, status=400)
+
+    def _coord(v, lim):
+        if v in (None, ""):
+            return None
+        try:
+            f = float(str(v).replace(",", "."))
+        except (TypeError, ValueError):
+            return None
+        return f if -lim <= f <= lim else None
+
+    cfg = _load_cfg()
+    cal = dict(cfg.get("calendar") or {}) if isinstance(cfg.get("calendar"), dict) else {}
+    cal["weather_ms"] = bool(data.get("ms", True))
+    lat, lon = _coord(data.get("lat"), 90.0), _coord(data.get("lon"), 180.0)
+    cal["lat"] = lat if (lat is not None and lon is not None) else None
+    cal["lon"] = lon if (lat is not None and lon is not None) else None
+    cfg["calendar"] = cal
+    try:
+        _write_cfg(cfg)
+    except OSError as err:
+        return web.json_response({"ok": False, "error": str(err)}, status=500)
+    app.calendar_cfg = _calendar_config()
+    app._front_refresh.set()
+    log.info("Wetterquelle: %s", "Miniserver" if cal["weather_ms"] else "Open-Meteo")
+    return web.json_response({"ok": True})
+
+
 async def api_settings_calendar(request: web.Request) -> web.Response:
-    """Kalender (iCal-Abo) + Wetter (Open-Meteo-Koordinaten) fuer die Front."""
+    """Kalender (iCal-Abos) + Wetter (Open-Meteo-Koordinaten) fuer die Front."""
     app: App = request.app["app"]
     try:
         data = await request.json()
@@ -5346,15 +7252,49 @@ async def api_settings_calendar(request: web.Request) -> web.Response:
 
     cfg = _load_cfg()
     cal = dict(cfg.get("calendar", {}) if isinstance(cfg.get("calendar"), dict) else {})
-    cal["ical_url"] = str(data.get("ical_url", "")).strip()
+
+    # Kalenderquellen NUR anfassen, wenn die Oberflaeche sie mitgeschickt hat.
+    # Eine aeltere /config-Seite, die noch im Browser offen steht, kennt das
+    # Feld nicht - ohne diese Pruefung loescht ihr "Speichern" saemtliche Abos.
+    # Dasselbe gilt fuer die anderen neuen Felder weiter unten.
+    roh = data.get("sources")
+    if isinstance(roh, list):
+        quellen, gesehen = [], set()
+        for q in roh:
+            if not isinstance(q, dict):
+                continue
+            url = front_info.normalize_ical_url(q.get("url"))
+            # Doppelte URLs hier schon wegwerfen: calendar_sources() tut es
+            # ohnehin, sonst stuenden sie in der Datei und die Oberflaeche
+            # zeigte beim naechsten Laden weniger an, als gespeichert wurde.
+            if not url or url in gesehen or len(quellen) >= front_info.MAX_SOURCES:
+                continue
+            gesehen.add(url)
+            quellen.append({"name": str(q.get("name", "")).strip()[:40],
+                            "url": url,
+                            # Leer = spaeter die Vorschlagsfarbe der Position
+                            "color": front_info.clean_color(q.get("color"), "")})
+        cal["sources"] = quellen
+        # Die alte Einzel-URL darf stehen bleiben, solange sie in der Liste
+        # steht: calendar_sources() liest sie nur, wenn `sources` nichts
+        # hergibt, ein Doppel-Kalender entsteht also nicht - und ein Downgrade
+        # auf eine aeltere Version findet seinen Kalender noch vor. Erst wenn
+        # der Benutzer sie aus der Liste genommen hat, verschwindet sie auch
+        # hier, sonst kaeme sie beim Loeschen des letzten Abos zurueck.
+        if front_info.normalize_ical_url(cal.get("ical_url")) not in gesehen:
+            cal["ical_url"] = ""
     cal["holiday_url"] = str(data.get("holiday_url", "")).strip()
     cal["name"] = str(data.get("name", "")).strip() or "Family"
-    lat, lon = _coord(data.get("lat"), 90.0), _coord(data.get("lon"), 180.0)
-    # Nur ein vollstaendiges Koordinatenpaar speichern (halb gesetzt = kein Wetter).
-    cal["lat"] = lat if (lat is not None and lon is not None) else None
-    cal["lon"] = lon if (lat is not None and lon is not None) else None
+    if "colors" in data:
+        cal["colors"] = bool(data.get("colors"))
+    if "lat" in data or "lon" in data:       # Wetter steht jetzt unter System -> Miniserver
+        lat, lon = _coord(data.get("lat"), 90.0), _coord(data.get("lon"), 180.0)
+        # Nur ein vollstaendiges Koordinatenpaar speichern (halb gesetzt = kein Wetter).
+        cal["lat"] = lat if (lat is not None and lon is not None) else None
+        cal["lon"] = lon if (lat is not None and lon is not None) else None
     cal["days"] = _int(data.get("days"), 14, 1, 60)
-    cal["fore_days"] = _int(data.get("fore_days"), 4, 1, 7)
+    if "sv_events" in data:
+        cal["sv_events"] = _int(data.get("sv_events"), 3, 1, 10)
     # Screensaver-Kamera ("Fenster zur Aussenwelt"): nur eine tatsaechliche
     # Intercom-UUID der Anlage akzeptieren, sonst leer (aus).
     sc = str(data.get("screensaverIntercom", "")).strip()
@@ -5365,15 +7305,16 @@ async def api_settings_calendar(request: web.Request) -> web.Response:
     except OSError as err:
         return web.json_response({"ok": False, "error": str(err)}, status=500)
     app.calendar_cfg = _calendar_config()
+    app._front_cal_due = 0.0   # Kalender sofort neu holen, nicht erst im naechsten Takt
     app._front_refresh.set()   # sofort neu laden und an die Panels schicken
     # screensaverIntercom ist Teil des einmaligen "theme"-Handshakes (nicht des
     # periodischen Front-Pushes) - offene Panels bekommen eine Aenderung sonst
     # erst nach der naechsten eigenen Neuverbindung mit. Reload wie bei den
     # anderen Einstellungsseiten (Panels/Darstellung).
     n = await _push(app, {"t": "reload"})
-    log.info("Kalender/Wetter gespeichert (iCal %s, Wetter %s, Screensaver-Kamera %s; %d Panels neu geladen)",
-             "gesetzt" if cal["ical_url"] else "leer",
-             "gesetzt" if cal["lat"] is not None else "leer",
+    log.info("Kalender/Wetter gespeichert (%d iCal-Abo(s), Wetter %s, Screensaver-Kamera %s; %d Panels neu geladen)",
+             len(front_info.calendar_sources(cal)),
+             "gesetzt" if cal.get("lat") is not None else "leer",
              "gesetzt" if cal["screensaverIntercom"] else "aus", n)
     return web.json_response({"ok": True, "reloaded": n})
 
@@ -5541,6 +7482,33 @@ async def api_device_name(request: web.Request) -> web.Response:
                               **({} if n else {"error": "kein Geraet ohne Kennung unter dieser IP"})})
 
 
+async def api_tab_layout(request: web.Request) -> web.Response:
+    """Tab-Editor: wirksame Belegung eines Tabs (gespeicherte Eintraege +
+    Vorbefuellung aus Loxone, auto=True) fuer das mitgeschickte, evtl. noch
+    ungespeicherte Profil. POST {panel, tab, profile}."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    tab = str(d.get("tab") or "")
+    if not (_is_tab(tab) and _is_layout_tab(tab)):
+        return web.json_response({"ok": False, "error": "kein Raster-Tab"}, status=400)
+    raw = d.get("profile")
+    raw = (App._sanitize_panels({"x": raw}).get("x") or {}) if isinstance(raw, dict) else None
+    prof = app.resolve_profile(str(d.get("panel") or ""), raw)
+    return web.json_response({"ok": True, "items": app._tab_layout(tab, prof)})
+
+
+async def api_kiosk_restart(request: web.Request) -> web.Response:
+    """Panel per adb neu starten: POST {device, action: app|reboot, ip?}.
+    app = Fully neu starten, reboot = Geraet neu starten."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    dev = str(d.get("device") or request.query.get("device") or "").strip()
+    action = "reboot" if str(d.get("action") or request.query.get("action") or "") == "reboot" else "app"
+    if not dev:
+        return web.json_response({"ok": False, "error": "device fehlt"}, status=400)
+    return web.json_response(await app.kiosk_restart(dev, action, str(d.get("ip") or "")))
+
+
 async def api_display(request: web.Request) -> web.Response:
     """Display der Panels schalten: ?on=1|0, optional ?panel= / ?device=.
     Wirkt auf Geraete mit Kiosk-App (Fully Kiosk), die die Visu offen haben;
@@ -5576,12 +7544,8 @@ async def _push(app: "App", msg: dict, panel: str = "", device: str = "") -> int
             continue
         if device and app.conn_dev.get(ws) != device:
             continue
-        try:
-            await ws.send_json(msg)
+        if await app._send_or_drop(ws, msg):
             n += 1
-        except Exception as err:   # nicht nur ConnectionError (F3)
-            log.debug("Push an Panel fehlgeschlagen: %s", err)
-            app.drop_conn(ws)
     return n
 
 
@@ -5669,12 +7633,8 @@ async def api_testtone(request: web.Request) -> web.Response:
     for ws, prof in list(app.conn_prof.items()):
         if target and (prof or {}).get("id") != target:
             continue
-        try:
-            await ws.send_json({"t": "testtone"})
+        if await app._send_or_drop(ws, {"t": "testtone"}):
             n += 1
-        except Exception as err:   # nicht nur ConnectionError (F3)
-            log.debug("testtone-Push an Panel fehlgeschlagen: %s", err)
-            app.drop_conn(ws)
     return web.json_response({"ok": True, "sent": n})
 
 
@@ -5846,15 +7806,29 @@ async def font_handler(request: web.Request) -> web.Response:
                         headers={"Cache-Control": "max-age=2592000, immutable"})
 
 
+# Icons vom Miniserver: nur Dateinamen bzw. EIN Ordner (IconsFilled/x.svg) und
+# keine Befehls-/Datenpfade. Sonst liesse sich ueber /icon?p=jdev/sps/io/<uuid>/On.png
+# mit dem Token des Servers jeder Miniserver-Befehl ausloesen (Sicherheits-Audit).
+_ICON_PATH_RE = re.compile(r"^[A-Za-z0-9_\- ]+(/[A-Za-z0-9_\-. ]+)?\.(svg|png)$")
+_ICON_DENY = {"jdev", "dev", "data", "stats", "sps", "audio", "admin", "upgrade", "update", "ws", "binstatisticdata"}
+
+
+def _icon_path_ok(p: str) -> bool:
+    return bool(p) and ".." not in p and bool(_ICON_PATH_RE.match(p)) \
+        and p.split("/", 1)[0].lower() not in _ICON_DENY
+
+
 async def icon_handler(request: web.Request) -> web.Response:
     app: App = request.app["app"]
     p = request.query.get("p", "")
-    if not p or ".." in p or not (p.endswith(".svg") or p.endswith(".png")):
+    if not _icon_path_ok(p):
         return web.Response(status=400, text="bad icon")
     res = await app.fetch_icon(p)
     if not res:
         return web.Response(status=404)
     body, ctype = res
+    if not (ctype.lower().startswith("image/") or ctype.lower().startswith("application/octet-stream")):
+        return web.Response(status=404)
     return web.Response(body=body, content_type=ctype.split(";")[0],
                         headers={"Cache-Control": "max-age=86400"})
 
@@ -5882,10 +7856,26 @@ async def loxlib_handler(request: web.Request) -> web.Response:
                         headers={"Cache-Control": "max-age=86400"})
 
 
+def _cover_host_ok(u: str) -> bool:
+    """Cover-Bilder kommen vom Audioserver (LAN) oder aus dem Internet - aber nie
+    von localhost/Link-Local (z.B. Dienste auf dem LoxBerry selbst)."""
+    try:
+        host = (urlparse(u).hostname or "").lower()
+    except ValueError:
+        return False
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return True                                   # Name: wird normal aufgeloest
+    return not (ip.is_loopback or ip.is_link_local or ip.is_unspecified or ip.is_multicast)
+
+
 async def cover_handler(request: web.Request) -> web.Response:
     app: App = request.app["app"]
     u = request.query.get("u", "")
-    if not (u.startswith("http://") or u.startswith("https://")):
+    if not (u.startswith("http://") or u.startswith("https://")) or not _cover_host_ok(u):
         return web.Response(status=400, text="bad cover")
     res = await app.fetch_cover(u)
     if not res:
@@ -5895,24 +7885,147 @@ async def cover_handler(request: web.Request) -> web.Response:
                         headers={"Cache-Control": "max-age=60"})
 
 
+class CamHub:
+    """EINE Verbindung zur Kamera je Tuerstation, verteilt an beliebig viele
+    Betrachter (Panels, Laptop, Klingel-Popup).
+
+    Frueher beendete jede neue Anfrage den laufenden Stream derselben Kamera
+    (viele Tuerstationen, u.a. DoorBird, erlauben nur wenige Betrachter). Schaute
+    ein zweites Geraet das Dashboard an - z.B. morgens der Laptop -, riss das dem
+    Wandpanel den Stream ab; dessen <img> zeigte dann das letzte Bild "haengend"
+    weiter, ohne Fehler und damit ohne Neuaufbau.
+
+    Jetzt: der Verteiler liest die Kamera einmal, zerlegt den MJPEG-Strom in
+    Einzelbilder und schickt sie mit eigener Trennmarke an alle Betrachter.
+    Bricht die Kamera ab (Neustart, WLAN, Timeout), baut er die Verbindung im
+    Hintergrund neu auf - die Verbindung zum Browser bleibt dabei offen und das
+    Bild laeuft danach einfach weiter. Ohne Betrachter wird die Kamera getrennt."""
+
+    BOUNDARY = "loxpanelframe"
+    RETRY_S = 3.0
+
+    def __init__(self, uuid: str, url: str, auth):
+        self.uuid, self.url, self.auth = uuid, url, auth
+        self.subs: set[asyncio.Queue] = set()
+        self.last: bytes | None = None          # letztes Bild -> neuer Betrachter sieht sofort etwas
+        self.task: asyncio.Task | None = None
+        self.ok = False                          # Kamera liefert gerade
+        self._idle = None                         # Nachlauf-Timer ohne Betrachter
+
+    def same(self, url: str, auth) -> bool:
+        return self.url == url and self.auth == auth
+
+    IDLE_KEEP_S = 60.0                           # nach dem letzten Betrachter noch so lange verbunden bleiben
+
+    def subscribe(self) -> asyncio.Queue:
+        q: asyncio.Queue = asyncio.Queue(maxsize=3)
+        if self.last:
+            q.put_nowait(self.last)
+        self.subs.add(q)
+        if self._idle:            # schnell zurueckgeschaltet -> Verbindung bleibt
+            self._idle.cancel()
+            self._idle = None
+        if not self.task or self.task.done():
+            self.task = asyncio.create_task(self._run())
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue) -> None:
+        self.subs.discard(q)
+        if not self.subs and self.task and not self.task.done() and not self._idle:
+            # Erst nach einer Weile ohne Betrachter trennen: beim Umschalten zwischen
+            # Kameras (Pillen) ist die Verbindung dann sofort wieder da.
+            self._idle = asyncio.get_running_loop().call_later(self.IDLE_KEEP_S, self._idle_stop)
+
+    def _idle_stop(self) -> None:
+        self._idle = None
+        if not self.subs and self.task and not self.task.done():
+            self.task.cancel()                   # keiner schaut mehr -> Kamera freigeben
+
+    def stop(self) -> None:
+        if self._idle:
+            self._idle.cancel()
+            self._idle = None
+        if self.task and not self.task.done():
+            self.task.cancel()
+
+    def _push(self, frame: bytes) -> None:
+        if not frame:
+            return
+        self.last = frame
+        for q in list(self.subs):
+            if q.full():                         # langsamer Betrachter: aeltestes Bild verwerfen
+                with contextlib.suppress(asyncio.QueueEmpty):
+                    q.get_nowait()
+            with contextlib.suppress(asyncio.QueueFull):
+                q.put_nowait(frame)
+
+    async def _run(self) -> None:
+        while self.subs or self._idle:
+            sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=30))
+            try:
+                async with sess.get(self.url, auth=self.auth) as up:
+                    if up.status != 200:
+                        raise aiohttp.ClientError(f"camera status {up.status}")
+                    ct = up.headers.get("Content-Type", "")
+                    m = re.search(r'boundary="?([^";]+)"?', ct)
+                    mark = (b"--" + m.group(1).lstrip("-").encode()) if m else None
+                    buf = b""
+                    async for chunk in up.content.iter_any():
+                        self.ok = True
+                        buf += chunk
+                        buf = self._frames(buf, mark)
+                        if len(buf) > 8 * 1024 * 1024:   # Unsinn vom Geraet nicht unbegrenzt puffern
+                            buf = b""
+                    if buf and not mark:                  # Einzelbild statt Stream
+                        self._push(buf)
+            except asyncio.CancelledError:
+                await sess.close()
+                raise
+            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, OSError) as e:
+                log.info("Kamera %s: %s - neuer Versuch in %.0f s", self.uuid[:8], e, self.RETRY_S)
+            finally:
+                self.ok = False
+                if not sess.closed:
+                    await sess.close()
+            if self.subs or self._idle:
+                await asyncio.sleep(self.RETRY_S)
+
+    def _frames(self, buf: bytes, mark: bytes | None) -> bytes:
+        """Vollstaendige JPEG-Bilder aus dem Puffer an die Betrachter, Rest zurueck."""
+        if mark:
+            while True:
+                a = buf.find(mark)
+                if a < 0:
+                    return buf[-len(mark):] if len(buf) > len(mark) else buf
+                b = buf.find(mark, a + len(mark))
+                if b < 0:
+                    return buf[a:]
+                part = buf[a + len(mark):b]
+                h = part.find(b"\r\n\r\n")
+                body = part[h + 4:] if h >= 0 else part
+                s0 = body.find(b"\xff\xd8")
+                e0 = body.rfind(b"\xff\xd9")
+                if s0 >= 0 and e0 > s0:
+                    self._push(body[s0:e0 + 2])
+                buf = buf[b:]
+        # ohne Trennmarke: JPEG-Start/-Ende suchen
+        while True:
+            s0 = buf.find(b"\xff\xd8")
+            if s0 < 0:
+                return b""
+            e0 = buf.find(b"\xff\xd9", s0 + 2)
+            if e0 < 0:
+                return buf[s0:]
+            self._push(buf[s0:e0 + 2])
+            buf = buf[e0 + 2:]
+
+
 async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
-    """Relais des MJPEG-Streams der Tuerstation (mit Auth) -> Browser.
+    """MJPEG der Tuerstation (mit Auth) an den Browser - ueber den CamHub, damit
+    alle Betrachter dieselbe EINE Kamera-Verbindung teilen (siehe CamHub).
 
-    Eigene ClientSession (nicht icon_session): mit dem SSL-Connector der
-    icon_session liefert die Mobotix nur ein Einzelbild statt des Streams.
-
-    Nur EIN aktiver Proxy-Stream je Kamera gleichzeitig: eine neue Anfrage
-    (z.B. der Screensaver, der nach einem Fehler mit neuem Cache-Buster
-    erneut laedt) beendet zuerst jeden noch laufenden alten Stream fuer
-    dieselbe Kamera-UUID. Grund: viele IP-Kameras/Tuerstationen (u.a.
-    DoorBird laut eigener API-Doku) erlauben nur sehr wenige gleichzeitige
-    Betrachter. Schliesst ein Kiosk-Browser eine abgebrochene MJPEG-
-    Verbindung (multipart/x-mixed-replace ist ein Dauer-Stream, kein
-    normaler Bild-Request) nicht immer sofort sauber, haetten sich sonst
-    ueber mehrere Screensaver-Zyklen hinweg haengende Verbindungen zur
-    Kamera angesammelt, bis diese irgendwann keine neue mehr annimmt -
-    passend zum Symptom "manchmal kein Bild".
-    """
+    Eigene ClientSession je Verteiler (nicht icon_session): mit dem SSL-Connector
+    der icon_session liefert die Mobotix nur ein Einzelbild statt des Streams."""
     app: App = request.app["app"]
     uuid = request.query.get("id", "")
     ent = app.intercom_cfg.get(uuid)
@@ -5923,43 +8036,39 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
     if isinstance(ent, dict) and ent.get("user"):
         auth = aiohttp.BasicAuth(ent.get("user", ""), ent.get("pass", ""))
 
-    old = app._mjpeg_tasks.get(uuid)
-    if old and not old.done():
-        old.cancel()
-        with contextlib.suppress(Exception):
-            await old
-    app._mjpeg_tasks[uuid] = asyncio.current_task()
+    hub = app._cam_hubs.get(uuid)
+    if hub and not hub.same(url, auth):          # URL/Zugang geaendert -> neu
+        hub.stop()
+        hub = None
+    if not hub:
+        hub = app._cam_hubs[uuid] = CamHub(uuid, url, auth)
+    q = hub.subscribe()
 
-    sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=30))
+    # Erstes Bild abwarten: kommt binnen 12 s keins, Fehler melden (das Panel
+    # versucht es dann nach 8 s erneut und zeigt "Kamera nicht erreichbar")
     try:
-        upstream = await sess.get(url, auth=auth)
-    except (aiohttp.ClientError, asyncio.TimeoutError, ValueError):
-        await sess.close()
+        first = await asyncio.wait_for(q.get(), timeout=12)
+    except asyncio.TimeoutError:
+        hub.unsubscribe(q)
         return web.Response(status=502, text="camera unreachable")
-    if upstream.status != 200:
-        st = upstream.status
-        upstream.release()
-        await sess.close()
-        return web.Response(status=502, text=f"camera status {st}")
 
-    ctype = upstream.headers.get("Content-Type", "multipart/x-mixed-replace")
+    bnd = CamHub.BOUNDARY
     resp = web.StreamResponse(status=200, headers={
-        "Content-Type": ctype, "Cache-Control": "no-cache, no-store"})
-    await resp.prepare(request)
+        "Content-Type": f"multipart/x-mixed-replace; boundary={bnd}",
+        "Cache-Control": "no-cache, no-store"})
     try:
-        async for chunk in upstream.content.iter_any():
-            # Timeout auf das Schreiben zum Client: liest ein haengender/
-            # eingefrorener Kiosk-Browser nicht mehr mit, soll die Verbindung
-            # zur Kamera zuverlaessig freigegeben werden, statt unbegrenzt zu
-            # warten (das waere genau eine der "haengenden" Verbindungen).
-            await asyncio.wait_for(resp.write(chunk), timeout=15)
+        await resp.prepare(request)
+        frame = first
+        while True:
+            head = (f"--{bnd}\r\nContent-Type: image/jpeg\r\nContent-Length: {len(frame)}\r\n\r\n").encode()
+            # Timeout auf das Schreiben: liest ein eingefrorener Browser nicht mehr
+            # mit, wird er abgehaengt statt die Verteilung aufzuhalten.
+            await asyncio.wait_for(resp.write(head + frame + b"\r\n"), timeout=15)
+            frame = await q.get()
     except (aiohttp.ClientError, ConnectionResetError, asyncio.CancelledError, asyncio.TimeoutError):
         pass
     finally:
-        upstream.release()
-        await sess.close()
-        if app._mjpeg_tasks.get(uuid) is asyncio.current_task():
-            del app._mjpeg_tasks[uuid]
+        hub.unsubscribe(q)
     return resp
 
 
@@ -5982,6 +8091,9 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     app.conn_prof[ws] = prof
     app.conn_dev[ws] = dev
     kiosk = request.query.get("kiosk", "")
+    # Fully auch am Browser-Kennzeichen erkennen (ohne PLUS fehlt oft ?kiosk=fully)
+    if not kiosk and "fully" in (request.headers.get("User-Agent") or "").lower():
+        kiosk = "fully"
     app.conn_info[ws] = {"dev": dev, "kiosk": kiosk if kiosk == "fully" else "",
                          "ip": request.remote or "", "ts": time.time()}
     first_tab = prof["tabs"][0] if prof["tabs"] else "favoriten"
@@ -5996,7 +8108,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     # Sendungen ab, raeumt finally die eben angelegten Eintraege trotzdem weg.
     try:
         await ws.send_json({"t": "theme", "vars": prof["vars"], "tabs": prof["tabs"],
-                            "tabMeta": app._tab_meta(prof["tabs"]), "title": prof["title"],
+                            "tabMeta": app._tab_meta(prof["tabs"], prof), "title": prof["title"],
                             "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
                             "panes": prof.get("panes") or {},
                             "dpmsOff": app.panel_dpms(prof["id"]),
@@ -6004,6 +8116,8 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "night": {**app.panel_night(prof["id"]), "on": app._night_on},
                             "screensaverCam": app._screensaver_cam(),
                             "motion": prof["motion"],
+                            "contrast": prof["contrast"],
+                            "sceneLight": prof["sceneLight"],
                             "saver": prof.get("saver"),
                             "agent": app._has_agent(dev)})
         _first = app.render(app.conn_route[ws], prof)
@@ -6057,6 +8171,11 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                                          None if pin is None else str(pin))
                 if pin is not None:
                     await ws.send_json({"t": "cmdresult", "ok": code == "200"})
+                elif code != "200" and data.get("uuid") and data.get("cmd"):
+                    # Sichtbar machen statt still verschlucken (Details im Log)
+                    await ws.send_json({"t": "notify", "level": "warn", "secs": 4, "text":
+                                        "Befehl nicht ausgeführt – Miniserver antwortet nicht" if code is None
+                                        else f"Befehl nicht ausgeführt (Miniserver meldet {code})"})
             elif data.get("t") == "setplayer":
                 # Client meldet die AudioZone der aktiven Player-Pane (oder "" = keine).
                 zone = str(data.get("zone") or "").strip()
@@ -6088,6 +8207,23 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                         log.exception("energy_blocks (setenergy) fehlgeschlagen (%s)", euid)
                 else:
                     app.conn_energy.pop(ws, None)
+            elif data.get("t") == "setchart":
+                # Client meldet den Baustein der aktiven Verlaufs-Pane und den
+                # dort gewaehlten Zeitraum (oder uuid "" = keine Pane).
+                cuid = str(data.get("uuid") or "").strip()
+                rng = data.get("range") if data.get("range") in STAT_RANGES else STAT_DEFAULT_RANGE
+                if cuid:
+                    app.conn_chart[ws] = (cuid, rng)
+                    try:
+                        cb = app.chart_blocks(cuid, rng)
+                        if cb is not None:
+                            _cm = {"t": "chart", **cb}
+                            await ws.send_json(_cm)
+                            app._last_sent.setdefault(ws, {})["chart"] = _cm
+                    except Exception:
+                        log.exception("chart_blocks (setchart) fehlgeschlagen (%s)", cuid)
+                else:
+                    app.conn_chart.pop(ws, None)
             elif data.get("t") == "setcamera":
                 # Client meldet die Intercom-Kachel der aktiven Kamera-Pane
                 # (oder "" = keine).
@@ -6120,6 +8256,198 @@ async def on_startup(a: web.Application) -> None:
                   asyncio.create_task(app.front_task())]
 
 
+# ---- Zugriffsschutz (optional) und Schutz vor fremden Webseiten ----
+# Passwort (optional, Startseite der Konfiguration): schuetzt /config, /settings und
+# die Einstellungs-APIs. Panels, Loxone-Befehle (/api/mode, /api/notify ...), Bilder
+# und der WebSocket bleiben frei. Die LoxBerry-Plugin-Seite ruft die API ueber ein
+# lokales Token (config/.cgi_token) auf.
+_ADMIN_PAGES = ("/config", "/settings")
+_ADMIN_API = ("/api/settings", "/api/panels", "/api/theme", "/api/devices", "/api/device/",
+              "/api/kiosk/", "/api/panel/launcher", "/api/agent/command", "/api/agents",
+              "/api/tablayout", "/api/meta", "/api/types", "/api/testtone", "/api/testring",
+              "/api/loxicons", "/api/admin/password")
+_ADMIN_TTL = 30 * 86400                     # Anmeldung haelt 30 Tage (bis Server-Neustart)
+_ADMIN_SESSIONS: dict[str, float] = {}
+CGI_TOKEN_FILE = _CFGDIR / ".cgi_token"
+
+
+def _admin_hash() -> str:
+    a = _load_cfg().get("admin")
+    return a.get("hash", "") if isinstance(a, dict) else ""
+
+
+def _pw_hash(pw: str, salt: bytes | None = None) -> str:
+    salt = salt or os.urandom(16)
+    dk = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), salt, 200_000)
+    return f"pbkdf2_sha256$200000${salt.hex()}${dk.hex()}"
+
+
+def _pw_ok(pw: str, stored: str) -> bool:
+    try:
+        _, it, salt, dk = stored.split("$")
+        got = hashlib.pbkdf2_hmac("sha256", pw.encode("utf-8"), bytes.fromhex(salt), int(it))
+    except (ValueError, TypeError):
+        return False
+    return hmac.compare_digest(got.hex(), dk)
+
+
+def _cgi_token() -> str:
+    try:
+        return CGI_TOKEN_FILE.read_text(encoding="utf-8").strip()
+    except OSError:
+        return ""
+
+
+def _ensure_cgi_token() -> None:
+    if _cgi_token():
+        return
+    try:
+        CGI_TOKEN_FILE.write_text(os.urandom(24).hex(), encoding="utf-8")
+        os.chmod(CGI_TOKEN_FILE, 0o644)       # LoxBerry-Plugin-Seite (Benutzer loxberry) liest es
+    except OSError as e:
+        log.warning("CGI-Token nicht schreibbar: %s", e)
+
+
+def _is_admin(request: web.Request) -> bool:
+    if not _admin_hash():
+        return True                           # kein Passwort gesetzt -> frei wie bisher
+    tok = request.headers.get("X-LoxPanel-Token", "")
+    if tok and hmac.compare_digest(tok, _cgi_token() or "-"):
+        return True
+    sid = request.cookies.get("lp_admin", "")
+    exp = _ADMIN_SESSIONS.get(sid)
+    return bool(exp and exp > time.time())
+
+
+def _needs_admin(path: str) -> bool:
+    return path in _ADMIN_PAGES or path.startswith(_ADMIN_API)
+
+
+def _foreign_origin(request: web.Request) -> bool:
+    """True, wenn ein Browser die Anfrage von einer FREMDEN Seite schickt (Origin
+    passt nicht zur aufgerufenen Adresse). Ohne Origin (Miniserver, LoxBerry,
+    Agent, curl) ist alles wie bisher erlaubt."""
+    o = request.headers.get("Origin")
+    if o is None:
+        return False
+    try:
+        return urlparse(o).netloc.lower() != (request.host or "").lower()
+    except ValueError:
+        return True
+
+
+_LOGIN_HTML = """<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>LoxPanel – Anmeldung</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0d0f1a;font-family:system-ui,sans-serif;color:#1f2440}
+form{background:#fff;border-radius:22px;padding:28px 26px;width:min(340px,90vw);box-shadow:0 20px 50px rgba(0,0,0,.35)}
+h1{font-size:20px;margin:0 0 4px}p{margin:0 0 18px;color:#5d6282;font-size:14px}
+input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid #d8d6e8;font-size:16px}
+button{margin-top:14px;width:100%;padding:12px;border:0;border-radius:999px;background:#1f2440;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+.err{color:#c0392b;font-size:13px;min-height:18px;margin-top:8px}</style></head><body>
+<form id="f"><h1>LoxPanel</h1><p>Die Konfiguration ist mit einem Passwort geschützt.</p>
+<input type="password" id="pw" placeholder="Passwort" autocomplete="current-password" autofocus>
+<button>Anmelden</button><div class="err" id="e"></div></form>
+<script>document.getElementById('f').onsubmit=async e=>{e.preventDefault();
+const r=await fetch('/api/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})});
+const j=await r.json().catch(()=>({}));if(j.ok)location.reload();else document.getElementById('e').textContent=j.error||'Anmeldung fehlgeschlagen';};</script>
+</body></html>"""
+
+
+@web.middleware
+async def security_mw(request: web.Request, handler):
+    path = request.path
+    # Schreibende Anfragen und WebSocket nur von der eigenen Seite (Schutz vor CSRF)
+    if (request.method not in ("GET", "HEAD", "OPTIONS") or path == "/ws") and _foreign_origin(request):
+        return web.json_response({"ok": False, "error": "fremde Herkunft abgelehnt"}, status=403)
+    if _needs_admin(path) and not _is_admin(request):
+        if path in _ADMIN_PAGES:
+            return web.Response(text=_LOGIN_HTML, content_type="text/html",
+                                headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"})
+        return web.json_response({"ok": False, "error": "Anmeldung nötig", "login": True}, status=401)
+    resp = await handler(request)
+    if path in _ADMIN_PAGES:
+        resp.headers["X-Frame-Options"] = "SAMEORIGIN"       # Konfiguration nicht in fremde Rahmen
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    return resp
+
+
+async def api_admin_status(request: web.Request) -> web.Response:
+    return web.json_response({"enabled": bool(_admin_hash()), "authed": _is_admin(request)})
+
+
+async def api_admin_login(request: web.Request) -> web.Response:
+    try:
+        d = await request.json()
+    except (ValueError, aiohttp.ContentTypeError):
+        d = {}
+    h = _admin_hash()
+    if not h:
+        return web.json_response({"ok": True})
+    if not _pw_ok(str(d.get("password") or ""), h):
+        await asyncio.sleep(1.0)                  # Raten bremsen
+        return web.json_response({"ok": False, "error": "Passwort falsch"}, status=403)
+    now = time.time()
+    for k in [k for k, v in _ADMIN_SESSIONS.items() if v < now]:
+        _ADMIN_SESSIONS.pop(k, None)
+    sid = os.urandom(24).hex()
+    _ADMIN_SESSIONS[sid] = now + _ADMIN_TTL
+    resp = web.json_response({"ok": True})
+    resp.set_cookie("lp_admin", sid, max_age=_ADMIN_TTL, httponly=True, samesite="Lax", path="/")
+    return resp
+
+
+async def api_admin_logout(request: web.Request) -> web.Response:
+    _ADMIN_SESSIONS.pop(request.cookies.get("lp_admin", ""), None)
+    resp = web.json_response({"ok": True})
+    resp.del_cookie("lp_admin", path="/")
+    return resp
+
+
+async def api_admin_password(request: web.Request) -> web.Response:
+    """Passwort setzen/aendern/entfernen: {current?, new}. new leer = Schutz aus.
+    Ist schon eins gesetzt, muss current stimmen."""
+    try:
+        d = await request.json()
+    except (ValueError, aiohttp.ContentTypeError):
+        return web.json_response({"ok": False, "error": "kein gültiges JSON"}, status=400)
+    cfg = _load_cfg()
+    old = (cfg.get("admin") or {}).get("hash", "") if isinstance(cfg.get("admin"), dict) else ""
+    if old and not _pw_ok(str(d.get("current") or ""), old):
+        await asyncio.sleep(1.0)
+        return web.json_response({"ok": False, "error": "Aktuelles Passwort falsch"}, status=403)
+    new = str(d.get("new") or "")
+    if new and len(new) < 6:
+        return web.json_response({"ok": False, "error": "Mindestens 6 Zeichen"}, status=400)
+    if new:
+        cfg["admin"] = {"hash": _pw_hash(new)}
+    else:
+        cfg.pop("admin", None)
+    try:
+        _write_cfg(cfg)
+    except OSError as err:
+        return web.json_response({"ok": False, "error": str(err)}, status=500)
+    _ADMIN_SESSIONS.clear()
+    resp = web.json_response({"ok": True, "enabled": bool(new)})
+    if new:                                     # gleich angemeldet bleiben
+        sid = os.urandom(24).hex()
+        _ADMIN_SESSIONS[sid] = time.time() + _ADMIN_TTL
+        resp.set_cookie("lp_admin", sid, max_age=_ADMIN_TTL, httponly=True, samesite="Lax", path="/")
+    log.info("Zugriffsschutz der Konfiguration %s", "gesetzt" if new else "entfernt")
+    return resp
+
+
+async def on_shutdown(a: web.Application) -> None:
+    """Beim Stoppen (Update/Neustart) offene Dauerverbindungen sofort schliessen:
+    Panel-WebSockets und Kamera-Streams. Sonst wartet der Server darauf, bis
+    Docker ihn nach 10 s hart beendet. Die Panels verbinden sich danach selbst neu."""
+    app: App = a["app"]
+    for hub in list(app._cam_hubs.values()):
+        hub.stop()
+    for ws in list(app.conn_prof.keys()):
+        with contextlib.suppress(Exception):
+            await ws.close(code=aiohttp.WSCloseCode.GOING_AWAY, message=b"server restart")
+
+
 async def on_cleanup(a: web.Application) -> None:
     for t in a.get("tasks", []):
         t.cancel()
@@ -6135,7 +8463,8 @@ def main() -> None:
     p.add_argument("--port", type=int, default=int(os.environ.get("LOXPANEL_PORT", "8099")))
     args = p.parse_args()
 
-    a = web.Application()
+    _ensure_cgi_token()
+    a = web.Application(middlewares=[security_mw])
     a["app"] = App(_config(), _audio_config(), _audiometa_config())
     a.router.add_get("/", index)
     a.router.add_get("/api/version", version_handler)
@@ -6156,6 +8485,7 @@ def main() -> None:
     a.router.add_post("/api/settings/night", api_settings_night)
     a.router.add_post("/api/settings/audiometa", api_settings_audiometa)
     a.router.add_post("/api/settings/calendar", api_settings_calendar)
+    a.router.add_post("/api/settings/weather", api_settings_weather)
     a.router.add_post("/api/agent/announce", api_agent_announce)
     a.router.add_get("/api/agents", api_agents)
     a.router.add_post("/api/agent/command", api_agent_command)
@@ -6165,6 +8495,8 @@ def main() -> None:
     a.router.add_post("/api/device/name", api_device_name)
     a.router.add_get("/api/display", api_display)
     a.router.add_post("/api/display", api_display)
+    a.router.add_post("/api/kiosk/restart", api_kiosk_restart)
+    a.router.add_post("/api/tablayout", api_tab_layout)
     a.router.add_get("/api/mode", api_mode)
     a.router.add_post("/api/mode", api_mode)
     a.router.add_get("/api/mode/{mode}", api_mode)
@@ -6185,9 +8517,15 @@ def main() -> None:
     a.router.add_get("/cover", cover_handler)
     a.router.add_get("/mjpeg", mjpeg_handler)
     a.router.add_get("/ws", ws_handler)
+    a.router.add_get("/api/admin/status", api_admin_status)
+    a.router.add_post("/api/admin/login", api_admin_login)
+    a.router.add_post("/api/admin/logout", api_admin_logout)
+    a.router.add_post("/api/admin/password", api_admin_password)
     a.on_startup.append(on_startup)
+    a.on_shutdown.append(on_shutdown)
     a.on_cleanup.append(on_cleanup)
-    web.run_app(a, host="0.0.0.0", port=args.port)
+    # kurze Gnadenfrist fuer laufende Anfragen, dann beenden (Docker gibt 10 s)
+    web.run_app(a, host="0.0.0.0", port=args.port, shutdown_timeout=3)
 
 
 if __name__ == "__main__":

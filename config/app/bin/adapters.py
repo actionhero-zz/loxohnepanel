@@ -130,12 +130,3 @@ class JalousieAdapter(ControlAdapter):
             return {"on": False, "label": "–", "pct": None}
         pct = round(p * 100)
         return {"on": p > 0.02, "label": ("Offen" if pct <= 0 else f"{pct}% zu"), "pct": pct}
-
-
-_ADAPTERS: dict[str, ControlAdapter] = {
-    a.type: a for a in (LightControllerV2Adapter(), JalousieAdapter())
-}
-
-
-def get_adapter(control_type: str) -> ControlAdapter | None:
-    return _ADAPTERS.get(control_type)

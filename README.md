@@ -18,9 +18,144 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   „Screensaver“: Uhr & Datum, Wetter, Kalender, Türstation und Loxone-Kacheln
   per Ziehen & Ablegen im Raster anordnen (3×3 je 480er-Display, 6×3 auf
   breiten Displays wie dem Shelly X2i), Größe an der Ecke ändern. Kacheln
-  bleiben im Screensaver bedienbar; Tür-Buttons lösen nur durch 1 s Halten
-  aus. Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
+  bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
+  (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Schnelle Kameras (0.19.0-fav17)** — Umschalten im Kamera-Widget ohne Wartezeit (bis 3
+  Kameras laufen parallel, Server hält Kameras 60 s verbunden); neues Panel startet auf der
+  Profilseite mit Standardraster 2×2.
+- **System aufgeräumt (0.19.0-fav16)** — Hauptmenü Start · System · Geräte; unter System:
+  Sicherheit (Passwortschutz), Darstellung global, Nachtmodus in „Bedienung“, Wetterquelle bei
+  „Miniserver“; Datum/Uhr folgen der Sprache der Konfiguration; Vorschau-Tage am Wetter-Widget;
+  „Display & Nacht“ klarer gegliedert; Icon-Auswahl im Raster-Editor nicht mehr abgeschnitten.
+- **Sicherheit & breite Kamera (0.19.0-fav15)** — Icon-Abruf nur noch für echte Icons,
+  Schutz vor Befehlen fremder Webseiten, optionaler Passwortschutz der Konfiguration
+  (Startseite → Zugriffsschutz; Zurücksetzen auf der LoxBerry-Plugin-Seite); Kamera-/
+  Intercom-Widget bei zwei Panels auch in Tabs über beide Panels (4×2 bzw. 6×3).
+- **Schneller & schlanker (0.19.0-fav14)** — Neustart/Update ca. 10 s schneller (Server
+  schließt Verbindungen sofort), kleineres Plugin-Paket, schlankeres Docker-Image; Größen im
+  Raster-Editor immer wählbar (sucht freien Platz oder sagt, warum nicht); Intercom-Widget
+  ebenfalls über beide Panels.
+- **Kamera-Auswahl (0.19.0-fav13)** — im Kamera-Widget Kameras per Haken wählen und per
+  Ziehen sortieren; im Dashboard mit zwei Panels auch über beide Flächen (bis 6×3);
+  Kamera-Zeilen in den Einstellungen schneiden Benutzer/Passwort nicht mehr ab.
+- **Kameras (0.19.0-fav12)** — eigene Überwachungskameras neben den Intercoms
+  (System → Intercom / Kameras), neues Widget „Kamera“ mit Pillen zum Durchschalten;
+  eine Kamera-Verbindung für alle Betrachter mit automatischem Neuaufbau (behebt das
+  „hängende“ Kamerabild, wenn ein zweites Gerät zuschaut).
+- **Moderne Bedienung (0.19.0-fav11)** — Startseite mit Status und Einrichtungs-Checkliste,
+  Suche/Befehlspalette (Strg/⌘+K), Rückgängig statt Rückfragen, Speicherleiste mit
+  Änderungszähler und Strg/⌘+S, ?-Hilfe statt langer Texte, schrumpfende Kopfzeile;
+  Kachel-Einstellungen im Raster-Editor bleiben rechts und scrollen mit.
+- **Upstream-Fixes & responsive (0.19.0-fav10)** — aus Lenardo1/Loxpanel: Energiefluss
+  (Speicher-Richtung, Hausverbrauch), alte Raumregelung (IRC v1) mit Kachel/Detailseite,
+  Betriebsart-Auswahl, Speichern meldet nicht Übernommenes; Config für alle Fenstergrößen
+  (Handy bis 4K), Raster-Editor passt die Kachelgröße an.
+- **Editor-Feinschliff (0.19.0-fav9)** — Tab löschen per ✕ am Tab; Kachel-Aussehen auch
+  für Raum- und Kategorie-Kacheln der Übersichten; schlankere Seitenleiste im Raster-Editor.
+- **Aufgeräumt & fließendes Layout (0.19.0-fav8)** — Config-Inhalt passt sich der
+  Fensterbreite an; Dashboard-Widgets über beide Displays (z. B. Uhr mittig); verwendete
+  Widgets in der Bibliothek markiert; alter Code und tote Styles entfernt.
+- **Dashboard im Tab-Editor (0.19.0-fav7)** — Dashboard und Tabs in einem Bereich mit
+  demselben Raster-Editor; Tab-Leiste wie am Panel (Dashboard links, Tab 1 rechts, per Ziehen
+  umsortieren); einklappbare Seitenleiste; Meine Geräte: Status, Knöpfe und Einstellungen je
+  Gerät in einem Block; Übersicht Räume/Kategorien direkt im Raster ein-/ausblenden.
+- **Neuer Raster-Editor & Look (0.19.0-fav6)** — Tab-Raster mit Bibliothek (Suche,
+  Bausteine direkt hineinziehen), Live-Vorschau wie am Panel, Tauschen beim Ablegen,
+  ✕/Entf, Strg+Z; Config im Look der Web-App mit Theme Bunt/Hell/Dunkel; Gerätetyp je
+  Gerät (steuert die Neustart-Knöpfe); Hauptmenü Start · System · Geräte · Darstellung.
+- **Aufgeräumt & adb-Neustart (0.19.0-fav5)** — Config aufgeräumt (doppelte Optionen
+  entfernt, klarere Namen, Sprache/Test-Ton an sinnvollem Ort); Fully neu starten und
+  Gerät neu starten per adb (ohne Fully-PLUS-Lizenz).
+- **Mehrfach-Tabs & Designer (0.19.0-fav4)** — Übersicht Räume/Kategorien und Zentral
+  mehrfach anlegbar (eigener Name, eigene Auswahl); Standardraster im Profil; Display &
+  Nacht und Feinjustierung im Profil; Zusatzfläche je Tab entfällt (Widgets im Raster);
+  Kachel-Designer direkt im Raster-/Dashboard-Editor.
+- **Übersichten & Menü (0.19.0-fav3)** — Übersichten Räume/Kategorien als Raster-Tabs
+  (Auswahl in den Tab-Eigenschaften, Reiter „Räume & Kategorien“ entfällt); Raster-Editor
+  wächst nach unten wie am Panel; Hauptmenü nur global (Start · Darstellung · Geräte ·
+  System), einzelne Panels über die Seitenleiste.
+- **Raster & Profil (0.19.0-fav2)** — Tabs und Dashboard wahlweise im 2×2- oder
+  3×3-Raster; Reiter „Profil“ mit Panel-Größe (1 Panel 480×480 / 2 Panels 960×480);
+  eigene Symbole je Tab; Tab-Editor mit Tab-Leiste und Seiten nebeneinander;
+  „Screensaver“ heißt jetzt „Dashboard“; Detailseiten wieder im 2×2-Raster.
+- **Freie Tabs & neue Config (0.19.0-fav1)** — Bis zu 4 Tabs auf dem 3×3-Raster
+  wie der Screensaver: Frei, Raum, Kategorie oder Zentral (vorbefüllt aus Loxone,
+  per Ziehen & Ablegen anpassbar, neue Bausteine kommen automatisch dazu) sowie
+  Übersichten Räume/Kategorien. Kacheln 1×1/2×1/2×2, Widgets, mehrere Seiten.
+  Config neu gegliedert (Start · Panels gestalten · Geräte · System), doppelte
+  und veraltete Optionen entfernt. Fully Kiosk per Knopf neu starten.
+- **Lichtszenen & Kontrast (0.18.0-fav2)** — Option „Lichtfarbe & Helligkeit
+  anzeigen (lernend)“: Szenen-Symbol mit Kern in Lichtfarbe und 0–3 Ringen für die
+  Helligkeit, lernt jede Szene beim ersten Einschalten. Option „Mehr Kontrast“
+  (weicher Schatten an Kacheln/Knöpfen). Grün/Rot-Text auf hellen Designs besser lesbar.
+- **Spezialbausteine (0.18.0-fav1)** — Alarmanlage/Rauchmelder mit farbiger
+  Zustandsfläche, Türstation mit Livebild über die ganze Karte, Tor wie die
+  Beschattung, Wecker mit Bearbeiten-Seite, Audio mit Cover im Hintergrund und
+  Lautstärke-Balken, Lüftung, Bewässerung, Energie, Protokoll, Zentral-Seiten;
+  PIN-Eingabe im Kartenstil.
+- **Detailkopf & Pillen (0.17.0-fav5)** — Raum und Bausteinname oben auf jeder
+  Detailseite; reine Anzeigen mit übergroßem, blassem Piktogramm im Hintergrund;
+  alle Knöpfe der Aktionsreihe als gleich hohe Pille.
+- **Leiste & Verlauf (0.17.0-fav4)** — Animation in drei Stufen (Keine/Mittel/
+  Viel, global und je Panel); links Dashboard-Symbol bzw. Zurück-Pfeil; kompakte
+  Leiste mit bis zu 3 antippbaren Pfad-Symbolen; Verlauf immer als eigene Seite
+  über 📈 in der Aktionsreihe; Anzeigeseiten mit kleinem Piktogramm über dem
+  großen Wert.
+- **Flüssiger auf dem Shelly (0.17.0-fav3)** — Zoom über eine einzige Fläche
+  (nur transform/opacity statt Seitenkopie + clip-path), Kacheln blenden nur
+  ein, kein Helligkeitsfilter beim Antippen, Szenen scrollen ohne Ruckeln,
+  Bildlaufanzeige und Uhren ohne unnötiges Neuzeichnen.
+- **Einheitliche Detailseiten (0.17.0-fav2)** — alle Bausteine nach demselben
+  Standard: Zustand groß, Wert+Regler als Fläche, Knöpfe in der Aktionsreihe,
+  Verlauf auf eigener Seite (📈). Heizung: Soll als Fläche, Modi Eco/Komfort/
+  Auto. Schalter/Taster neu, Auswahlschalter als Kacheln. Pfad-Symbole
+  antippbar, Lichtszenen scrollbar ohne Auslösen.
+- **Detailseiten & Leiste nach Mockup (0.17.0-fav1)**
+  - Leiste: Zurück links im Tab-Look, Tabs rechtsbündig (Tab 1 ganz rechts),
+    daneben Pfad-Piktogramme (antippbar, springen auf die Ebene).
+  - Lichtszenen als 2×2-Kacheln; Aktionsreihe je nach Baustein (Aus, alle
+    Leuchten gemeinsam dunkler/heller in 10-%-Schritten).
+  - Klima ohne Ring-Regler: große Ist-Temperatur, Ziel, − / +.
+  - Beschattung: hoch · Stellung (Füllstand) · runter; Dimmen: Fläche = Regler.
+  - Große Zahlen auf allen Detailseiten (Nachkommastelle kleiner/heller).
+  - Sofortige Rückmeldung beim Antippen, Puls bis zur Bestätigung.
+- **Shelly-Fixes (0.16.0-fav2)** — helle Designs werden von Androids WebView
+  nicht mehr automatisch abgedunkelt (`color-scheme`); Zoom ohne Aufblitzen
+  des Rahmens und ohne doppelte Einblendung der Kacheln.
+- **Neuer Look nach UI-Mockup (0.16.0-fav1)** — Tab-Leiste oben, darunter eine
+  abgerundete Karte je Tab in eigener Farbe mit weißen Kacheln (480×480 und
+  960×480). Design-Vorlagen Bunt (Standard) / Dunkel / Hell, jede Farbe per
+  Farbwähler änderbar (Aussehen → Design). Zoom-Übergang Kachel ↔ Detailseite.
+  Schrift für Zahlen & Titel frei wählbar, Standard Sora (self-hosted, OFL).
+- **Screensaver-Widgets aus dem Original 0.6 (0.15.0-fav3)** — Wetter-Details,
+  Energiefluss, Verlauf (Baustein + Zeitraum) und Audio (Cover, Steuerung,
+  Lautstärke) frei im Screensaver-Raster.
+- **Aktiv-Overlay entfernt (0.15.0-fav3)** — den Zustand zeigen Piktogramme,
+  Icon-Farben und Mini-Buttons; Alarm/Störung bleiben fest rot bzw. grün.
+- **Screensaver-Raster in der Visu-Fläche (0.15.0-fav2)** — das eigene Raster
+  liegt wie der klassische Screensaver genau über der Visu statt über dem
+  ganzen Browserfenster; die Zellen bleiben dadurch quadratisch.
+- **Übernahmen aus dem Original LoxPanel 0.6.0 (0.15.0-fav1)**
+  - Miniserver-Anmeldung wird automatisch erneuert (vorher kamen nach 1–2
+    Tagen keine Befehle mehr an); gescheiterte Befehle zeigt das Panel an.
+  - Bis zu 8 Kalender (iCal-Abos) mit Name und Farbe; mehrtägige Termine an
+    allen Tagen; gestrichene, abgesagte und verschobene Serientermine
+    korrekt (verschobene zusätzlich im Fork); Google-Serien mit UNTIL gehen
+    nicht mehr verloren; weniger Abrufe (iCloud-Sperre, Retry-After).
+  - Verlaufs-Diagramme: Detailseite, Split-Hälfte und Mini-Verlauf in der
+    Kachel (Config → Kacheln gestalten → Verlauf).
+  - Kleinere Fehler: Monatskalender-Wochentage, Energiefluss-Icons in
+    WebViews, Kontrast der Raumzeile, leere Port-Variable.
+- **Screensaver-Kacheln wie im Raster (0.14.0-fav4)** — mit Raumname und in
+  denselben Schrift-/Piktogrammgrößen wie die übrigen Kacheln; lange Namen
+  brechen mit Silbentrennung auf zwei Zeilen um.
+- **Farbige Lichter gut erkennbar (0.14.0-fav3)** — das Piktogramm einer
+  RGB-Lichtsteuerung übernimmt die Live-Farbe mit Mindesthelligkeit: tief
+  gedimmte Szenen (z. B. „Nacht“) bleiben dunkler, verschwinden aber nicht mehr.
+- **Screensaver-Feinschliff (0.14.0-fav2)** — keine doppelte Uhr mehr in der
+  Mitte (Split-Panels), Türstation als ruhiges Livebild ohne Buttons (neu auch
+  3×2), größere Vorschau-Kacheln und Piktogramme im Wetter-Widget.
 - **Kamera stabiler (0.14.0)** — Kamerabilder werden bei Rückkehr ans Panel
   neu aufgebaut (friert nach langer Ruhe nicht mehr ein), bei Fehlern nach 8 s
   erneut versucht; optional je Türstation automatischer Neuaufbau alle

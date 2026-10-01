@@ -24,12 +24,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # App-Code + Standard-Frontend/Config (Beispiele/Defaults)
-COPY bin/ ./bin/
-COPY webfrontend/ ./webfrontend/
-COPY config/ ./config/
-COPY deploy/ ./deploy/
-COPY agent/ ./agent/
-COPY android/ ./android/
+# (ein Schritt statt sechs; tools/ bleibt draussen, siehe .dockerignore)
+COPY . .
 
 # Laufzeit-Config (loxpanel.cfg, panels.json, theme.json) wird als Volume
 # unter /app/config gemountet; Miniserver-Zugang kann auch per Env kommen.

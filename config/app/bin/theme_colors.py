@@ -316,3 +316,93 @@ def derive(grundfarbe: str) -> dict | None:
         # kraeftige Toenung den Kontrast der Zustandsfarbe auf.
         "--ov-fill": f"{satz['deckung']:.3g}",
     }
+
+
+# ---- Design (Layout-Redesign 2026-09: Tab-Leiste oben, Karte je Tab) ----
+# Frei waehlbare Farben (Config -> Aussehen -> Design, je ein Farbwaehler).
+# Drei Vorlagen fuellen alle Felder: "bunt" = Farben aus dem UI-Mockup
+# (Pastell-Karte je Tab), "dunkel" = das bisherige dunkle Panel, "hell" = das
+# bisherige Panel invertiert. Anschliessend ist jedes Feld einzeln aenderbar.
+DESIGN_KEYS = ("bezel", "bezelInk", "tabIdle", "tabActive", "tabActiveInk",
+               "face1", "face2", "face3", "face4", "face5", "faceN",
+               "dot1", "dot2", "dot3", "dot4", "dot5",
+               "tile", "ink", "ink2", "on")
+
+DESIGN_PRESETS = {
+    "bunt": {
+        "bezel": "#0d0f1a", "bezelInk": "#ecebff", "tabIdle": "#9ea5c4",
+        "tabActive": "#262a45", "tabActiveInk": "#ffffff",
+        "face1": "#ffedb8", "face2": "#d3e8ff", "face3": "#ffdacb",
+        "face4": "#e2d9ff", "face5": "#cff2e1", "faceN": "#f1eeff",
+        "dot1": "#ffc145", "dot2": "#7db7ff", "dot3": "#ff9e7a",
+        "dot4": "#a48bff", "dot5": "#5cd6a4",
+        "tile": "#ffffff", "ink": "#1f2440", "ink2": "#565c7c", "on": "#e09a00",
+    },
+    "dunkel": {
+        "bezel": "#0d120e", "bezelInk": "#e7ede7", "tabIdle": "#9fb0a4",
+        "tabActive": "#1f2a23", "tabActiveInk": "#52b881",
+        "face1": "#131a15", "face2": "#131a15", "face3": "#131a15",
+        "face4": "#131a15", "face5": "#131a15", "faceN": "#131a15",
+        "dot1": "#52b881", "dot2": "#52b881", "dot3": "#52b881",
+        "dot4": "#52b881", "dot5": "#52b881",
+        "tile": "#1b231d", "ink": "#e7ede7", "ink2": "#9fb0a4", "on": "#e0a24d",
+    },
+    "hell": {
+        "bezel": "#eef2ef", "bezelInk": "#0d120e", "tabIdle": "#55655a",
+        "tabActive": "#dce6df", "tabActiveInk": "#2f8a5c",
+        "face1": "#e3eae5", "face2": "#e3eae5", "face3": "#e3eae5",
+        "face4": "#e3eae5", "face5": "#e3eae5", "faceN": "#e3eae5",
+        "dot1": "#2f8a5c", "dot2": "#2f8a5c", "dot3": "#2f8a5c",
+        "dot4": "#2f8a5c", "dot5": "#2f8a5c",
+        "tile": "#ffffff", "ink": "#0d120e", "ink2": "#4f5f54", "on": "#b86a00",
+    },
+}
+DESIGN_DEFAULT = "bunt"
+
+
+def clean_design(d) -> dict | None:
+    """Design aus der Konfiguration pruefen: {preset, colors{key: #rrggbb}}.
+    Fehlende Farben kommen aus der Vorlage. None = ungueltig/nicht gesetzt."""
+    if not isinstance(d, dict):
+        return None
+    preset = d.get("preset") if d.get("preset") in DESIGN_PRESETS else DESIGN_DEFAULT
+    colors = {}
+    roh = d.get("colors") if isinstance(d.get("colors"), dict) else {}
+    for k in DESIGN_KEYS:
+        v = roh.get(k)
+        if isinstance(v, str) and _HEX.match(v.strip()):
+            colors[k] = v.strip().lower()
+    return {"preset": preset, "colors": colors}
+
+
+def design_vars(d: dict | None) -> dict:
+    """Design -> CSS-Variablen fuers Panel. Die bestehenden Variablen (--bg,
+    --tile, --ink, --muted, --wash ...) werden mitgesetzt, damit Detailseiten,
+    Menues und Screensaver ohne eigene Regeln zum Design passen."""
+    d = clean_design(d) or {"preset": DESIGN_DEFAULT, "colors": {}}
+    c = {**DESIGN_PRESETS[d["preset"]], **d["colors"]}
+
+    def tripel(h: str) -> str:
+        return "%d,%d,%d" % _rgb(h)
+
+    hell_kachel = luminanz(c["tile"]) > 0.5
+    v = {"--bg": c["bezel"], "--bezel": c["bezel"], "--bezel-ink": c["bezelInk"],
+         "--bezel-ink-rgb": tripel(c["bezelInk"]),
+         "--tabbar": c["bezel"], "--tab-idle": c["tabIdle"],
+         "--tab-active": c["tabActive"], "--tab-active-ink": c["tabActiveInk"],
+         "--screen": c["faceN"], "--face-n": c["faceN"],
+         "--tile": c["tile"], "--ink": c["ink"], "--muted": c["ink2"],
+         "--glow": c["on"], "--on-rgb": tripel(c["on"]),
+         # Auflagen (Linien, Tönungen) in Schriftfarbe: dunkel auf hellen,
+         # hell auf dunklen Kacheln.
+         "--wash": tripel(c["ink"]),
+         "--tile-shadow": "none" if hell_kachel else "0 3px 10px rgba(0,0,0,.14)"}
+    # Signalfarben als TEXT: auf hellen Kartenflaechen reichen Gruen/Rot nicht
+    # fuer 3:1 (grosse Schrift) -> dunklere Toene; auf dunklen die normalen.
+    helle_flaeche = luminanz(c["face1"]) > 0.4
+    v["--good-txt"] = "#2f7d52" if helle_flaeche else "#52b881"
+    v["--crit-txt"] = "#b8433a" if helle_flaeche else "#e2695f"
+    for i in range(1, 6):
+        v[f"--face-{i}"] = c[f"face{i}"]
+        v[f"--dot-{i}"] = c[f"dot{i}"]
+    return v

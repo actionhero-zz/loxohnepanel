@@ -21,6 +21,11 @@ my $ctl     = "REPLACELBPBINDIR/loxpanel-ctl.sh";
 my $log     = "REPLACELBPDATADIR/last_action.log";   # Verlauf der letzten Container-Aktion
 my $bdir    = "REPLACELBPDATADIR/backups";           # Konfig-Sicherungen (ueberleben Plugin-Updates)
 my $lbhost  = LoxBerry::System::get_localip() // "localhost";
+# Lokales Token des Containers: damit darf diese (LoxBerry-geschuetzte) Seite die
+# Einstellungs-API auch dann nutzen, wenn die Konfiguration ein Passwort hat.
+my $tok = '';
+if (open(my $tfh, '<', "REPLACELBPDATADIR/config/.cgi_token")) { local $/; $tok = <$tfh> // ''; close($tfh); }
+$tok =~ s/\s+//g;
 
 sub h { my $s = shift; $s = "" unless defined $s; $s =~ s/&/&amp;/g; $s =~ s/</&lt;/g; $s =~ s/>/&gt;/g; $s =~ s/"/&quot;/g; return $s; }
 
@@ -52,7 +57,7 @@ sub _lox_cred {
 sub apply_miniserver {
     my ($data) = @_;
     my $ua = LWP::UserAgent->new(timeout => 25);
-    my $r  = $ua->post("$api/api/settings/miniserver",
+    my $r  = $ua->post("$api/api/settings/miniserver", 'X-LoxPanel-Token' => $tok,
         'Content-Type' => 'application/json', Content => encode_json($data));
     if ($r->is_success) {
         my $j = eval { decode_json($r->decoded_content) };
@@ -68,7 +73,7 @@ sub apply_miniserver {
 sub setup_panel {
     my ($ip, $panel, $device) = @_;
     my $ua = LWP::UserAgent->new(timeout => 180);   # Installation per WLAN kann dauern
-    my $r  = $ua->post("$api/api/panel/launcher", 'Content-Type' => 'application/json',
+    my $r  = $ua->post("$api/api/panel/launcher", 'X-LoxPanel-Token' => $tok, 'Content-Type' => 'application/json',
         Content => encode_json({ ip => $ip, panel => $panel, device => $device, server => "$lbhost:8098" }));
     return "<div class='alert alert-danger'>Container nicht erreichbar &ndash; l&auml;uft er?</div>"
         unless $r->is_success || $r->code == 400;
@@ -135,6 +140,11 @@ elsif ($action =~ /^(start|stop|restart)$/) {
          . "Der Verlauf erscheint unten unter &bdquo;Letzte Aktion&ldquo; und aktualisiert sich automatisch.</div>";
     $refresh = 1;
 }
+elsif ($action eq 'resetpw') {
+    launch_bg("Passwort zuruecksetzen", $ctl, "resetpw");
+    $msg = "<div class='alert alert-info'>Passwortschutz der Konfiguration wird entfernt &hellip; Ergebnis unten unter &bdquo;Letzte Aktion&ldquo;.</div>";
+    $refresh = 1;
+}
 elsif ($action eq 'backup') {
     launch_bg("Backup", $ctl, "backup");
     $msg = "<div class='alert alert-info'>Backup wird erstellt &hellip; Ergebnis unten unter &bdquo;Letzte Aktion&ldquo;.</div>";
@@ -164,7 +174,7 @@ elsif ($action eq 'delete_backup') {
 
 # ---- Status vom Container holen ----
 my ($running, $conn, $mhost, $muser, $mport, $haspass) = (0, 0, '', '', 443, 0);
-my $sr = LWP::UserAgent->new(timeout => 5)->get("$api/api/settings");
+my $sr = LWP::UserAgent->new(timeout => 5)->get("$api/api/settings", 'X-LoxPanel-Token' => $tok);
 if ($sr->is_success) {
     $running = 1;
     my $j = eval { decode_json($sr->decoded_content) };
@@ -358,6 +368,9 @@ print <<"HTML";
     <p style="color:#777;margin-top:0">Sichert die komplette Konfiguration (Panels, Kacheln, Theme &amp; Miniserver-Zugang) als Archiv unter <code>$bdir</code>. Diese Sicherungen bleiben auch bei Plugin-Updates erhalten; nur die letzten 20 werden behalten.</p>
     <form method="post" style="margin-bottom:12px"><input type="hidden" name="action" value="backup"><button class="lpbtn lpgreen" type="submit">Backup jetzt erstellen</button></form>
     $backups_html
+    <hr>
+    <p style="color:#777">Passwort der Konfiguration (http://$lbhost:8098/config) vergessen? Hier den Schutz entfernen &ndash; danach in der Konfiguration ein neues setzen.</p>
+    <form method="post" onsubmit="return confirm('Passwortschutz der Konfiguration entfernen?')"><input type="hidden" name="action" value="resetpw"><button class="lpbtn" type="submit">Passwort zur&uuml;cksetzen</button></form>
   </div>
 </div>
 $log_html

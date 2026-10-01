@@ -1,0 +1,7 @@
+# Nicht ins Image: Entwickler-Werkzeuge, Doku, Caches
+tools/
+**/__pycache__/
+**/*.pyc
+*.md
+Dockerfile
+.dockerignore

@@ -60,6 +60,15 @@ backup() {
 	ls -1t "$BACKUPDIR"/loxpanelfav-config-*.tar.gz 2>/dev/null | tail -n +$((KEEP+1)) | xargs -r rm -f
 }
 
+# Passwortschutz der Konfiguration entfernen (Passwort vergessen). Wirkt sofort.
+resetpw() {
+	if _indocker "python -c 'import json;p=\"/data/config/loxpanel.cfg\";d=json.load(open(p));d.pop(\"admin\",None);open(p,\"w\").write(json.dumps(d,indent=2,ensure_ascii=False))'"; then
+		echo "Passwortschutz der Konfiguration entfernt."
+	else
+		echo "Zuruecksetzen fehlgeschlagen (Konfiguration vorhanden?)."; exit 1
+	fi
+}
+
 restore() {
 	local bn ts
 	bn=$(basename "$1")     # nur Dateiname, keine Pfad-Tricks
@@ -108,6 +117,7 @@ case "$1" in
 		;;
 	backup)  backup ;;
 	restore) restore "$2" ;;
-	*) echo "Nutzung: $0 start|stop|restart|check|backup|restore <datei>"; exit 1 ;;
+	resetpw) resetpw ;;
+	*) echo "Nutzung: $0 start|stop|restart|check|backup|restore <datei>|resetpw"; exit 1 ;;
 esac
 exit 0

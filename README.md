@@ -1,5 +1,11 @@
 # LoxPanel Favoriten – LoxBerry-Plugin (Docker, eigenstaendiger Fork)
 
+> **Fork von [LoxPanel](https://github.com/Lenardo1/Loxpanel) von Lenardo1.**
+> Copyright © 2025–2026 Lenardo1 and LoxPanel contributors (https://github.com/Lenardo1/Loxpanel).
+> Lizenz: PolyForm Noncommercial 1.0.0 – nicht-kommerzielle Nutzung, Änderung und Weitergabe
+> erlaubt; Details in [LICENSE.md](LICENSE.md). Dieser Fork enthält eigene Änderungen
+> (Raster-Editor, Kameras, Dashboard u. a., siehe unten).
+
 Betreibt den **Favoriten-Fork von LoxPanel** als eigenen Docker-Container auf
 einem LoxBerry – bewusst als **eigenstaendiges Plugin neben einer evtl.
 installierten Original-LoxPanel-Version**, ohne Kollision:

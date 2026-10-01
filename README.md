@@ -27,6 +27,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Detailansichten aus einem Guss (0.19.0-fav29)** — kein Scrollen mehr durch das
+  Hintergrund-Symbol und keine stehengebliebene Scroll-Anzeige; Kopf ohne doppelten/leeren Raum;
+  Energiemanager/-monitor mit Kennzahl-Kacheln, Eigenverbrauch plausibel; klare Texte (Ein/Aus,
+  Kein Alarm, Taster „Bereit“, Präsenz auf Deutsch, Wecker-Tage mit Trennzeichen); Zentral-Listen
+  aktive zuerst mit weicher Blende; Betriebsart-Pfeil in einer Zeile.
 - **Backend aufgeräumt (0.19.0-fav28)** — System mit 7 Reitern (Kategorie-Farben unter
   Darstellung, „Kameras“), Profil neu gegliedert (Allgemein · Bildschirm · Display & Nacht ·
   Alarm), Bedienung in einer Karte, Audio-Einstellungen vor dem Test-Ton; Auswahlfelder nicht

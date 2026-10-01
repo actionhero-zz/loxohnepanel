@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav28"
+APP_VERSION = "0.19.0-fav29"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -3662,7 +3662,11 @@ class App:
         # Alle 7 Wochentage -> „Täglich" (kompakter)
         if len(names) == 7 and all(v in names for v in self._WD_ABBR.values()):
             return "Täglich"
-        return " ".join(names)
+        # Sonder-Betriebsarten (Feiertag, Urlaub …) und Wochentage getrennt
+        # lesbar: "Feiertag, Urlaub · Di, Do, So"
+        wd = [n for n in names if n in self._WD_ABBR.values()]
+        other = [n for n in names if n not in wd]
+        return " · ".join(x for x in (", ".join(other), ", ".join(wd)) if x)
 
     def _daytimer_mode(self, c: dict) -> str:
         """Aktiver Modus/Tag eines Daytimers als Name. `mode` (Zahl) wird ueber
@@ -4262,10 +4266,10 @@ class App:
             n = 0
             if t == "CentralLightController":
                 n = sum(1 for mu in muuids if LIGHT.render(self._with_uuid(mu), self.states)["on"])
-                it["sublabel"] = f"In {n} Räumen aktiv" if n else "Aus"
+                it["sublabel"] = (f"In {n} Raum aktiv" if n == 1 else f"In {n} Räumen aktiv") if n else "Aus"
             elif t == "CentralAudioZone":
                 n = sum(1 for mu in muuids if self._state(self.controls[mu], "playState") == 2)
-                it["sublabel"] = f"Spielt in {n} Räumen" if n else "Aus"
+                it["sublabel"] = (f"Spielt in {n} Raum" if n == 1 else f"Spielt in {n} Räumen") if n else "Aus"
             elif t in ("CentralGate", "CentralWindow"):
                 n = sum(1 for mu in muuids if (self._state(self.controls[mu], "position") or 0) > 0)
                 it["sublabel"] = f"{n} offen" if n else "Alle geschlossen"
@@ -4960,7 +4964,12 @@ class App:
         if simple and hero:
             v["bgIcon"] = {k: hero[k] for k in ("icon", "iconUrl", "iconImg") if hero.get(k)}
         room = _clean((self.rooms.get(c.get("room")) or {}).get("name"))
-        blocks.insert(0, {"k": "dhead", "room": room, "name": _clean(c.get("name"))})
+        name = _clean(c.get("name"))
+        # Raumzeile weglassen, wenn sie nichts sagt: gleich dem Namen ("OG Bad /
+        # OG Bad") oder Loxone-Platzhalter "nicht zugeordnet"
+        if room and (room.casefold() == (name or "").casefold() or room.casefold() in ("nicht zugeordnet", "unassigned")):
+            room = ""
+        blocks.insert(0, {"k": "dhead", "room": room, "name": name})
         v["blocks"] = blocks
         v["anchor"] = "bottom"   # Kopf immer oben, Wert mittig, Aktionsreihe unten
         return v
@@ -5078,6 +5087,7 @@ class App:
             cells = [{"label": "Alle Pause", "cmd": {"uuid": gid, "cmd": "__central/pause"}}]
         else:
             return None
+        items.sort(key=lambda x: not x["on"])   # Aktive zuerst (passt zur Zusammenfassung oben)
         blocks = [{"k": "dhead", "room": "Zentral", "name": _clean(c.get("name"))},
                   {"k": "big", "text": summary}, {"k": "scenes", "items": items},
                   {"k": "row", "act": True, "cells": cells}]
@@ -5458,9 +5468,10 @@ class App:
             ua = c.get("uuidAction")
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
-                # Wie Fuehler/Fenster: Zustand gross, Aktion in der Aktionsreihe
-                {"k": "hero", "icon": "switch"},
-                {"k": "big", "text": "Taster"},
+                # Zustandsflaeche wie bei der Alarmanlage: ein Taster hat keinen
+                # Zustand, also "Bereit" und was die Aktion tut
+                {"k": "state", "icon": "switch", "tone": "idle", "text": "Bereit",
+                 "sub": "„Auslösen“ sendet einen kurzen Impuls"},
                 {"k": "row", "act": True, "cells": [{"label": "Auslösen", "cmd": {"uuid": ua, "cmd": "pulse"}}]},
             ]}
         if t in SWITCHY:
@@ -5469,7 +5480,7 @@ class App:
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
                 {"k": "hero", "icon": "switch"},
-                {"k": "big", "text": "Eingeschaltet" if on else "Ausgeschaltet", "tone": "good" if on else ""},
+                {"k": "big", "text": "Ein" if on else "Aus", "tone": "good" if on else ""},
                 {"k": "row", "act": True, "cells": [
                     {"label": "Ein", "on": on, "cmd": {"uuid": ua, "cmd": "on"}},
                     {"label": "Aus", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
@@ -5483,16 +5494,18 @@ class App:
             except (TypeError, ValueError):
                 dd = 0.0
             on = dd != 0
+            # Gross wie beim Schalter nur "Ein"/"Aus", die Restzeit darunter
             if dd > 0:
-                status = "läuft noch %d:%02d" % (int(dd) // 60, int(dd) % 60)
+                sub = "läuft noch %d:%02d" % (int(dd) // 60, int(dd) % 60)
             elif dd < 0:
-                status = "dauerhaft eingeschaltet"
+                sub = "dauerhaft eingeschaltet"
             else:
-                status = "ausgeschaltet"
+                sub = ""
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
                 {"k": "hero", "icon": "bulb"},
-                {"k": "big", "text": status[:1].upper() + status[1:], "tone": "good" if on else ""},
+                {"k": "big", "text": "Ein" if on else "Aus", "tone": "good" if on else ""},
+                *([{"k": "status", "text": sub}] if sub else []),
                 {"k": "row", "act": True, "cells": [
                     {"label": "Ein", "on": on, "cmd": {"uuid": ua, "cmd": "pulse"}},
                     {"label": "Aus", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
@@ -5622,14 +5635,17 @@ class App:
             blocks = [{"k": "video", "src": f"/mjpeg?id={quote(uuid)}", "bell": bell,
                        "reconnectH": self._cam_reconnect_h(uuid)}] if has_url else \
                      [{"k": "state", "icon": "cam", "tone": "crit" if bell else "idle",
-                       "text": "Es klingelt" if bell else "Kein Video", "sub": "" if bell else "Video-URL unter Einstellungen → Kamera"}]
+                       "text": "Es klingelt" if bell else "Kein Video", "sub": "" if bell else "Video-URL unter System → Kameras eintragen"}]
             if cells:
                 blocks.append({"k": "row", "act": True, "cells": cells[:4]})
             return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": blocks}
         if t == "Tracker":
             lines = self._tracker_lines(c)
             if not lines:
-                return self._big_view(uuid, "list", "Keine Einträge")
+                # Hinweis statt Riesenschrift: dezente Zustandsflaeche
+                return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom",
+                        "blocks": [{"k": "state", "icon": "list", "tone": "idle", "text": "Keine Einträge",
+                                    "sub": "Hier erscheinen die Meldungen des Bausteins"}]}
             rows = []
             for ln in lines:
                 ts, txt = self._split_ts(ln)
@@ -5683,7 +5699,7 @@ class App:
         if t == "SmokeAlarm":
             ok = (self._state(c, "level") or 0) == 0
             if ok:
-                return self._big_view(uuid, "alarm", "Ruhe", tone="good")
+                return self._big_view(uuid, "alarm", "Kein Alarm", tone="good")
             ua = c.get("uuidAction")
             cause = self._text(c, "alarmCause")
             return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": [
@@ -5698,7 +5714,11 @@ class App:
                                   tone=("crit" if stt else "good"))
         if t == "NfcCodeTouch":
             who = self._text(c, "lastuser") or self._text(c, "lasttag") or ""
-            return self._big_view(uuid, "info", who or "–", "Letzter Zutritt" if who else "Noch kein Zutritt")
+            if not who:
+                return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom",
+                        "blocks": [{"k": "state", "icon": "info", "tone": "idle", "text": "Noch kein Zutritt",
+                                    "sub": "Hier erscheint, wer zuletzt Zutritt hatte"}]}
+            return self._big_view(uuid, "info", who, "Letzter Zutritt")
         if t == "PulseAt":
             stv = self._state(c, "startTime")
             try:
@@ -5710,7 +5730,12 @@ class App:
         if t == "PresenceDetector":
             on = bool(self._state(c, "active"))
             itxt = self._text(c, "infoText")
-            big = itxt if (itxt and itxt.lower() not in ("on", "off")) else ("Anwesend" if on else "Abwesend")
+            if itxt:
+                # Loxone liefert den Infotext teils englisch ("Off / Lock") -> eindeutschen
+                _de = {"on": "An", "off": "Aus", "lock": "Gesperrt", "locked": "Gesperrt",
+                       "presence": "Anwesend", "absence": "Abwesend", "active": "Aktiv"}
+                itxt = re.sub(r"[A-Za-z]+", lambda m: _de.get(m.group(0).lower(), m.group(0)), itxt)
+            big = itxt if (itxt and itxt.lower() not in ("an", "aus")) else ("Anwesend" if on else "Abwesend")
             return self._big_view(uuid, "info", big)
         if t == "Alarm":
             ua = c.get("uuidAction")
@@ -5858,12 +5883,12 @@ class App:
                                   ("deliveryDay", "Heute eingespeist", "%.1fkWh")):
                 v = self._state(c, nm)
                 if v is not None:
-                    rows.append({"k": "status", "text": f"{lbl}: {self._fmt_num(v, unit)}"})
+                    rows.append({"l": lbl, "v": self._fmt_num(v, unit)})   # Kennzahl-Kachel
             return {"t": "view", "title": _clean(c.get("name")), "route": route, "blocks": [
                 {"k": "hero", "icon": "central"},
                 {"k": "big", "text": (self._fmt_num(prod, "%.2fkW") if prod is not None else "–")},
                 {"k": "status", "text": "Aktuelle Erzeugung"},
-                *rows,
+                *([{"k": "kpis", "items": rows[:3]}] if rows else []),
             ]}
         if t == "Webpage":
             det = c.get("details") or {}
@@ -6049,7 +6074,16 @@ class App:
                     kp.append({"l": "Netzbezug" if gp >= 0 else "Einspeisung", "v": self._fmt_num(abs(gp), fmt)})
                 sc = self._state(c, "selfConsumption")
                 if sc is not None:
-                    kp.append({"l": "Eigenverbrauch", "v": self._fmt_num(sc, "%.0f %%")})
+                    # Loxone liefert ohne Erzeugung Unsinn (z.B. 90514) und je nach
+                    # Version einen Anteil 0..1 statt Prozent -> plausibel machen
+                    try:
+                        scv = float(sc)
+                    except (TypeError, ValueError):
+                        scv = None
+                    if scv is not None and 0 <= scv <= 1.0001 and scv != 0:
+                        scv *= 100
+                    ok = scv is not None and 0 <= scv <= 100 and (p is None or float(p or 0) > 0)
+                    kp.append({"l": "Eigenverbrauch", "v": self._fmt_num(scv, "%.0f %%") if ok else "–"})
                 blocks = [{"k": "eflow", "e": eb}] + ([{"k": "kpis", "items": kp[:3]}] if kp else [])
             else:
                 blocks = [{"k": "hero", "icon": "central"},
@@ -6057,38 +6091,39 @@ class App:
                           {"k": "status", "text": "Aktuelle Erzeugung"}, *rows]
             return {"t": "view", "title": _clean(c.get("name")), "route": route, "blocks": blocks}
         if t == "EnergyManager2":
+            # Wie der Energieflussmonitor: Radial oben, darunter Kennzahlen als
+            # kleine Kacheln (Netz, Speicher, Ladestand) und die Verbraucher.
             det = c.get("details") or {}
             p = self._state(c, "Ppwr")
-            rows = []
-            g = self._flow_text(self._state(c, "Gpwr"), "%.2f kW", "Netzbezug", "Einspeisung")
-            if g:
-                rows.append({"k": "status", "text": g})
+            kp = []
+            gv = self._state(c, "Gpwr")
+            if gv is not None:
+                kp.append({"l": "Netzbezug" if float(gv or 0) >= 0 else "Einspeisung",
+                           "v": self._fmt_num(abs(float(gv or 0)), "%.2f kW")})
             if det.get("HasSpwr", True):
-                sp = self._flow_text(self._state(c, "Spwr"), "%.2f kW", "Speicher entlädt", "Speicher lädt", "Speicher")
-                if sp:
-                    rows.append({"k": "status", "text": sp})
+                sv = self._state(c, "Spwr")
+                if sv is not None:
+                    f = float(sv or 0)
+                    kp.append({"l": "Speicher" if f == 0 else ("Speicher entlädt" if f > 0 else "Speicher lädt"),
+                               "v": self._fmt_num(abs(f), "%.2f kW")})
             soc = self._state(c, "Ssoc")
             if soc is not None and det.get("HasSsoc", True):
-                txt = f"Speicher {self._fmt_num(soc, '%.0f')} %"
                 mn = self._state(c, "MinSoc")
-                if mn is not None:
-                    txt += f" (Reserve {self._fmt_num(mn, '%.0f')} %)"
-                rows.append({"k": "status", "text": txt})
-            loads = self._named_items(self._json_state(c, "loads"))
-            if loads:
-                rows.append({"k": "head", "text": "Verbraucher"})
-                for label, e in loads:
-                    st = e.get("status", e.get("state", e.get("active")))
-                    if isinstance(st, bool) or st in (0, 1, "0", "1"):
-                        st = "Ein" if st in (True, 1, "1") else "Aus"
-                    rows.append({"k": "status", "text": label + (f": {st}" if st not in (None, "") else "")})
+                kp.append({"l": "Ladestand" + (f" · Reserve {self._fmt_num(mn, '%.0f')} %" if mn is not None else ""),
+                           "v": self._fmt_num(soc, "%.0f %%")})
+            lk = []
+            for label, e in self._named_items(self._json_state(c, "loads")):
+                st = e.get("status", e.get("state", e.get("active")))
+                if isinstance(st, bool) or st in (0, 1, "0", "1"):
+                    st = "Ein" if st in (True, 1, "1") else "Aus"
+                lk.append({"l": label, "v": str(st) if st not in (None, "") else "–"})
             eb = self.energy_blocks(uuid)   # Radial auch beim Antippen (4"-Panel ohne Split)
             head = ([{"k": "eflow", "e": eb}] if eb else
-                    [{"k": "hero", "icon": "central"},
-                     {"k": "big", "text": (self._fmt_num(p, "%.2f kW") if p is not None else "–")},
+                    [{"k": "big", "text": (self._fmt_num(p, "%.2f kW") if p is not None else "–")},
                      {"k": "status", "text": "Aktuelle Erzeugung"}])
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "blocks": [*head, *rows]}
+            blocks = [*head] + ([{"k": "kpis", "items": kp[:3]}] if kp else []) + \
+                     ([{"k": "kpis", "items": lk[:3]}] if lk else [])
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "blocks": blocks}
         if t == "PvProductionForecast":
             det = c.get("details") or {}
             today = self._state(c, "today")

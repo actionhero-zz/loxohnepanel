@@ -461,6 +461,8 @@
   .brow.wraprow{flex-wrap:wrap;}
   .brow.wraprow .btn{flex:1 1 28%;min-width:82px;}
   .btn.toggler::after{content:'▾';margin-left:7px;opacity:.55;font-size:.82em;vertical-align:middle;}
+  /* Aktions-Pillen sind ein Grid: der Pfeil gehoert in dieselbe Zeile wie der Text */
+  .brow.act .btn.toggler{display:flex;align-items:center;justify-content:center;}
   /* Auswahl-Popup (Klima Modus/Fan) */
   .menuov{position:absolute;inset:0;z-index:25;}
   .menubox{position:absolute;background:var(--screen);border:1px solid var(--line);
@@ -1009,11 +1011,15 @@
   /* Reine Anzeige: Piktogramm uebergross im Hintergrund, links unten angeschnitten */
   .grid.panel{position:relative;}
   .grid.panel>.pantop,.grid.panel>.panbot{position:relative;z-index:1;}
-  .dbg{position:absolute;left:-70px;bottom:-80px;width:330px;height:330px;z-index:0;pointer-events:none;
+  /* Hintergrund-Symbol links unten angeschnitten: die Box ist genau so gross
+     wie die Karte und schneidet ab - sonst vergroesserte das ueberstehende
+     Symbol die Scrollflaeche und die Detailansicht bekam einen Scrollbalken. */
+  .dbg{position:absolute;inset:0;overflow:hidden;border-radius:inherit;z-index:0;pointer-events:none;
     color:var(--ink);opacity:.08;}
-  .dbg svg{width:100%;height:100%;stroke-width:.7;}
-  .dbg .rawico{width:100%;height:100%;object-fit:contain;}
-  .dbg .dbgm{display:block;width:100%;height:100%;background-color:var(--ink);
+  .dbg>*{position:absolute;left:-70px;bottom:-80px;width:330px;height:330px;}
+  .dbg svg{stroke-width:.7;}
+  .dbg .rawico{object-fit:contain;}
+  .dbg .dbgm{display:block;background-color:var(--ink);
     -webkit-mask:var(--u) no-repeat center/contain;mask:var(--u) no-repeat center/contain;}
   /* Zustandsflaeche (Alarmanlage, Rauchmelder, Wecker klingelt): farbig je Zustand */
   .dstate{flex:1 1 auto;min-height:0;align-self:stretch;border-radius:24px;display:flex;flex-direction:column;align-items:center;
@@ -1316,6 +1322,11 @@
   html.ianim:not([data-motion="off"]) .tile.an-heat .head>:first-child{animation:icHeat 2.4s ease-in-out infinite;}
   .vbell{display:inline-flex;align-items:center;gap:6px;}
   .vbico{width:16px;height:16px;display:grid;} .vbico svg{width:100%;height:100%;stroke:currentColor;fill:none;stroke-width:2;}
+
+  /* Scroll-Listen in Detailansichten: Reihen rasten ein, unten weiche Blende solange mehr folgt */
+  .grid.panel .scenes{scroll-snap-type:y proximity;}
+  .grid.panel .scenes>.scene{scroll-snap-align:start;}
+  .grid.panel .scenes.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);}
 </style>
 </head>
 <body>
@@ -2962,6 +2973,13 @@ window.addEventListener('resize',()=>{
 // des Balkens folgen scrollTop/scrollHeight, eingeblendet nur bei
 // tatsaechlichem Overflow. Ein 1px-Toleranzwert gegen Rundungsjitter, der
 // sonst bei exakt passender Kachelzahl minimal flackern liesse.
+// Lange Kachel-Listen in Detailansichten (z.B. Zentral mit 20 Lichtern):
+// unten weich ausblenden, solange noch etwas folgt - statt hart angeschnittener Reihe
+function sceneFades(){
+  el('grid').querySelectorAll('.scenes').forEach(sc=>{
+    const upd=()=>sc.classList.toggle('more', sc.scrollHeight-sc.clientHeight-sc.scrollTop>4);
+    upd(); if(!sc._fadeB){ sc._fadeB=true; sc.addEventListener('scroll',upd,{passive:true}); } });
+}
 function updateScrollInd(){
   const g=el('grid'), ind=el('scrollInd'); if(!g||!ind) return;
   const over = g.scrollHeight - g.clientHeight;
@@ -3092,6 +3110,7 @@ function connect(){
       const sameS = view && key(view.route)===key(msg.route) && el('grid').classList.contains('scheme');
       view=msg;
       if(!(sameS && updateScheme(msg))) renderScheme(msg);   // gleiche Seite: nur Werte patchen (Zoom bleibt)
+      requestAnimationFrame(updateScrollInd);
       if(!sameS){ el('grid').classList.remove('zhide'); zoomOpen(); }
       return;
     }
@@ -3100,6 +3119,7 @@ function connect(){
       view=msg;
       if(same && el('grid').classList.contains('panel')) updatePanel(msg.blocks);
       else renderPanel(msg.blocks);
+      requestAnimationFrame(()=>{ updateScrollInd(); sceneFades(); });   // Detailansicht: Scroll-Anzeige der vorigen Seite nicht stehen lassen
     } else if(msg.layout==='cells'){
       view=msg; render();
       if(!same) g.scrollTop=0;

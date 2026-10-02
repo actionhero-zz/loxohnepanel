@@ -27,6 +27,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Verbindungsüberwachung (0.19.0-fav30)** — Hinweisbalken am Panel, wenn Miniserver oder
+  LoxPanel-Server nicht erreichbar sind (Werte werden blass, Bedienung bleibt frei); keepalive alle
+  30 s mit Neuaufbau toter Verbindungen; Ping Panel↔Server; Miniserver-Kachel der Startseite mit
+  Live-Status; optionale Befehlsbestätigung (System → Miniserver). Verlauf-Diagramme teilen sich
+  die Pane-Höhe (aus LoxPanel #60). Einleitungstext der Startseite entfernt.
 - **Detailansichten aus einem Guss (0.19.0-fav29)** — kein Scrollen mehr durch das
   Hintergrund-Symbol und keine stehengebliebene Scroll-Anzeige; Kopf ohne doppelten/leeren Raum;
   Energiemanager/-monitor mit Kennzahl-Kacheln, Eigenverbrauch plausibel; klare Texte (Ein/Aus,

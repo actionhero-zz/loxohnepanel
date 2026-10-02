@@ -683,6 +683,11 @@
   .ovcard .ovk{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;}
   .ovcard b{font-size:18px;font-family:var(--font-head);display:flex;align-items:center;gap:8px;}
   .ovcard small{color:var(--muted);font-size:12.5px;}
+  .ovcard small.ovlink{display:flex;align-items:center;gap:6px;margin-top:2px;font-variant-numeric:tabular-nums;}
+  .ovcard small.ovlink:empty{display:none;}
+  .ldot{width:7px;height:7px;border-radius:50%;background:#e2695f;flex:none;}
+  .ldot.ok{background:#52b881;}
+  .ldot.wait{background:#e0a24d;}
   .sdot{width:10px;height:10px;border-radius:50%;background:#e2695f;display:inline-block;flex:none;}
   .sdot.on{background:#52b881;box-shadow:0 0 0 4px rgba(82,184,129,.18);}
   .ovp{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border:0;background:var(--panel2);border-radius:10px;padding:8px 10px;font:inherit;color:var(--fg);cursor:pointer;text-align:left;}
@@ -897,23 +902,6 @@
       <!-- Übersicht / Beschreibung -->
       <div id="overviewHost" class="ovw">
         <div class="ovstat" id="ovStatus"></div>
-        <p class="lead">LoxPanel zeigt deine Loxone-Anlage auf Wandpanels und Tablets – im Raster von 2×2 oder 3×3 Kacheln je 480×480-Fläche. In drei Schritten zum fertigen Panel:</p>
-        <div class="ovcols">
-          <div class="ovcol"><h4>1 · Verbinden</h4>
-            <button class="ovbox" data-goto="settings:miniserver"><b>Miniserver</b><span>Adresse, Benutzer und Passwort des Loxone Miniservers.</span></button>
-            <button class="ovbox" data-goto="settings:calendar"><b>Kalender</b><span>Optional: iCal-Kalender für Dashboard und Widgets.</span></button>
-          </div>
-          <div class="ovcol"><h4>2 · Gestalten</h4>
-            <p class="ovhint">Panel in der linken Leiste wählen, dann Tabs, Dashboard und Aussehen einrichten.</p>
-            <button class="ovbox" data-goto="pconf:tabs"><b>Tabs</b><span>Bis zu 4 Tabs: frei belegen oder aus Raum, Kategorie, Zentral vorbefüllen – per Ziehen &amp; Ablegen.</span></button>
-            <button class="ovbox" data-goto="pconf:tabs"><b>Dashboard</b><span>Uhr, Wetter, Termine, Kamera und Kacheln für den Ruhebildschirm.</span></button>
-            <button class="ovbox" data-goto="global:appearance"><b>Darstellung (alle Panels)</b><span>Design, Farben, Schrift, Kontrast und Effekte als Standard für jedes Panel.</span></button>
-          </div>
-          <div class="ovcol"><h4>3 · Gerät einrichten</h4>
-            <button class="ovbox" data-goto="devices:newpanel"><b>Gerät hinzufügen</b><span>Start-URL für Fully Kiosk / Tablet oder Agent fürs Linux-Panel.</span></button>
-            <button class="ovbox" data-goto="devices:panels"><b>Meine Geräte</b><span>Online-Status, Ansicht wechseln, Display und Fully steuern.</span></button>
-          </div>
-        </div>
       </div>
 
       <!-- Panels gestalten -->
@@ -937,6 +925,12 @@
             <label class="chk" style="margin-top:12px"><input type="checkbox" id="ms_tls"><span data-i18n>Zertifikat prüfen (Gen2 mit selbstsigniertem Zertifikat: aus)</span></label>
             <div class="actions"><button class="btn" id="ms_save" data-i18n>Verbinden &amp; Speichern</button><span class="toast" id="ms_toast"></span></div>
             <p class="note"><a href="/api/types?format=text" target="_blank" rel="noopener">Bausteintypen der Anlage anzeigen</a> <span>(welche Typen vorkommen und welche LoxPanel noch nicht unterstützt; als JSON unter /api/types)</span></p>
+          </div>
+          <div class="card">
+            <h3 data-i18n>Befehlsbestätigung</h3>
+            <label class="chk"><input type="checkbox" id="cw_on" checked><span data-i18n>Befehle am Panel quittieren lassen</span></label>
+            <p class="note" data-i18n>Das Panel wartet nach jedem Tastendruck auf die Bestätigung, dass der Miniserver den Befehl angenommen hat. Kommt sie nicht innerhalb von 12 Sekunden (z. B. WLAN-Aussetzer), erscheint „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel auch ohne diese Option.</p>
+            <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
           </div>
           <div class="card">
             <h3 data-i18n>Wetter</h3>
@@ -1327,7 +1321,8 @@ function renderOverview(){
   box.innerHTML=
     '<button class="ovcard" data-goto="settings:miniserver"><span class="ovk">'+T('Miniserver')+'</span>'+
       '<b>'+dot(ms)+(SET?(ms?T('verbunden'):T('nicht verbunden')):'…')+'</b>'+
-      '<small>'+(ms?(SET.nControls+' '+T('Bausteine')):T('Adresse und Zugang prüfen'))+'</small></button>'+
+      '<small>'+(ms?(SET.nControls+' '+T('Bausteine')):T('Adresse und Zugang prüfen'))+'</small>'+
+      '<small class="ovlink" id="ovMsLink">'+msLinkText()+'</small></button>'+
     '<button class="ovcard" data-goto="devices:panels"><span class="ovk">'+T('Geräte')+'</span>'+
       '<b>'+dot(online.length>0)+online.length+' / '+devs.length+' '+T('online')+'</b>'+
       '<small>'+(devs.length?devs.slice(0,3).map(d=>esc(d.name)+(d.profile?' → '+esc(d.profile):'')).join(' · '):T('Noch kein Gerät verbunden'))+'</small></button>'+
@@ -1338,6 +1333,24 @@ function renderOverview(){
       '<div class="ovbar"><i style="width:'+pct+'%"></i></div>'+
       steps.map(([ok,l,g])=>'<button class="ovstep'+(ok?' ok':'')+'" data-goto="'+g+'"><span class="ck">'+(ok?'✓':'')+'</span>'+esc(l)+'</button>').join('')+'</div>';
 }
+
+// Verbindungsstatus Miniserver (Startseite): alle 10 s, nur solange sichtbar
+let MSST=null;
+function msLinkText(){
+  const m=MSST; if(!m||!m.configured) return '';
+  const hm=new Date(m.since).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  if(m.up) return '<i class="ldot ok"></i>'+T('Live seit')+' '+hm+(m.lastRx!=null?' · '+T('letzte Meldung vor')+' '+Math.round(m.lastRx)+' s':'');
+  if(m.ok) return '<i class="ldot wait"></i>'+T('Verbindung wird aufgebaut …');
+  return '<i class="ldot"></i>'+T('Getrennt seit')+' '+hm;
+}
+async function pollMsStatus(){
+  if(rubric==='overview' && !document.hidden){
+    try{ MSST=await (await fetch('/api/msstatus')).json(); }catch(e){ MSST=null; }
+    const n=$('#ovMsLink'); if(n) n.innerHTML=msLinkText();
+  }
+  setTimeout(pollMsStatus,10000);
+}
+pollMsStatus();
 
 // ---- Zugriffsschutz (optional): Passwort fuer die Konfiguration ----
 let ADMIN={enabled:false};
@@ -3079,6 +3092,7 @@ async function loadSettings(){
   if($('#cal_name')){
     $('#cal_name').value=cal.name||'Family';
     if($('#cal_holurl')) $('#cal_holurl').value=cal.holiday_url||'';
+    $('#cw_on').checked=SET.cmdWatch!==false;
     { const ms=cal.weather_ms!==false; $('#wx_ms').checked=ms; $('#wx_alt').hidden=ms; }
     $('#cal_lat').value=(cal.lat==null?'':cal.lat);
     $('#cal_lon').value=(cal.lon==null?'':cal.lon);
@@ -3351,6 +3365,11 @@ if($('#cal_add')) $('#cal_add').onclick=()=>{
 
 // Wetterquelle (System -> Miniserver)
 $('#wx_ms').onchange=()=>{ $('#wx_alt').hidden=$('#wx_ms').checked; };
+$('#cw_save').onclick=async()=>{
+  try{ const r=await fetch('/api/settings/cmdwatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({on:$('#cw_on').checked})});
+    const j=await r.json(); if(j.ok){ flash($('#cw_toast'),T('✓ Gespeichert'),true); SET.cmdWatch=$('#cw_on').checked; } else flash($('#cw_toast'),j.error||T('Fehler'),false);
+  }catch(e){ flash($('#cw_toast'),'Fehler: '+e,false); }
+};
 $('#wx_save').onclick=async()=>{
   const body={ms:$('#wx_ms').checked, lat:$('#cal_lat').value.trim(), lon:$('#cal_lon').value.trim()};
   try{ const r=await fetch('/api/settings/weather',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav29"
+APP_VERSION = "0.19.0-fav30"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -246,6 +246,7 @@ STAT_WEEKDAYS = ("Mo", "Di", "Mi", "Do", "Fr", "Sa", "So")
 # Miniserver 401, meldet _ms_http() sich neu an und wiederholt die Anfrage.
 MS_CMD_TIMEOUT = 10      # s: ein Befehl blockiert solange die Nachrichten seines Panels
 TOKEN_RENEW_MIN = 60     # s: nicht oefter neu anmelden (401 kann auch fehlende Rechte heissen)
+MS_OFFLINE_GRACE = 10   # s: so lange darf der Miniserver weg sein, bevor die Panels es anzeigen
 MS_RETRY = (5, 10, 20, 40, 60)   # s: Wartezeiten zwischen Verbindungsversuchen zum Miniserver
 ICON_CACHE_MAX = 500     # Icons im Speicher (Loxone-SVGs, je wenige KB)
 COVER_TIMEOUT = 10       # s: Albumcover vom Audioserver/aus dem Netz (sonst haengt die Anfrage offen)
@@ -911,6 +912,16 @@ def _clean_crop(v) -> dict | None:
     return {"x": round(x, 1), "y": round(y, 1), "z": round(z, 2), "fit": fit}
 
 
+def _cmd_watch_config() -> bool:
+    """Befehlsbestaetigung (loxpanel.cfg `cmdwatch.on`, Standard an): das Panel
+    wartet auf die Quittung jedes Befehls und meldet, wenn keine kommt."""
+    try:
+        cw = _load_cfg().get("cmdwatch")
+    except Exception:
+        return True
+    return bool(cw.get("on", True)) if isinstance(cw, dict) else True
+
+
 def _night_config() -> dict:
     """Nachtmodus-Block aus loxpanel.cfg `night`: {"control": "<uuid>"}. Der
     `active`-State dieses Bausteins schaltet den Nachtmodus. Leer = kein
@@ -1140,6 +1151,13 @@ class App:
         # der bell-Impuls am Miniserver ansteht, und nicht verloren geht, wenn
         # kurz hintereinander mehrere Ereignisse anfallen.
         self._pending_ring: list[dict] = []
+        # Miniserver-Verbindung fuer die Panels: up = Stream laeuft, down_since =
+        # Beginn des Ausfalls (Kulanz MS_OFFLINE_GRACE), ms_sent = zuletzt gemeldet.
+        self.ms_up = False
+        self.ms_down_since = time.time()
+        self.ms_sent: bool | None = None
+        self.ms_up_since = 0.0
+        self.cmd_watch = _cmd_watch_config()
         # Wecker (AlarmClock): isAlarmActive-State-UUID -> Control-UUID. Flanke
         # 0->1/1->0 wird als {"t":"alarm",...} ans Panel gepusht (Weckton an/aus).
         self.alarm_map: dict[str, str] = {}
@@ -6585,11 +6603,14 @@ class App:
                         log.exception("Struktur-Refresh beim Reconnect uebersprungen")
                     await self._connect_ws()    # WS neu (Settings-Reconnect / nach Abriss)
                 connected_at = time.monotonic()
+                self.ms_up, self.ms_up_since = True, time.time()
                 await self.ws.stream(self._on_value, self._on_weather)
                 raise ConnectionError("WS-Stream regulär beendet")
             except asyncio.CancelledError:
                 raise
             except Exception as err:
+                if self.ms_up:
+                    self.ms_up, self.ms_down_since = False, time.time()
                 if connected_at is not None and time.monotonic() - connected_at >= MS_RETRY[-1]:
                     retry = 0
                 connected_at = None
@@ -6626,8 +6647,20 @@ class App:
                 pass
             return False
 
+    def ms_ok(self, now: float | None = None) -> bool:
+        """Miniserver fuer die Panels erreichbar? Kurze Abbrueche (Reconnect,
+        Token-Erneuerung) bis MS_OFFLINE_GRACE zaehlen noch als erreichbar."""
+        return self.ms_up or (now or time.time()) - self.ms_down_since < MS_OFFLINE_GRACE
+
     async def _broadcast_tick(self) -> None:
         now = time.time()
+        ok = self.ms_ok(now)
+        if ok != self.ms_sent:
+            self.ms_sent = ok
+            if not ok:
+                log.warning("Miniserver seit %ds nicht erreichbar -> Panels melden", int(now - self.ms_down_since))
+            for ws in list(self.conn_route):
+                await self._send_or_drop(ws, {"t": "ms", "ok": ok, "since": int(self.ms_down_since * 1000)})
         if now >= self._sl_next:
             self._sl_next = now + 3
             self._scene_light_learn(now)
@@ -7224,7 +7257,20 @@ async def api_settings(request: web.Request) -> web.Response:
                   "options": app.night_control_options()},
         "connected": app.client is not None,
         "nControls": len(app.controls),
+        "cmdWatch": app.cmd_watch,
     })
+
+
+async def api_msstatus(request: web.Request) -> web.Response:
+    """Verbindung zum Miniserver fuer die Startseite: up = Stream laeuft,
+    since = Beginn des aktuellen Zustands (ms), lastRx = Sekunden seit der
+    letzten Nachricht des Miniservers (None ohne Stream)."""
+    rx = getattr(app.ws, "_last_rx", 0) if app.ws else 0
+    return web.json_response({
+        "configured": bool(app.host), "up": app.ms_up, "ok": app.ms_ok(),
+        "since": int((app.ms_up_since if app.ms_up else app.ms_down_since) * 1000),
+        "lastRx": round(time.monotonic() - rx, 1) if (app.ms_up and rx) else None,
+    }, headers=_NOCACHE)
 
 
 async def api_types(request: web.Request) -> web.Response:
@@ -7298,6 +7344,27 @@ async def api_settings_ms(request: web.Request) -> web.Response:
         return web.json_response({"ok": True, "connected": True, "nControls": n})
     except Exception as err:
         return web.json_response({"ok": False, "error": f"Verbindung fehlgeschlagen: {err}"})
+
+
+async def api_settings_cmdwatch(request: web.Request) -> web.Response:
+    """Befehlsbestaetigung an/aus; wirkt sofort auf allen verbundenen Panels."""
+    app: App = request.app["app"]
+    try:
+        data = await request.json()
+    except (ValueError, aiohttp.ContentTypeError):
+        return web.json_response({"ok": False, "error": "kein gültiges JSON"}, status=400)
+    on = bool(data.get("on"))
+    cfg = _load_cfg()
+    cfg["cmdwatch"] = {"on": on}
+    try:
+        _write_cfg(cfg)
+    except OSError as err:
+        return web.json_response({"ok": False, "error": str(err)}, status=500)
+    app.cmd_watch = on
+    for ws in list(app.conn_route):
+        await app._send_or_drop(ws, {"t": "cmdwatch", "on": on})
+    log.info("Befehlsbestaetigung %s", "an" if on else "aus")
+    return web.json_response({"ok": True})
 
 
 async def api_settings_night(request: web.Request) -> web.Response:
@@ -8462,6 +8529,8 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
         if _sv is not None:
             await ws.send_json(_sv)
             app._last_sent.setdefault(ws, {})["saver"] = _sv
+        await ws.send_json({"t": "ms", "ok": app.ms_ok(), "since": int(app.ms_down_since * 1000)})
+        await ws.send_json({"t": "cmdwatch", "on": app.cmd_watch})
         # Laeuft gerade ein Alarm, zeigt auch ein neu verbundenes Panel das Vollbild
         for _au in app.sec_alarms_active():
             if app.sec_alarm_wanted(prof, _au):
@@ -8495,6 +8564,9 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 # nachgereicht (roomfav/get befuellt den sourceList-State).
                 if route.get("view") in ("control", "sources") and route.get("id"):
                     app._spawn(app.prime_favs(route["id"]))
+            elif data.get("t") == "ping":
+                # Lebenszeichen des Panels: es erkennt so eine tote Verbindung
+                await ws.send_json({"t": "pong"})
             elif data.get("t") == "idle":
                 # Visu ohne Kiosk-JS meldet Leerlauf -> Display ueber Treiber aus
                 if dev:
@@ -8503,6 +8575,9 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 pin = data.get("pin")
                 code = await app.command(str(data.get("uuid") or ""), str(data.get("cmd") or ""),
                                          None if pin is None else str(pin))
+                if data.get("id") is not None:
+                    # Quittung fuer die Befehlsbestaetigung des Panels
+                    await ws.send_json({"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
                 if pin is not None:
                     await ws.send_json({"t": "cmdresult", "ok": code == "200"})
                 elif code != "200" and data.get("uuid") and data.get("cmd"):
@@ -8599,7 +8674,7 @@ _ADMIN_PAGES = ("/config", "/settings")
 _ADMIN_API = ("/api/settings", "/api/panels", "/api/theme", "/api/devices", "/api/device/",
               "/api/kiosk/", "/api/panel/launcher", "/api/agent/command", "/api/agents",
               "/api/tablayout", "/api/meta", "/api/types", "/api/testtone", "/api/testring",
-              "/api/loxicons", "/api/admin/password")
+              "/api/loxicons", "/api/admin/password", "/api/msstatus")
 _ADMIN_TTL = 30 * 86400                     # Anmeldung haelt 30 Tage (bis Server-Neustart)
 _ADMIN_SESSIONS: dict[str, float] = {}
 CGI_TOKEN_FILE = _CFGDIR / ".cgi_token"
@@ -8810,8 +8885,10 @@ def main() -> None:
     a.router.add_post("/api/panels", api_save_panels)
     a.router.add_post("/api/theme", api_save_theme)
     a.router.add_get("/api/settings", api_settings)
+    a.router.add_get("/api/msstatus", api_msstatus)
     a.router.add_get("/api/types", api_types)
     a.router.add_post("/api/settings/miniserver", api_settings_ms)
+    a.router.add_post("/api/settings/cmdwatch", api_settings_cmdwatch)
     a.router.add_post("/api/settings/intercom", api_settings_intercom)
     a.router.add_post("/api/settings/intercom/sound", api_settings_intercom_sound)
     a.router.add_post("/api/settings/intercom/sound/delete", api_settings_intercom_sound_delete)

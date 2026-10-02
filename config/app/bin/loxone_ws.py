@@ -31,6 +31,7 @@ import json
 import logging
 import ssl
 import struct
+import time
 from typing import Any, Callable
 
 import aiohttp
@@ -42,7 +43,8 @@ ValueCallback = Callable[[str, Any], None]
 WeatherCallback = Callable[[str, list], None]
 
 
-KEEPALIVE_S = 120   # Abstand der "keepalive"-Kommandos an den Miniserver
+KEEPALIVE_S = 30    # Abstand der "keepalive"-Kommandos an den Miniserver
+DEAD_S = 3 * KEEPALIVE_S   # so lange ohne JEDE Nachricht -> Verbindung gilt als tot
 
 # Ein Wetter-Eintrag: 5 * int32, dann 6 * double, ohne Padding.
 _WX_ENTRY = struct.Struct("<5i6d")
@@ -70,6 +72,7 @@ class LoxoneWS:
         self.secure = secure          # False = Gen1 (ws:// statt wss://)
         self._session: aiohttp.ClientSession | None = None
         self._ws: aiohttp.ClientWebSocketResponse | None = None
+        self._last_rx = 0.0           # monotonic: letzte Nachricht vom Miniserver
 
     def _ssl(self) -> ssl.SSLContext:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -128,6 +131,7 @@ class LoxoneWS:
         on_weather(uuid, eintraege) wird zusaetzlich gerufen, wenn die Anlage
         Wetterdaten schickt (nur mit Loxone-Wetterdienst)."""
         assert self._ws is not None
+        self._last_rx = time.monotonic()
         ka = asyncio.create_task(self._keepalive())
         try:
             await self._receive_loop(on_value, on_weather)
@@ -137,9 +141,17 @@ class LoxoneWS:
     async def _keepalive(self) -> None:
         """Loxone-Protokoll: der Client meldet sich regelmaessig mit "keepalive"
         (Antwort: Header mit Kennung 6), sonst kann der Miniserver eine
-        Verbindung ohne Client-Aktivitaet nach einigen Minuten schliessen."""
+        Verbindung ohne Client-Aktivitaet nach einigen Minuten schliessen.
+        Kommt DEAD_S lang gar nichts zurueck (auch keine keepalive-Antwort), ist
+        die Verbindung halb offen/tot: schliessen, damit der Aufrufer neu verbindet
+        statt mit eingefrorenen Werten weiterzulaufen."""
         while self._ws is not None and not self._ws.closed:
             await asyncio.sleep(KEEPALIVE_S)
+            if time.monotonic() - self._last_rx > DEAD_S:
+                log.warning("Miniserver antwortet seit %ds nicht -> Verbindung wird neu aufgebaut",
+                            int(time.monotonic() - self._last_rx))
+                await self._ws.close()
+                return
             try:
                 await self._ws.send_str("keepalive")
             except (ConnectionError, RuntimeError) as err:
@@ -152,10 +164,12 @@ class LoxoneWS:
         pending_ident: int | None = None
         seen_unknown: set[int] = set()
         async for msg in self._ws:
+            self._last_rx = time.monotonic()
             if msg.type == aiohttp.WSMsgType.BINARY:
                 data = msg.data
                 if len(data) == 8 and data[0] == 0x03:
-                    pending_ident = data[1]
+                    # Kennung 6 = keepalive-Antwort: nur Header, keine Nutzdaten
+                    pending_ident = None if data[1] == 6 else data[1]
                     continue
                 ident, pending_ident = pending_ident, None
                 if ident == 2:

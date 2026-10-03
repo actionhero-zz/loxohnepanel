@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Symbole & Bedienung (0.19.0-fav33)** — eigene Symbole in Pastellgelb (Plugin + Web-App: Kacheln
+  mit Favoriten-Stern, Backend: Kacheln mit Reglern) als Favicon und Plugin-Icon; Klick auf „LoxPanel“
+  im Backend führt zur Startseite; Player-Tasten und Favoriten lösen erst beim Tippen aus, Wischen
+  scrollt (aus LoxPanel #66).
 - **Startseite & Geräte (0.19.0-fav32)** — Miniserver-Kachel mit Kennzahlen (CPU, Heap, Tasks,
   Antwortzeit, Firmware); Geräte als Chips wie die Panels, Panels-Kachel mit Anzahl; unter Geräte jede
   Kachel einzeln und einklappbar, neu erkannte Geräte oben und aufgeklappt; Info-Fenster der

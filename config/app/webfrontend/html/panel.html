@@ -1444,7 +1444,7 @@ function dashIconInner(){
   // Rahmen im Panel-Format (1 Panel quadratisch, 2 Panels 2:1), darin die
   // Kacheln gefuellt - so bleiben sie auch bei 6x3 im kleinen Symbol lesbar.
   const rows=saverGrid(), cols=saverCols(), list=its.filter(it=>it.x+it.w<=cols);
-  const fw=cols>rows?21:19, fh=fw*rows/cols, fx=12-fw/2, fy=12-fh/2, pad=2.3, gap=1.1;
+  const fw=cols>rows?22:20, fh=fw*rows/cols, fx=12-fw/2, fy=12-fh/2, pad=3.4, gap=1.2;
   const uw=(fw-2*pad+gap)/cols, uh=(fh-2*pad+gap)/rows, f=v=>Math.round(v*10)/10;
   return '<rect x="'+f(fx)+'" y="'+f(fy)+'" width="'+f(fw)+'" height="'+f(fh)+'" rx="2.6"/>'+
     list.map(it=>'<rect fill="currentColor" stroke="none" x="'+f(fx+pad+it.x*uw)+'" y="'+f(fy+pad+it.y*uh)+'" width="'+f(it.w*uw-gap)+'" height="'+f(it.h*uh-gap)+'" rx="0.8"/>').join('');

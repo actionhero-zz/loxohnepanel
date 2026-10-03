@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Dashboard-Symbol mit Panel-Rahmen (0.19.0-fav35)** — das Symbol oben links zeigt einen Rahmen im
+  Panel-Format (1 Panel quadratisch, 2 Panels 2:1) mit den Kacheln gefüllt darin.
 - **Feinschliff (0.19.0-fav34)** — Dashboard-Symbol oben links zeichnet die Kachel-Anordnung des
   eigenen Dashboards nach; Info-Fenster der Statusleiste: Raum fett vorangestellt („**Küche:** Fenster“),
   kein doppeltes „offen“ mehr, nur „gekippt“ als Zusatz.

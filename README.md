@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Startseite & Geräte (0.19.0-fav32)** — Miniserver-Kachel mit Kennzahlen (CPU, Heap, Tasks,
+  Antwortzeit, Firmware); Geräte als Chips wie die Panels, Panels-Kachel mit Anzahl; unter Geräte jede
+  Kachel einzeln und einklappbar, neu erkannte Geräte oben und aufgeklappt; Info-Fenster der
+  Statusleiste listet Einträge untereinander.
 - **Farbverlauf im Dashboard (0.19.0-fav31)** — Hintergrund und/oder Uhrzeit-Schrift wahlweise nach
   Tageslicht (nachts dunkel, Dämmerung warm, mittags hell) oder Außentemperatur (blau → grün → gelb →
   orange/rot); Einstellung je Panel unter Dashboard → Farbverlauf, Standard: feste Design-Farben.

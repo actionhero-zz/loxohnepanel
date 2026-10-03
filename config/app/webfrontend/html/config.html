@@ -606,10 +606,22 @@
   .ddwrap{margin:8px 0 2px;} .ddwrap summary{cursor:pointer;font-size:13px;color:var(--muted);}
 
   /* Meine Geraete: ein Block je Geraet (Status + Knoepfe oben, Einstellungen darunter) */
-  #dev_list .dev{border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin:0 0 12px;background:var(--field);}
+  #dev_list .dev{border:1px solid var(--line);border-radius:16px;padding:0;margin:0 0 10px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden;}
+  #dev_list .dev.isnew{border-color:var(--accent);animation:devpop .45s ease;}
+  @keyframes devpop{0%{opacity:0;transform:translateY(-8px) scale(.98)}100%{opacity:1;transform:none}}
+  .devtg{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:var(--fg);font:inherit;cursor:pointer;padding:12px 14px;text-align:left;}
+  .devtg:hover{background:var(--panel2);}
+  .devtg b{font-size:15px;} .devtg small{color:var(--muted);font-size:12.5px;margin-left:2px;}
+  .devtg .sdot{width:9px;height:9px;}
+  .devtg .newb{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#10140f;background:var(--accent);border-radius:20px;padding:2px 7px;}
+  .devtg .chev{margin-left:auto;opacity:.55;transition:transform .2s ease;font-size:18px;}
+  .dev.open .devtg .chev{transform:rotate(90deg);}
+  .dev .devbody{display:none;padding:2px 14px 12px;border-top:1px solid var(--line);}
+  .dev.open .devbody{display:block;padding-top:12px;}
+  #ag_list .devanon{border:1px solid var(--accent);border-radius:16px;padding:12px 14px;margin:0 0 10px;background:var(--panel);box-shadow:var(--shadow);animation:devpop .45s ease;}
+  .devcards>.actions{margin-top:4px;}
+  #dev_list .devlive .ag>.dot,#dev_list .devlive .ag>.agn{display:none;}   /* Name/Status stehen im Kachelkopf */
   #dev_list .devlive .ag{border:0;padding:0 0 10px;margin:0 0 10px;border-bottom:1px solid var(--line);border-radius:0;background:transparent;}
-  #dev_list .dev.online .devnm{display:none;}
-  #dev_list .devnm small{font-weight:400;color:var(--muted);font-size:12px;margin-left:4px;}
   .devanon{margin-top:4px;} .devanon .note{margin:2px 0 8px;}
   .devhelp summary{cursor:pointer;list-style:none;} .devhelp summary h3{display:inline;margin:0;}
   .devhelp summary::before{content:'›';display:inline-block;margin-right:8px;transition:transform .15s;} .devhelp[open] summary::before{transform:rotate(90deg);}
@@ -688,11 +700,22 @@
   .ldot{width:7px;height:7px;border-radius:50%;background:#e2695f;flex:none;}
   .ldot.ok{background:#52b881;}
   .ldot.wait{background:#e0a24d;}
+  .msmon{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:6px;margin-top:10px;}
+  .msmon:empty{display:none;}
+  .msmon .mm{background:var(--panel2);border-radius:var(--radius);padding:6px 8px;display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .msmon .mm span{font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
+  .msmon .mm b{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .msmon .mmbar{display:block;height:3px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:2px;}
+  .msmon .mmbar i{display:block;height:100%;background:var(--mmc);border-radius:3px;transition:width .4s ease;}
+  .msmon .mmfw{grid-column:1/-1;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
   .sdot{width:10px;height:10px;border-radius:50%;background:#e2695f;display:inline-block;flex:none;}
   .sdot.on{background:#52b881;box-shadow:0 0 0 4px rgba(82,184,129,.18);}
   .ovp{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border:0;background:var(--panel2);border-radius:10px;padding:8px 10px;font:inherit;color:var(--fg);cursor:pointer;text-align:left;}
   .ovp:hover{background:var(--hover-tint,var(--panel2));outline:1px solid var(--line);}
   .ovp b{font-size:14px;font-family:inherit;}
+  .ovp b.ovpd{gap:7px;min-width:0;} .ovp b.ovpd .sdot{width:8px;height:8px;}
+  .ovp b.ovpd .sdot.on{box-shadow:0 0 0 3px rgba(82,184,129,.18);}
+  .ovp small{color:var(--muted);font-size:12px;white-space:nowrap;}
   .ovcheck{grid-column:span 1;}
   .ovbar{height:6px;border-radius:6px;background:var(--panel2);overflow:hidden;margin:2px 0 4px;}
   .ovbar i{display:block;height:100%;background:var(--dot,#ffc145);border-radius:6px;transition:width .4s ease;}
@@ -967,9 +990,9 @@
         <!-- Panels (Displays / Agenten / Kiosk-Apps) -->
         <section class="spane" data-sub="panels">
           <p class="lead" data-i18n>Alle Anzeigegeräte auf einen Blick: Status, Knöpfe und Einstellungen je Gerät in einem Abschnitt.</p>
-          <div class="card">
-            <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
+          <div class="devcards">
             <div id="ag_list"></div>
+            <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
             <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
           </div>
           <details class="card devhelp">
@@ -1322,11 +1345,15 @@ function renderOverview(){
     '<button class="ovcard" data-goto="settings:miniserver"><span class="ovk">'+T('Miniserver')+'</span>'+
       '<b>'+dot(ms)+(SET?(ms?T('verbunden'):T('nicht verbunden')):'…')+'</b>'+
       '<small>'+(ms?(SET.nControls+' '+T('Bausteine')):T('Adresse und Zugang prüfen'))+'</small>'+
-      '<small class="ovlink" id="ovMsLink">'+msLinkText()+'</small></button>'+
-    '<button class="ovcard" data-goto="devices:panels"><span class="ovk">'+T('Geräte')+'</span>'+
+      '<small class="ovlink" id="ovMsLink">'+msLinkText()+'</small>'+
+      '<div class="msmon" id="ovMsMon">'+msMonHTML()+'</div></button>'+
+    '<div class="ovcard ovpanels"><span class="ovk">'+T('Geräte')+'</span>'+
       '<b>'+dot(online.length>0)+online.length+' / '+devs.length+' '+T('online')+'</b>'+
-      '<small>'+(devs.length?devs.slice(0,3).map(d=>esc(d.name)+(d.profile?' → '+esc(d.profile):'')).join(' · '):T('Noch kein Gerät verbunden'))+'</small></button>'+
+      (devs.length?devs.map(d=>'<button class="ovp" data-goto="devices:panels"><b class="ovpd">'+dot(d.online)+esc(d.name)+'</b>'+
+        '<small>'+(d.online?(d.profile?esc(d.profile):T('kein Panel')):T('offline'))+'</small></button>').join('')
+        :'<button class="ovp" data-goto="devices:newpanel"><b>'+T('Noch kein Gerät verbunden')+'</b><small>'+T('Hinzufügen')+' ›</small></button>')+'</div>'+
     '<div class="ovcard ovpanels"><span class="ovk">'+T('Panels')+'</span>'+
+      '<b>'+dot(panels.length>0)+panels.length+' '+T(panels.length===1?'Panel':'Panels')+'</b>'+
       panels.map(id=>{ const p=PANELS[id], nt=(p.tabs||[]).length, dash=!!(p.saver&&(p.saver.items||[]).length);
         return '<button class="ovp" data-goto="pconf:tabs:'+esc(id)+'"><b>'+esc(p.title||id)+'</b><small>'+nt+' '+T(nt===1?'Tab':'Tabs')+(dash?' · '+T('Dashboard'):'')+'</small></button>'; }).join('')+'</div>'+
     '<div class="ovcard ovcheck"><span class="ovk">'+T('Einrichtung')+' · '+done+'/'+steps.length+'</span>'+
@@ -1343,10 +1370,25 @@ function msLinkText(){
   if(m.ok) return '<i class="ldot wait"></i>'+T('Verbindung wird aufgebaut …');
   return '<i class="ldot"></i>'+T('Getrennt seit')+' '+hm;
 }
+// Systemwerte des Miniservers als kleine Kennzahl-Kacheln (Werte wie geliefert;
+// Prozent-/kB-Angaben bekommen einen Balken bzw. lesbare Einheit).
+function msMonHTML(){
+  const y=MSST&&MSST.up&&MSST.sys; if(!y||!Object.keys(y).length) return '';
+  const num=v=>{ const m=/-?\d+(?:[.,]\d+)?/.exec(String(v)); return m?parseFloat(m[0].replace(',','.')):null; };
+  const kb=v=>{ const n=num(v); if(n==null) return esc(v); return /mb/i.test(v)?n+' MB':(n>=1024?(n/1024).toFixed(1).replace('.',',')+' MB':Math.round(n)+' kB'); };
+  const cell=(k,v,bar)=>'<div class="mm"><span>'+k+'</span><b>'+v+'</b>'+(bar!=null?'<i class="mmbar"><i style="width:'+Math.max(2,Math.min(100,bar))+'%;--mmc:'+(bar>85?'var(--crit)':bar>60?'var(--accent)':'var(--good)')+'"></i></i>':'')+'</div>';
+  const cpu=y.cpu!=null?num(y.cpu):null, out=[];
+  if(y.cpu!=null) out.push(cell(T('CPU'), cpu!=null?Math.round(cpu)+' %':esc(y.cpu), cpu));
+  if(y.heap!=null) out.push(cell(T('Heap'), kb(y.heap)));
+  if(y.tasks!=null) out.push(cell(T('Tasks'), esc(y.tasks)));
+  if(y.rtt!=null) out.push(cell(T('Antwort'), y.rtt+' ms', null));
+  return out.join('')+(y.fw?'<div class="mmfw">'+T('Firmware')+' '+esc(y.fw)+'</div>':'');
+}
 async function pollMsStatus(){
   if(rubric==='overview' && !document.hidden){
     try{ MSST=await (await fetch('/api/msstatus')).json(); }catch(e){ MSST=null; }
     const n=$('#ovMsLink'); if(n) n.innerHTML=msLinkText();
+    const m=$('#ovMsMon'); if(m){ const h=msMonHTML(); if(m._h!==h){ m._h=h; m.innerHTML=h; } }
   }
   setTimeout(pollMsStatus,10000);
 }
@@ -3409,6 +3451,8 @@ $('#cal_save').onclick=async()=>{
 // ---- Panels (alle Anzeigegeraete: Agent, Kiosk-App, Browser) ----
 let PANEL_IDS=[];
 let DEV={};            // Panel-Name -> {auto, modes:[[modus,profil],...], display}  (Arbeitskopie)
+const DEV_OPEN=new Set(), DEV_NEW=new Set();   // aufgeklappte / neu erkannte Geraete (Sitzung)
+let DEV_POLLED=false;   // erst ab dem 2. Abruf gilt ein Name als "neu erkannt"
 let KNOWN_NAMES=[];    // bisher gesehene Geraetenamen (Agent ODER Browser ?device=)
 let DEVICE_IPS={};     // Geraetename -> zuletzt gesehene IP (Vorbelegung Display-Treiber)
 async function loadPanelIds(){
@@ -3470,7 +3514,11 @@ function renderDeviceList(j){
   const devs=j.devices||[], anon=j.anonymous||[], live={};
   devs.forEach(d=>live[d.name]=d);
   list.querySelectorAll('.dev').forEach(n=>{ const d=live[n.dataset.name], slot=n.querySelector('.devlive');
-    slot.innerHTML=d?deviceRow(d,prevSel[d.name]):''; n.classList.toggle('online',!!d); });
+    slot.innerHTML=d?deviceRow(d,prevSel[d.name]):''; n.classList.toggle('online',!!d);
+    const dot=n.querySelector('.devtg .sdot'), st=n.querySelector('.devtg .devst');
+    const up=!!(d&&d.online);
+    if(dot) dot.classList.toggle('on',up);
+    if(st) st.textContent=(up?T('online'):T('offline'))+(d&&d.profile?' · '+d.profile:''); });
   box.innerHTML=anon.length?'<div class="devanon"><b>'+T('Ohne Kennung')+'</b><div class="note">'+T('Nach IP erkannt. Einen Namen vergeben, damit das Gerät dauerhaft gelistet und per Betriebsmodus umgeschaltet werden kann.')+'</div>'+
     anon.map(a=>anonRow(a,prevName[a.ip])).join('')+'</div>':'';
   list.querySelectorAll('.ag[data-name] button[data-act]').forEach(b=>{
@@ -3631,7 +3679,9 @@ async function pollDevices(){
     LAST_DEVS=j; if(rubric==='overview') renderOverview();
     const names=(j.devices||[]).map(d=>d.name).filter(Boolean);
     (j.devices||[]).forEach(d=>{ if(d.ip) DEVICE_IPS[d.name]=d.ip; });
-    const isNew=names.some(n=>KNOWN_NAMES.indexOf(n)<0);
+    const fresh=names.filter(n=>KNOWN_NAMES.indexOf(n)<0), isNew=fresh.length>0;
+    if(DEV_POLLED) fresh.forEach(n=>{ DEV_NEW.add(n); DEV_OPEN.add(n); });
+    DEV_POLLED=true;
     KNOWN_NAMES=Array.from(new Set(KNOWN_NAMES.concat(names)));
     if(isNew){ readDevFromDom(); renderDevices(); }   // neues Panel -> Block ergaenzen (Eingaben behalten)
     if(typeof mzGeraeteNeu==='function') mzGeraeteNeu();   // offener Betriebsmodus-Assistent
@@ -3655,10 +3705,13 @@ function devRow(name){
       '<button class="btn sm ghost dm_del" type="button" title="'+T('Zeile entfernen')+'">✕</button>'+
     '</div>').join('');
   const models=META.deviceModels||[], mo=models.find(m=>m.key===d.model);
-  return '<div class="dev" data-name="'+esc(name)+'">'+
+  const isNew=DEV_NEW.has(name), open=DEV_OPEN.has(name);
+  return '<div class="dev'+(open?' open':'')+(isNew?' isnew':'')+'" data-name="'+esc(name)+'">'+
+    '<button type="button" class="devtg"><i class="sdot"></i><b>'+esc(name)+'</b><small class="devst">'+T('offline')+'</small>'+
+      (isNew?'<span class="newb">'+T('neu')+'</span>':'')+'<span class="chev">›</span></button>'+
+    '<div class="devbody">'+
     '<div class="devlive"></div>'+
     '<div class="devhead" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">'+
-      '<b class="devnm">'+esc(name)+' <small>'+T('offline')+'</small></b>'+
       '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerät wählen –')+'</option>'+
         models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
       '<label class="dev_fullyl" style="font-size:13px;'+(mo&&mo.os==='android'?'':'display:none')+'"><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('Fully Kiosk')+'</label>'+
@@ -3667,7 +3720,7 @@ function devRow(name){
     '<div class="dmwrap"'+(d.auto?'':' hidden')+'><div class="dmrows">'+rows+'</div>'+
     '<button class="btn sm ghost dm_add" type="button" style="margin-top:4px">'+T('+ Modus')+'</button></div>'+
     displayRow(d.display)+
-  '</div>';
+  '</div></div>';
 }
 const DRIVER_PORT={fully:2323, wallpanel:2971};
 function displayRow(disp){
@@ -3701,10 +3754,14 @@ function readDevFromDom(){
 function renderDevices(){
   const box=$('#dev_list'); if(!box) return;
   const on=n=>((LAST_DEVS||{}).devices||[]).some(d=>d.name===n)?0:1;   // erreichbare Geraete zuerst
-  const names=Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort((a,b)=>on(a)-on(b)||a.localeCompare(b));
+  const nw=n=>DEV_NEW.has(n)?0:1;
+  const names=Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort((a,b)=>nw(a)-nw(b)||on(a)-on(b)||a.localeCompare(b));
   if(!names.length){ box.innerHTML='<div class="muted">'+T('Noch kein Panel bekannt. Sobald ein Panel die Visu mit Kennung öffnet oder ein Agent läuft, erscheint es hier.')+'</div>'; return; }
   box.innerHTML=names.map(devRow).join('');
   if(LAST_DEVS) renderDeviceList(LAST_DEVS);
+  box.querySelectorAll('.devtg').forEach(b=>b.onclick=()=>{ const dv=b.closest('.dev'), n=dv.dataset.name;
+    const op=dv.classList.toggle('open'); if(op) DEV_OPEN.add(n); else DEV_OPEN.delete(n);
+    if(DEV_NEW.delete(n)){ dv.classList.remove('isnew'); const nb=b.querySelector('.newb'); if(nb) nb.remove(); } });
   box.querySelectorAll('.dm_add').forEach(b=>b.onclick=()=>{
     readDevFromDom(); const name=b.closest('.dev').dataset.name;
     (DEV[name]=DEV[name]||{auto:true,modes:[]}).modes.push(['','']); renderDevices();

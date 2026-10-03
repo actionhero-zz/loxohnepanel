@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav31"
+APP_VERSION = "0.19.0-fav32"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -1159,6 +1159,8 @@ class App:
         self.ms_sent: bool | None = None
         self.ms_up_since = 0.0
         self.cmd_watch = _cmd_watch_config()
+        self._msinfo: dict = {}          # Systemwerte des Miniservers (Startseite), s. ms_sysinfo
+        self._msinfo_t = 0.0
         # Wecker (AlarmClock): isAlarmActive-State-UUID -> Control-UUID. Flanke
         # 0->1/1->0 wird als {"t":"alarm",...} ans Panel gepusht (Weckton an/aus).
         self.alarm_map: dict[str, str] = {}
@@ -6654,6 +6656,32 @@ class App:
                 pass
             return False
 
+    async def ms_sysinfo(self) -> dict:
+        """Systemwerte des Miniservers fuer die Startseite, hoechstens alle 30 s
+        abgefragt: Firmware, CPU-Last, Heap, Tasks und die Antwortzeit (ms) der
+        CPU-Abfrage. Fehlende Werte (aeltere/neuere Firmware) bleiben weg."""
+        now = time.monotonic()
+        if not self.ms_up or now - self._msinfo_t < 30:
+            return self._msinfo if self.ms_up else {}
+        self._msinfo_t = now
+
+        async def one(path: str):
+            t0 = time.monotonic()
+            try:
+                code, val = await self._ms_jdev(path, timeout=3, renew=False)
+            except Exception:
+                return None, None
+            ms = round((time.monotonic() - t0) * 1000)
+            return (str(val).strip() if code == "200" and val not in (None, "") else None), ms
+
+        keys = (("cpu", "sys/cpu"), ("heap", "sys/heap"), ("tasks", "sys/numtasks"), ("fw", "cfg/version"))
+        res = await asyncio.gather(*(one(p) for _, p in keys))
+        info = {k: v for (k, _), (v, _) in zip(keys, res) if v}
+        if res[0][1] is not None and res[0][0]:
+            info["rtt"] = res[0][1]
+        self._msinfo = info
+        return info
+
     def ms_ok(self, now: float | None = None) -> bool:
         """Miniserver fuer die Panels erreichbar? Kurze Abbrueche (Reconnect,
         Token-Erneuerung) bis MS_OFFLINE_GRACE zaehlen noch als erreichbar."""
@@ -7277,6 +7305,7 @@ async def api_msstatus(request: web.Request) -> web.Response:
         "configured": bool(app.host), "up": app.ms_up, "ok": app.ms_ok(),
         "since": int((app.ms_up_since if app.ms_up else app.ms_down_since) * 1000),
         "lastRx": round(time.monotonic() - rx, 1) if (app.ms_up and rx) else None,
+        "sys": await app.ms_sysinfo(),
     }, headers=_NOCACHE)
 
 

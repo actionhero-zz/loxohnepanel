@@ -2132,6 +2132,12 @@ function renderDashProps(p){
     '<div class="field dexits"><label class="lbl">'+T('Dashboard schließen')+'</label>'+
       SV_EXITS.map(([k,l])=>'<label class="chk"><input type="checkbox" data-exit="'+k+'"'+(ex.indexOf(k)>=0?' checked':'')+'> <span>'+esc(T(l))+'</span></label>').join('')+
       '<div class="hint">'+T('Beliebig kombinierbar. Nichts angehakt = Tipp auf eine freie Stelle schließt. Kacheln bleiben bedienbar.')+'</div></div>'+
+    '<div class="field"><label class="lbl">'+T('Farbverlauf')+'</label>'+
+      [['ambBg',T('Hintergrund')],['ambClock',T('Schriftfarbe der Uhrzeit')]].map(([k,l])=>
+        '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="min-width:150px">'+l+'</span><select data-amb="'+k+'">'+
+        [['',T('Feste Farben (Design)')],['light',T('Nach Tageslicht')],['temp',T('Nach Außentemperatur')]].map(([v,t])=>
+          '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+
+      '<div class="hint">'+T('Tageslicht: morgens leicht hell, mittags hell, abends dunkler, nachts ganz dunkel (Sonnenzeiten aus dem Wetter). Außentemperatur: kalt blau, mild grün, warm gelb, heiß orange bis rot. Ohne Wetterdaten bleiben die festen Farben.')+'</div></div>'+
     '<div class="field dbar"><label class="lbl">'+T('Statusleiste')+'</label>'+
       '<label class="chk"><input type="checkbox" id="dBarOn"'+(barOn?' checked':'')+'> <span>'+T('Statusleiste oben anzeigen')+'</span></label>'+
       (barOn?'<div class="dbarbox"><div class="dbarlbl">'+T('Bausteine (max. 4) – Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+'</div>':'')+
@@ -2150,6 +2156,8 @@ function renderDashProps(p){
   { const on=$('#dBarOn'); if(on) on.onchange=()=>{ if(on.checked){ dBarOpen=true; }
       else { dBarOpen=false; const s2=svCfg(p); if(s2.bar){ delete s2.bar; if(!s2.items.length&&!s2.exit.length) delete p.saver; markDirty(); } }
       renderDashProps(p); renderTabEditor(); }; }
+  box.querySelectorAll('[data-amb]').forEach(sel=>sel.onchange=()=>{ p.ui=p.ui||{};
+    if(sel.value) p.ui[sel.dataset.amb]=sel.value; else delete p.ui[sel.dataset.amb]; markDirty(); });
   box.querySelectorAll('[data-exit]').forEach(cb=>cb.onchange=()=>{ const s2=svCfg(p);
     s2.exit=SV_EXITS.map(e=>e[0]).filter(k=>box.querySelector('[data-exit="'+k+'"]').checked);
     s2.items=s2.items||[]; if(!s2.items.length && !s2.exit.length && !(s2.bar||[]).length) delete p.saver; markDirty(); });
@@ -2591,7 +2599,7 @@ let SAVED_SNAP=null;
 function snapSaved(){ try{ SAVED_SNAP=JSON.parse(JSON.stringify(PANELS)); }catch(e){ SAVED_SNAP=null; } }
 function stable(v){ return JSON.stringify(v,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.keys(x).sort().reduce((o,kk)=>(o[kk]=x[kk],o),{}):x); }
 const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
-  nightWake:'Nach Antippen hell',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
+  nightWake:'Nach Antippen hell',ambBg:'Farbverlauf Hintergrund',ambClock:'Farbverlauf Uhrzeit',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
   nudgeX:'Horizontaler Versatz',iconSize:'Symbolgröße',nameSize:'Namensgröße',subSize:'Zusatztext-Größe',bold:'Fett',dblTapOff:'Doppeltipp',alarmsEnabled:'Wecker',
   lang:'Sprache',saverFcSize:'Wettervorschau-Größe',tileShadow:'Kachel-Schatten'};
 function changeList(){

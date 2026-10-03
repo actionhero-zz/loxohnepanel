@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav30"
+APP_VERSION = "0.19.0-fav31"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -549,6 +549,7 @@ def _sanitize_saver(sv, dg: int = 3) -> dict | None:
     return out
 
 
+AMBIENT_MODES = ("light", "temp")   # Dashboard-Farbverlauf: nach Tageslicht / Aussentemperatur
 CAM_RECONNECT_HOURS = (6, 12, 24)   # waehlbare Intervalle fuer den Kamera-Neuaufbau
 _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 
@@ -2039,6 +2040,9 @@ class App:
             # Eigene Screensaver-Belegung (None = bisheriger Screensaver).
             "grid": _grid(ui.get("grid")),      # Standardraster des Panels (2x2 / 3x3)
             "saver": _sanitize_saver(prof.get("saver"), _grid(ui.get("grid"))),
+            # Dashboard-Farbverlauf: Hintergrund / Uhrzeit-Schrift ("" = feste Design-Farben)
+            "ambBg": ui.get("ambBg") if ui.get("ambBg") in AMBIENT_MODES else "",
+            "ambClock": ui.get("ambClock") if ui.get("ambClock") in AMBIENT_MODES else "",
         }
 
     def player_blocks(self, uuid: str):
@@ -3009,7 +3013,7 @@ class App:
                        "cols", "rows", "fill", "baseColor", "design",
                        "textColor", "bold", "lang", "player", "panes", "split",
                        "saverFcSize",
-                       "motion", "contrast", "sceneLight", "iconAnim", "grid")}
+                       "motion", "contrast", "sceneLight", "iconAnim", "grid", "ambBg", "ambClock")}
         # Split-Pane je Tab: nur gueltige Tab-Kennung -> "weather"|"calendar".
         if isinstance(ui.get("panes"), dict):
             ui["panes"] = {str(k): v for k, v in ui["panes"].items()
@@ -3199,6 +3203,9 @@ class App:
                 cui["sceneLight"] = ui["sceneLight"]  # Szenen-Licht NUR fuer dieses Panel (Override)
             if ui.get("iconAnim") in ("on", "off"):
                 cui["iconAnim"] = ui["iconAnim"]      # Animierte Symbole NUR fuer dieses Panel (Override)
+            for _ak in ("ambBg", "ambClock"):
+                if ui.get(_ak) in AMBIENT_MODES:
+                    cui[_ak] = ui[_ak]                  # Dashboard-Farbverlauf (Tageslicht/Temperatur)
             if ui.get("grid") in (2, "2"):
                 cui["grid"] = 2                         # Standardraster 2x2 (Tabs + Dashboard)
             lang = _clean_lang(ui.get("lang"))
@@ -8516,6 +8523,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "sceneLight": prof["sceneLight"],
                             "iconAnim": prof["iconAnim"],
                             "saver": prof.get("saver"),
+                            "ambBg": prof.get("ambBg", ""), "ambClock": prof.get("ambClock", ""),
                             "agent": app._has_agent(dev)})
         _first = app.render(app.conn_route[ws], prof)
         await ws.send_json(_first)

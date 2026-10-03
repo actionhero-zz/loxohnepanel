@@ -570,6 +570,7 @@
      dem Layout raus (absolut positioniert) und faengt im ausgeblendeten
      Zustand keine Beruehrungen mehr ab. */
   .saver.hidden{opacity:0;pointer-events:none;}
+  .saver.ambclk .sv-time,.saver.ambclk .svw-clock .t{color:var(--amb-clock);transition:color 2s linear;}
   .saver .sv-time{font-size:78px;font-weight:300;line-height:1;letter-spacing:1px;
     font-variant-numeric:tabular-nums;color:var(--ink);}
   .saver .sv-date{font-size:20px;color:var(--muted);margin-top:8px;text-transform:capitalize;}
@@ -3112,6 +3113,7 @@ function connect(){
       themeSplit = (msg.split !== false);   // Default an; nur explizit aus (4"-Panel)
       if(msg.screensaverCam!==undefined){ screensaverCam=msg.screensaverCam||null; if(saverOn()) renderFront(); }
       saverCfg = (msg.saver && Array.isArray(msg.saver.items)) ? msg.saver : null;
+      AMB.bg = msg.ambBg||''; AMB.clock = msg.ambClock||''; ambientApply();
       if(saverLayoutOn()) stopScreensaverCam();
       renderSaverGrid();
       // Design-Variante ("classic"/"loxone") + Animationsgeschwindigkeit
@@ -3143,7 +3145,7 @@ function connect(){
     if(msg.t==='alarm'){ if(msg.on){ wake(); toneOn('alarm'); if(msg.id) nav({view:'control',id:msg.id}); } else { toneOff('alarm'); } return; }
     if(msg.t==='secalarm'){ secAlarm(msg); return; }   // Alarmanlage/Rauchmelder ausgeloest -> Vollbild
     if(msg.t==='testtone'){ playTestTone(); return; }
-    if(msg.t==='front'){ frontData=msg; renderFront(); if(view&&view.layout==='cells'&&el('grid').classList.contains('cells')) render(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
+    if(msg.t==='front'){ frontData=msg; ambientApply(); renderFront(); if(view&&view.layout==='cells'&&el('grid').classList.contains('cells')) render(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
     if(msg.t==='player'){ renderPlayer(msg.blocks); return; }   // fester Player im Split-Layout
     if(msg.t==='energy'){ energyData=msg; const fp=el('frontpane'); if(fp && paneKind(paneForTab(activeTab()))==='energy') renderEnergyPane(fp); return; }   // Energiefluss-Pane
     if(msg.t==='saver'){ saverData=msg; renderSaverGrid(); return; }   // Live-Daten der Screensaver-Belegung
@@ -3214,6 +3216,58 @@ function tickClock(){
 // Daten kommen vom Server ({t:'front', weather, events, calName}); das Panel
 // zeigt nur an. Wetter-Icons im gleichen Strichstil wie die uebrigen Icons.
 let frontData=null;
+// ---- Dashboard-Farbverlauf (Einstellung je Panel: Hintergrund / Uhrzeit) ----
+// "light": nach Tageslicht (Sonnenauf-/-untergang aus dem Wetter; morgens leicht
+// hell, mittags hell, abends dunkler, nachts ganz dunkel, Daemmerung warm).
+// "temp": nach Aussentemperatur (kalt blau -> warm gelb -> heiss orange/rot).
+// Hintergruende bleiben so dunkel, dass die helle Dashboard-Schrift lesbar
+// bleibt; Uhr-Farben so hell, dass sie auf dunklem Grund tragen.
+const AMB={bg:'',clock:''};
+const ambMix=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*Math.max(0,Math.min(1,t)));
+const ambHex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const ambRgb=c=>'rgb('+c.map(v=>Math.round(v)).join(',')+')';
+function ambStops(stops,x){   // stops: [[wert,'#rrggbb'],...] aufsteigend
+  if(x<=stops[0][0]) return ambHex(stops[0][1]);
+  for(let i=1;i<stops.length;i++){ const [x1,c1]=stops[i]; if(x<=x1){ const [x0,c0]=stops[i-1];
+    return ambMix(ambHex(c0),ambHex(c1),(x-x0)/(x1-x0)); } }
+  return ambHex(stops[stops.length-1][1]);
+}
+function ambSun(){   // [Aufgang, Untergang] in Minuten; ohne Wetter 6:30 / 19:30
+  const w=(frontData||{}).weather||{}, m=v=>{ const r=/^(\d{1,2}):(\d{2})/.exec(v||''); return r?(+r[1])*60+(+r[2]):null; };
+  const a=m(w.sunrise), b=m(w.sunset);
+  return (a!=null&&b!=null&&b>a) ? [a,b] : [390,1170];
+}
+function ambLight(){   // {L: 0 Nacht .. 1 Mittag, warm: 0..1 Naehe zur Daemmerung}
+  const d=new Date(), t=d.getHours()*60+d.getMinutes(), [r,s]=ambSun(), a=r-45, b=s+45;
+  const L=(t<=a||t>=b) ? 0 : Math.pow(Math.sin(Math.PI*(t-a)/(b-a)),0.7);
+  const warm=Math.max(0,1-Math.abs(t-r)/90,1-Math.abs(t-s)/90);
+  return {L,warm};
+}
+const AMB_TEMP_BG=[[-10,'#14245e'],[0,'#1d4580'],[10,'#1d5a66'],[16,'#2c5248'],[22,'#6a4a14'],[28,'#7a3412'],[35,'#6e1616']];
+const AMB_TEMP_FG=[[-10,'#8fb4ff'],[0,'#9fd0ff'],[10,'#8fe6e0'],[16,'#d6f0a0'],[22,'#ffd36a'],[28,'#ff9a4a'],[35,'#ff5f4f']];
+function ambientColors(mode){   // -> {top,bot,fg} oder null (keine Daten)
+  if(mode==='temp'){
+    const tp=((frontData||{}).weather||{}).temp; if(tp==null||isNaN(+tp)) return null;
+    const c=ambStops(AMB_TEMP_BG,+tp);
+    return {top:ambMix(c,[0,0,0],.35), bot:c, fg:ambStops(AMB_TEMP_FG,+tp)};
+  }
+  if(mode==='light'){
+    const {L,warm}=ambLight();
+    let top=ambMix(ambHex('#03050b'),ambHex('#24598c'),L), bot=ambMix(ambHex('#080d1a'),ambHex('#4f86b3'),L);
+    top=ambMix(top,ambHex('#2b2650'),warm*.6); bot=ambMix(bot,ambHex('#8a4a4a'),warm*.6);
+    let fg=ambMix(ambHex('#7d8bb0'),ambHex('#fff8e0'),L); fg=ambMix(fg,ambHex('#ffb070'),warm*.55);
+    return {top,bot,fg};
+  }
+  return null;
+}
+function ambientApply(){
+  const sv=document.getElementById('saver'); if(!sv) return;
+  const bg=ambientColors(AMB.bg), ck=ambientColors(AMB.clock);
+  sv.style.background = bg ? 'linear-gradient(180deg,'+ambRgb(bg.top)+','+ambRgb(bg.bot)+')' : '';
+  sv.classList.toggle('ambclk', !!ck);
+  if(ck) sv.style.setProperty('--amb-clock', ambRgb(ck.fg)); else sv.style.removeProperty('--amb-clock');
+}
+setInterval(ambientApply, 60000);
 let screensaverCam=null;   // {uuid,name} | null - "Fenster zur Aussenwelt" (Screensaver-Kamera statt Kalender)
 const WXI={
   sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2.4M12 19.6V22M2 12h2.4M19.6 12H22M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M19.1 4.9l-1.7 1.7M6.6 17.4l-1.7 1.7"/>',

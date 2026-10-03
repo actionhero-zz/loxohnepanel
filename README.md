@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Farbverlauf im Dashboard (0.19.0-fav31)** — Hintergrund und/oder Uhrzeit-Schrift wahlweise nach
+  Tageslicht (nachts dunkel, Dämmerung warm, mittags hell) oder Außentemperatur (blau → grün → gelb →
+  orange/rot); Einstellung je Panel unter Dashboard → Farbverlauf, Standard: feste Design-Farben.
 - **Verbindungsüberwachung (0.19.0-fav30)** — Hinweisbalken am Panel, wenn Miniserver oder
   LoxPanel-Server nicht erreichbar sind (Werte werden blass, Bedienung bleibt frei); keepalive alle
   30 s mit Neuaufbau toter Verbindungen; Ping Panel↔Server; Miniserver-Kachel der Startseite mit

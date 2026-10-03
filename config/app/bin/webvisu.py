@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.0-fav33"
+APP_VERSION = "0.19.0-fav34"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -2133,10 +2133,12 @@ class App:
                     w = wins[i] or {}
                     wloc = (_clean((self.rooms.get(w.get("room")) or {}).get("name")) if w.get("room") else "") \
                         or _clean(w.get("installPlace"))
-                    detail.append(f"{_clean(w.get('name')) or 'Fenster'}"
-                                  + (f" ({wloc})" if wloc else "")
-                                  + (" offen" if bits & 4 else " gekippt"))
-            detail.sort(key=lambda d: 0 if d.endswith(" offen") else 1)   # offene vor gekippten
+                    # "Raum<TAB>Fenster": das Panel setzt den Raum fett davor.
+                    # "offen" steht schon rechts ("n offen"), nur "gekippt" dazu.
+                    detail.append((f"{wloc}\t" if wloc else "")
+                                  + (_clean(w.get('name')) or 'Fenster')
+                                  + ("" if bits & 4 else " gekippt"))
+            detail.sort(key=lambda d: (d.endswith(" gekippt"), d))   # offene vor gekippten, dann nach Raum
         elif t == "Alarm":
             armed, lv = bool(self._state(c, "armed")), self._state(c, "level") or 0
             icon = "shield"
@@ -2219,7 +2221,7 @@ class App:
                 ((f"{len(hints)} Hinweis" if len(hints) == 1 else f"{len(hints)} Hinweise") if worst == "hint" else "Alles ok"))
         lead = (alarms or hints or [None])[0]
         if lead:
-            foot = (lead["detail"][0] if lead["detail"] else f"{lead['name']}: {lead['text']}")
+            foot = (f"{lead['detail'][0].replace(chr(9), ': ')} · {lead['text']}" if lead["detail"] else f"{lead['name']}: {lead['text']}")
         else:
             foot = "Nichts offen, Haus im Normalbetrieb"
         lines = []

@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Feinschliff (0.19.0-fav34)** — Dashboard-Symbol oben links zeichnet die Kachel-Anordnung des
+  eigenen Dashboards nach; Info-Fenster der Statusleiste: Raum fett vorangestellt („**Küche:** Fenster“),
+  kein doppeltes „offen“ mehr, nur „gekippt“ als Zusatz.
 - **Symbole & Bedienung (0.19.0-fav33)** — eigene Symbole in Pastellgelb (Plugin + Web-App: Kacheln
   mit Favoriten-Stern, Backend: Kacheln mit Reglern) als Favicon und Plugin-Icon; Klick auf „LoxPanel“
   im Backend führt zur Startseite; Player-Tasten und Favoriten lösen erst beim Tippen aus, Wischen

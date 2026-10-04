@@ -71,8 +71,12 @@
     max-width:calc(var(--cols,2) * 240px);max-height:calc(var(--rows,2) * 240px);
     border-radius:0;overflow:hidden;background:var(--screen);
     box-shadow:0 20px 60px rgba(0,0,0,.5),inset 0 0 60px rgba(0,0,0,.5);
-    transform:translateX(var(--nudge-x,0));
+    /* --ui-scale: Skalierung des Geraets (applyScale). Der Kasten behaelt seine
+       Layout-Groesse aus 240er Kacheln, die Anzeige waechst gleichmaessig mit. */
+    transform:translateX(var(--nudge-x,0)) scale(var(--ui-scale,1));
     display:grid;grid-template-rows:minmax(0,1fr) auto;}
+  /* Skaliert: Rundung darf keine Scrollleiste erzeugen (nur html, nicht body). */
+  html.scaled{overflow:hidden;}
   /* "Bildschirm fuellen": ganzen Tablet-Schirm nutzen (Voll-Zoom). Die Kacheln
      passen sich der Geraeteform an (koennen leicht rechteckig werden) statt als
      zentrierter cols:rows-Kasten mit Rand zu stehen. Gilt auch fuer Vollbreit. */
@@ -774,7 +778,7 @@
   .svsico{position:relative;display:inline-grid;place-items:center;}
   .svsbadge{position:absolute;top:-7px;right:-9px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;
     display:grid;place-items:center;font-size:10.5px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
-    background:currentColor;box-shadow:0 0 0 2px var(--bezel,var(--bg));}
+    background:currentColor;box-shadow:0 0 0 1px var(--tab-idle,var(--muted)),0 0 0 3px var(--bezel,var(--bg));}
   .svsbadge{color:#2a2208;} .svsti.lv-hint .svsbadge{background:#f0c27a;} .svsti.lv-alarm .svsbadge{background:#ff9d9b;color:#3d0c0b;}
   .svsti.lv-info .svsbadge{background:#9cc4ea;color:#0b2338;} .svsti.lv-ok .svsbadge{background:var(--tab-idle,var(--muted));}
   .sv-close{position:relative;margin-left:auto;flex:none;width:64px;height:52px;border-radius:18px;border:0;
@@ -1157,6 +1161,9 @@
   .grid.panel .ptitle .psub{font-family:var(--font,"Manrope",sans-serif);font-size:17px;font-weight:400;}
   .grid.panel.anchorbot .pantop>.scenes,.grid.panel.anchorbot .pantop>.shade,.grid.panel.anchorbot .pantop>.dimcard{flex:1 1 auto;min-height:0;align-self:stretch;}
   .grid.panel.anchorbot .pantop:has(.scenes),.grid.panel.anchorbot .pantop:has(.shade),.grid.panel.anchorbot .pantop:has(.dimcard){justify-content:flex-start;}
+  /* Szenen/Beschattung/Dimmer scrollen bzw. passen sich INNEN an -> hier darf
+     .pantop schrumpfen (sonst wuchs das 2x2-Szenenraster seit #81 ueber den Schirm). */
+  .grid.panel.anchorbot .pantop:has(>.scenes),.grid.panel.anchorbot .pantop:has(>.shade),.grid.panel.anchorbot .pantop:has(>.dimcard){flex:1 1 0;}
   /* Lichtszenen 2x2 (weitere Seiten per Wischen) */
   .scenes{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:calc((100% - 10px) / 2);gap:10px;
     overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;will-change:scroll-position;
@@ -2651,6 +2658,7 @@ function applyPane(){
   const isPane=(kind==='player'||kind==='weather'||kind==='calendar'||kind==='energy'||kind==='camera'||kind==='chart');   // Widget in Pane 2
   sc.classList.toggle('split', isPane);   // Widget -> zweigeteilt, sonst "Screen fuellen"
   sc.classList.toggle('fill', themeFill);  // "Bildschirm fuellen" fuellt Split UND Screen-fuellen
+  applyScale();
   const pp=el('playerpane'), fp=el('frontpane');
   if(pp) pp.hidden=(kind!=='player');
   if(fp){
@@ -3119,7 +3127,32 @@ function setupSchemeZoom(viewEl, stage, sw, sh){
   // Bild kann nach dem Layout erst die richtige Groesse liefern -> nach Frame fitten
   requestAnimationFrame(fit); const img=stage.querySelector('.schemeimg'); if(img) img.onload=fit;
 }
+// ---- Skalierung je Geraet ("scale" vom Server: off | auto | Faktor) ----
+// Die Visu rechnet mit festen 240er Kacheln (2 Panels = 960x480). Auf einem
+// 7"-Tablet oder iPad mini stand der Kasten bisher mit Rand; "auto" zoomt ihn
+// gleichmaessig, bis er an Breite oder Hoehe anstoesst (Schrift/Icons wachsen
+// mit). Ein Faktor gilt fest, aber nie groesser als der Schirm hergibt.
+// Handy-Modus und "Bildschirm fuellen" fuellen schon selbst -> dort 1.
+let uiScaleCfg='off', uiScaleEff=0;
+function scaleCfg(v){ return (v==='auto' || (typeof v==='number' && v>0)) ? v : 'off'; }
+function applyScale(){
+  const s=document.querySelector('.screen'); if(!s) return;
+  const w=s.offsetWidth, h=s.offsetHeight;          // Layout-Groesse, vom transform unberuehrt
+  const passt=(w&&h) ? Math.min(innerWidth/w, innerHeight/h) : 1;
+  let k=1;
+  if(!isPhone()){
+    if(uiScaleCfg==='auto') k=Math.max(1,passt);    // nur vergroessern
+    else if(typeof uiScaleCfg==='number') k=Math.min(uiScaleCfg,passt);
+  }
+  k=Math.round(k*1000)/1000;
+  if(k!==uiScaleEff){
+    uiScaleEff=k;
+    s.style.setProperty('--ui-scale', String(k));
+    document.documentElement.classList.toggle('scaled', k!==1);
+  }
+}
 window.addEventListener('resize',()=>{
+  applyScale();
   if(el('grid').classList.contains('scheme')&&schemeFit) schemeFit();
   // Screensaver-Spaltigkeit nachziehen, wenn das Fenster (Kiosk-Start, Rotation,
   // Auto-Reload) erst spaet die echte Groesse meldet -> kein Haengenbleiben in 2-spaltig.
@@ -3243,6 +3276,7 @@ function connect(){
     catch(err){ console.warn('LoxPanel: unlesbare Nachricht verworfen', err); return; }
     if(!msg || typeof msg!=='object') return;
     if(msg.t==='camcrop'){ CAM_CROP=msg.map||{}; camCropAll(); return; }
+    if(msg.t==='scale'){ uiScaleCfg=scaleCfg(msg.scale); applyScale(); return; }   // Geraete-Skalierung geaendert (ohne Neuladen)
     if(msg.t==='theme'){ if(msg.camCrop){ CAM_CROP=msg.camCrop; camCropAll(); } const v=msg.vars||{}; for(const k in v){ if(v[k]) document.documentElement.style.setProperty(k,v[k]); }
       profCols = (v['--cols']?(parseInt(v['--cols'])||2):2);
       profRows = (v['--rows']?(parseInt(v['--rows'])||2):2);
@@ -3251,6 +3285,7 @@ function connect(){
       themeFill = !!msg.fill;
       themeSplit = (msg.split !== false);   // Default an; nur explizit aus (4"-Panel)
       themePhone = !!msg.phone; applyPhone();
+      uiScaleCfg = scaleCfg(msg.scale); requestAnimationFrame(applyScale);
       if(msg.screensaverCam!==undefined){ screensaverCam=msg.screensaverCam||null; if(saverOn()) renderFront(); }
       saverCfg = (msg.saver && Array.isArray(msg.saver.items)) ? msg.saver : null;
       AMB.bg = msg.ambBg||''; AMB.clock = msg.ambClock||''; ambientApply();

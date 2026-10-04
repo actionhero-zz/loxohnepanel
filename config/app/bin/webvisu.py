@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.47"
+APP_VERSION = "0.19.48"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -179,9 +179,32 @@ DEVICE_MODELS = {
     "sm41-android": {"label": "4″-Standardpanel YC-SM41 (Android)", "os": "android"},
     "sm41-debian": {"label": "4″-Standardpanel YC-SM41 (Debian + Agent)", "os": "linux"},
     "sm55": {"label": "YC-SM55P", "os": "android"},
-    "tablet": {"label": "Android-Tablet", "os": "android"},
+    "tablet": {"label": "Android-Tablet (7–10″)", "os": "android", "scale": "auto"},
+    "ipad": {"label": "iPad / iPad mini", "os": "browser", "scale": "auto"},
     "other": {"label": "Anderes Gerät / PC-Browser", "os": "browser"},
 }
+# Skalierung je Geraet: "off" | "auto" | Faktor. Die Visu rechnet mit festen
+# 240er Kacheln (2 Panels = 960x480); auf groesseren Schirmen (7"-Tablet,
+# iPad mini) zoomt sie gleichmaessig hoch, statt mit Rand zu stehen.
+SCALE_MIN, SCALE_MAX = 0.5, 3.0
+
+
+def _clean_scale(v):
+    """"off" | "auto" | Zahl in [SCALE_MIN, SCALE_MAX] (deutsches Komma erlaubt);
+    Ungueltiges -> None (= nicht gesetzt)."""
+    if isinstance(v, str):
+        v = v.strip().lower()
+        if v in ("off", "auto"):
+            return v
+        try:
+            v = float(v.replace(",", "."))
+        except ValueError:
+            return None
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v:
+        return None
+    return round(min(SCALE_MAX, max(SCALE_MIN, float(v))), 2)
+
+
 # Nachtmodus: Rueckfall-Fenster, wenn keine Sonnenzeiten vorliegen (kein Wetter
 # konfiguriert). Sobald Sonnenauf-/-untergang bekannt sind, gelten die.
 NIGHT_FROM, NIGHT_TO = "22:00", "06:00"
@@ -3545,6 +3568,17 @@ class App:
         self._persist_panels_file(panels, self.devices)
         self.panels = load_panels()
 
+    def effective_scale(self, dev: str) -> str | float:
+        """Wirksame Skalierung eines Geraets: eigene Einstellung, sonst die
+        Vorgabe seines Geraetetyps (Tablet/iPad: auto), sonst aus."""
+        d = self.devices.get(dev) if dev else None
+        if not isinstance(d, dict):
+            return "off"
+        sc = _clean_scale(d.get("scale"))
+        if sc is not None:
+            return sc
+        return (DEVICE_MODELS.get(d.get("model") or "") or {}).get("scale", "off")
+
     def _write_devices(self, devices: dict) -> None:
         self.devices = devices
         self._persist_panels_file(self.panels, self.devices)
@@ -3570,7 +3604,8 @@ class App:
                     modes[mode] = prof
             display = App._sanitize_display(cfg.get("display"))
             model = cfg.get("model") if cfg.get("model") in DEVICE_MODELS else ""
-            if not modes and not display and not model:
+            scale = _clean_scale(cfg.get("scale"))
+            if not modes and not display and not model and scale is None:
                 continue
             entry = {"auto": bool(cfg.get("auto", True)), "modes": modes}
             if display:
@@ -3579,6 +3614,8 @@ class App:
                 entry["model"] = model                 # Geraetetyp (s. DEVICE_MODELS)
                 if DEVICE_MODELS[model]["os"] == "android" and cfg.get("fully"):
                     entry["fully"] = True              # Fully Kiosk laeuft darauf
+            if scale is not None:
+                entry["scale"] = scale                 # Skalierung (sonst Vorgabe des Geraetetyps)
             out[name.strip()[:60]] = entry
         return out
 
@@ -7338,6 +7375,10 @@ async def api_meta(request: web.Request) -> web.Response:
             "room": room,
             "roomName": _clean((app.rooms.get(room) or {}).get("name", "")) if room else "",
             "cat": c.get("cat"),
+            # Zentralbausteine: Mitglieder (fuer "Bausteine ausblenden" im Editor)
+            **({"members": [m.get("uuid") for m in ((c.get("details") or {}).get("controls") or [])
+                            if m.get("uuid") in app.controls]}
+               if (c.get("type") or "").startswith("Central") else {}),
             "iconUrl": app._control_icon_url(c),
             # Zeichnet der Baustein auf? Dann bietet der Konfigurator ihn fuer
             # die Verlaufs-Pane und den Mini-Verlauf in der Kachel an.
@@ -8067,10 +8108,14 @@ async def api_save_devices(request: web.Request) -> web.Response:
     except (ValueError, aiohttp.ContentTypeError):
         return web.json_response({"ok": False, "error": "kein JSON"}, status=400)
     devices = App._sanitize_devices(d.get("devices") or {}, set(app.panels))
+    old = {n: app.effective_scale(n) for n in set(app.devices) | set(devices)}
     try:
         app._write_devices(devices)
     except Exception as err:
         return web.json_response({"ok": False, "error": str(err)}, status=500)
+    for n, sc in old.items():                      # Skalierung live nachziehen (ohne Neuladen)
+        if app.effective_scale(n) != sc:
+            await _push(app, {"t": "scale", "scale": app.effective_scale(n)}, "", n)
     return web.json_response({"ok": True, "devices": devices})
 
 
@@ -8528,7 +8573,9 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
         return web.json_response({"ok": False, "error": "LoxPanel-Launcher.apk fehlt im Container"})
 
     target = f"{ip}:{port}"
-    url = f"http://{server}/" + (f"?panel={panel}" if panel else "")
+    name = str(d.get("name") or "").strip()[:60]   # Geraetename -> erscheint unter Geraete
+    q = ([f"panel={panel}"] if panel else []) + ([f"device={quote(name)}"] if name else [])
+    url = f"http://{server}/" + ("?" + "&".join(q) if q else "")
     steps: list[dict] = []
 
     def step(name: str, code: int, out: str, ok: bool | None = None) -> bool:
@@ -8890,6 +8937,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "tabMeta": app._tab_meta(prof["tabs"], prof), "title": prof["title"],
                             "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
                             "phone": prof.get("phone", False),
+                            "scale": app.effective_scale(dev),
                             "panes": prof.get("panes") or {},
                             "dpmsOff": app.panel_dpms(prof["id"]),
                             "reloadHours": app.panel_reload(prof["id"]),

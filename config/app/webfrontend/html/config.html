@@ -160,6 +160,29 @@
   .sved .seg button:disabled{opacity:.35;cursor:not-allowed;}
   .sved .box select,.sved .box input[type=text]{width:100%;max-width:none;}
 
+  /* Seitenleiste des Raster-Editors: einklappbare Bereiche */
+  .sved .tbhead{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .sved .tbhead b{margin:0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sved .tbsec{padding:0;}
+  .sved .tbsech{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;width:100%;padding:11px 12px;cursor:pointer;font-weight:700;font-size:13px;color:var(--fg);}
+  .sved .tbsech small{color:var(--muted);font-weight:400;margin-left:6px;}
+  .sved .tbsech:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:9px;}
+  .sved .tbsech svg{color:var(--muted);transition:transform .22s ease;flex:none;}
+  .sved .tbsec.open .tbsech svg{transform:rotate(180deg);}
+  .sved .tbsecb{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s cubic-bezier(.2,0,0,1);}
+  .sved .tbsecb>div{overflow:hidden;min-height:0;padding:0 12px;}
+  .sved .tbsec.open .tbsecb{grid-template-rows:1fr;}
+  .sved .tbsec.open .tbsecb>div{padding-bottom:12px;}
+  .sved .tbsecb .lbl2:first-child{margin-top:0;}
+  @media (prefers-reduced-motion:reduce){ .sved .tbsecb,.sved .tbsech svg{transition:none;} }
+  .sved .tbblk{max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-right:-4px;padding-right:4px;}
+  .sved .tbblk .chk{margin:0;padding:4px 0;gap:8px;}
+  .sved .tbblk .chk input{width:16px;height:16px;flex:none;}
+  .sved .tbblk .chk small{color:var(--muted);}
+  .sved .tbblkact{display:flex;gap:6px;margin-top:8px;}
+  .adbset>summary{cursor:pointer;font-weight:600;color:var(--fg);}
+  .adbsteps{margin:10px 0 0;padding-left:0;list-style:none;font-size:13px;display:flex;flex-direction:column;gap:3px;}
+  .adbsteps li.bad{color:var(--crit,#e2695f);} .adbsteps small{color:var(--muted);}
   .sved .hintp,.dashprops .hintp{color:var(--muted);font-size:12px;margin-top:8px;line-height:1.45;}
 
   .sizes .field{max-width:120px;}
@@ -1198,7 +1221,7 @@
               <div class="miniscr"><div class="p2"><div class="p2h">Wetter</div><div class="wxr"><svg viewBox="0 0 24 24" fill="none" stroke="#5aa9e6" stroke-width="1.7" stroke-linecap="round"><path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.6 1.5A4 4 0 0 0 6.5 19z"/></svg><b>13°</b></div><div class="fore"><span></span><span></span><span></span><span></span></div></div></div>
             </div>
             <div class="nm">7–8″-Tablet <span class="badge">2 Panes / Zoom</span></div>
-            <div class="spec">~1024×600 / 1280×800 · Android · quer</div>
+            <div class="spec">~1024×600 / 1280×800 · Android · iPad mini · quer</div>
             <div class="desc">Zwei Panes (Visu + Zusatz) nebeneinander – oder Zoom auf den ganzen Schirm.</div>
           </figure>
 
@@ -1218,6 +1241,16 @@
             <div class="actions"><button class="btn" id="nk_gen" data-i18n>Start-URL erzeugen</button></div>
             <pre id="nk_out" class="cmdout" style="display:none"></pre>
             <div class="actions" id="nk_copyrow" style="display:none"><button class="btn ghost sm" id="nk_copy" data-i18n>In Zwischenablage kopieren</button><span class="toast" id="nk_toast"></span></div>
+            <details class="adbset" style="margin-top:16px"><summary data-i18n>Automatisch einrichten per ADB (Fully Kiosk)</summary>
+              <p class="note" data-i18n>Installiert per ADB den LoxPanel-Launcher und trägt die Start-URL ein; das Symbol „LoxPanel“ öffnet dann Fully Kiosk mit dem Panel. Shelly Wall Display: Launcher wird Startbildschirm (Symbole „LoxPanel“ und „Shelly“). Anderes Android-Tablet: Startbildschirm bleibt, das Symbol erscheint im App-Menü.</p>
+              <p class="note" data-i18n>Voraussetzungen: Fully Kiosk ist installiert (nicht enthalten, fully-kiosk.com) und am Panel ist ADB über WLAN (Port 5555) aktiv. Beim ersten Mal fragt das Panel „USB-Debugging zulassen?“ – „Immer erlauben“ anhaken, bestätigen und erneut klicken.</p>
+              <div class="row2">
+                <div class="field"><label class="lbl" data-i18n>Gerät</label><select id="ad_dev"><option value="shelly">Shelly Wall Display</option><option value="android">Anderes Android-Tablet</option></select></div>
+                <div class="field"><label class="lbl" data-i18n>Panel-IP</label><input type="text" id="ad_ip" placeholder="192.168.1.50" inputmode="decimal"></div>
+              </div>
+              <div class="actions"><button class="btn" id="ad_go" data-i18n>Launcher installieren &amp; einrichten</button><span class="toast" id="ad_toast"></span></div>
+              <ul id="ad_out" class="adbsteps" hidden></ul>
+            </details>
           </div>
           <div class="card">
             <h3 data-i18n>Linux-Panel mit Agent (SSH)</h3>
@@ -1333,6 +1366,8 @@ async function load(){
   Object.values(PANELS).forEach(pp=>{ if(pp&&pp.ui) delete pp.ui.textColor; });
   cur = PANELS.default ? 'default' : Object.keys(PANELS)[0];
   renderList(); setRubric('overview'); snapSaved();
+  { const h=(location.hash||'').slice(1).split(':');   // Direktlink, z.B. #devices:newpanel (LoxBerry-Seite)
+    if(['devices','settings'].indexOf(h[0])>=0) goTo(h[0], h[1]||null); }
   if(window.I18N) syncPanelLang(I18N.lang);
 }
 
@@ -2517,10 +2552,12 @@ function tbSideHTML(p){
     '<li>'+T('<b>Ecke</b> ziehen = Größe · auf andere Kachel ziehen = <b>tauschen</b>.')+'</li>'+
     '<li>'+T('<b>✕</b> oder <b>Entf</b> entfernt, <b>Strg+Z</b> macht rückgängig.')+'</li></ol></div>';
   const g=tbGrid(p,tbTab), items=tbEff[tbTab], rows=tbRows(items,g), d=SV_W[it.type]||{};
-  let h='<div class="box"><b>'+esc(it.type==='tile'?T('Baustein-Kachel'):d.label)+'</b><div class="lbl2">'+T('Größe')+'</div><div class="seg">'+
+  const head='<div class="box tbhead"><b>'+esc(it.type==='tile'?T('Baustein-Kachel'):(d.label||T({room:'Raum-Kachel',cat:'Kategorie-Kachel'}[it.type]||'')))+'</b><button class="minibtn" id="tbDel">'+T('Entfernen')+'</button></div>';
+  const size='<div class="seg">'+
     gridSizes(it.type,g,tbTabF()).map(([w,hh])=>'<button data-size="'+w+'x'+hh+'" title="'+w+' '+T('breit')+' × '+hh+' '+T('hoch')+'"'+
       (it.w===w&&it.h===hh?' class="on"':(tbFree(items,it.x,it.y,w,hh,tbSel,rows,g)?'':' class="blocked"'))+'>'+w+'×'+hh+'</button>').join('')+'</div>'+
     '<div class="hintp">'+T('Breite × Höhe in Feldern.')+'</div>';
+  let h='';
   if(it.type==='clock'){
     h+='<div class="lbl2">'+T('Ausrichtung')+'</div><div class="seg">'+[['left','links'],['center','mittig'],['right','rechts']].map(([k,l])=>
       '<button data-align="'+k+'"'+((it.align||'center')===k?' class="on"':'')+'>'+T(l)+'</button>').join('')+'</div>'+
@@ -2572,13 +2609,49 @@ function tbSideHTML(p){
       '<div class="hintp">'+T('Haken = anzeigen · ziehen = Reihenfolge. Die erste ist die Startkamera, die Zahlen sind die Pillen am Panel.')+'</div>'
       :'<div class="hintp">'+T('Noch keine Kamera mit Video-URL – System → Intercom / Kameras.')+'</div>');
   }
-  h+='<div style="margin-top:12px"><button class="minibtn" id="tbDel">'+T('Entfernen')+'</button></div></div>';
-  if((it.type==='tile'||it.type==='room'||it.type==='cat')&&it.uuid) h+='<div class="box"><b>'+T('Aussehen der Kachel')+'</b><div id="tbTileEd" class="tileedhost"></div>'+
-    (tbTab===DK||it.type!=='tile'?'':'<label class="chk" style="margin-top:10px"><input type="checkbox" id="tbHide"> <span>'+T('Auf diesem Panel überall ausblenden')+'</span></label>')+'</div>';
-  return h;
+  const blk=tbBlocks(it), look=(it.type==='tile'||it.type==='room'||it.type==='cat')&&it.uuid;
+  const hidden=new Set(p.hide||[]);
+  return head+tbSec('size',T('Größe'),size)+
+    (h?tbSec('content',T('Inhalt'),h,!it.uuid):'')+
+    (blk?tbSec('blocks',T('Bausteine')+' <small>'+blk.filter(c=>!hidden.has(c.uuid)).length+'/'+blk.length+'</small>',
+      blk.length?'<div class="tbblk" id="tbBlk">'+blk.map(c=>'<label class="chk"><input type="checkbox" data-blk="'+esc(c.uuid)+'"'+(hidden.has(c.uuid)?'':' checked')+'> <span>'+esc(c.name)+
+        (it.type!=='room'&&c.roomName?' <small>· '+esc(c.roomName)+'</small>':'')+'</span></label>').join('')+'</div>'+
+        '<div class="tbblkact"><button type="button" class="minibtn" data-blkall="1">'+T('Alle')+'</button><button type="button" class="minibtn" data-blkall="0">'+T('Keine')+'</button></div>'+
+        '<div class="hintp">'+T('Abgewählte Bausteine zeigt die Web-App auf diesem Panel nicht an (überall, auch in anderen Räumen/Kategorien).')+'</div>'
+      :'<div class="hintp">'+T('Keine Bausteine enthalten.')+'</div>'):'')+
+    (look?tbSec('look',T('Aussehen'),'<div id="tbTileEd" class="tileedhost"></div>'+
+      (tbTab===DK||it.type!=='tile'?'':'<label class="chk" style="margin-top:10px"><input type="checkbox" id="tbHide"> <span>'+T('Auf diesem Panel überall ausblenden')+'</span></label>')):'');
+}
+// Bausteine hinter einer Kachel: Raum/Kategorie -> ihre Bausteine, Zentralbaustein -> Mitglieder
+function tbBlocks(it){
+  if(!it||!it.uuid) return null;
+  const cs=META.controls||[];
+  if(it.type==='room'||it.type==='cat') return cs.filter(c=>c[it.type]===it.uuid).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  if(it.type==='tile'){ const c=cs.find(x=>x.uuid===it.uuid);
+    if(c&&Array.isArray(c.members)) return c.members.map(u=>cs.find(x=>x.uuid===u)).filter(Boolean); }
+  return null;
+}
+// Einklappbarer Bereich der Seitenleiste; offen/zu merkt sich je Bereich (ueber Neuzeichnen hinweg)
+const tbSecOpen={};
+function tbSec(k,title,body,force){ const o=tbSecOpen[k]||force;
+  return '<div class="box tbsec'+(o?' open':'')+'" data-sec="'+k+'"><button type="button" class="tbsech" aria-expanded="'+(o?'true':'false')+'"><span>'+title+'</span>'+
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>'+
+    '<div class="tbsecb"><div>'+body+'</div></div></div>';
 }
 function tbBindSide(p){
   const items=tbEff[tbTab]||[], it=items[tbSel]; if(!it) return;
+  document.querySelectorAll('#tbEd .tbsech').forEach(b=>b.onclick=()=>{ const s=b.parentNode, o=!s.classList.contains('open');
+    s.classList.toggle('open',o); b.setAttribute('aria-expanded',o?'true':'false'); tbSecOpen[s.dataset.sec]=o; });
+  { const bl=$('#tbBlk'); if(bl){
+    const upd=()=>{ const hid=new Set(p.hide||[]);
+      bl.querySelectorAll('[data-blk]').forEach(cb=>{ if(cb.checked) hid.delete(cb.dataset.blk); else hid.add(cb.dataset.blk); });
+      if(hid.size) p.hide=[...hid]; else delete p.hide;
+      const n=bl.querySelectorAll('[data-blk]:checked').length, sm=bl.closest('.tbsec').querySelector('.tbsech small');
+      if(sm) sm.textContent=n+'/'+bl.querySelectorAll('[data-blk]').length;
+      markDirty(); renderHidden(p); };
+    bl.querySelectorAll('[data-blk]').forEach(cb=>cb.onchange=upd);
+    document.querySelectorAll('#tbEd [data-blkall]').forEach(b=>b.onclick=()=>{
+      bl.querySelectorAll('[data-blk]').forEach(cb=>cb.checked=b.dataset.blkall==='1'); upd(); }); } }
   if((it.type==='room'||it.type==='cat')&&it.uuid){ tileSel=it.uuid; renderTileEditor('#tbTileEd'); }
   if(it.type==='tile'&&it.uuid){ tileSel=it.uuid; renderTileEditor('#tbTileEd');
     const hb=$('#tbHide'); if(hb) hb.onchange=()=>undoable(p, T('Kachel überall ausgeblendet'), ()=>{
@@ -3600,7 +3673,7 @@ async function loadPanelIds(){
     DEV={};
     Object.entries(m.devices||{}).forEach(([name,d])=>{
       DEV[name]={auto:d.auto!==false, modes:Object.entries(d.modes||{}), display:d.display||null,
-                 model:d.model||'', fully:!!d.fully};
+                 model:d.model||'', fully:!!d.fully, scale:(d.scale===undefined?'':d.scale)};
     });
   }catch(e){ PANEL_IDS=[]; }
 }
@@ -3611,6 +3684,7 @@ function profSelect(cls, cur){
 }
 // Abschnittskopf einer Geraetekachel mit kleinem Symbol
 const DSI={
+  zoom:'<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="m21 3-7 7"/><path d="m3 21 7-7"/>',
   setup:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
   view:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
   ctl:'<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
@@ -3946,6 +4020,9 @@ function devRow(name){
         '<label class="chk dev_fullyl"'+(mo&&mo.os==='android'?'':' style="display:none"')+'><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
       '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div></div>'+
     '<div class="devlive"></div>'+
+    '<div class="dsec">'+dsh('zoom',T('Zoom'))+
+      '<select class="dev_scale">'+devScaleOpts(d.scale,mo)+'</select>'+
+      '<div class="dhint">'+T('Größere Schirme (7–8″-Tablet, iPad mini): die 2-Panel-Ansicht gleichmäßig auf die volle Größe zoomen statt mit Rand anzeigen. 480×480-Panels bleiben unverändert.')+'</div></div>'+
     '<div class="dsec">'+dsh('auto',T('Betriebsmodus'))+
       '<label class="chk"><input type="checkbox" class="dev_auto"'+(d.auto?' checked':'')+'> '+T('Ansicht automatisch nach Betriebsmodus wechseln')+'</label>'+
       '<div class="dmwrap"'+(d.auto?'':' hidden')+'><div class="dmrows">'+rows+'</div>'+
@@ -3954,6 +4031,14 @@ function devRow(name){
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
     '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display)+'</div>'+
   '</div></div>';
+}
+// Zoom je Geraet: '' = Vorgabe des Geraetetyps (Tablet/iPad: auto), off, auto, Faktor
+function devScaleOpts(cur,mo){
+  const def=(mo&&mo.scale==='auto')?T('Automatisch'):T('Aus');
+  cur=(cur===undefined||cur===null)?'':String(cur);
+  return [['',T('Wie Gerätetyp')+' ('+def+')'],['off',T('Aus – feste Größe')],['auto',T('Automatisch – Schirm ausfüllen')],
+    ['1.1','110 %'],['1.25','125 %'],['1.5','150 %'],['2','200 %']]
+    .map(([v,l])=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+esc(l)+'</option>').join('');
 }
 const DRIVER_PORT={fully:2323, wallpanel:2971};
 function displayRow(disp){
@@ -3981,7 +4066,8 @@ function readDevFromDom(){
       port:parseInt(n.querySelector('.dd_port').value)||DRIVER_PORT[drv]||0,
       password:n.querySelector('.dd_pw').value}:null;
     const model=n.querySelector('.dev_model').value, fully=n.querySelector('.dev_fully').checked;
-    DEV[n.dataset.name]={auto:n.querySelector('.dev_auto').checked, modes, display, model, fully};
+    const sv=n.querySelector('.dev_scale').value, scale=(sv===''||sv==='off'||sv==='auto')?sv:parseFloat(sv);
+    DEV[n.dataset.name]={auto:n.querySelector('.dev_auto').checked, modes, display, model, fully, scale};
   });
 }
 function renderDevices(){
@@ -4007,6 +4093,7 @@ function renderDevices(){
     const m=(META.deviceModels||[]).find(x=>x.key===sel.value), dv=sel.closest('.dev'), l=dv.querySelector('.dev_fullyl'), dh=dv.querySelector('.ddhost');
     const andr=!!(m&&m.os==='android');
     if(l) l.style.display=andr?'':'none';
+    const zs=dv.querySelector('.dev_scale'); if(zs) zs.innerHTML=devScaleOpts(zs.value,m);
     if(dh) dh.hidden=!andr && !dv.querySelector('.dd_drv').value; });
   box.querySelectorAll('.dd_drv').forEach(sel=>sel.onchange=()=>{
     const row=sel.closest('.dev'), name=row.dataset.name, drv=sel.value;
@@ -4026,8 +4113,10 @@ $('#dev_save').onclick=async()=>{
     const modes={};
     (d.modes||[]).forEach(([m,p])=>{ m=(m||'').trim(); if(m&&p) modes[m]=p; });
     const display=(d.display&&d.display.driver&&d.display.host)?d.display:null;
-    if(Object.keys(modes).length || display || d.model){ devices[name]={auto:d.auto!==false, modes}; if(display) devices[name].display=display;
-      if(d.model){ devices[name].model=d.model; if(d.fully) devices[name].fully=true; } }
+    const sc=(d.scale===undefined||d.scale===null)?'':d.scale;
+    if(Object.keys(modes).length || display || d.model || sc!==''){ devices[name]={auto:d.auto!==false, modes}; if(display) devices[name].display=display;
+      if(d.model){ devices[name].model=d.model; if(d.fully) devices[name].fully=true; }
+      if(sc!=='') devices[name].scale=sc; }
   });
   $('#dev_save').disabled=true;
   try{
@@ -4069,6 +4158,22 @@ function genKioskUrl(){
   $('#nk_out').textContent='http://'+server+'/?'+q.join('&'); $('#nk_out').style.display='block'; $('#nk_copyrow').style.display='flex';
 }
 $('#nk_gen').onclick=genKioskUrl;
+// Android-Launcher per ADB (frueher auf der LoxBerry-Seite): Geraetename, Panel und Server aus der Karte oben
+$('#ad_go').onclick=async()=>{
+  const ip=$('#ad_ip').value.trim(), server=$('#nk_server').value.trim(), b=$('#ad_go'), out=$('#ad_out');
+  if(!ip||!server){ flash($('#ad_toast'),T('Panel-IP und Server-Adresse nötig'),false); return; }
+  b.disabled=true; const lbl=b.textContent; b.textContent=T('Wird eingerichtet …'); out.hidden=true;
+  try{
+    const r=await fetch('/api/panel/launcher',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ip, server, panel:$('#nk_panel').value, device:$('#ad_dev').value, name:$('#nk_name').value.trim()})});
+    const j=await r.json();
+    out.innerHTML=(j.steps||[]).map(x=>'<li class="'+(x.ok?'ok':'bad')+'">'+(x.ok?'✓':'✗')+' '+esc(x.step)+(x.out?' <small>'+esc(x.out)+'</small>':'')+'</li>').join('');
+    out.hidden=!out.innerHTML;
+    if(j.ok) flash($('#ad_toast'), j.fully?T('✓ Eingerichtet – Symbol „LoxPanel“ öffnet')+' '+j.url:T('Eingerichtet – Fully Kiosk fehlt noch auf dem Panel'), !!j.fully);
+    else flash($('#ad_toast'), j.error||T('Fehler'), false);
+  }catch(e){ flash($('#ad_toast'),'Fehler: '+e,false); }
+  b.disabled=false; b.textContent=lbl;
+};
 $('#nk_copy').onclick=()=>{ navigator.clipboard.writeText($('#nk_out').textContent)
   .then(()=>flash($('#nk_toast'),T('✓ kopiert'),true))
   .catch(()=>flash($('#nk_toast'),T('Kopieren nicht möglich – bitte manuell markieren'),false)); };

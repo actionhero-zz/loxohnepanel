@@ -315,39 +315,9 @@ print <<"HTML";
 <div class="panel panel-default">
   <div class="panel-heading">Android-Panel einrichten (optional)</div>
   <div class="panel-body">
-    <p style="color:#777;margin-top:0">Nur f&uuml;r Android-Ger&auml;te mit <b>Fully Kiosk</b> &ndash; andere Panels (Browser, Linux mit Agent)
-      brauchen das nicht. Installiert per ADB den LoxPanel-Launcher und tr&auml;gt diese LoxBerry-Adresse ein; das Symbol
-      &bdquo;LoxPanel&ldquo; &ouml;ffnet dann Fully Kiosk mit dem Panel.</p>
-    <ul style="color:#777;margin:0 0 10px;padding-left:18px">
-      <li><b>Shelly Wall Display:</b> Die Shelly-Oberfl&auml;che hat kein App-Men&uuml; &ndash; der Launcher wird deshalb
-        Startbildschirm mit den Symbolen &bdquo;LoxPanel&ldquo; und &bdquo;Shelly&ldquo;.</li>
-      <li><b>Anderes Android-Tablet (Testing):</b> Startbildschirm bleibt, das LoxPanel-Symbol erscheint im App-Men&uuml;.</li>
-    </ul>
-    <p style="color:#777">Voraussetzungen: Fully Kiosk ist installiert (nicht enthalten, <a href="https://www.fully-kiosk.com" target="_blank">fully-kiosk.com</a>)
-      und am Panel ist <b>ADB &uuml;ber WLAN</b> (Port 5555) aktiv. Beim ersten Mal fragt das Panel
-      &bdquo;USB-Debugging zulassen?&ldquo; &ndash; <b>Immer erlauben</b> anhaken, best&auml;tigen und erneut klicken.</p>
-    <form method="post" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Wird eingerichtet …';">
-      <input type="hidden" name="action" value="panelsetup">
-      <div class="lpfields">
-        <div class="lpf" style="flex:1.6"><label>Ger&auml;t</label><select class="form-control" name="paneldev">
-          <option value="shelly">Shelly Wall Display</option><option value="android">Anderes Android-Tablet (Testing)</option></select></div>
-        <div class="lpf" style="flex:1.4"><label>Panel-IP</label><input class="form-control" name="panelip" placeholder="192.168.1.103" required></div>
-        <div class="lpf" style="flex:1.4"><label>Panel-Profil (leer = Standard)</label><input class="form-control" name="panelid" id="lp_panelid"
-          placeholder="z.&nbsp;B. wohnzimmer" pattern="[a-z0-9-]*" autocomplete="off" oninput="lpUrl()"></div>
-      </div>
-      <p style="margin:10px 0 0;color:#777">&Uuml;bergebene URL: <code id="lp_url">http://$lbhost:8098/</code></p>
-      <div class="lprow" style="margin-top:10px"><button class="lpbtn lpblue" type="submit">Launcher installieren &amp; einrichten</button></div>
-    </form>
-    <script>
-      // Profil-ID wie im Config-Editor normalisieren (klein, nur a-z 0-9 -) und
-      // die URL anzeigen, die der Launcher an Fully Kiosk uebergibt.
-      function lpUrl(){
-        var f=document.getElementById('lp_panelid');
-        var v=f.value.toLowerCase().replace(/[^a-z0-9-]/g,'');
-        if(v!==f.value) f.value=v;
-        document.getElementById('lp_url').textContent='http://$lbhost:8098/'+(v?'?panel='+v:'');
-      }
-    </script>
+    <p style="color:#777;margin-top:0">Die Einrichtung per ADB (LoxPanel-Launcher + Fully Kiosk) ist in die Konfiguration umgezogen:
+      <b>Ger&auml;te &rarr; Neues Ger&auml;t &rarr; Automatisch einrichten per ADB</b>.</p>
+    <div class="lprow"><a class="lpbtn lpgreen" href="http://$lbhost:8098/config#devices:newpanel" target="_blank">Neues Ger&auml;t einrichten</a></div>
   </div>
 </div>
 

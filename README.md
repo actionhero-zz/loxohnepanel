@@ -27,6 +27,13 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Bausteine ausblenden, Tablet-Zoom, Lichtszenen-Fix (0.19.48)** — Raster-Editor: Seitenleiste in
+  einklappbare Bereiche (Größe · Inhalt · Bausteine · Aussehen); bei Raum-, Kategorie- und Zentral-Kacheln
+  lassen sich einzelne Bausteine abwählen (in der Web-App ausgeblendet). Zoom je Gerät (Aus/Automatisch/
+  Faktor) – 7–8″-Tablets und iPad mini zeigen die 2-Panel-Ansicht formatfüllend; neuer Gerätetyp
+  „iPad / iPad mini“. Android-Einrichtung per ADB von der LoxBerry-Seite nach Geräte → Gerät hinzufügen
+  verschoben. Lichtsteuerung: Szenenraster passt wieder auf den Schirm. Statusleisten-Plakette mit
+  feinem grauem Rand.
 - **Handy-Modus, Klingel-Fix (0.19.47)** — Panel-Größe „Handy“ (Profil/Assistent): volle Höhe,
   Tabs unten, Flächen untereinander; Panels passen sich hochkant am Handy automatisch an; als
   Web-App installierbar (Manifest + Symbol). Klingeln: Ende öffnet die Türstation nicht erneut,

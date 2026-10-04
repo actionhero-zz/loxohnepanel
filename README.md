@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Raster-Editor robust (0.19.46)** — Umbruch nach der tatsächlich verfügbaren Breite (Seitenleiste
+  berücksichtigt), bei Größenänderung nur noch Kachelgröße nachziehen statt Neuaufbau; 2 Panels bei
+  ~1000 px nicht mehr abgeschnitten; Ziehen flüssiger (Vorschau je Frame/Zellwechsel), sauberer Abbruch
+  per Esc/Fensterwechsel, Mitscrollen am Rand; Dashboard-Eigenschaften ragen nicht mehr heraus.
 - **Code-Check & Feinschliff (0.19.45)** — Fehler in /api/msstatus behoben (Miniserver-Kennzahlen und
   Live-Zeile der Startseite blieben leer); Helligkeit mit „Automatisch“ (Gerät regelt selbst), Zustand
   wird beim Aufklappen vom Gerät gelesen; Tipp-Töne je Android-Gerät abschaltbar; Befehlsbestätigung

@@ -559,7 +559,7 @@
   .g2ed .side .tips b{display:inline;margin:0;color:var(--fg);}
   /* Einstellungen bleiben rechts neben dem Raster und scrollen mit; bei weniger Platz werden die Kacheln kleiner */
   .sved.g2ed>.side{position:sticky;top:0;max-height:calc(100vh - 140px);overflow-y:auto;}
-  @media (max-width:1400px){ .sved.g2ed{grid-template-columns:190px minmax(0,1fr) 230px;gap:12px;} .sved.g2ed>.side{width:230px;} }
+  @container (max-width:1400px){ .sved.g2ed{grid-template-columns:190px minmax(0,1fr) 230px;gap:12px;} .sved.g2ed>.side{width:230px;} }
 
   /* Seitenleiste: einklappbar, unten Visu + Theme als Symbole */
   .wrap{transition:grid-template-columns .22s ease;}
@@ -607,7 +607,7 @@
   .tbchip.dropto{box-shadow:0 0 0 2px var(--dot,#ffc145) inset;}
   .dashprops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;}
   .dashprops .field{width:auto;margin:0;}
-  @media (max-width:900px){ .dashprops{grid-template-columns:1fr;} }
+
   .dashprops .dexits{display:flex;flex-direction:column;gap:4px;}
   .dashprops .dexits .chk{font-size:13px;}
   .ddwrap{margin:8px 0 2px;} .ddwrap summary{cursor:pointer;font-size:13px;color:var(--muted);}
@@ -674,12 +674,23 @@
     .wrap.slim .plist{flex-direction:row;flex-wrap:wrap;} .wrap.slim .sidefoot{flex-direction:row;margin-top:0;margin-left:auto;} .wrap.slim .themesw{flex-direction:row;}
   }
 
-  /* Raster-Editor schmal: Bibliothek ueber dem Raster, Einstellungen darunter */
-  @media (max-width:1000px){
+  /* Raster-Editor: richtet sich nach der Breite, die er WIRKLICH hat (Container),
+     nicht nach dem Fenster - die Seitenleiste nimmt je nach Zustand Platz weg.
+     Mittel: Hilfe/Eigenschaften unter Bibliothek+Raster. Schmal: alles untereinander. */
+  #tbEd,#tbProps{container-type:inline-size;}
+  @container (max-width:1060px){
+    .sved.g2ed{grid-template-columns:200px minmax(0,1fr);}
+    .sved.g2ed>.side{grid-column:1 / -1;width:auto;position:static;max-height:none;}
+  }
+  @container (max-width:640px){
     .sved.g2ed{grid-template-columns:minmax(0,1fr);}
     .g2ed .lib{position:static;max-height:280px;min-height:0;}
-    .sved.g2ed>.side{grid-column:auto;width:auto;position:static;max-height:none;}
   }
+  /* Dashboard-Eigenschaften: Spalten nach verfuegbarer Breite, nichts ragt heraus */
+  @container (max-width:820px){ .dashprops{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  @container (max-width:520px){ .dashprops{grid-template-columns:minmax(0,1fr);} }
+  .dashprops select{max-width:100%;min-width:0;}
+  .dashprops [data-amb]{flex:1 1 140px;}
 
   /* ===== Moderne Bedienung ===== */
   /* Hinweis unten mit Rueckgaengig */
@@ -2227,7 +2238,7 @@ function renderDashProps(p){
       '<div class="hint">'+T('Beliebig kombinierbar. Nichts angehakt = Tipp auf eine freie Stelle schließt. Kacheln bleiben bedienbar.')+'</div></div>'+
     '<div class="field"><label class="lbl">'+T('Farbverlauf')+'</label>'+
       [['ambBg',T('Hintergrund')],['ambClock',T('Schriftfarbe der Uhrzeit')]].map(([k,l])=>
-        '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="min-width:150px">'+l+'</span><select data-amb="'+k+'">'+
+        '<div style="display:flex;align-items:center;gap:4px 8px;margin:3px 0;flex-wrap:wrap"><span style="flex:1 0 140px">'+l+'</span><select data-amb="'+k+'">'+
         [['',T('Feste Farben (Design)')],['light',T('Nach Tageslicht')],['temp',T('Nach Außentemperatur')]].map(([v,t])=>
           '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+
       '<div class="hint">'+T('Tageslicht: morgens leicht hell, mittags hell, abends dunkler, nachts ganz dunkel (Sonnenzeiten aus dem Wetter). Außentemperatur: kalt blau, mild grün, warm gelb, heiß orange bis rot. Ohne Wetterdaten bleiben die festen Farben.')+'</div></div>'+
@@ -2464,12 +2475,18 @@ function tbLibHTML(p,k){
 // Kachelgroesse an die verfuegbare Breite anpassen (kleine Fenster: kein seitliches Scrollen)
 function tbFitCells(cols, two, base){
   const grid=$('#tbGridEd'), stage=grid&&grid.closest('.stage'); if(!stage) return;
+  tbFit={cols,two,base};
   const avail=stage.clientWidth-32-(two?18+8:0)-(cols-1)*8;     // Rahmen-Innenabstand, Trennspalte, Luecken
-  const cell=Math.max(36, Math.min(Math.round(base*1.5), Math.floor(avail/cols)));   // grosse Fenster: etwas groesser
+  // grosse Flaechen: etwas groesser als die Grundgroesse; kleine: bis 30 px, sonst scrollt der Rahmen
+  const cell=Math.max(30, Math.min(Math.round(base*1.5), Math.floor(avail/cols)));
   grid.style.setProperty('--cell', cell+'px');
+  // Groessenaenderung der Buehne (Fenster, Seitenleiste ein-/ausklappen, Spaltenumbruch)
+  // nur die Zellgroesse nachziehen - kein Neuaufbau, keine springenden Kacheln
+  if(window.ResizeObserver && stage._ro!==true){ stage._ro=true;
+    new ResizeObserver(()=>{ cancelAnimationFrame(tbFitRaf); tbFitRaf=requestAnimationFrame(()=>{
+      if(stage.isConnected && tbFit) tbFitCells(tbFit.cols, tbFit.two, tbFit.base); }); }).observe(stage); }
 }
-let tbResizeT=null;
-window.addEventListener('resize',()=>{ clearTimeout(tbResizeT); tbResizeT=setTimeout(()=>{ if($('#tbGridEd')&&$('#tbGridEd').offsetParent) renderTabEditor(); },150); });
+let tbFit=null, tbFitRaf=0;
 function tbBindLib(p){
   const host=$('#tbEd'); if(!host) return;
   host.querySelectorAll('[data-lib]').forEach(b=>b.onclick=()=>{ tbLibTab=b.dataset.lib; renderTabEditor(); });
@@ -2623,7 +2640,25 @@ function tbBindDrag(p, libOnly){
     ghost.classList.toggle('bad',!ok); ghost.classList.toggle('swap',!!swap); ghost.hidden=false; };
   const hideGhost=()=>{ if(ghost) ghost.hidden=true; };
   const start=(ev,d)=>{ if(ev.button>0) return; ev.preventDefault(); tbDrag=d; d.sx=ev.clientX; d.sy=ev.clientY; d.moved=false;
-    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up,{once:true}); };
+    window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+    window.addEventListener('pointercancel',cancel); window.addEventListener('keydown',onKey); window.addEventListener('blur',cancel); };
+  // Aufraeumen nach Ende ODER Abbruch (Touch-Geste, Fensterwechsel, Esc): nichts bleibt haengen
+  const cleanup=()=>{ ['pointermove','pointerup','pointercancel','keydown','blur'].forEach((n,i)=>window.removeEventListener(n,[move,up,cancel,onKey,cancel][i]));
+    cancelAnimationFrame(rafId); rafId=0; stopScroll(); const d=tbDrag; tbDrag=null; hideGhost();
+    if(d&&d.chip) d.chip.remove(); if(d&&d.el) d.el.classList.remove('dragging'); return d; };
+  const cancel=()=>{ cleanup(); };
+  const onKey=e=>{ if(e.key==='Escape'){ e.preventDefault(); cleanup(); } };
+  // Am Rand der scrollenden Flaeche mitscrollen (schmal: Bibliothek steht ueber dem Raster)
+  let scrollT=0, lastEv=null, rafId=0, lastKey='';
+  // naechster tatsaechlich scrollende Bereich ueber dem Raster (je nach Layout #scroll oder die Seite)
+  const scroller=()=>{ for(let e=grid.parentElement;e&&e!==document.body;e=e.parentElement){
+      const oy=getComputedStyle(e).overflowY; if((oy==='auto'||oy==='scroll')&&e.scrollHeight>e.clientHeight+1) return e; }
+    return document.scrollingElement; };
+  const stopScroll=()=>{ cancelAnimationFrame(scrollT); scrollT=0; };
+  const autoScroll=()=>{ scrollT=0; if(!tbDrag||!lastEv) return; const sc=scroller(), r=(sc===document.scrollingElement)?{top:0,bottom:innerHeight}:sc.getBoundingClientRect();
+    const top=Math.max(r.top,0), bot=Math.min(r.bottom,innerHeight), y=lastEv.clientY, edge=56;
+    const dy=y<top+edge?-Math.ceil((top+edge-y)/4):(y>bot-edge?Math.ceil((y-(bot-edge))/4):0);
+    if(dy){ sc.scrollTop+=dy; lastKey=''; frame(); scrollT=requestAnimationFrame(autoScroll); } };
   const target=(ev,d)=>{ const c=cellAt(ev.clientX,ev.clientY);
     if(d.kind==='resize'){ const it=items[d.i]; if(!c.inside) return null;
       const b=bandXY(c), ww=Math.max(1,b.x-it.x+1), hh=Math.max(1,b.y-it.y+1);
@@ -2646,14 +2681,21 @@ function tbBindDrag(p, libOnly){
     const w=d.w, h=d.h, pg=Math.floor(c.y/g);
     const x=Math.min(Math.max(0,c.x-(d.ox||0)),g-w), y=pg*g+Math.min(Math.max(0,(c.y%g)-(d.oy||0)),g-h);
     return {x,y,w,h,ok:tbFree(items,x,y,w,h,d.kind==='move'?d.i:-1,rows,g)}; };
+  // Vorschau hoechstens einmal je Bildschirm-Frame und nur bei Zellwechsel neu berechnen
+  const frame=()=>{ rafId=0; const d=tbDrag, ev=lastEv; if(!d||!ev) return;
+    if(d.chip){ d.chip.style.left=ev.clientX+'px'; d.chip.style.top=ev.clientY+'px'; }
+    const els=document.elementsFromPoint(ev.clientX,ev.clientY), bg=els.find(e=>e.classList&&e.classList.contains('bg')&&grid.contains(e)),
+          ew=els.find(e=>e.classList&&e.classList.contains('ew')&&grid.contains(e));
+    const key=(bg?bg.dataset.x+','+bg.dataset.y:'-')+'|'+(ew?ew.dataset.i:'-');
+    if(key===lastKey) return; lastKey=key;
+    const t=target(ev,d); if(t) showGhost(t.x,t.y,t.w,t.h,t.ok,t.swap!==undefined); else hideGhost(); };
   const move=(ev)=>{ const d=tbDrag; if(!d) return;
     if(!d.moved && Math.hypot(ev.clientX-d.sx,ev.clientY-d.sy)<6) return;
     if(!d.moved){ d.moved=true; if(d.el) d.el.classList.add('dragging');
       if(d.src){ d.chip=d.src.cloneNode(true); d.chip.classList.add('dragchip'); document.body.appendChild(d.chip); } }
-    if(d.chip){ d.chip.style.left=ev.clientX+'px'; d.chip.style.top=ev.clientY+'px'; }
-    const t=target(ev,d); if(t) showGhost(t.x,t.y,t.w,t.h,t.ok,t.swap!==undefined); else hideGhost(); };
-  const up=(ev)=>{ window.removeEventListener('pointermove',move); const d=tbDrag; tbDrag=null; hideGhost();
-    if(d&&d.chip) d.chip.remove(); if(d&&d.el) d.el.classList.remove('dragging');
+    lastEv=ev; if(!rafId) rafId=requestAnimationFrame(frame);
+    if(!scrollT) scrollT=requestAnimationFrame(autoScroll); };
+  const up=(ev)=>{ const d=cleanup();
     if(!d) return;
     if(!d.moved){ if(d.kind==='move'||d.kind==='resize'){ tbSel=d.i; renderTabEditor(); } return; }
     const t=target(ev,d); if(!t||!t.ok) return;

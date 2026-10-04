@@ -1263,9 +1263,10 @@
   .wxpt{fill:var(--tile,#fff);stroke-width:2.4;opacity:0;animation:wxfade .3s ease 1s forwards;}
   .wxlab{font-size:12px;font-weight:700;fill:var(--ink,#1f2440);text-anchor:middle;opacity:0;animation:wxfade .3s ease 1s forwards;}
   .wxax{font-size:10.5px;fill:var(--muted,#565c7c);}
-  .wxleg{display:flex;gap:14px;font-size:12px;opacity:.8;margin-top:-4px;padding-left:4px;}
-  .wxleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
-  .wxleg .lr{background:#8ab8f2;}
+  .wxttl{font-size:11.5px;font-weight:700;fill:var(--muted,#565c7c);letter-spacing:.02em;}
+  .wxc.wxsel{cursor:pointer;transition:box-shadow .2s ease,transform .15s ease;}
+  .wxc.wxsel:active{transform:scale(.97);}
+  .wxc.on{box-shadow:inset 0 0 0 2px var(--accent,#ffc145);}
   .wxchips{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;}
   .wxc{background:var(--tile,rgba(255,255,255,.7));border-radius:14px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;opacity:0;animation:wxin .35s var(--ease,ease) forwards;}
   .wxc span{font-size:11.5px;color:var(--muted);} .wxc b{font-size:16px;font-variant-numeric:tabular-nums;}
@@ -3689,52 +3690,82 @@ const wxTc=t=>ambRgb(ambStops(WX_TC,t));
 function wxInk(){ const v=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
   return /^#[0-9a-f]{6}$/i.test(v)?ambHex(v):[31,36,64]; }
 const wxTcTxt=t=>ambRgb(ambMix(ambStops(WX_TC,t),wxInk(),.38));
+// Kennzahlen, die der Graph zeigen kann (Antippen eines Chips schaltet um):
+// Linie (lc: nach Temperatur gefaerbt, sonst feste Pastellfarbe) oder Balken.
+const WXM={
+  temp:{k:'temp',u:'°'},
+  feels:{k:'feels',u:'°',t:'Gefühlte Temperatur'},
+  rain:{k:'rain',u:' mm',bar:1,t:'Regen je Stunde',d:1},
+  pop:{k:'pop',u:' %',bar:1,t:'Regenrisiko je Stunde'},
+  wind:{k:'wind',u:' km/h',col:'#86cfc4',t:'Wind'},
+  hum:{k:'hum',u:' %',col:'#8ab8f2',t:'Luftfeuchte'},
+  press:{k:'press',u:' hPa',col:'#b9a6ec',t:'Luftdruck',sp:4}
+};
+function wxChartHTML(hrs, m){
+  const M=WXM[m]||WXM.temp, W=400,H=170,pL=8,pR=8,pT=26,pB=24, ch=H-pT-pB, r=v=>Math.round(v*10)/10;
+  const X=i=>pL+i*(W-pL-pR)/(hrs.length-1);
+  const fmt=v=>(M.d?String(Math.round(v*10)/10).replace('.',','):Math.round(v))+M.u;
+  const ticks=hrs.map((h,i)=>{ if(h.h%6) return ''; const x=X(i), an=x<34?'start':(x>W-34?'end':'middle');
+    return '<text class="wxax" text-anchor="'+an+'" x="'+r(x)+'" y="'+(H-6)+'">'+h.h+' Uhr</text>'; }).join('');
+  const title=M.t?'<text class="wxttl" x="'+(pL+4)+'" y="16">'+M.t+'</text>':'';
+  const bw=Math.max(2,(W-pL-pR)/hrs.length-2);
+  const barsOf=(vals,hf,col)=>{ const mx=Math.max(M.bar?0.1:2,...vals.map(v=>v||0)); return vals.map((v,i)=>v>0?'<rect class="wxbar" style="animation-delay:'+(300+i*18)+'ms'+(col?';fill:'+col:'')+'" x="'+r(X(i)-bw/2)+'" y="'+r(H-pB-v/mx*ch*hf)+'" width="'+r(bw)+'" height="'+r(v/mx*ch*hf)+'" rx="1.5"/>':'').join(''); };
+  if(M.bar){   // nur Balken, Hoechstwert beschriftet
+    const vals=hrs.map(h=>h[M.k]!=null?h[M.k]:0), mx=Math.max(...vals);
+    if(!(mx>0)) return '<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+title+'<text class="wxlab" x="'+W/2+'" y="'+H/2+'">kein Niederschlag</text>'+ticks+'</svg>';
+    const im=vals.indexOf(mx);
+    return '<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+title+barsOf(vals,0.78)+
+      '<text class="wxlab" x="'+r(Math.min(W-26,Math.max(26,X(im))))+'" y="'+r(H-pB-ch*0.78-6)+'">'+fmt(mx)+'</text>'+ticks+'</svg>';
+  }
+  const idx=hrs.map((h,i)=>h[M.k]!=null?i:-1).filter(i=>i>=0); if(idx.length<2) return '';
+  const t=idx.map(i=>hrs[i][M.k]), lo=Math.min(...t), hi=Math.max(...t), sp=Math.max(M.sp||1,hi-lo), mid=(hi+lo)/2;
+  const Y=v=>pT+(1-(v-(mid-sp/2))/sp)*(ch*0.62);
+  const pts=idx.map(i=>[X(i),Y(hrs[i][M.k])]);
+  const line=pts.map((p,i)=>(i?'L':'M')+r(p[0])+' '+r(p[1])).join(' ');
+  const area=line+' L'+r(pts[pts.length-1][0])+' '+(H-pB)+' L'+r(pts[0][0])+' '+(H-pB)+' Z';
+  const tc=(m==='temp'||m==='feels'), cHi=tc?wxTc(hi):M.col, cLo=tc?wxTc(lo):M.col;
+  const iHi=idx[t.indexOf(hi)], iLo=idx[t.indexOf(lo)];
+  const lab=(i,v,up)=>'<text class="wxlab" x="'+r(Math.min(W-26,Math.max(26,X(i))))+'" y="'+r(Y(v)+(up?-9:17))+'">'+fmt(v)+'</text><circle class="wxpt" style="stroke:'+(tc?wxTc(v):M.col)+'" cx="'+r(X(i))+'" cy="'+r(Y(v))+'" r="3.5"/>';
+  const yH=r(Y(hi)), yL=r(Y(lo)), st=[];
+  for(let k=0;k<=4;k++){ const v=hi-(hi-lo)*k/4; st.push('<stop offset="'+(k/4)+'" stop-color="'+(tc?wxTc(v):M.col)+'"/>'); }
+  // Standardansicht: Temperatur mit Regen je Stunde (bzw. Regenrisiko) als zarte Balken
+  let bars='';
+  if(m==='temp'){ const useMm=hrs.some(h=>h.rain!=null); bars=barsOf(hrs.map(h=>useMm?(h.rain||0):(h.pop||0)/100*2),0.38); }
+  return '<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+
+    '<defs><linearGradient id="wxl" gradientUnits="userSpaceOnUse" x1="0" y1="'+yH+'" x2="0" y2="'+(yL===yH?yH+1:yL)+'">'+st.join('')+'</linearGradient>'+
+    '<linearGradient id="wxg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+cHi+'" stop-opacity=".5"/><stop offset="1" stop-color="'+cLo+'" stop-opacity="0"/></linearGradient></defs>'+
+    title+bars+'<path class="wxarea" d="'+area+'" fill="url(#wxg)"/><path class="wxline" stroke="url(#wxl)" d="'+line+'" pathLength="1"/>'+
+    lab(iHi,hi,true)+(iLo!==iHi?lab(iLo,lo,false):'')+ticks+'</svg>';
+}
 function wxSheet(fi){
   const w=(frontData||{}).weather||{}, f=(w.forecast||[])[fi]; if(!f||!f.det) return;
   const dt=f.det, hrs=(dt.hours||[]).filter(h=>h&&h.temp!=null);
   let ov=el('wxSheet'); if(!ov){ ov=document.createElement('div'); ov.id='wxSheet'; ov.className='stsheet wxs'; document.querySelector('.screen').appendChild(ov); }
-  const W=400,H=170,pL=8,pR=8,pT=26,pB=24, ch=H-pT-pB;
-  let chart='';
-  if(hrs.length>1){
-    const t=hrs.map(h=>h.temp), lo=Math.min(...t), hi=Math.max(...t), sp=Math.max(1,hi-lo);
-    const X=i=>pL+i*(W-pL-pR)/(hrs.length-1), Y=v=>pT+(1-(v-lo)/sp)*(ch*0.62);
-    const pts=hrs.map((h,i)=>[X(i),Y(h.temp)]), r=v=>Math.round(v*10)/10;
-    const line=pts.map((p,i)=>(i?'L':'M')+r(p[0])+' '+r(p[1])).join(' ');
-    const area=line+' L'+r(pts[pts.length-1][0])+' '+(H-pB)+' L'+r(pts[0][0])+' '+(H-pB)+' Z';
-    const iHi=t.indexOf(hi), iLo=t.indexOf(lo);
-    const rain=hrs.map(h=>h.rain!=null?h.rain:null), useMm=rain.some(v=>v!=null);
-    const rv=hrs.map(h=>useMm?(h.rain||0):(h.pop||0)/100*2), rmax=Math.max(2,...rv);
-    const bw=Math.max(2,(W-pL-pR)/hrs.length-2);
-    const bars=rv.map((v,i)=>v>0?'<rect class="wxbar" style="animation-delay:'+(300+i*18)+'ms" x="'+r(X(i)-bw/2)+'" y="'+r(H-pB-v/rmax*ch*0.38)+'" width="'+r(bw)+'" height="'+r(v/rmax*ch*0.38)+'" rx="1.5"/>':'').join('');
-    const ticks=hrs.map((h,i)=>{ if(h.h%6) return ''; const x=X(i), an=x<34?'start':(x>W-34?'end':'middle');
-      return '<text class="wxax" text-anchor="'+an+'" x="'+r(x)+'" y="'+(H-6)+'">'+h.h+' Uhr</text>'; }).join('');
-    const lab=(i,v,up)=>'<text class="wxlab" x="'+r(Math.min(W-22,Math.max(22,X(i))))+'" y="'+r(Y(v)+(up?-9:17))+'">'+Math.round(v)+'°</text><circle class="wxpt" style="stroke:'+wxTc(v)+'" cx="'+r(X(i))+'" cy="'+r(Y(v))+'" r="3.5"/>';
-    // Kurve und Flaeche faerben sich von oben (Tageshoch) nach unten (Tief) nach Temperatur
-    const yH=r(Y(hi)), yL=r(Y(lo)), n=4, st=[];
-    for(let k=0;k<=n;k++){ const v=hi-(hi-lo)*k/n; st.push('<stop offset="'+(k/n)+'" stop-color="'+wxTc(v)+'"/>'); }
-    chart='<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+
-      '<defs><linearGradient id="wxl" gradientUnits="userSpaceOnUse" x1="0" y1="'+yH+'" x2="0" y2="'+(yL===yH?yH+1:yL)+'">'+st.join('')+'</linearGradient>'+
-      '<linearGradient id="wxg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+wxTc(hi)+'" stop-opacity=".5"/><stop offset="1" stop-color="'+wxTc(lo)+'" stop-opacity="0"/></linearGradient></defs>'+
-      bars+'<path class="wxarea" d="'+area+'" fill="url(#wxg)"/><path class="wxline" stroke="url(#wxl)" d="'+line+'" pathLength="1"/>'+
-      lab(iHi,hi,true)+(iLo!==iHi?lab(iLo,lo,false):'')+ticks+'</svg>'+
-      '<div class="wxleg"><span><i class="lt" style="background:linear-gradient(90deg,'+wxTc(lo)+','+wxTc(hi)+')"></i>Temperatur</span>'+(rv.some(v=>v>0)?'<span><i class="lr"></i>'+(useMm?'Regen (mm/h)':'Regenrisiko')+'</span>':'')+'</div>';
-  }
+  const has=k=>hrs.filter(h=>h[k]!=null).length>1;
+  // [Titel, Wert, Kennzahl fuer den Graphen (nur wenn Stundenwerte da sind)]
   const chips=[];
-  if(dt.rain!=null) chips.push(['Regen', (String(dt.rain).replace('.',','))+' mm']);
-  if(f.pop!=null) chips.push(['Regenrisiko', f.pop+' %']);
-  if(dt.wind!=null) chips.push(['Wind max.', dt.wind+' '+(dt.wind_unit||'km/h')]);
-  if(dt.uv!=null) chips.push(['UV-Index', String(dt.uv)]);
-  if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlt', dt.feels_lo+'° – '+dt.feels_hi+'°']);
-  if(dt.humidity!=null) chips.push(['Luftfeuchte Ø', dt.humidity+' %']);
-  if(dt.pressure!=null) chips.push(['Luftdruck Ø', dt.pressure+' hPa']);
-  if(dt.radiation!=null) chips.push(['Einstrahlung max.', dt.radiation+' W/m²']);
-  if(dt.sunrise&&dt.sunset) chips.push(['Sonne', dt.sunrise+' – '+dt.sunset]);
+  if(f.hi!=null&&f.lo!=null) chips.push(['Temperatur', tdeg(f.lo)+' – '+tdeg(f.hi), hrs.length>1?'temp':'']);   // Start-Chip
+  if(dt.rain!=null) chips.push(['Regen', (String(dt.rain).replace('.',','))+' mm', has('rain')?'rain':'']);
+  if(f.pop!=null) chips.push(['Regenrisiko', f.pop+' %', has('pop')?'pop':'']);
+  if(dt.wind!=null) chips.push(['Wind max.', dt.wind+' '+(dt.wind_unit||'km/h'), has('wind')?'wind':'']);
+  if(dt.uv!=null) chips.push(['UV-Index', String(dt.uv), '']);
+  if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlt', dt.feels_lo+'° – '+dt.feels_hi+'°', has('feels')?'feels':'']);
+  if(dt.humidity!=null) chips.push(['Luftfeuchte Ø', dt.humidity+' %', has('hum')?'hum':'']);
+  if(dt.pressure!=null) chips.push(['Luftdruck Ø', dt.pressure+' hPa', has('press')?'press':'']);
+  if(dt.sunrise&&dt.sunset) chips.push(['Sonne', dt.sunrise+' – '+dt.sunset, '']);
   ov.innerHTML='<div class="wxsbox"><div class="wxhd"><span class="wxico ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
     '<span class="wxtt"><b>'+esc(f.day||'')+'</b><small>'+esc(dt.cond||'')+'</small></span>'+
     '<span class="wxhl"><b'+(f.hi!=null?' style="color:'+wxTcTxt(f.hi)+'"':'')+'>'+tdeg(f.hi)+'</b><small'+(f.lo!=null?' style="color:'+wxTcTxt(f.lo)+'"':'')+'>'+tdeg(f.lo)+'</small></span>'+
     '<button type="button" class="stsx" aria-label="Schließen">✕</button></div>'+
-    chart+(chips.length?'<div class="wxchips">'+chips.map(([k,v],i)=>'<div class="wxc" style="animation-delay:'+(250+i*60)+'ms"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')+'</div>':'')+'</div>';
+    '<div class="wxch">'+(hrs.length>1?wxChartHTML(hrs,'temp'):'')+'</div>'+
+    (chips.length?'<div class="wxchips">'+chips.map(([k,v,m],i)=>'<div class="wxc'+(m?' wxsel':'')+(m==='temp'?' on':'')+'"'+(m?' data-m="'+m+'"':'')+' style="animation-delay:'+(250+i*60)+'ms"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')+'</div>':'')+'</div>';
   ov.hidden=false;
+  // Chip antippen: Graph zeigt diese Kennzahl; nochmal (oder Kopf) -> zurueck zur Temperatur
+  let cur='temp';
+  const show=m=>{ cur=m; const host=ov.querySelector('.wxch'); if(host&&hrs.length>1) host.innerHTML=wxChartHTML(hrs,m);
+    ov.querySelectorAll('.wxc[data-m]').forEach(c=>c.classList.toggle('on',c.dataset.m===m)); };
+  ov.querySelectorAll('.wxc[data-m]').forEach(c=>c.onclick=e=>{ e.stopPropagation(); show(cur===c.dataset.m?'temp':c.dataset.m); });
+  ov.querySelector('.wxhd').onclick=e=>{ if(!e.target.closest('.stsx') && cur!=='temp') show('temp'); };
   const close=()=>{ ov.hidden=true; };
   ov.querySelector('.stsx').onclick=e=>{ e.stopPropagation(); close(); };
   ov.onclick=e=>{ e.stopPropagation(); if(e.target===ov) close(); };

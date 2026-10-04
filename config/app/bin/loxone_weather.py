@@ -320,6 +320,7 @@ def build(cfg: dict, actual: list, forecast: list, *,
     # Tagesdetails je Vorschau-Tag (Wetter-Widget, Antippen eines Tages):
     # Stundenverlauf, Regenmenge (mm/h mal Stundenabstand), Wind-Maximum.
     mm_ok = p_unit.startswith("mm") or p_unit.startswith("l/m")
+    p_hpa = (_fmt_unit(fmt, "pressure") or "").lower() in ("hpa", "mbar")
     w_fak = 3.6 if (_fmt_unit(fmt, "wind") or "").lower().replace(" ", "") in ("m/s", "ms", "mps") else 1.0
     for d, tag in zip(ab_heute, vorschau):
         eintr = tage[d]
@@ -340,8 +341,13 @@ def build(cfg: dict, actual: list, forecast: list, *,
             txt = texte.get(_typ(e))
             if txt:
                 typen[txt] = typen.get(txt, 0) + 1
+            fe, hu, pa = _zahl(e.get("feels")), _zahl(e.get("humidity")), _zahl(e.get("pressure"))
             hours.append({"h": t.hour, "temp": round(tp, 1) if tp is not None else None,
-                          "pop": None, "rain": r, "icon": icon_for(txt)})
+                          "pop": None, "rain": r, "icon": icon_for(txt),
+                          "feels": round(fe, 1) if fe is not None else None,
+                          "wind": round(wi * w_fak) if (wi is not None and w_unit_cfg) else None,
+                          "hum": round(hu) if hu is not None else None,
+                          "press": round(pa) if (pa is not None and p_hpa) else None})
         tag["det"] = {
             "cond": max(typen, key=typen.get) if typen else "",
             "rain": round(regen, 1) if mm_ok else None,

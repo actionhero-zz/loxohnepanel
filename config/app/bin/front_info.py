@@ -583,7 +583,8 @@ async def fetch_weather(session: aiohttp.ClientSession, lat: float, lon: float, 
         "longitude": lon,
         "current": "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,"
                    "weather_code,wind_speed_10m,wind_direction_10m,pressure_msl",
-        "hourly": "temperature_2m,precipitation_probability,weather_code,apparent_temperature,precipitation",
+        "hourly": "temperature_2m,precipitation_probability,weather_code,apparent_temperature,precipitation,"
+                  "wind_speed_10m,relative_humidity_2m,pressure_msl",
         "daily": "temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,"
                  "precipitation_sum,sunrise,sunset,uv_index_max,wind_speed_10m_max",
         "timezone": "auto",
@@ -615,6 +616,13 @@ async def fetch_weather(session: aiohttp.ClientSession, lat: float, lon: float, 
     h_code = hourly.get("weather_code") or []
     h_feel = hourly.get("apparent_temperature") or []
     h_rain = hourly.get("precipitation") or []
+    h_wind = hourly.get("wind_speed_10m") or []
+    h_hum = hourly.get("relative_humidity_2m") or []
+    h_press = hourly.get("pressure_msl") or []
+
+    def _at(lst, i, nd=0):
+        v = lst[i] if i < len(lst) else None
+        return (round(v, nd) if nd else round(v)) if isinstance(v, (int, float)) else None
     per_day: dict = {}
     for i, ts in enumerate(h_time):
         d = _iso(ts)
@@ -626,6 +634,8 @@ async def fetch_weather(session: aiohttp.ClientSession, lat: float, lon: float, 
             "pop": int(h_pop[i]) if i < len(h_pop) and h_pop[i] is not None else None,
             "rain": round(h_rain[i], 1) if i < len(h_rain) and h_rain[i] is not None else None,
             "icon": wmo_icon(h_code[i]) if i < len(h_code) else "cloud",
+            "feels": _at(h_feel, i, 1), "wind": _at(h_wind, i),
+            "hum": _at(h_hum, i), "press": _at(h_press, i),
         })
 
     forecast = []

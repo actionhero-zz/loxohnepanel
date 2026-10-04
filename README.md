@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Wetter-Details im Design (0.19.0-fav39)** — Tagesdetails in den Farben des gewählten Designs,
+  Temperaturkurve pastellig nach Temperatur gefärbt (kalt blau, warm apricot/rot); nur Werte des
+  Miniservers (zusätzlich Gefühlt, Luftfeuchte Ø, Luftdruck Ø, Einstrahlung max.); Kamera-Umschalter
+  transparenter; Dashboard-Symbol größer und feiner.
 - **Wetter-Tagesdetails (0.19.0-fav38)** — Wetter-Widget mit optionaler Detailansicht (Haken im
   Widget-Editor): Tipp auf einen Tag öffnet ein Popup mit animierter Temperaturkurve, Regen je Stunde,
   Regenmenge/-risiko, Wind, UV und Sonnenzeiten (Open-Meteo und Loxone-Wetterdienst). Kamera-Umschalter

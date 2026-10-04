@@ -797,10 +797,10 @@
   .svw-camsw .sv-cam-frame{flex:1;min-height:0;}
   .svw-camsw .camimg{opacity:0;transition:opacity .15s;} .svw-camsw .camimg.on{opacity:1;}
   .campills{position:absolute;top:8px;right:8px;display:flex;gap:6px;z-index:2;}
-  .campill{min-width:30px;height:30px;padding:0 8px;border-radius:10px;   /* wie die Minibuttons (.ub) der Licht-/Rollladen-Kacheln */border:1px solid rgba(255,255,255,.4);
-    background:rgba(0,0,0,.28);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;
+  .campill{min-width:30px;height:30px;padding:0 8px;border-radius:10px;   /* wie die Minibuttons (.ub) der Licht-/Rollladen-Kacheln */border:1px solid rgba(255,255,255,.28);
+    background:rgba(0,0,0,.16);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);color:#fff;
     font:600 14px/1 var(--font-num,inherit);cursor:pointer;touch-action:manipulation;}
-  .campill.on{background:rgba(255,255,255,.88);color:#15182a;border-color:transparent;}
+  .campill.on{background:rgba(255,255,255,.62);color:#15182a;border-color:transparent;}
   .camlbl{position:absolute;left:8px;bottom:8px;z-index:2;color:#fff;font-size:13px;padding:3px 9px;border-radius:10px;
     background:rgba(0,0,0,.3);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:none;}
   .camlbl:empty{display:none;}
@@ -990,7 +990,7 @@
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:0;
     color:var(--tab-idle,var(--muted));background:transparent;}
   .screen>.tabs .tabback svg{width:26px;height:26px;}
-  .screen>.tabs .tabback.dash svg{width:34px;height:34px;}   /* Dashboard-Symbol (Layout-Abbild) etwas groesser */
+  .screen>.tabs .tabback.dash svg{width:38px;height:38px;}   /* Dashboard-Symbol (Layout-Abbild) etwas groesser */
   .screen>.tabs .tabback::after{content:"";width:5px;height:5px;}
   .screen>.tabs .tabback.on{color:var(--tab-active-ink,#fff);background:rgba(var(--bezel-ink-rgb,255,255,255),.06);}
   .screen>.grid,.screen>.scrollind,.screen>.conn{grid-row:2;}
@@ -1244,30 +1244,31 @@
   .wxtap{cursor:pointer;border-radius:12px;transition:background var(--anim-fast,.15s) ease;}
   .wxtap:active{background:rgba(var(--wash,255,255,255),.12);}
   .wxsbox{width:min(460px,100%);max-height:100%;overflow:auto;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;
-    background:#D3E8FF;color:#1f2440;box-shadow:0 18px 40px rgba(0,0,0,.35);animation:wxin .32s var(--ease,ease) both;}
+    background:var(--face-2,var(--tile,#D3E8FF));color:var(--ink,#1f2440);box-shadow:0 18px 40px rgba(0,0,0,.35);animation:wxin .32s var(--ease,ease) both;}
+  .wxsbox .stsx{background:rgba(var(--wash,255,255,255),.10);}
   @keyframes wxin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
   .wxhd{display:flex;align-items:center;gap:12px;}
   .wxhd .wxico{width:46px;height:46px;flex:none;} .wxhd .wxico svg{width:46px;height:46px;}
-  .wxtt{display:flex;flex-direction:column;min-width:0;} .wxtt b{font-size:20px;} .wxtt small{font-size:13.5px;opacity:.75;}
+  .wxtt{display:flex;flex-direction:column;min-width:0;} .wxtt b{font-size:20px;} .wxtt small{font-size:13.5px;color:var(--muted);}
   .wxhl{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;line-height:1.05;font-variant-numeric:tabular-nums;}
-  .wxhl b{font-size:28px;font-weight:600;color:#c2410c;} .wxhl small{font-size:16px;color:#2563eb;font-weight:600;}
+  .wxhl b{font-size:28px;font-weight:600;font-family:var(--font-num,inherit);} .wxhl small{font-size:16px;font-weight:600;}
   .wxhd .stsx{margin-left:8px;}
-  .wxchart{width:100%;height:auto;display:block;background:rgba(255,255,255,.55);border-radius:16px;overflow:visible;}
-  .wxline{fill:none;stroke:#f08a24;stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round;
+  .wxchart{width:100%;height:auto;display:block;background:var(--tile,rgba(255,255,255,.55));border-radius:16px;overflow:visible;}
+  .wxline{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round;
     stroke-dasharray:1;stroke-dashoffset:1;animation:wxdraw .9s var(--ease,ease) .15s forwards;}
   @keyframes wxdraw{to{stroke-dashoffset:0}}
   .wxarea{opacity:0;animation:wxfade .6s ease .55s forwards;} @keyframes wxfade{to{opacity:1}}
-  .wxbar{fill:#5b8fd9;opacity:.85;transform-box:fill-box;transform-origin:bottom;transform:scaleY(0);animation:wxgrow .45s var(--ease,ease) forwards;}
+  .wxbar{fill:#8ab8f2;opacity:.9;transform-box:fill-box;transform-origin:bottom;transform:scaleY(0);animation:wxgrow .45s var(--ease,ease) forwards;}
   @keyframes wxgrow{to{transform:scaleY(1)}}
-  .wxpt{fill:#fff;stroke:#f08a24;stroke-width:2;opacity:0;animation:wxfade .3s ease 1s forwards;}
-  .wxlab{font-size:12px;font-weight:700;fill:#1f2440;text-anchor:middle;opacity:0;animation:wxfade .3s ease 1s forwards;}
-  .wxax{font-size:10.5px;fill:#565c7c;}
+  .wxpt{fill:var(--tile,#fff);stroke-width:2.4;opacity:0;animation:wxfade .3s ease 1s forwards;}
+  .wxlab{font-size:12px;font-weight:700;fill:var(--ink,#1f2440);text-anchor:middle;opacity:0;animation:wxfade .3s ease 1s forwards;}
+  .wxax{font-size:10.5px;fill:var(--muted,#565c7c);}
   .wxleg{display:flex;gap:14px;font-size:12px;opacity:.8;margin-top:-4px;padding-left:4px;}
   .wxleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;}
-  .wxleg .lt{background:#f08a24;} .wxleg .lr{background:#5b8fd9;}
+  .wxleg .lr{background:#8ab8f2;}
   .wxchips{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;}
-  .wxc{background:rgba(255,255,255,.7);border-radius:14px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;opacity:0;animation:wxin .35s var(--ease,ease) forwards;}
-  .wxc span{font-size:11.5px;opacity:.7;} .wxc b{font-size:16px;font-variant-numeric:tabular-nums;}
+  .wxc{background:var(--tile,rgba(255,255,255,.7));border-radius:14px;padding:9px 12px;display:flex;flex-direction:column;gap:2px;opacity:0;animation:wxin .35s var(--ease,ease) forwards;}
+  .wxc span{font-size:11.5px;color:var(--muted);} .wxc b{font-size:16px;font-variant-numeric:tabular-nums;}
   html[data-motion="off"] .wxsbox,html[data-motion="off"] .wxsbox *{animation:none!important;opacity:1;transform:none;stroke-dashoffset:0;}
   .strow .stn small{font-weight:400;font-size:12px;opacity:.75;line-height:1.35;} .strow .stn small:first-of-type{margin-top:2px;} .strow .stt{margin-left:auto;font-size:13.5px;opacity:.85;white-space:nowrap;} .strow .stgo{opacity:.5;font-size:18px;}
   .strow.lv-hint{background:#E8AE3C;color:#412402;} .strow.lv-alarm{background:#DC5654;color:#fff;} .strow.lv-info{background:#C2DAF2;color:#0C447C;}
@@ -1474,9 +1475,9 @@ function dashIconInner(){
   // Rahmen im Panel-Format (1 Panel quadratisch, 2 Panels 2:1), darin die
   // Kacheln gefuellt - so bleiben sie auch bei 6x3 im kleinen Symbol lesbar.
   const rows=saverGrid(), cols=saverCols(), list=its.filter(it=>it.x+it.w<=cols);
-  const fw=cols>rows?22:20, fh=fw*rows/cols, fx=12-fw/2, fy=12-fh/2, pad=3.4, gap=1.2;
+  const fw=cols>rows?22:20, fh=fw*rows/cols, fx=12-fw/2, fy=12-fh/2, pad=3.1, gap=1.0;
   const uw=(fw-2*pad+gap)/cols, uh=(fh-2*pad+gap)/rows, f=v=>Math.round(v*10)/10;
-  return '<rect stroke-width="1.45" x="'+f(fx)+'" y="'+f(fy)+'" width="'+f(fw)+'" height="'+f(fh)+'" rx="2.6"/>'+
+  return '<rect stroke-width="1.15" x="'+f(fx)+'" y="'+f(fy)+'" width="'+f(fw)+'" height="'+f(fh)+'" rx="2.6"/>'+
     list.map(it=>'<rect fill="currentColor" stroke="none" x="'+f(fx+pad+it.x*uw)+'" y="'+f(fy+pad+it.y*uh)+'" width="'+f(it.w*uw-gap)+'" height="'+f(it.h*uh-gap)+'" rx="0.8"/>').join('');
 }
 function svg(inner){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>';}
@@ -3680,6 +3681,14 @@ const ST_ORD={alarm:0,hint:1,info:2,ok:3};
 // ---- Wetter: Tagesdetails (Widget-Option "Detailansicht", Antippen eines Tages) ----
 // Kopf mit Symbol/Wetterlage und Hoch/Tief, Temperaturkurve ueber den Tag (zeichnet
 // sich ein), Regen je Stunde als Balken (wachsen nacheinander), darunter Kennzahlen.
+// Temperatur -> Farbe: kalt blau, mild hellblau/gelb, warm orange, heiss rot -
+// bewusst pastellig/kuehl wie die Design-Flaechen. Fuer Text wird zur Schrift-
+// farbe des Designs gemischt (hell: dunkler, dunkel: heller), damit er lesbar bleibt.
+const WX_TC=[[-10,'#7f9cf0'],[0,'#8ab8f2'],[8,'#93d3e6'],[14,'#f0d07e'],[22,'#f2ab74'],[30,'#ee8a86'],[38,'#dc6b6b']];
+const wxTc=t=>ambRgb(ambStops(WX_TC,t));
+function wxInk(){ const v=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
+  return /^#[0-9a-f]{6}$/i.test(v)?ambHex(v):[31,36,64]; }
+const wxTcTxt=t=>ambRgb(ambMix(ambStops(WX_TC,t),wxInk(),.38));
 function wxSheet(fi){
   const w=(frontData||{}).weather||{}, f=(w.forecast||[])[fi]; if(!f||!f.det) return;
   const dt=f.det, hrs=(dt.hours||[]).filter(h=>h&&h.temp!=null);
@@ -3699,22 +3708,30 @@ function wxSheet(fi){
     const bars=rv.map((v,i)=>v>0?'<rect class="wxbar" style="animation-delay:'+(300+i*18)+'ms" x="'+r(X(i)-bw/2)+'" y="'+r(H-pB-v/rmax*ch*0.38)+'" width="'+r(bw)+'" height="'+r(v/rmax*ch*0.38)+'" rx="1.5"/>':'').join('');
     const ticks=hrs.map((h,i)=>{ if(h.h%6) return ''; const x=X(i), an=x<34?'start':(x>W-34?'end':'middle');
       return '<text class="wxax" text-anchor="'+an+'" x="'+r(x)+'" y="'+(H-6)+'">'+h.h+' Uhr</text>'; }).join('');
-    const lab=(i,v,up)=>'<text class="wxlab" x="'+r(Math.min(W-22,Math.max(22,X(i))))+'" y="'+r(Y(v)+(up?-9:17))+'">'+Math.round(v)+'°</text><circle class="wxpt" cx="'+r(X(i))+'" cy="'+r(Y(v))+'" r="3.5"/>';
+    const lab=(i,v,up)=>'<text class="wxlab" x="'+r(Math.min(W-22,Math.max(22,X(i))))+'" y="'+r(Y(v)+(up?-9:17))+'">'+Math.round(v)+'°</text><circle class="wxpt" style="stroke:'+wxTc(v)+'" cx="'+r(X(i))+'" cy="'+r(Y(v))+'" r="3.5"/>';
+    // Kurve und Flaeche faerben sich von oben (Tageshoch) nach unten (Tief) nach Temperatur
+    const yH=r(Y(hi)), yL=r(Y(lo)), n=4, st=[];
+    for(let k=0;k<=n;k++){ const v=hi-(hi-lo)*k/n; st.push('<stop offset="'+(k/n)+'" stop-color="'+wxTc(v)+'"/>'); }
     chart='<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+
-      '<defs><linearGradient id="wxg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb86b" stop-opacity=".55"/><stop offset="1" stop-color="#ffb86b" stop-opacity="0"/></linearGradient></defs>'+
-      bars+'<path class="wxarea" d="'+area+'" fill="url(#wxg)"/><path class="wxline" d="'+line+'" pathLength="1"/>'+
+      '<defs><linearGradient id="wxl" gradientUnits="userSpaceOnUse" x1="0" y1="'+yH+'" x2="0" y2="'+(yL===yH?yH+1:yL)+'">'+st.join('')+'</linearGradient>'+
+      '<linearGradient id="wxg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+wxTc(hi)+'" stop-opacity=".5"/><stop offset="1" stop-color="'+wxTc(lo)+'" stop-opacity="0"/></linearGradient></defs>'+
+      bars+'<path class="wxarea" d="'+area+'" fill="url(#wxg)"/><path class="wxline" stroke="url(#wxl)" d="'+line+'" pathLength="1"/>'+
       lab(iHi,hi,true)+(iLo!==iHi?lab(iLo,lo,false):'')+ticks+'</svg>'+
-      '<div class="wxleg"><span><i class="lt"></i>Temperatur</span>'+(rv.some(v=>v>0)?'<span><i class="lr"></i>'+(useMm?'Regen (mm/h)':'Regenrisiko')+'</span>':'')+'</div>';
+      '<div class="wxleg"><span><i class="lt" style="background:linear-gradient(90deg,'+wxTc(lo)+','+wxTc(hi)+')"></i>Temperatur</span>'+(rv.some(v=>v>0)?'<span><i class="lr"></i>'+(useMm?'Regen (mm/h)':'Regenrisiko')+'</span>':'')+'</div>';
   }
   const chips=[];
   if(dt.rain!=null) chips.push(['Regen', (String(dt.rain).replace('.',','))+' mm']);
   if(f.pop!=null) chips.push(['Regenrisiko', f.pop+' %']);
   if(dt.wind!=null) chips.push(['Wind max.', dt.wind+' '+(dt.wind_unit||'km/h')]);
   if(dt.uv!=null) chips.push(['UV-Index', String(dt.uv)]);
+  if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlt', dt.feels_lo+'° – '+dt.feels_hi+'°']);
+  if(dt.humidity!=null) chips.push(['Luftfeuchte Ø', dt.humidity+' %']);
+  if(dt.pressure!=null) chips.push(['Luftdruck Ø', dt.pressure+' hPa']);
+  if(dt.radiation!=null) chips.push(['Einstrahlung max.', dt.radiation+' W/m²']);
   if(dt.sunrise&&dt.sunset) chips.push(['Sonne', dt.sunrise+' – '+dt.sunset]);
   ov.innerHTML='<div class="wxsbox"><div class="wxhd"><span class="wxico ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
     '<span class="wxtt"><b>'+esc(f.day||'')+'</b><small>'+esc(dt.cond||'')+'</small></span>'+
-    '<span class="wxhl"><b>'+tdeg(f.hi)+'</b><small>'+tdeg(f.lo)+'</small></span>'+
+    '<span class="wxhl"><b'+(f.hi!=null?' style="color:'+wxTcTxt(f.hi)+'"':'')+'>'+tdeg(f.hi)+'</b><small'+(f.lo!=null?' style="color:'+wxTcTxt(f.lo)+'"':'')+'>'+tdeg(f.lo)+'</small></span>'+
     '<button type="button" class="stsx" aria-label="Schließen">✕</button></div>'+
     chart+(chips.length?'<div class="wxchips">'+chips.map(([k,v],i)=>'<div class="wxc" style="animation-delay:'+(250+i*60)+'ms"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')+'</div>':'')+'</div>';
   ov.hidden=false;

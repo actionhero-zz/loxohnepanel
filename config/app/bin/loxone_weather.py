@@ -325,7 +325,12 @@ def build(cfg: dict, actual: list, forecast: list, *,
         eintr = tage[d]
         spannen = _spannen(eintr)
         hours, regen, wmax, typen = [], 0.0, None, {}
+        feels, hums, press, rads = [], [], [], []
         for (t, e), h in zip(eintr, spannen):
+            for lst, k in ((feels, "feels"), (hums, "humidity"), (press, "pressure"), (rads, "radiation")):
+                v = _zahl(e.get(k))
+                if v is not None:
+                    lst.append(v)
             tp, pr, wi = _zahl(e.get("temp")), _zahl(e.get("precip")), _zahl(e.get("wind"))
             r = round(pr * h, 1) if (mm_ok and pr is not None and pr > 0) else (0.0 if mm_ok else None)
             if r:
@@ -343,6 +348,13 @@ def build(cfg: dict, actual: list, forecast: list, *,
             "wind": round(wmax) if wmax is not None else None,
             "wind_unit": "km/h" if w_fak != 1.0 else w_unit_cfg,
             "uv": None,
+            # weitere Werte des Loxone-Wetterdienstes fuer die Tagesdetails
+            "feels_lo": round(min(feels)) if feels else None,
+            "feels_hi": round(max(feels)) if feels else None,
+            "humidity": round(sum(hums) / len(hums)) if hums else None,
+            "pressure": (round(sum(press) / len(press)) if press and
+                         (_fmt_unit(fmt, "pressure") or "").lower() in ("hpa", "mbar") else None),
+            "radiation": round(max(rads)) if rads and max(rads) > 0 else None,
             "sunrise": sunrise if d == heute else None,
             "sunset": sunset if d == heute else None,
             "hours": hours,

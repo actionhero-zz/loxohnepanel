@@ -17,6 +17,20 @@ services:
     image: loxpanelfav:local
     hostname: loxpanelfav
     restart: unless-stopped
+    # Logs begrenzen (sonst wachsen sie unbegrenzt - auf SD-Karten unguenstig)
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"
+    # Lebenszeichen: antwortet der Server nicht mehr, wird der Container
+    # "unhealthy"; der 5-Minuten-Cronjob (loxpanel-ctl.sh check) startet ihn dann neu.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/api/version', timeout=5)"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
     ports:
       - "8098:8099"
     volumes:
@@ -27,3 +41,9 @@ services:
       # Bibliothek (~550 Icons). Ist das Plugin nicht installiert, bleibt der
       # Ordner leer und die Icon-Quelle erscheint gar nicht.
       - /opt/loxberry/data/plugins/loxoneicons/loxone_icons/svg/filled:/app/loxone-icons/filled:ro
+      # Zeitzone des LoxBerry uebernehmen (read-only): ohne laeuft der Container
+      # in UTC - Tageswechsel ("Heute"/"Morgen"), Sonnenzeiten und Log-Zeiten
+      # waeren dann um die Zonen-Differenz verschoben. Nur /etc/localtime (gibt
+      # es auf jedem Debian/LoxBerry), kein /etc/timezone: fehlt die Datei auf
+      # dem Host, legte Docker sonst einen Ordner an und der Start schlueg fehl.
+      - /etc/localtime:/etc/localtime:ro

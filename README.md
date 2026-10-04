@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Betrieb & Wartung (0.19.43)** — Container übernimmt die Zeitzone des LoxBerry; Sonnenzeiten für
+  Folgetage berechnet (am Miniserver ausgerichtet); Docker-Logs begrenzt (3 × 5 MB); Healthcheck mit
+  automatischem Neustart über den 5-Minuten-Cronjob; Build ohne Compiler, wo fertige Pakete
+  existieren (x86_64/ARM64), sonst automatisch mit (ARMv7); alte Images werden nach Updates entfernt.
 - **Info-Popups einheitlich (0.19.42)** — Status- und Wetter-Popup im gleichen Rahmen (Breite, Kopf,
   ✕ rechts oben) und mit Zoom aus dem angetippten Element; Wetter: Sonnenbogen mit Tageslicht-
   dauer, Einstrahlung je Stunde und aktueller Sonnenposition, Luftdruck-Chip entfernt;

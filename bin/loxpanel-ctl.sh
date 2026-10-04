@@ -100,6 +100,9 @@ start() {
 	# ungenutzt, kostet aber bei jedem Build ein, zwei Sekunden.
 	sudo docker compose -f "$COMPOSE" build --provenance=false --sbom=false 2>&1
 	sudo docker compose -f "$COMPOSE" up -d 2>&1
+	# Vorgaengerversion des Images (nach dem Neubau namenlos, ~200 MB) entfernen -
+	# nur verwaiste Images mit unserem Label, sonst sammeln sie sich je Update an.
+	sudo docker image prune -f --filter "label=de.loxpanelfav.image=1" > /dev/null 2>&1 || true
 }
 
 stop() {
@@ -113,7 +116,12 @@ case "$1" in
 	restart) stop; start ;;
 	check)
 		[ -f "$STOPPED" ] && exit 0     # bewusst gestoppt -> nichts tun
-		running || start
+		if ! running; then start
+		# laeuft, antwortet aber nicht mehr (Healthcheck "unhealthy") -> neu starten
+		elif [ "$(sudo docker inspect -f '{{.State.Health.Status}}' loxpanelfav 2>/dev/null)" = "unhealthy" ]; then
+			echo "LoxPanel antwortet nicht (unhealthy) - Neustart."
+			sudo docker restart loxpanelfav 2>&1
+		fi
 		;;
 	backup)  backup ;;
 	restore) restore "$2" ;;

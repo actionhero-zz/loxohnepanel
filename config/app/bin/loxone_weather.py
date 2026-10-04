@@ -131,6 +131,41 @@ def _zeit(ts) -> datetime | None:
         return None
 
 
+def sun_times(d: date, lat: float, lon: float):
+    """Sonnenauf-/-untergang (Ortszeit, "HH:MM") fuer ein Datum, berechnet nach
+    der NOAA-Naeherung (Genauigkeit ~1-2 min). Fuer Tage, fuer die der
+    Miniserver keine Sonnenzeiten fuehrt. None bei Polartag/-nacht."""
+    import math
+    g = 2 * math.pi / 365 * (d.timetuple().tm_yday - 1)
+    eqt = 229.18 * (0.000075 + 0.001868 * math.cos(g) - 0.032077 * math.sin(g)
+                    - 0.014615 * math.cos(2 * g) - 0.040849 * math.sin(2 * g))
+    decl = (0.006918 - 0.399912 * math.cos(g) + 0.070257 * math.sin(g) - 0.006758 * math.cos(2 * g)
+            + 0.000907 * math.sin(2 * g) - 0.002697 * math.cos(3 * g) + 0.00148 * math.sin(3 * g))
+    la = math.radians(lat)
+    x = math.cos(math.radians(90.833)) / (math.cos(la) * math.cos(decl)) - math.tan(la) * math.tan(decl)
+    if not -1 <= x <= 1:
+        return None
+    ha = math.degrees(math.acos(x))
+    mitternacht = datetime(d.year, d.month, d.day, tzinfo=timezone.utc)
+    def hm(minuten):
+        t = (mitternacht + timedelta(minutes=minuten)).astimezone()
+        return f"{t.hour:02d}:{t.minute:02d}"
+    return hm(720 - 4 * (lon + ha) - eqt), hm(720 - 4 * (lon - ha) - eqt)
+
+
+def _hm_min(hm):
+    try:
+        h, m = str(hm).split(":")[:2]
+        return int(h) * 60 + int(m)
+    except (ValueError, AttributeError):
+        return None
+
+
+def _hm_shift(hm: str, minuten: int) -> str:
+    v = (_hm_min(hm) + minuten) % 1440
+    return f"{v // 60:02d}:{v % 60:02d}"
+
+
 def _volle_stunde(t: datetime) -> datetime:
     return t.replace(minute=0, second=0, microsecond=0)
 
@@ -196,7 +231,8 @@ def _spannen(eintraege: list) -> list:
 
 def build(cfg: dict, actual: list, forecast: list, *,
           sunrise: str | None = None, sunset: str | None = None,
-          fore_days: int = 4, now: datetime | None = None) -> dict | None:
+          fore_days: int = 4, now: datetime | None = None,
+          lat: float | None = None, lon: float | None = None) -> dict | None:
     """Wetter-Block fuer die Front bauen — oder None, wenn die Daten nicht
     tragfaehig sind (dann bleibt der Aufrufer bei Open-Meteo).
 
@@ -319,6 +355,13 @@ def build(cfg: dict, actual: list, forecast: list, *,
 
     # Tagesdetails je Vorschau-Tag (Wetter-Widget, Antippen eines Tages):
     # Stundenverlauf, Regenmenge (mm/h mal Stundenabstand), Wind-Maximum.
+    # Zeitzone des Containers ist evtl. nicht gesetzt: die berechneten Sonnenzeiten
+    # am heutigen Wert des Miniservers ausrichten (Versatz auf halbe Stunden gerundet).
+    sun_shift = 0
+    if lat is not None and lon is not None and sunrise:
+        st0 = sun_times(heute, lat, lon)
+        if st0 and _hm_min(sunrise) is not None:
+            sun_shift = round((_hm_min(sunrise) - _hm_min(st0[0])) / 30) * 30
     mm_ok = p_unit.startswith("mm") or p_unit.startswith("l/m")
     p_hpa = (_fmt_unit(fmt, "pressure") or "").lower() in ("hpa", "mbar")
     w_fak = 3.6 if (_fmt_unit(fmt, "wind") or "").lower().replace(" ", "") in ("m/s", "ms", "mps") else 1.0
@@ -366,6 +409,12 @@ def build(cfg: dict, actual: list, forecast: list, *,
             "sunset": sunset if d == heute else None,
             "hours": hours,
         }
+        # Folgetage: der Miniserver fuehrt Sonnenzeiten nur fuer heute -> aus dem
+        # Standort des Miniservers berechnen (heute ebenso, falls er keine liefert)
+        if not (tag["det"]["sunrise"] and tag["det"]["sunset"]) and lat is not None and lon is not None:
+            st = sun_times(d, lat, lon)
+            if st:
+                tag["det"]["sunrise"], tag["det"]["sunset"] = (_hm_shift(st[0], sun_shift), _hm_shift(st[1], sun_shift))
 
     pressure = _zahl(cur.get("pressure"))
     if pressure is not None and (_fmt_unit(fmt, "pressure") or "").lower() not in ("hpa", "mbar"):

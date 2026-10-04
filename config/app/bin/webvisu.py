@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.42"
+APP_VERSION = "0.19.43"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -6580,7 +6580,8 @@ class App:
         fore = 4                                  # Widgets zeigen 1-4 Tage davon
         try:
             return loxone_weather.build(self.weather_cfg, actual, forecast,
-                                        sunrise=sr, sunset=ss, fore_days=fore)
+                                        sunrise=sr, sunset=ss, fore_days=fore,
+                                        lat=self.ms_lat, lon=self.ms_lon)
         except Exception:
             log.exception("Wetterserver: Aufbereitung fehlgeschlagen — Open-Meteo bleibt")
             return None

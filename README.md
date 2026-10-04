@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Wetter-Tagesdetails (0.19.0-fav38)** — Wetter-Widget mit optionaler Detailansicht (Haken im
+  Widget-Editor): Tipp auf einen Tag öffnet ein Popup mit animierter Temperaturkurve, Regen je Stunde,
+  Regenmenge/-risiko, Wind, UV und Sonnenzeiten (Open-Meteo und Loxone-Wetterdienst). Kamera-Umschalter
+  als abgerundete Vierecke wie die Minibuttons; Dashboard-Symbol mit dünnerem Rahmen.
 - **Dashboard-Symbol mit Panel-Rahmen (0.19.0-fav35, Abstand fav36, größer fav37)** — das Symbol oben links zeigt einen Rahmen im
   Panel-Format (1 Panel quadratisch, 2 Panels 2:1) mit den Kacheln gefüllt darin.
 - **Feinschliff (0.19.0-fav34)** — Dashboard-Symbol oben links zeichnet die Kachel-Anordnung des

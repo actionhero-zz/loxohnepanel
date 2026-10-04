@@ -583,9 +583,9 @@ async def fetch_weather(session: aiohttp.ClientSession, lat: float, lon: float, 
         "longitude": lon,
         "current": "temperature_2m,relative_humidity_2m,apparent_temperature,is_day,"
                    "weather_code,wind_speed_10m,wind_direction_10m,pressure_msl",
-        "hourly": "temperature_2m,precipitation_probability,weather_code,apparent_temperature",
+        "hourly": "temperature_2m,precipitation_probability,weather_code,apparent_temperature,precipitation",
         "daily": "temperature_2m_max,temperature_2m_min,weathercode,precipitation_probability_max,"
-                 "precipitation_sum,sunrise,sunset,uv_index_max",
+                 "precipitation_sum,sunrise,sunset,uv_index_max,wind_speed_10m_max",
         "timezone": "auto",
         "forecast_days": fore_days,
     }
@@ -604,7 +604,29 @@ async def fetch_weather(session: aiohttp.ClientSession, lat: float, lon: float, 
     sunr = daily.get("sunrise") or []
     suns = daily.get("sunset") or []
     uvmx = daily.get("uv_index_max") or []
+    wmax = daily.get("wind_speed_10m_max") or []
     today = date.today()
+
+    # Stundenwerte je Datum fuer die Tages-Detailansicht des Wetter-Widgets
+    hourly = j.get("hourly") or {}
+    h_time = hourly.get("time") or []
+    h_temp = hourly.get("temperature_2m") or []
+    h_pop = hourly.get("precipitation_probability") or []
+    h_code = hourly.get("weather_code") or []
+    h_feel = hourly.get("apparent_temperature") or []
+    h_rain = hourly.get("precipitation") or []
+    per_day: dict = {}
+    for i, ts in enumerate(h_time):
+        d = _iso(ts)
+        if not d:
+            continue
+        per_day.setdefault(d.date().isoformat(), []).append({
+            "h": d.hour,
+            "temp": round(h_temp[i], 1) if i < len(h_temp) and h_temp[i] is not None else None,
+            "pop": int(h_pop[i]) if i < len(h_pop) and h_pop[i] is not None else None,
+            "rain": round(h_rain[i], 1) if i < len(h_rain) and h_rain[i] is not None else None,
+            "icon": wmo_icon(h_code[i]) if i < len(h_code) else "cloud",
+        })
 
     forecast = []
     for i in range(len(dates)):
@@ -618,15 +640,20 @@ async def fetch_weather(session: aiohttp.ClientSession, lat: float, lon: float, 
             "hi": round(tmax[i]) if i < len(tmax) and tmax[i] is not None else None,
             "lo": round(tmin[i]) if i < len(tmin) and tmin[i] is not None else None,
             "pop": int(pmax[i]) if i < len(pmax) and pmax[i] is not None else None,
+            # Tagesdetails (Wetter-Widget, Antippen eines Tages)
+            "det": {
+                "cond": WMO_TEXT.get(int(codes[i]) if i < len(codes) and codes[i] is not None else 0, ""),
+                "rain": round(psum[i], 1) if i < len(psum) and isinstance(psum[i], (int, float)) else None,
+                "wind": round(wmax[i]) if i < len(wmax) and isinstance(wmax[i], (int, float)) else None,
+                "wind_unit": "km/h",
+                "uv": round(uvmx[i]) if i < len(uvmx) and isinstance(uvmx[i], (int, float)) else None,
+                "sunrise": _hhmm(sunr[i]) if i < len(sunr) else None,
+                "sunset": _hhmm(suns[i]) if i < len(suns) else None,
+                "hours": per_day.get(dates[i], []),
+            },
         })
 
     # Stundenverlauf ab der aktuellen Stunde (max. 24 Werte) fuer Kurve + Regenband.
-    hourly = j.get("hourly") or {}
-    h_time = hourly.get("time") or []
-    h_temp = hourly.get("temperature_2m") or []
-    h_pop = hourly.get("precipitation_probability") or []
-    h_code = hourly.get("weather_code") or []
-    h_feel = hourly.get("apparent_temperature") or []
     ref = _iso(cur.get("time")) or datetime.now()
     ref = ref.replace(minute=0, second=0, microsecond=0)
     start = 0

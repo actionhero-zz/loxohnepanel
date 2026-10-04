@@ -2446,6 +2446,8 @@ function tbSideHTML(p){
   if(it.type==='calendar') h+='<div class="hintp">'+T('Quelle: System → Kalender.')+'</div>';
   if(it.type==='weather') h+='<div class="lbl2">'+T('Vorschau (Tage)')+'</div><div class="seg">'+
     [1,2,3,4].map(n=>'<button data-wxd="'+n+'"'+((it.days||3)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
+  if(it.type==='weather') h+='<label class="chk" style="margin-top:8px"><input type="checkbox" id="tbWxDet"'+(it.detail?' checked':'')+'> <span>'+T('Detailansicht beim Antippen eines Tages')+'</span></label>'+
+    '<div class="hintp">'+T('Öffnet ein Fenster mit Temperaturverlauf, Regen je Stunde, Wind, UV und Sonnenzeiten des Tages.')+'</div>';
   if(it.type==='status'){   // Status-Ampel: bis zu 4 Bausteine als Chips (Haken + Ziehen), optional Verlauf
     h+='<div class="lbl2">'+T('Chips (max. 4)')+'</div>'+stPickHTML(it.ctls,'tbStCh')+
       '<div class="hintp">'+T('Farben und Logik kommen aus dem Miniserver: Fenster offen = gelb, Alarm/Rauch ausgelöst = rot, Alarm scharf = blau, Statusbausteine in ihrer Farbe aus Loxone Config.')+'</div>';
@@ -2482,6 +2484,7 @@ function tbBindSide(p){
       p.hide=p.hide||[]; if(p.hide.indexOf(it.uuid)<0) p.hide.push(it.uuid);
       items.splice(tbSel,1); tbSel=-1; tbCommit(p); renderTabList(p); }); }
   const host=$('#tbEd'), redo=()=>{ tbCommit(p); renderTabEditor(); };
+  { const wd=host.querySelector('#tbWxDet'); if(wd) wd.onchange=()=>{ if(wd.checked) it.detail=true; else delete it.detail; redo(); }; }
   host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===3) delete it.days; else it.days=n; redo(); });   // Standard 3 Tage
   stPickBind($('#tbStCh'), ids=>{ it.ctls=ids; redo(); }, renderTabEditor);
   { const tr=$('#tbStTrk'); if(tr) tr.onchange=()=>{ if(tr.value) it.trk=tr.value; else delete it.trk; redo(); }; }

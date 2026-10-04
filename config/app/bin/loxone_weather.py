@@ -311,11 +311,42 @@ def build(cfg: dict, actual: list, forecast: list, *,
     # Wind nur mit bekannter Einheit; m/s wird auf km/h gebracht, damit beide
     # Quellen dasselbe anzeigen.
     wind = _zahl(cur.get("wind"))
-    w_unit = _fmt_unit(fmt, "wind")
+    w_unit = w_unit_cfg = _fmt_unit(fmt, "wind")
     if wind is None or not w_unit:
         wind, w_unit = None, None
     elif w_unit.lower().replace(" ", "") in ("m/s", "ms", "mps"):
         wind, w_unit = wind * 3.6, "km/h"
+
+    # Tagesdetails je Vorschau-Tag (Wetter-Widget, Antippen eines Tages):
+    # Stundenverlauf, Regenmenge (mm/h mal Stundenabstand), Wind-Maximum.
+    mm_ok = p_unit.startswith("mm") or p_unit.startswith("l/m")
+    w_fak = 3.6 if (_fmt_unit(fmt, "wind") or "").lower().replace(" ", "") in ("m/s", "ms", "mps") else 1.0
+    for d, tag in zip(ab_heute, vorschau):
+        eintr = tage[d]
+        spannen = _spannen(eintr)
+        hours, regen, wmax, typen = [], 0.0, None, {}
+        for (t, e), h in zip(eintr, spannen):
+            tp, pr, wi = _zahl(e.get("temp")), _zahl(e.get("precip")), _zahl(e.get("wind"))
+            r = round(pr * h, 1) if (mm_ok and pr is not None and pr > 0) else (0.0 if mm_ok else None)
+            if r:
+                regen += r
+            if wi is not None and w_unit_cfg:
+                wmax = max(wmax or 0, wi * w_fak)
+            txt = texte.get(_typ(e))
+            if txt:
+                typen[txt] = typen.get(txt, 0) + 1
+            hours.append({"h": t.hour, "temp": round(tp, 1) if tp is not None else None,
+                          "pop": None, "rain": r, "icon": icon_for(txt)})
+        tag["det"] = {
+            "cond": max(typen, key=typen.get) if typen else "",
+            "rain": round(regen, 1) if mm_ok else None,
+            "wind": round(wmax) if wmax is not None else None,
+            "wind_unit": "km/h" if w_fak != 1.0 else w_unit_cfg,
+            "uv": None,
+            "sunrise": sunrise if d == heute else None,
+            "sunset": sunset if d == heute else None,
+            "hours": hours,
+        }
 
     pressure = _zahl(cur.get("pressure"))
     if pressure is not None and (_fmt_unit(fmt, "pressure") or "").lower() not in ("hpa", "mbar"):

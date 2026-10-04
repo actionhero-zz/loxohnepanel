@@ -27,6 +27,12 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Handy-Modus, Klingel-Fix (0.19.47)** — Panel-Größe „Handy“ (Profil/Assistent): volle Höhe,
+  Tabs unten, Flächen untereinander; Panels passen sich hochkant am Handy automatisch an; als
+  Web-App installierbar (Manifest + Symbol). Klingeln: Ende öffnet die Türstation nicht erneut,
+  verpasstes Ende (z. B. Laptop im Ruhezustand) wird beim Wiederverbinden aufgeräumt.
+  Statusleiste: Anzahl als Plakette am Symbol, Zustände nur über die Symbolfarbe. Raster-Editor:
+  Kachel-Einstellungen bleiben rechts. Befehls-Monitoring unter System → Miniserver; Heap-Wert raus.
 - **Raster-Editor robust (0.19.46)** — Umbruch nach der tatsächlich verfügbaren Breite (Seitenleiste
   berücksichtigt), bei Größenänderung nur noch Kachelgröße nachziehen statt Neuaufbau; 2 Panels bei
   ~1000 px nicht mehr abgeschnitten; Ziehen flüssiger (Vorschau je Frame/Zellwechsel), sauberer Abbruch

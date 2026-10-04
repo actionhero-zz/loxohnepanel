@@ -678,12 +678,17 @@
      nicht nach dem Fenster - die Seitenleiste nimmt je nach Zustand Platz weg.
      Mittel: Hilfe/Eigenschaften unter Bibliothek+Raster. Schmal: alles untereinander. */
   #tbEd,#tbProps{container-type:inline-size;}
+  /* Mittel: Bibliothek oben ueber die volle Breite, darunter Raster und rechts
+     daneben die Einstellungen der gewaehlten Kachel (bleiben rechts im Blick) */
   @container (max-width:1060px){
-    .sved.g2ed{grid-template-columns:200px minmax(0,1fr);}
-    .sved.g2ed>.side{grid-column:1 / -1;width:auto;position:static;max-height:none;}
+    .sved.g2ed{grid-template-columns:minmax(0,1fr) 240px;grid-template-areas:"lib lib" "stage side";}
+    .sved.g2ed>.lib{grid-area:lib;position:static;max-height:260px;min-height:0;}
+    .sved.g2ed>.stage{grid-area:stage;min-width:0;}
+    .sved.g2ed>.side{grid-area:side;width:auto;}
   }
-  @container (max-width:640px){
-    .sved.g2ed{grid-template-columns:minmax(0,1fr);}
+  @container (max-width:560px){
+    .sved.g2ed{grid-template-columns:minmax(0,1fr);grid-template-areas:"lib" "stage" "side";}
+    .sved.g2ed>.side{position:static;max-height:none;}
     .g2ed .lib{position:static;max-height:280px;min-height:0;}
   }
   /* Dashboard-Eigenschaften: Spalten nach verfuegbarer Breite, nichts ragt heraus */
@@ -922,6 +927,8 @@
      Tablet-Breite umbrechen statt versteckt seitlich zu scrollen */
   .field>select{width:100%;max-width:none;}
   @media (min-width:761px){ .subtabs{flex-wrap:wrap;overflow-x:visible;row-gap:6px;} }
+  .sizepick .spv.phone i{width:20px;height:36px;border-radius:5px;}
+  .pfgrid .sizepick{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));}
 </style>
 </head>
 <body>
@@ -998,6 +1005,12 @@
             </div>
             <div class="note" id="cal_wxstatus" style="margin-top:10px"></div>
             <div class="actions"><button class="btn" id="wx_save" data-i18n>Speichern</button><span class="toast" id="wx_toast"></span></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n>Befehls-Monitoring</h3>
+            <label class="chk"><input type="checkbox" id="cw_on" checked><span data-i18n>Zustellung jedes Befehls überwachen</span></label>
+            <p class="note" data-i18n>Bei jedem Tastendruck prüft das Panel im Hintergrund, ob der Befehl beim Miniserver angekommen ist und angenommen wurde. Bleibt diese Rückmeldung länger als 12 Sekunden aus (z. B. WLAN-Aussetzer), erscheint am Panel „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel immer – auch ohne Monitoring.</p>
+            <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
           </div>
         </section>
 
@@ -1102,12 +1115,6 @@
               <div class="field" style="max-width:460px"><label class="lbl" data-i18n>Auslöser – Nacht, solange dieser Baustein an ist</label><select id="nt_control"></select></div>
             </div>
             <div class="actions"><button class="btn" id="nt_save" data-i18n>Speichern</button><span class="toast" id="nt_toast"></span></div>
-          </div>
-          <div class="card">
-            <h3 data-i18n>Befehlsbestätigung</h3>
-            <label class="chk"><input type="checkbox" id="cw_on" checked><span data-i18n>Befehle am Panel quittieren lassen</span></label>
-            <p class="note" data-i18n>Das Panel wartet nach jedem Tastendruck auf die Bestätigung, dass der Miniserver den Befehl angenommen hat. Kommt sie nicht innerhalb von 12 Sekunden (z. B. WLAN-Aussetzer), erscheint „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel auch ohne diese Option.</p>
-            <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
           </div>
         </section>
 
@@ -1422,11 +1429,9 @@ function msLinkText(){
 function msMonHTML(){
   const y=MSST&&MSST.up&&MSST.sys; if(!y||!Object.keys(y).length) return '';
   const num=v=>{ const m=/-?\d+(?:[.,]\d+)?/.exec(String(v)); return m?parseFloat(m[0].replace(',','.')):null; };
-  const kb=v=>{ const n=num(v); if(n==null) return esc(v); return /mb/i.test(v)?n+' MB':(n>=1024?(n/1024).toFixed(1).replace('.',',')+' MB':Math.round(n)+' kB'); };
   const cell=(k,v,bar)=>'<div class="mm"><span>'+k+'</span><b>'+v+'</b>'+(bar!=null?'<i class="mmbar"><i style="width:'+Math.max(2,Math.min(100,bar))+'%;--mmc:'+(bar>85?'var(--crit)':bar>60?'var(--accent)':'var(--good)')+'"></i></i>':'')+'</div>';
   const cpu=y.cpu!=null?num(y.cpu):null, out=[];
   if(y.cpu!=null) out.push(cell(T('CPU'), cpu!=null?Math.round(cpu)+' %':esc(y.cpu), cpu));
-  if(y.heap!=null) out.push(cell(T('Heap'), kb(y.heap)));
   if(y.tasks!=null) out.push(cell(T('Tasks'), esc(y.tasks)));
   if(y.rtt!=null) out.push(cell(T('Antwort'), y.rtt+' ms', null));
   return out.join('')+(y.fw?'<div class="mmfw">'+T('Firmware')+' '+esc(y.fw)+'</div>':'');
@@ -1849,10 +1854,11 @@ function renderEditor(){
      '<div class="card"><h3>'+T('Bildschirm')+'</h3>'+
      '<div class="pfgrid">'+
        '<div><div class="lbl2">'+T('Panel-Größe')+'</div>'+
-       '<p class="note">'+T('Bestimmt, wie Tabs und Dashboard aufgebaut sind: eine 480×480-Fläche oder zwei nebeneinander.')+'</p>'+
+       '<p class="note">'+T('Bestimmt, wie Tabs und Dashboard aufgebaut sind: eine 480×480-Fläche, zwei nebeneinander – oder Handy (zwei Flächen untereinander, Tabs unten; über „Zum Home-Bildschirm“ als App nutzbar).')+'</p>'+
        '<div class="sizepick">'+
-         '<button type="button" data-psize="1" class="'+((p.ui||{}).split===false?'on':'')+'"><span class="spv one"><i></i></span><b>'+T('1 Panel')+'</b><small>480 × 480 · 4″-Wandpanel</small></button>'+
-         '<button type="button" data-psize="2" class="'+((p.ui||{}).split===false?'':'on')+'"><span class="spv two"><i></i><i></i></span><b>'+T('2 Panels')+'</b><small>960 × 480 · Shelly X2 / Tablet</small></button>'+
+         '<button type="button" data-psize="1" class="'+((p.ui||{}).split===false&&!(p.ui||{}).phone?'on':'')+'"><span class="spv one"><i></i></span><b>'+T('1 Panel')+'</b><small>480 × 480 · 4″-Wandpanel</small></button>'+
+         '<button type="button" data-psize="2" class="'+(((p.ui||{}).split===false||(p.ui||{}).phone)?'':'on')+'"><span class="spv two"><i></i><i></i></span><b>'+T('2 Panels')+'</b><small>960 × 480 · Shelly X2 / Tablet</small></button>'+
+         '<button type="button" data-psize="phone" class="'+((p.ui||{}).phone?'on':'')+'"><span class="spv phone"><i></i></span><b>'+T('Handy')+'</b><small>'+T('hochkant · Tabs unten · als App')+'</small></button>'+
        '</div></div>'+
        '<div><div class="lbl2">'+T('Standardraster')+'</div>'+
        '<p class="note">'+T('Gilt für neue Tabs und das Dashboard. Einzelne Tabs können abweichen (Tab-Eigenschaften).')+'</p>'+
@@ -1948,7 +1954,10 @@ function renderEditor(){
     p.alarmPop=p.alarmPop||{}; if(b.checked===apDefault(p,u)) delete p.alarmPop[u]; else p.alarmPop[u]=b.checked;
     if(!Object.keys(p.alarmPop).length) delete p.alarmPop; markDirty(); });
   document.querySelectorAll('[data-psize]').forEach(b=>b.onclick=()=>{ p.ui=p.ui||{};
-    if(b.dataset.psize==='1') p.ui.split=false; else delete p.ui.split;
+    // Handy = zwei Flaechen (wie 2 Panels), am Handy untereinander gezeigt
+    if(b.dataset.psize==='1'){ p.ui.split=false; delete p.ui.phone; }
+    else if(b.dataset.psize==='phone'){ delete p.ui.split; p.ui.phone=true; }
+    else { delete p.ui.split; delete p.ui.phone; }
     document.querySelectorAll('[data-psize]').forEach(x=>x.classList.toggle('on',x===b));
     delete tbEff[DK]; delete tbLast[DK]; tbHist[DK]=[]; tbSel=-1;
     markDirty(); renderTabEditor(); });
@@ -2392,7 +2401,7 @@ function renderTabEditor(){
     const barHtml=(k===DK&&pg===0&&dbar.length)?'<span class="pgbar" title="'+esc(T('Statusleiste'))+'">'+dbar.map(u=>{ const ct=tbCtl(u); return tbIcoHtml(ct&&ct.iconUrl); }).join('')+'</span>':'';
     const xHtml=(dx&&pg===pages-1)?'<span class="pgx" title="'+esc(T('Schließen'))+'">✕</span>':'';
     cells+='<div class="pgl'+(barHtml||xHtml?' haspgbar':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+cr.lr+'">'+barHtml+'<span>'+(k===DK?T('Dashboard'):T('Seite')+' '+(pg+1))+'</span>'+
-      (two?'<small>'+(k===DK?'':T('Bildschirm')+' '+(Math.floor(pg/2)+1)+' · ')+(pg%2?T('rechts'):T('links'))+'</small>':'')+xHtml+'</div>'+
+      (two?'<small>'+((p.ui||{}).phone?(k===DK?(pg%2?T('unten'):T('oben')):''):(k===DK?'':T('Bildschirm')+' '+(Math.floor(pg/2)+1)+' · ')+(pg%2?T('rechts'):T('links')))+'</small>':'')+xHtml+'</div>'+
       '<div class="pgbg'+(empty?' empty':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+(cr.r)+' / span '+g+'">'+
         (empty?'<span>'+T('＋ Hierher ziehen für eine neue Seite')+'</span>':'')+'</div>';
     for(let y=0;y<g;y++) for(let x=0;x<g;x++){ const c=tbCR(p,pg,x,y,g);
@@ -2764,7 +2773,7 @@ let SAVED_SNAP=null;
 function snapSaved(){ try{ SAVED_SNAP=JSON.parse(JSON.stringify(PANELS)); }catch(e){ SAVED_SNAP=null; } }
 function stable(v){ return JSON.stringify(v,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.keys(x).sort().reduce((o,kk)=>(o[kk]=x[kk],o),{}):x); }
 const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
-  nightWake:'Nach Antippen hell',ambBg:'Farbverlauf Hintergrund',ambClock:'Farbverlauf Uhrzeit',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
+  nightWake:'Nach Antippen hell',phone:'Panel-Größe (Handy)',ambBg:'Farbverlauf Hintergrund',ambClock:'Farbverlauf Uhrzeit',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
   nudgeX:'Horizontaler Versatz',iconSize:'Symbolgröße',nameSize:'Namensgröße',subSize:'Zusatztext-Größe',bold:'Fett',dblTapOff:'Doppeltipp',alarmsEnabled:'Wecker',
   lang:'Sprache',saverFcSize:'Wettervorschau-Größe',tileShadow:'Kachel-Schatten'};
 function changeList(){
@@ -3019,7 +3028,7 @@ const PW_TABS=[['favoriten','★ Favoriten','aus Loxone, vorbefüllt'],['raeume'
 const PW_DASH=[['uhrwetter','Uhr & Wetter','ruhig, für jeden Raum'],['kamera','Uhr, Wetter & Kamera','Kamera-Bild im Blick'],
   ['termine','Uhr, Wetter & Termine','Kalender auf dem Dashboard'],['klassisch','Klassisch','ohne eigene Belegung']];
 function pwOpen(){
-  Object.assign(PW,{step:0,split:true,grid:2,tabs:['favoriten','raeume'],room:'',dash:'uhrwetter',design:'',title:'',id:'',idTouched:false,blank:false});
+  Object.assign(PW,{step:0,split:true,phone:false,grid:2,tabs:['favoriten','raeume'],room:'',dash:'uhrwetter',design:'',title:'',id:'',idTouched:false,blank:false});
   let ov=$('#pwOv');
   if(!ov){ ov=document.createElement('div'); ov.id='pwOv'; ov.className='wzov';
     ov.innerHTML='<div class="wzbox" role="dialog" aria-label="'+T('Neues Panel')+'">'+
@@ -3056,8 +3065,9 @@ function pwRender(){
       bn.oninput=upd; bn.onkeydown=e=>{ if(e.key==='Enter'){ e.preventDefault(); pwNext(); } }; upd(); }
   } else if(key==='groesse'){
     b.innerHTML='<p class="wzq">'+T('Wie groß ist das Display?')+'</p><div class="mzopts">'+
-      pwOpt(!PW.split,'data-pwsplit="1"',T('1 Panel'),'480×480 – '+T('z. B. 4″-Wandpanel'))+
-      pwOpt(PW.split,'data-pwsplit="2"',T('2 Panels'),'960×480 – '+T('z. B. Shelly Wall Display X2'))+'</div>'+
+      pwOpt(!PW.split&&!PW.phone,'data-pwsplit="1"',T('1 Panel'),'480×480 – '+T('z. B. 4″-Wandpanel'))+
+      pwOpt(PW.split&&!PW.phone,'data-pwsplit="2"',T('2 Panels'),'960×480 – '+T('z. B. Shelly Wall Display X2'))+
+      pwOpt(!!PW.phone,'data-pwsplit="phone"',T('Handy'),T('hochkant, Tabs unten – als App auf dem Home-Bildschirm'))+'</div>'+
       '<p class="wzq" style="margin-top:16px">'+T('Raster je Fläche')+'</p><div class="mzopts">'+
       pwOpt(PW.grid===2,'data-pwgrid="2"','2×2',T('große Kacheln, leicht zu treffen'))+
       pwOpt(PW.grid===3,'data-pwgrid="3"','3×3',T('mehr Kacheln auf einen Blick'))+'</div>';
@@ -3102,7 +3112,7 @@ function pwRender(){
       '<label class="chk" style="margin-top:12px"><input type="checkbox" id="pwGoDev"> <span>'+T('Danach „Gerät hinzufügen“ öffnen')+'</span></label>';
     $('#pwCopy').onclick=()=>{ try{ navigator.clipboard.writeText($('#pwUrlTxt').textContent).then(()=>snack(T('Adresse kopiert'))); }catch(e){} };
   }
-  b.querySelectorAll('[data-pwsplit]').forEach(x=>x.onclick=()=>{ PW.split=x.dataset.pwsplit==='2'; pwRender(); });
+  b.querySelectorAll('[data-pwsplit]').forEach(x=>x.onclick=()=>{ const v=x.dataset.pwsplit; PW.split=v!=='1'; PW.phone=v==='phone'; pwRender(); });
   b.querySelectorAll('[data-pwgrid]').forEach(x=>x.onclick=()=>{ PW.grid=+x.dataset.pwgrid; pwRender(); });
   b.querySelectorAll('[data-pwtab]').forEach(x=>x.onclick=()=>{ const k=x.dataset.pwtab, i=PW.tabs.indexOf(k);
     if(k==='room'&&!PW.room){ const r0=(META.tabs||[]).find(t=>t.room); if(r0) PW.room=r0.tab; }
@@ -3145,7 +3155,7 @@ async function pwNext(){
   if(PW.step<PW_FLOW.length-1){ PW.step++; pwRender(); return; }
   // Panel aus den Antworten anlegen
   const tabs=PW.tabs.map(k=>k==='room'?(PW.room||null):(k==='free'?tbNewId({tabs:[]}):k)).filter(Boolean);
-  const ui={grid:PW.grid}; if(!PW.split) ui.split=false;
+  const ui={grid:PW.grid}; if(!PW.split) ui.split=false; if(PW.phone) ui.phone=true;
   if(PW.design) ui.design={preset:PW.design,colors:{}};
   const p={title:PW.title||PW.id, tabs, rooms:[], cats:[], ui, states:{}, tiles:{}};
   const items=pwDashItems(); if(items.length) p.saver={grid:PW.grid, exit:['x'], items};

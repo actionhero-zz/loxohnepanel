@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.46"
+APP_VERSION = "0.19.47"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -934,7 +934,7 @@ def _clean_crop(v) -> dict | None:
 
 
 def _cmd_watch_config() -> bool:
-    """Befehlsbestaetigung (loxpanel.cfg `cmdwatch.on`, Standard an): das Panel
+    """Befehls-Monitoring (loxpanel.cfg `cmdwatch.on`, Standard an): das Panel
     wartet auf die Quittung jedes Befehls und meldet, wenn keine kommt."""
     try:
         cw = _load_cfg().get("cmdwatch")
@@ -2042,6 +2042,8 @@ class App:
             # Split-Screen an/aus (aus = 4"-Panel: nur die Visu, keine Pane 2, keine
             # Verdopplung). Default an; nur bei explizitem False aus.
             "split": ui.get("split") is not False,
+            # Handy-Profil: Flaechen untereinander, Tabs unten, volle Hoehe
+            "phone": ui.get("phone") is True,
             # Split-Pane pro Tab: Tab-Kennung -> "weather"|"calendar"|"player:<uuid>".
             # Nur wirksam, wenn split an ist. Das Panel rendert die passende Pane.
             # Zusatzflaeche je Tab (Pane 2) entfaellt: Widgets liegen jetzt frei im
@@ -2142,11 +2144,13 @@ class App:
         t = c.get("type") or ""
         name = _clean(c.get("name")) or t
         lvl, txt, icon, detail = "ok", "", "info", []
+        count = 0                                 # Anzahl fuer die Plakette in der Statusleiste
         if t == "WindowMonitor":
             op = int(self._state(c, "numOpen") or 0)
             ti = int(self._state(c, "numTilted") or 0)
             n = op + ti
             lvl, icon = ("hint" if n else "ok"), "window"
+            count = n
             txt = f"{n} offen" if n else "zu"
             # welche Fenster? windowStates = Bitmaske je Fenster (2 gekippt, 4 offen)
             wins = (c.get("details") or {}).get("windows") or []
@@ -2199,7 +2203,7 @@ class App:
             lvl = {"crit": "alarm", "warn": "hint", "good": "ok"}.get(tone) or ("info" if it.get("on") else "ok")
             txt, icon = str(it.get("sublabel") or ""), it.get("icon") or "info"
         return {"id": uuid, "name": name, "level": lvl, "text": txt[:60], "icon": icon,
-                "iconUrl": self._control_icon_url(c), "detail": detail[:6]}
+                "iconUrl": self._control_icon_url(c), "detail": detail[:6], "count": count}
 
     # ---- Alarm-Vollbild ----
     # Loest eine Alarmanlage oder ein Rauchmelder aus, zeigt jedes Panel, das
@@ -3211,7 +3215,7 @@ class App:
               if k in ("iconSize", "nameSize", "subSize", "font", "fontNum", "nudgeX",
                        "dpmsOff", "reloadHours", "nightDim", "nightWake",
                        "cols", "rows", "fill", "baseColor", "design",
-                       "textColor", "bold", "lang", "player", "panes", "split",
+                       "textColor", "bold", "lang", "player", "panes", "split", "phone",
                        "saverFcSize",
                        "motion", "contrast", "sceneLight", "iconAnim", "grid", "ambBg", "ambClock")}
         # Split-Pane je Tab: nur gueltige Tab-Kennung -> "weather"|"calendar".
@@ -3374,6 +3378,8 @@ class App:
                 cui["fill"] = True              # Visu fuellt grosse Screens (quadratische Kacheln)
             if ui.get("split") is False:
                 cui["split"] = False            # Split-Screen aus (4"-Panel: nur Visu)
+            if ui.get("phone") is True:
+                cui["phone"] = True             # Handy: Flaechen untereinander, Tabs unten
             if isinstance(ui.get("player"), str) and ui.get("player"):
                 cui["player"] = ui["player"]    # Split-Layout: AudioZone-UUID fuer den festen Player
             if isinstance(ui.get("panes"), dict):
@@ -6861,7 +6867,7 @@ class App:
 
     async def ms_sysinfo(self) -> dict:
         """Systemwerte des Miniservers fuer die Startseite, hoechstens alle 30 s
-        abgefragt: Firmware, CPU-Last, Heap, Tasks und die Antwortzeit (ms) der
+        abgefragt: Firmware, CPU-Last, Tasks und die Antwortzeit (ms) der
         CPU-Abfrage. Fehlende Werte (aeltere/neuere Firmware) bleiben weg."""
         now = time.monotonic()
         if not self.ms_up or now - self._msinfo_t < 30:
@@ -6877,7 +6883,7 @@ class App:
             ms = round((time.monotonic() - t0) * 1000)
             return (str(val).strip() if code == "200" and val not in (None, "") else None), ms
 
-        keys = (("cpu", "sys/cpu"), ("heap", "sys/heap"), ("tasks", "sys/numtasks"), ("fw", "cfg/version"))
+        keys = (("cpu", "sys/cpu"), ("tasks", "sys/numtasks"), ("fw", "cfg/version"))
         res = await asyncio.gather(*(one(p) for _, p in keys))
         info = {k: v for (k, _), (v, _) in zip(keys, res) if v}
         if res[0][1] is not None and res[0][0]:
@@ -7596,7 +7602,7 @@ async def api_settings_ms(request: web.Request) -> web.Response:
 
 
 async def api_settings_cmdwatch(request: web.Request) -> web.Response:
-    """Befehlsbestaetigung an/aus; wirkt sofort auf allen verbundenen Panels."""
+    """Befehls-Monitoring (Zustellkontrolle) an/aus; wirkt sofort auf allen verbundenen Panels."""
     app: App = request.app["app"]
     try:
         data = await request.json()
@@ -7612,7 +7618,7 @@ async def api_settings_cmdwatch(request: web.Request) -> web.Response:
     app.cmd_watch = on
     for ws in list(app.conn_route):
         await app._send_or_drop(ws, {"t": "cmdwatch", "on": on})
-    log.info("Befehlsbestaetigung %s", "an" if on else "aus")
+    log.info("Befehls-Monitoring %s", "an" if on else "aus")
     return web.json_response({"ok": True})
 
 
@@ -8430,6 +8436,39 @@ async def api_testring(request: web.Request) -> web.Response:
 
 
 _FONT_DIR = Path(__file__).resolve().parent.parent / "webfrontend" / "fonts"
+_APPICON_DIR = Path(__file__).resolve().parent.parent / "webfrontend" / "appicons"
+
+
+async def appicon_handler(request: web.Request) -> web.Response:
+    """App-Symbol fuer "Zum Home-Bildschirm" (Handy-Web-App)."""
+    size = request.match_info.get("size", "")
+    if size not in ("256", "512"):
+        return web.Response(status=404)
+    f = _APPICON_DIR / f"icon_{size}.png"
+    if not f.is_file():
+        return web.Response(status=404)
+    return web.Response(body=f.read_bytes(), content_type="image/png",
+                        headers={"Cache-Control": "max-age=604800"})
+
+
+async def manifest_handler(request: web.Request) -> web.Response:
+    """Web-App-Manifest: Panel als App vom Home-Bildschirm starten (Vollbild,
+    ohne Browserleiste). Startet mit dem Panel, aus dem es angelegt wurde."""
+    app: App = request.app["app"]
+    pid = str(request.query.get("panel") or "")
+    if not re.match(r"^[a-z0-9_-]{1,40}$", pid):
+        pid = ""
+    prof = app.panels.get(pid or "default") or {}
+    name = _clean(prof.get("title") or "") or "LoxPanel"
+    bg = "#0d0f1a"
+    return web.json_response({
+        "name": name, "short_name": name[:12],
+        "start_url": "/" + (f"?panel={pid}" if pid else ""), "scope": "/",
+        "display": "standalone", "orientation": "portrait",
+        "background_color": bg, "theme_color": bg,
+        "icons": [{"src": "/appicon/256.png", "sizes": "256x256", "type": "image/png"},
+                  {"src": "/appicon/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}],
+    }, content_type="application/manifest+json")
 
 
 # ---- Android-Panel einrichten (Shelly Wall Display u.a.) ----
@@ -8850,6 +8889,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
         await ws.send_json({"t": "theme", "vars": prof["vars"], "tabs": prof["tabs"],
                             "tabMeta": app._tab_meta(prof["tabs"], prof), "title": prof["title"],
                             "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
+                            "phone": prof.get("phone", False),
                             "panes": prof.get("panes") or {},
                             "dpmsOff": app.panel_dpms(prof["id"]),
                             "reloadHours": app.panel_reload(prof["id"]),
@@ -8878,6 +8918,17 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
             app._last_sent.setdefault(ws, {})["saver"] = _sv
         await ws.send_json({"t": "ms", "ok": app.ms_ok(), "since": int(app.ms_down_since * 1000)})
         await ws.send_json({"t": "cmdwatch", "on": app.cmd_watch})
+        # Klingelt es gerade noch (bell-Impuls steht an), bekommt auch ein neu
+        # bzw. wieder verbundenes Panel das Klingeln. Ein Panel, das waehrend des
+        # Klingelns schlief, hat sonst das Ende verpasst und klingelt ewig weiter
+        # (Panel raeumt beim Verbinden selbst auf, s. ws.onopen).
+        for _bu, _cid in app.bell_map.items():
+            if app.states.get(_bu):
+                _ent = app.intercom_cfg.get(_cid)
+                _snd = bool(_ent.get("sound")) if isinstance(_ent, dict) else False
+                _sf = _sound_file_for(_cid) if _snd else None
+                await ws.send_json({"t": "ring", "id": _cid, "on": True, "sound": _snd,
+                                    "soundUrl": (f"/api/sound?id={_cid}" if _sf else None)})
         # Laeuft gerade ein Alarm, zeigt auch ein neu verbundenes Panel das Vollbild
         for _au in app.sec_alarms_active():
             if app.sec_alarm_wanted(prof, _au):
@@ -8923,7 +8974,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 code = await app.command(str(data.get("uuid") or ""), str(data.get("cmd") or ""),
                                          None if pin is None else str(pin))
                 if data.get("id") is not None:
-                    # Quittung fuer die Befehlsbestaetigung des Panels
+                    # Quittung fuer das Befehls-Monitoring des Panels
                     await ws.send_json({"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
                 if pin is not None:
                     await ws.send_json({"t": "cmdresult", "ok": code == "200"})
@@ -9275,6 +9326,8 @@ def main() -> None:
     a.router.add_post("/api/panel/launcher", api_panel_launcher)
     a.router.add_get("/icon", icon_handler)
     a.router.add_get("/fonts/{name}", font_handler)
+    a.router.add_get("/appicon/{size}.png", appicon_handler)
+    a.router.add_get("/manifest.webmanifest", manifest_handler)
     a.router.add_get("/loxlib", loxlib_handler)
     a.router.add_get("/api/loxicons", loxicons_handler)
     a.router.add_get("/cover", cover_handler)

@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E %3Cdefs%3E %3ClinearGradient id='bg' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%231d2138'/%3E%3Cstop offset='1' stop-color='%230d0f1a'/%3E%3C/linearGradient%3E %3CradialGradient id='glow' cx='.72' cy='.28' r='.6'%3E%3Cstop offset='0' stop-color='%23ffc145' stop-opacity='.22'/%3E%3Cstop offset='1' stop-color='%23ffc145' stop-opacity='0'/%3E%3C/radialGradient%3E %3ClinearGradient id='tile' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3cf'/%3E%3Cstop offset='1' stop-color='%23ffd97a'/%3E%3C/linearGradient%3E %3ClinearGradient id='hi' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.45'/%3E%3Cstop offset='.5' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E %3C/defs%3E %3Crect width='512' height='512' rx='112' fill='url(%23bg)'/%3E %3Crect width='512' height='512' rx='112' fill='url(%23glow)'/%3E %3Crect x='2' y='2' width='508' height='508' rx='110' fill='none' stroke='%23fff' stroke-opacity='.07' stroke-width='4'/%3E %3Cg%3E %3Crect x='104' y='104' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='104' y='270' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='270' y='270' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='104' y='104' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3Crect x='104' y='270' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3Crect x='270' y='270' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3C/g%3E %3Cdefs%3E%3CradialGradient id='sg' cx='.5' cy='.45' r='.55'%3E%3Cstop offset='0' stop-color='%23fff7dc'/%3E%3Cstop offset='1' stop-color='%23ffcf5c'/%3E%3C/radialGradient%3E %3Cfilter id='sb' x='-50%25' y='-50%25' width='200%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='14'/%3E%3C/filter%3E%3C/defs%3E %3Cpolygon points='339.0,99.0 357.8,147.1 409.4,150.1 369.4,182.9 382.5,232.9 339.0,205.0 295.5,232.9 308.6,182.9 268.6,150.1 320.2,147.1' fill='%23ffd36a' opacity='.5' filter='url(%23sb)'/%3E %3Cpolygon points='339.0,99.0 357.8,147.1 409.4,150.1 369.4,182.9 382.5,232.9 339.0,205.0 295.5,232.9 308.6,182.9 268.6,150.1 320.2,147.1' fill='url(%23sg)' stroke='%23ffffff' stroke-opacity='.6' stroke-width='3' stroke-linejoin='round'/%3E %3C/svg%3E">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<!-- Als App vom Home-Bildschirm (Handy): Vollbild, eigenes Symbol -->
+<link rel="manifest" id="appManifest" href="/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d0f1a">
+<link rel="apple-touch-icon" href="/appicon/256.png">
+<script>try{ var q=new URLSearchParams(location.search).get('panel'); if(q) document.getElementById('appManifest').href='/manifest.webmanifest?panel='+encodeURIComponent(q); }catch(e){}</script>
 <!-- Das Panel setzt alle Farben selbst. Ohne diese Angabe dunkelt Androids
      WebView (Shelly/Fully Kiosk im System-Dunkelmodus) helle Designs
      eigenmaechtig ab: weisse Kacheln werden schwarz, dunkle Schrift hell. -->
@@ -760,9 +768,15 @@
   .svsti .stci{width:20px;height:20px;} .svsti img.stci{object-fit:contain;}
   .sv-st.many{gap:2px;} .sv-st.many .svsti{padding:0 7px;gap:4px;font-size:12.5px;}
   .sv-st.tight .svsti>span:not(.stci){display:none;} .sv-st.tight .svsti{padding:0 8px;}
-  .svsti.lv-hint{color:#f0c27a;background:color-mix(in srgb,#e0a24d 18%,transparent);}
-  .svsti.lv-alarm{color:#ff9d9b;background:color-mix(in srgb,#e25c5a 26%,transparent);}
-  .svsti.lv-info{color:#9cc4ea;background:color-mix(in srgb,#5b9bd5 18%,transparent);}
+  /* Zustand nur ueber die Symbolfarbe (kein Hintergrund, kein Text); Anzahl als
+     kleine Plakette oben rechts am Symbol */
+  .svsti.lv-hint{color:#f0c27a;} .svsti.lv-alarm{color:#ff9d9b;} .svsti.lv-info{color:#9cc4ea;}
+  .svsico{position:relative;display:inline-grid;place-items:center;}
+  .svsbadge{position:absolute;top:-7px;right:-9px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:9px;
+    display:grid;place-items:center;font-size:10.5px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
+    background:currentColor;box-shadow:0 0 0 2px var(--bezel,var(--bg));}
+  .svsbadge{color:#2a2208;} .svsti.lv-hint .svsbadge{background:#f0c27a;} .svsti.lv-alarm .svsbadge{background:#ff9d9b;color:#3d0c0b;}
+  .svsti.lv-info .svsbadge{background:#9cc4ea;color:#0b2338;} .svsti.lv-ok .svsbadge{background:var(--tab-idle,var(--muted));}
   .sv-close{position:relative;margin-left:auto;flex:none;width:64px;height:52px;border-radius:18px;border:0;
     background:transparent;color:var(--tab-idle,var(--muted));font-size:0;cursor:pointer;}
   .sv-close:active{background:rgba(var(--bezel-ink-rgb,255,255,255),.06);}
@@ -1399,6 +1413,21 @@
   .grid.panel .scenes{scroll-snap-type:y proximity;}
   .grid.panel .scenes>.scene{scroll-snap-align:start;}
   .grid.panel .scenes.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);}
+
+  /* ===== Handy (Hochformat bzw. Profil "Handy") =====
+     Volle Hoehe statt 480er-Kasten, Tabs unten in Daumen-Reichweite, Raender
+     fuer Notch und Home-Balken. Kacheln bleiben etwa quadratisch (--gr per JS). */
+  html.phone .screen,html.phone .screen.split,html.phone .screen.fill{width:100vw;height:100vh;height:100dvh;max-width:none;max-height:none;
+    grid-template-rows:minmax(0,1fr) auto;grid-template-columns:1fr;transform:none;}
+  html.phone .screen>.grid,html.phone .screen>.scrollind,html.phone .screen>.conn{grid-row:1;}
+  html.phone .screen>.grid{margin:calc(env(safe-area-inset-top,0px) + 10px) 10px 6px;padding:10px;border-radius:30px;}
+  html.phone .screen>.tabs{grid-row:2;margin:4px 10px calc(env(safe-area-inset-bottom,0px) + 8px);}
+  html.phone .screen.split #playerpane,html.phone .screen.split #frontpane{display:none;}
+  html.phone .screen.split #grid{grid-column:1;}
+  html.phone .saver.layout .sv-bar{top:calc(env(safe-area-inset-top,0px) + 8px);left:10px;right:10px;}
+  /* Detailansicht: Kachel-Listen (Szenen, Mitglieder) nicht auf Handyhoehe strecken */
+  html.phone .grid.panel .scenes{grid-auto-rows:minmax(76px,112px);align-content:start;}
+  html.phone .saver.layout .sv-grid{inset:calc(env(safe-area-inset-top,0px) + 70px) 10px calc(env(safe-area-inset-bottom,0px) + 10px);padding:10px;border-radius:30px;}
 </style>
 </head>
 <body>
@@ -1496,6 +1525,11 @@ let energyData = null;   // letzter {t:'energy'}-Push fuer die Energiefluss-Pane
 // Verlaufs-Pane (chart:<uuid>): gemeldeter Baustein|Zeitraum, letzter {t:'chart'}-Push,
 // in der Pane gewaehlter Zeitraum (gilt fuer alle Verlaufs-Panes dieses Panels).
 let curChartKey = '', chartData = null, chartRange = '24h';
+let themePhone = false;  // Handy-Profil (Profil -> Panel-Groesse "Handy")
+// Handy-Modus: Handy-Profil ODER schmales Hochformat-Display (jedes Panel auf
+// dem Handy): Flaechen untereinander, Tabs unten, volle Hoehe.
+function isPhone(){ return themePhone || (window.innerWidth < 600 && window.innerHeight > window.innerWidth); }
+function applyPhone(){ const on=isPhone(); document.documentElement.classList.toggle('phone', on); return on; }
 let themeSplit = true;   // Split-Screen an/aus (aus = 4"-Panel: nur die Visu, keine Pane 2)
 
 // Dashboard-Symbol oben links: zeichnet die Kachel-Anordnung des eigenen
@@ -1685,7 +1719,7 @@ function playTestTone(){
 function send(o){
   if(o.t==='cmd' && cmdWatch && o.pin==null) return sendWatched(o);
   ws && ws.readyState===1 && ws.send(JSON.stringify(o)); }
-// Befehlsbestaetigung (System -> Miniserver): jeder Befehl bekommt eine Nummer,
+// Befehls-Monitoring (System -> Miniserver): jeder Befehl bekommt eine Nummer,
 // der Server quittiert, sobald der Miniserver geantwortet hat. Fehlt die
 // Quittung nach 12 s (Miniserver-Timeout 10 s + Puffer), kommt ein Hinweis.
 // Je Baustein zaehlt nur der letzte Befehl (Schieberegler: keine Meldungsflut).
@@ -2612,7 +2646,7 @@ function paneForTab(tk){ return tk ? (panesCfg[tk]||null) : null; }
 function paneKind(v){ return v ? (v.indexOf('player:')===0 ? 'player' : (v.indexOf('energy:')===0 ? 'energy' : (v.indexOf('camera:')===0 ? 'camera' : (v.indexOf('chart:')===0 ? 'chart' : v)))) : null; }
 function applyPane(){
   const sc=document.querySelector('.screen'); if(!sc) return;
-  const raw=themeSplit?paneForTab(activeTab()):null;   // Split aus (4"-Panel) -> keine Pane 2
+  const raw=(themeSplit&&!isPhone())?paneForTab(activeTab()):null;   // Split aus (4"-Panel) / Handy -> keine Pane 2
   const kind=paneKind(raw);
   const isPane=(kind==='player'||kind==='weather'||kind==='calendar'||kind==='energy'||kind==='camera'||kind==='chart');   // Widget in Pane 2
   sc.classList.toggle('split', isPane);   // Widget -> zweigeteilt, sonst "Screen fuellen"
@@ -2930,13 +2964,13 @@ function render(){
   // verdoppelt -> aus 2x2 wird 2x2|2x2 = 4x2 (GLEICHE Kachelgroesse, nur mehr
   // Kacheln). Nur im Querformat (2-Pane-Tablet); das quadratische 4"-Panel
   // bleibt einspaltig. Unabhaengig vom Zoom ("Bildschirm fuellen").
-  const _k = themeSplit ? paneKind(paneForTab(activeTab())) : null;   // Split aus -> nie Pane/Verdopplung
+  const _k = (themeSplit && !isPhone()) ? paneKind(paneForTab(activeTab())) : null;   // Split aus / Handy -> nie Pane/Verdopplung
   const _widget = (_k==='player'||_k==='weather'||_k==='calendar'||_k==='energy'||_k==='camera'||_k==='chart');
   // Querformat-Entscheidung merken: beim Kiosk-Start / Auto-Reload meldet das
   // Fenster kurz eine quere Groesse, bevor die echte Flaeche steht. Der
   // resize-Handler rendert neu, sobald sie kippt (sonst bliebe das 4"-Panel in
   // der Startmessung 4x2 statt 2x2 haengen - dasselbe Muster wie beim Screensaver).
-  _lastWide = window.innerWidth > window.innerHeight;
+  _lastWide = window.innerWidth > window.innerHeight && !isPhone();
   if(themeSplit && !_widget && _lastWide){ gridCols = profCols*2; gridRows = profRows; }
   else { gridCols = profCols; gridRows = profRows; }
   document.documentElement.style.setProperty('--cols', gridCols);
@@ -2970,9 +3004,11 @@ function render(){
 // Eintraege {type,x,y,w,h,uuid?}: y 0-2 = Seite 1, 3-5 = Seite 2 ... Breite
 // Flaeche ("Screen fuellen" im Querformat): zwei Seiten nebeneinander (6x3).
 function renderCells(wide){
-  const g=el('grid'), gs0=view.grid===2?2:3;
-  // breite Widgets (ueber beide Panels) nur bei zwei Panels nebeneinander zeigen
-  const items=(view.cells||[]).filter(it=>wide||it.x+it.w<=gs0);
+  const g=el('grid'), gs0=view.grid===2?2:3, ph=isPhone();
+  // breite Widgets (ueber beide Panels) nur bei zwei Panels nebeneinander zeigen;
+  // am Handy auf die Seitenbreite gekuerzt statt weggelassen
+  const items=(view.cells||[]).map(it=>(ph&&it.x+it.w>gs0)?Object.assign({},it,{w:gs0-it.x}):it)
+    .filter(it=>wide||it.x+it.w<=gs0);
   if(!g.classList.contains('cells')){
     g.querySelectorAll('.svw-cam img').forEach(camStop);
     g.innerHTML=''; g.classList.add('cells');
@@ -2986,7 +3022,9 @@ function renderCells(wide){
   const pages = Math.max(1, ...items.map(it=>Math.floor((it.y+it.h-1)/gs)+1));
   const place = wide ? (it=>{ const p=Math.floor(it.y/gs); return {c:it.x+gs*(p%2), r:it.y%gs+gs*Math.floor(p/2)}; }) : null;
   const bands = wide ? Math.ceil(pages/2) : pages;
-  g.style.setProperty('--cc', gridCols); g.style.setProperty('--gr', gs);
+  g.style.setProperty('--cc', gridCols);
+  // Handy: so viele Zeilen je Bildschirm, dass die Kacheln etwa quadratisch sind
+  g.style.setProperty('--gr', ph ? Math.max(gs, Math.round(g.clientHeight/((g.clientWidth||1)/gs))) : gs);
   g.classList.toggle('g2', gs===2); g.classList.toggle('g3', gs===3);
   // Rastanker je Seite (Wischen rastet seitenweise), unsichtbar
   let a=g.querySelectorAll('.cpage');
@@ -3089,7 +3127,9 @@ window.addEventListener('resize',()=>{
   // Kachel-Grid nur neu rendern, wenn die Quer/Hoch-Entscheidung tatsaechlich
   // kippt (kein Neuzeichnen bei jedem Pixel) -> 4"-Panel bleibt 2x2 statt in der
   // Startmessung 4x2 haengenzubleiben.
-  if(view && !el('grid').classList.contains('scheme')
+  const _ph=document.documentElement.classList.contains('phone');
+  if(applyPhone()!==_ph){ if(view) render(); renderSaverGrid(); }
+  else if(view && !el('grid').classList.contains('scheme')
      && (window.innerWidth > window.innerHeight) !== _lastWide) render();
   updateScrollInd();
   // Grosse Werte an die neue Breite anpassen (Kiosk meldet die echte Groesse oft spaet)
@@ -3190,7 +3230,11 @@ function connect(){
   // Reconnect stattdessen die zuletzt betrachtete Seite wiederherstellen.
   wsRx=Date.now();
   ws.onopen=()=>{ el('conn').classList.add('ok'); wsRx=Date.now(); clearTimeout(srvDownT); srvDownT=null; srvOk=true; linkBanner();
-    curChartKey=''; if(booted) send({t:'nav',route:stack[stack.length-1]}); };
+    curChartKey=''; if(booted) send({t:'nav',route:stack[stack.length-1]});
+    // Wieder verbunden (z.B. Laptop aufgewacht): ein Klingeln, dessen Ende
+    // waehrend der Trennung verpasst wurde, beenden. Klingelt es noch, schickt
+    // der Server das Klingeln beim Verbinden erneut.
+    [..._toneSources].filter(x=>String(x).indexOf('ring')===0).forEach(x=>toneOff(x)); stopRingAudio(); };
   ws.onclose=()=>{ wsLost(); setTimeout(connect,1500); };
   ws.onmessage=e=>{
     wsRx=Date.now();
@@ -3206,6 +3250,7 @@ function connect(){
       panesCfg = (msg.panes && typeof msg.panes==='object') ? msg.panes : {};
       themeFill = !!msg.fill;
       themeSplit = (msg.split !== false);   // Default an; nur explizit aus (4"-Panel)
+      themePhone = !!msg.phone; applyPhone();
       if(msg.screensaverCam!==undefined){ screensaverCam=msg.screensaverCam||null; if(saverOn()) renderFront(); }
       saverCfg = (msg.saver && Array.isArray(msg.saver.items)) ? msg.saver : null;
       AMB.bg = msg.ambBg||''; AMB.clock = msg.ambClock||''; ambientApply();
@@ -3230,11 +3275,13 @@ function connect(){
       applyDisplayCfg(msg);   // Display aus / Auto-Neustart ohne Agent (Kiosk-App)
       renderTabs(); return; }
     if(msg.t==='ring'){
-      if(msg.id){ wake(); nav({view:'control',id:msg.id}); }
-      if(msg.sound){
-        if(msg.on){ if(msg.soundUrl) playRingAudio(msg.soundUrl); else toneOn('ring:'+msg.id); }
-        else { stopRingAudio(); toneOff('ring:'+msg.id); }
-      }
+      if(msg.on){
+        // Nur der Beginn weckt und oeffnet die Tuerstation - das Ende nicht
+        // (sonst sprang das Panel beim Aufhoeren erneut zur Intercom)
+        if(msg.id && !(view&&view.route&&view.route.view==='control'&&view.route.id===msg.id)){ wake(); nav({view:'control',id:msg.id}); }
+        else wake();
+        if(msg.sound){ if(msg.soundUrl) playRingAudio(msg.soundUrl); else toneOn('ring:'+msg.id); }
+      } else { stopRingAudio(); toneOff('ring:'+msg.id); }   // Ende: Ton immer aus, egal ob mit Ton angekuendigt
       return;
     }   // Klingel: Display an, Uhr weg, optional (je Intercom) eigener Ton oder Wecker-Ton solange der bell-Impuls ansteht
     if(msg.t==='alarm'){ if(msg.on){ wake(); toneOn('alarm'); if(msg.id) nav({view:'control',id:msg.id}); } else { toneOff('alarm'); } return; }
@@ -3480,7 +3527,9 @@ let saverData=null;   // {tiles:{uuid:item}, intercoms:{uuid:{name,blocks}}}
 const SWIPE_MIN_PX=80;
 function saverLayoutOn(){ return !!(saverCfg && saverCfg.items && saverCfg.items.length); }
 function saverGrid(){ return (saverCfg && saverCfg.grid===2) ? 2 : 3; }   // Dashboard-Raster 2x2 oder 3x3
-function saverCols(){ return ((themeSplit && window.innerWidth > window.innerHeight) ? 2 : 1) * saverGrid(); }
+function saverCols(){ return ((themeSplit && window.innerWidth > window.innerHeight && !isPhone()) ? 2 : 1) * saverGrid(); }
+// Handy: beide Dashboard-Flaechen untereinander (rechte unter die linke)
+function saverRows(){ return (isPhone() && themeSplit ? 2 : 1) * saverGrid(); }
 function saverExit(k){ return !!(saverCfg && (saverCfg.exit||[]).indexOf(k)>=0); }
 function svClockHTML(it){
   return '<div class="svw-clock al-'+esc(it.align||'center')+'"><div class="t"></div>'+
@@ -3620,8 +3669,11 @@ let _svStPrev={};
 function svStRender(){
   const host=el('svSt'); if(!host) return;
   const b=saverData&&saverData.bar, chips=(b&&b.chips)||[];
-  const html=chips.map(c=>'<button type="button" class="svsti lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+(c.text?': '+c.text:''))+'">'+
-    stIco(c)+(c.level!=='ok'&&c.text?'<span>'+esc(c.text)+'</span>':'')+'</button>').join('');
+  // Nur Symbole: Anzahl (z.B. offene Fenster) als Plakette oben rechts wie bei
+  // Mail-Apps; reine Zustaende (scharf, ausgeloest ...) nur ueber die Symbolfarbe.
+  const html=chips.map(c=>{ const n=+c.count||0;
+    return '<button type="button" class="svsti lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+(c.text?': '+c.text:''))+'">'+
+      '<span class="svsico">'+stIco(c)+(n>0?'<b class="svsbadge">'+(n>99?'99+':n)+'</b>':'')+'</span></button>'; }).join('');
   if(host._html!==html){ host._html=html; host.innerHTML=html;
     // 480 px: ab 5 Eintraegen kompakter; passt es dann noch nicht, nur Symbole
     // (Zustand bleibt ueber Farbe/Hintergrund sichtbar, Text steht im Info-Fenster).
@@ -3643,9 +3695,12 @@ function renderSaverGrid(){
   el('svClose').hidden=!(on && saverExit('x'));
   if(!on){ g.querySelectorAll('.svw-cam img').forEach(camStop); g.innerHTML=''; el('svSt').innerHTML=''; return; }
   svStRender();
-  const cols=saverCols();
-  g.style.setProperty('--svc', cols); g.style.setProperty('--svr', saverGrid());
-  renderLayout(g, saverCfg.items.filter(it=>it.x+it.w<=cols), saverData, null, saverOn());
+  const cols=saverCols(), gs=saverGrid(), ph=isPhone() && themeSplit;
+  g.style.setProperty('--svc', cols); g.style.setProperty('--svr', saverRows());
+  const its = ph ? saverCfg.items.map(it=>(it.x<gs&&it.x+it.w>gs)?Object.assign({},it,{w:gs-it.x}):it)
+                 : saverCfg.items.filter(it=>it.x+it.w<=cols);
+  const place = ph ? (it=>it.x>=gs ? {c:it.x-gs, r:it.y+gs} : {c:it.x, r:it.y}) : null;
+  renderLayout(g, its, saverData, place, saverOn());
 }
 // Raster-Eintraege in ein Grid zeichnen bzw. abgleichen (Screensaver und Tabs).
 // place(it) -> {c,r} (0-basiert) fuer abweichende Anordnung (breite Tabs: Seiten
@@ -4341,7 +4396,7 @@ function saverOn(){ return !el('saver').classList.contains('hidden'); }
 // gemessenen Spaltigkeit haengen (2-spaltig direkt nach dem Speichern, erst
 // spaeter wieder einspaltig).
 function applySaverSplit(){
-  el('saver').classList.toggle('split', !!themeSplit && window.innerWidth > window.innerHeight);
+  el('saver').classList.toggle('split', !!themeSplit && window.innerWidth > window.innerHeight && !isPhone());
 }
 function showSaver(){ tickClock();
   applySaverSplit();

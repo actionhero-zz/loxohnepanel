@@ -176,8 +176,6 @@
       'Zeile entfernen': 'Remove row',
 
       // ---- /config (Panel-Editor) ----
-      'Konfiguration': 'Configuration',
-      '＋ Neues Panel': '＋ New panel',
       'Titel': 'Title',
       'Fenstertitel des Panels.': 'Window title of the panel.',
       'Kiosk-URL:': 'Kiosk URL:',

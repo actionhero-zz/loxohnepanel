@@ -505,7 +505,7 @@
   .g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
   .g2ed .libq{width:100%;}
   .dbaricons{display:flex;flex-wrap:wrap;gap:6px;} .dbic{font-size:12.5px;} .dbic.on{outline:2px solid var(--accent);}
-  .libfilt{display:flex;gap:6px;margin-top:6px;} .libfilt select{flex:1;min-width:0;font-size:12.5px;}
+  .libfilt{display:flex;flex-direction:column;gap:6px;margin-top:6px;} .libfilt select{width:100%;min-width:0;font-size:12.5px;}
   .g2ed .liblist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
   .g2ed .libgrp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:8px 4px 2px;}
   .g2ed .libit{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:12px;background:var(--field);border:1px solid var(--line);
@@ -629,7 +629,9 @@
   .devcards>.actions{margin-top:4px;}
   .devx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 0;}
   .dbri{display:flex;align-items:center;gap:8px;flex:1 1 260px;min-width:0;font-size:13px;}
-  .dbri input{flex:1;min-width:80px;} .dbri b{min-width:44px;text-align:right;font-variant-numeric:tabular-nums;}
+  .dbri input[type=range]{flex:1;min-width:80px;} .dbri b{min-width:44px;text-align:right;font-variant-numeric:tabular-nums;}
+  .devx .dsnd{margin:0;white-space:nowrap;font-size:13px;}
+  .dbri .dbri_a{margin:0;white-space:nowrap;font-size:13px;} .dbri.auto input[type=range]{opacity:.35;}
   #dev_list .devlive .ag>.dot,#dev_list .devlive .ag>.agn{display:none;}   /* Name/Status stehen im Kachelkopf */
   /* Geraetekachel: Abschnitte mit kleiner Ueberschrift, Kurzhinweis darunter */
   #dev_list .devlive .ag{display:block;border:0;padding:0;margin:0;background:transparent;}
@@ -973,12 +975,6 @@
             <p class="note"><a href="/api/types?format=text" target="_blank" rel="noopener">Bausteintypen der Anlage anzeigen</a> <span>(welche Typen vorkommen und welche LoxPanel noch nicht unterstützt; als JSON unter /api/types)</span></p>
           </div>
           <div class="card">
-            <h3 data-i18n>Befehlsbestätigung</h3>
-            <label class="chk"><input type="checkbox" id="cw_on" checked><span data-i18n>Befehle am Panel quittieren lassen</span></label>
-            <p class="note" data-i18n>Das Panel wartet nach jedem Tastendruck auf die Bestätigung, dass der Miniserver den Befehl angenommen hat. Kommt sie nicht innerhalb von 12 Sekunden (z. B. WLAN-Aussetzer), erscheint „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel auch ohne diese Option.</p>
-            <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
-          </div>
-          <div class="card">
             <h3 data-i18n>Wetter</h3>
             <label class="chk"><input type="checkbox" id="wx_ms" checked><span data-i18n>Wetterdaten aus dem Miniserver übernehmen</span></label>
             <p class="note" data-i18n>Standard: das Wetter des Loxone-Wetterdienstes. Ohne Wetterdienst im Miniserver hier abwählen – dann kommt es von Open-Meteo (kostenlos, ohne Konto).</p>
@@ -1018,7 +1014,7 @@
             <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
             <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
           </div>
-          <details class="card" id="fullySrc">
+          <details class="card devhelp" id="fullySrc" hidden>
             <summary><h3 data-i18n>Fully-Kiosk-Quelle</h3></summary>
             <p class="note" data-i18n>Woher „Fully installieren“ die App holt: eigene Datei → eigene Adresse → offizielle Seite.</p>
             <div class="note" id="fs_info">…</div>
@@ -1095,6 +1091,12 @@
               <div class="field" style="max-width:460px"><label class="lbl" data-i18n>Auslöser – Nacht, solange dieser Baustein an ist</label><select id="nt_control"></select></div>
             </div>
             <div class="actions"><button class="btn" id="nt_save" data-i18n>Speichern</button><span class="toast" id="nt_toast"></span></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n>Befehlsbestätigung</h3>
+            <label class="chk"><input type="checkbox" id="cw_on" checked><span data-i18n>Befehle am Panel quittieren lassen</span></label>
+            <p class="note" data-i18n>Das Panel wartet nach jedem Tastendruck auf die Bestätigung, dass der Miniserver den Befehl angenommen hat. Kommt sie nicht innerhalb von 12 Sekunden (z. B. WLAN-Aussetzer), erscheint „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel auch ohne diese Option.</p>
+            <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
           </div>
         </section>
 
@@ -2368,7 +2370,7 @@ function renderTabEditor(){
       : T('So sieht der Tab am Panel aus. Weitere Seiten folgen darunter – wie beim Wischen nach unten; unten liegt immer eine leere Seite zum Ablegen.'); }
   const g=tbGrid(p,k), items=tbEff[k], rows=tbRows(items,g), pages=k===DK?tbDashPages(p):rows/g, two=!((p.ui||{}).split===false);
   const cell=two?Math.round(gridCell(g)*0.9):Math.round(gridCell(g)*1.15);
-  const bands=two?Math.ceil(pages/2):pages, fk=tbFolder(k), fc=tbFace(p,k);
+  const bands=two?Math.ceil(pages/2):pages, fc=tbFace(p,k);
   if(tbLast[k]===undefined) tbLast[k]=JSON.stringify(items);
   const colT=two?'repeat('+g+',var(--cell)) 18px repeat('+g+',var(--cell))':'repeat('+g+',var(--cell))';
   const rowT=[]; for(let b=0;b<bands;b++) rowT.push('26px repeat('+g+',var(--cell))');
@@ -3591,18 +3593,37 @@ function devExtraHTML(d,caps){
   const bri=caps.indexOf('brightness')>=0, fully=d.ip&&(d.type==='fully'||caps.indexOf('kioskrestart')>=0);
   if(!bri&&!fully) return '';
   return '<div class="devx drow" data-name="'+esc(d.name)+'" data-devip="'+esc(d.ip||'')+'">'+
-    (bri?'<label class="dbri"><span>'+T('Helligkeit')+'</span><input type="range" min="1" max="100" step="1" value="'+(DEV_BRI[d.name]||70)+'" class="dbri_r">'+
-      '<b class="dbri_v">'+(DEV_BRI[d.name]?DEV_BRI[d.name]+' %':'–')+'</b><button type="button" class="btn sm ghost dbri_get" title="'+T('Aktuellen Wert vom Gerät lesen')+'">↻</button></label>':'')+
+    (bri?(()=>{ const st=DEV_BRI[d.name]||{}, au=st.auto!==false;   // Standard: Automatik (bis der Wert gelesen ist)
+      return '<div class="dbri'+(au?' auto':'')+'"><span>'+T('Helligkeit')+'</span>'+
+        '<label class="chk dbri_a" title="'+T('Das Gerät regelt die Helligkeit selbst nach dem Umgebungslicht')+'"><input type="checkbox" class="dbri_auto"'+(au?' checked':'')+'> '+T('Automatisch')+'</label>'+
+        '<input type="range" min="1" max="100" step="1" value="'+(st.pct||70)+'" class="dbri_r"'+(au?' disabled':'')+'>'+
+        '<b class="dbri_v">'+(au?(st.read?T('auto'):'–'):(st.pct?st.pct+' %':'–'))+'</b>'+
+        '<button type="button" class="btn sm ghost dbri_get" title="'+T('Aktuellen Zustand vom Gerät lesen')+'">↻</button></div>'+
+        '<label class="chk dsnd" title="'+T('Android spielt bei jedem Antippen eines Bedienelements einen Klick ab')+'"><input type="checkbox" class="dsnd_on"'+(DEV_SND[d.name]?' checked':'')+'> '+T('Tipp-Töne')+'</label>'; })():'')+
     (fully?'<a class="btn sm ghost" href="http://'+esc(d.ip)+':2323" target="_blank" rel="noopener" title="'+T('Fully Remote Admin (in Fully unter Remote Administration aktivieren)')+'">'+T('Fully Remote Admin')+' ↗</a>':'')+
   '</div>';
 }
-const DEV_BRI={};   // zuletzt gelesene/gesetzte Helligkeit je Geraet (%)
-async function devBrightness(row, pct){
-  const name=row.dataset.name, ip=row.dataset.devip, v=row.querySelector('.dbri_v');
+const DEV_BRI={};   // je Geraet: {pct, auto, read} - zuletzt gelesen/gesetzt
+const DEV_BRI_TRY=new Set();
+const DEV_SND={};   // je Geraet: Tipp-Toene an (zuletzt gelesen/gesetzt)
+async function devTouchSound(row, on){
+  const name=row.dataset.name, ip=row.dataset.devip, cb=row.querySelector('.dsnd_on');
+  try{ const j=await postJson('/api/kiosk/touchsound', on==null?{device:name,ip}:{device:name,ip,on});
+    if(j.ok){ DEV_SND[name]=!!j.on; if(cb) cb.checked=!!j.on; }
+    else { if(cb&&on!=null) cb.checked=!on; flash($('#ag_toast'), T('Fehler: ')+(j.error||''), false); }
+  }catch(e){ flash($('#ag_toast'),'Fehler: '+e,false); }
+}   // Zustand je Geraet nur einmal je Sitzung automatisch lesen (↻ liest jederzeit)
+// Helligkeit: mode 'read' (nur lesen), 'auto' (Geraet regelt) oder Prozentwert (fest, Automatik aus)
+async function devBrightness(row, mode){
+  const name=row.dataset.name, ip=row.dataset.devip, box=row.querySelector('.dbri'), v=row.querySelector('.dbri_v');
   if(v) v.textContent='…';
-  try{ const j=await postJson('/api/kiosk/brightness', pct==null?{device:name,ip}:{device:name,ip,value:Math.round(pct*2.55)});
-    if(j.ok&&j.value!=null){ const p=Math.max(1,Math.round(j.value/2.55)); DEV_BRI[name]=p;
-      if(v) v.textContent=p+' %'; const r=row.querySelector('.dbri_r'); if(r) r.value=p; }
+  const body=mode==='read'?{device:name,ip}:(mode==='auto'?{device:name,ip,auto:true}:{device:name,ip,value:Math.round(mode*2.55)});
+  try{ const j=await postJson('/api/kiosk/brightness', body);
+    if(j.ok&&j.value!=null){
+      const st=DEV_BRI[name]={pct:Math.max(1,Math.round(j.value/2.55)), auto:!!j.auto, read:true};
+      const r=row.querySelector('.dbri_r'), a=row.querySelector('.dbri_auto');
+      if(r){ r.value=st.pct; r.disabled=st.auto; } if(a) a.checked=st.auto; if(box) box.classList.toggle('auto',st.auto);
+      if(v) v.textContent=st.auto?T('auto'):st.pct+' %'; }
     else { if(v) v.textContent='–'; flash($('#ag_toast'), T('Fehler: ')+(j.error||''), false); }
   }catch(e){ if(v) v.textContent='–'; flash($('#ag_toast'),'Fehler: '+e,false); }
 }
@@ -3615,6 +3636,9 @@ function anonRow(a, typed){
     '<button class="btn sm" data-act="name">'+T('Namen vergeben')+'</button></div>';
 }
 function renderDeviceList(j){
+  { const devs=(j&&j.devices)||[], any=devs.length>0||Object.keys(DEV).length>0;
+    const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=any?'':'none';   // nichts zu speichern ohne Geraete
+    const fs=$('#fullySrc'); if(fs) fs.hidden=!devs.some(d=>(d.caps||[]).indexOf('fullyinstall')>=0); }
   const box=$('#ag_list'), list=$('#dev_list'); if(!box||!list) return;
   // Waehrend jemand in einer Live-Zeile tippt oder auswaehlt, nicht neu zeichnen.
   const ae=document.activeElement;
@@ -3633,9 +3657,15 @@ function renderDeviceList(j){
   box.innerHTML=anon.length?'<div class="devanon"><b>'+T('Ohne Kennung')+'</b><div class="note">'+T('Nach IP erkannt. Einen Namen vergeben, damit das Gerät dauerhaft gelistet und per Betriebsmodus umgeschaltet werden kann.')+'</div>'+
     anon.map(a=>anonRow(a,prevName[a.ip])).join('')+'</div>':'';
   list.querySelectorAll('.devx').forEach(x=>{
-    const r=x.querySelector('.dbri_r'), v=x.querySelector('.dbri_v');
+    const r=x.querySelector('.dbri_r'), v=x.querySelector('.dbri_v'), a=x.querySelector('.dbri_auto');
     if(r){ r.oninput=()=>{ if(v) v.textContent=r.value+' %'; }; r.onchange=()=>{ devBrightness(x,+r.value); r.blur(); }; }
-    const g=x.querySelector('.dbri_get'); if(g) g.onclick=()=>devBrightness(x,null); });
+    // Automatik an: Geraet regelt; aus: der Regler legt den festen Wert fest
+    if(a) a.onchange=()=>{ if(r) r.disabled=a.checked; x.querySelector('.dbri').classList.toggle('auto',a.checked);
+      devBrightness(x, a.checked?'auto':+(r?r.value:70)); a.blur(); };
+    const g=x.querySelector('.dbri_get'); if(g) g.onclick=()=>{ devBrightness(x,'read'); devTouchSound(x,null); };
+    const sn=x.querySelector('.dsnd_on'); if(sn) sn.onchange=()=>{ devTouchSound(x, sn.checked); sn.blur(); };
+    // beim ersten Anzeigen den echten Zustand vom Geraet holen (einmal je Sitzung)
+    const nm=x.dataset.name; if(!DEV_BRI_TRY.has(nm) && x.closest('.dev.open')){ DEV_BRI_TRY.add(nm); devBrightness(x,'read'); devTouchSound(x,null); } });
   list.querySelectorAll('.ag[data-name] button[data-act]').forEach(b=>{
     const row=b.closest('.ag');
     b.onclick=()=>deviceAction(b.dataset.act, row.dataset.name, row.dataset.ip, row.querySelector('.agsel').value, row.dataset.devip);
@@ -3907,11 +3937,13 @@ function renderDevices(){
   const on=n=>((LAST_DEVS||{}).devices||[]).some(d=>d.name===n)?0:1;   // erreichbare Geraete zuerst
   const nw=n=>DEV_NEW.has(n)?0:1;
   const names=Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort((a,b)=>nw(a)-nw(b)||on(a)-on(b)||a.localeCompare(b));
+  { const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=names.length?'':'none'; }
   if(!names.length){ box.innerHTML='<div class="muted">'+T('Noch kein Panel bekannt. Sobald ein Panel die Visu mit Kennung öffnet oder ein Agent läuft, erscheint es hier.')+'</div>'; return; }
   box.innerHTML=names.map(devRow).join('');
   if(LAST_DEVS) renderDeviceList(LAST_DEVS);
   box.querySelectorAll('.devtg').forEach(b=>b.onclick=()=>{ const dv=b.closest('.dev'), n=dv.dataset.name;
     const op=dv.classList.toggle('open'); if(op) DEV_OPEN.add(n); else DEV_OPEN.delete(n);
+    const bx=op&&dv.querySelector('.devx'); if(bx && !DEV_BRI_TRY.has(n) && bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); }
     if(DEV_NEW.delete(n)){ dv.classList.remove('isnew'); const nb=b.querySelector('.newb'); if(nb) nb.remove(); } });
   box.querySelectorAll('.dm_add').forEach(b=>b.onclick=()=>{
     readDevFromDom(); const name=b.closest('.dev').dataset.name;

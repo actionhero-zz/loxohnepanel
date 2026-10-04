@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Code-Check & Feinschliff (0.19.45)** — Fehler in /api/msstatus behoben (Miniserver-Kennzahlen und
+  Live-Zeile der Startseite blieben leer); Helligkeit mit „Automatisch“ (Gerät regelt selbst), Zustand
+  wird beim Aufklappen vom Gerät gelesen; Tipp-Töne je Android-Gerät abschaltbar; Befehlsbestätigung
+  unter System → Bedienung; Geräte-Aktionen und Fully-Quelle nur, wenn nötig; Bausteinfilter lesbar.
 - **Geräte, Statusleiste & Original-Updates (0.19.44)** — Geräte-Seite neu geordnet (Einrichtung →
   Anzeige → Steuerung → Betriebsmodus → Erweitert, nur Benötigtes, mit Symbolen); Fully Kiosk per adb
   installieren (Quelle sichtbar, eigene Adresse oder eigene APK), Display-Helligkeit per adb, Link zum

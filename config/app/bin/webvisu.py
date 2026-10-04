@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.44"
+APP_VERSION = "0.19.45"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -3005,10 +3005,9 @@ class App:
         return {"ok": ok, "version": ver, "source": src,
                 **({} if ok else {"error": "Installation fehlgeschlagen: " + out[-200:]})}
 
-    async def device_brightness(self, device: str, ip: str = "", value=None) -> dict:
-        """Display-Helligkeit eines Android-Panels per adb lesen bzw. setzen
-        (0-255). Beim Setzen wird die automatische Helligkeit abgeschaltet -
-        sonst ueberschreibt Android den Wert gleich wieder."""
+    async def device_touch_sound(self, device: str, ip: str = "", on=None) -> dict:
+        """Android-Tipp-Toene ("Toene bei Beruehrung", sound_effects_enabled) per
+        adb lesen bzw. setzen. Sie klicken bei jedem Antippen eines Bedienelements."""
         ip = ip or self._device_ip(device)
         try:
             ip = str(ipaddress.ip_address(ip.strip()))
@@ -3024,7 +3023,43 @@ class App:
             code, out = await _adb("-s", target, "get-state", timeout=10)
             if out != "device":
                 return {"ok": False, "error": "adb nicht freigegeben - am Panel \"USB-Debugging zulassen\" bestätigen"}
-            if value is not None:
+            if on is not None:
+                code, out = await _adb("-s", target, "shell", "settings", "put", "system",
+                                       "sound_effects_enabled", "1" if on else "0", timeout=10)
+                if code != 0:
+                    return {"ok": False, "error": "Tipp-Töne nicht gesetzt: " + out[-200:]}
+                log.info("Tipp-Toene %s (%s): %s", device or ip, target, "an" if on else "aus")
+            code, out = await _adb("-s", target, "shell", "settings", "get", "system", "sound_effects_enabled", timeout=10)
+        v = out.strip().splitlines()[-1] if out.strip() else ""
+        return {"ok": True, "on": v != "0"}   # nicht gesetzt ("null") = Android-Standard an
+
+    async def device_brightness(self, device: str, ip: str = "", value=None, auto=None) -> dict:
+        """Display-Helligkeit eines Android-Panels per adb lesen bzw. setzen.
+        auto=True: das Geraet regelt selbst (screen_brightness_mode 1).
+        value (1-255): fester Wert - schaltet die Automatik ab, sonst
+        ueberschreibt Android den Wert gleich wieder. Ohne beides: nur lesen.
+        Antwort: {value, auto}."""
+        ip = ip or self._device_ip(device)
+        try:
+            ip = str(ipaddress.ip_address(ip.strip()))
+        except (ValueError, AttributeError):
+            return {"ok": False, "error": "IP des Geraets unbekannt - Visu am Panel einmal öffnen"}
+        if not shutil.which("adb"):
+            return {"ok": False, "error": "adb fehlt im Container"}
+        target = f"{ip}:5555"
+        async with _adb_lock:
+            code, out = await _adb("connect", target, timeout=15)
+            if "connected" not in out or "failed" in out:
+                return {"ok": False, "error": "Panel per adb nicht erreichbar - ADB über WLAN am Panel aktiv?"}
+            code, out = await _adb("-s", target, "get-state", timeout=10)
+            if out != "device":
+                return {"ok": False, "error": "adb nicht freigegeben - am Panel \"USB-Debugging zulassen\" bestätigen"}
+            if auto is True:
+                code, out = await _adb("-s", target, "shell", "settings", "put", "system", "screen_brightness_mode", "1", timeout=10)
+                if code != 0:
+                    return {"ok": False, "error": "Automatik nicht gesetzt: " + out[-200:]}
+                log.info("Helligkeit %s (%s) auf automatisch gestellt", device or ip, target)
+            elif value is not None:
                 v = max(1, min(255, int(value)))
                 await _adb("-s", target, "shell", "settings", "put", "system", "screen_brightness_mode", "0", timeout=10)
                 code, out = await _adb("-s", target, "shell", "settings", "put", "system", "screen_brightness", str(v), timeout=10)
@@ -3032,11 +3067,13 @@ class App:
                     return {"ok": False, "error": "Helligkeit nicht gesetzt: " + out[-200:]}
                 log.info("Helligkeit %s (%s) auf %d gesetzt", device or ip, target, v)
             code, out = await _adb("-s", target, "shell", "settings", "get", "system", "screen_brightness", timeout=10)
+            _c, mode = await _adb("-s", target, "shell", "settings", "get", "system", "screen_brightness_mode", timeout=10)
         try:
             cur = int(out.strip().splitlines()[-1])
         except (ValueError, IndexError):
-            return {"ok": value is not None, "error": None if value is not None else "Helligkeit nicht lesbar"}
-        return {"ok": True, "value": cur}
+            return {"ok": value is not None or auto is True,
+                    "error": None if (value is not None or auto is True) else "Helligkeit nicht lesbar"}
+        return {"ok": True, "value": cur, "auto": mode.strip().endswith("1")}
 
     async def kiosk_restart(self, device: str, action: str = "app", ip: str = "") -> dict:
         """Android-Panel per adb neu starten (ohne Fully-PLUS-Lizenz):
@@ -7475,6 +7512,7 @@ async def api_msstatus(request: web.Request) -> web.Response:
     """Verbindung zum Miniserver fuer die Startseite: up = Stream laeuft,
     since = Beginn des aktuellen Zustands (ms), lastRx = Sekunden seit der
     letzten Nachricht des Miniservers (None ohne Stream)."""
+    app: App = request.app["app"]
     rx = getattr(app.ws, "_last_rx", 0) if app.ws else 0
     return web.json_response({
         "configured": bool(app.host), "up": app.ms_up, "ok": app.ms_ok(),
@@ -8133,7 +8171,17 @@ async def api_kiosk_brightness(request: web.Request) -> web.Response:
             v = int(v)
         except (TypeError, ValueError):
             return web.json_response({"ok": False, "error": "ungültiger Wert"}, status=400)
-    return web.json_response(await app.device_brightness(str(d.get("device") or "").strip(), str(d.get("ip") or ""), v))
+    return web.json_response(await app.device_brightness(str(d.get("device") or "").strip(), str(d.get("ip") or ""), v,
+                                                         True if d.get("auto") is True else None))
+
+
+async def api_kiosk_touchsound(request: web.Request) -> web.Response:
+    """Android-Tipp-Toene per adb: POST {device, ip?, on?} (ohne on = nur lesen)."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    on = d.get("on")
+    return web.json_response(await app.device_touch_sound(str(d.get("device") or "").strip(), str(d.get("ip") or ""),
+                                                          on if isinstance(on, bool) else None))
 
 
 async def api_kiosk_fully_source(request: web.Request) -> web.Response:
@@ -9210,6 +9258,7 @@ def main() -> None:
     a.router.add_route("*", "/api/kiosk/fully/source", api_kiosk_fully_source)
     a.router.add_post("/api/kiosk/fully/upload", api_kiosk_fully_upload)
     a.router.add_post("/api/kiosk/brightness", api_kiosk_brightness)
+    a.router.add_post("/api/kiosk/touchsound", api_kiosk_touchsound)
     a.router.add_post("/api/tablayout", api_tab_layout)
     a.router.add_get("/api/mode", api_mode)
     a.router.add_post("/api/mode", api_mode)

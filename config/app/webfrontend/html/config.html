@@ -504,6 +504,8 @@
   .g2ed .libtabs button{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:6px;border-radius:var(--pill);cursor:pointer;}
   .g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
   .g2ed .libq{width:100%;}
+  .dbaricons{display:flex;flex-wrap:wrap;gap:6px;} .dbic{font-size:12.5px;} .dbic.on{outline:2px solid var(--accent);}
+  .libfilt{display:flex;gap:6px;margin-top:6px;} .libfilt select{flex:1;min-width:0;font-size:12.5px;}
   .g2ed .liblist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
   .g2ed .libgrp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:8px 4px 2px;}
   .g2ed .libit{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:12px;background:var(--field);border:1px solid var(--line);
@@ -570,6 +572,11 @@
   .visubtn{background:rgba(255,193,69,.16);color:var(--dot);}
   .sidefoot{margin-top:auto;display:flex;align-items:center;gap:8px;}
   .sidefoot .themesw{flex:1;}
+  /* Versionsstempel rechts neben der Farbauswahl: Version · Commit · Installiert */
+  .appver{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;font-size:10.5px;opacity:.62;
+    font-variant-numeric:tabular-nums;white-space:nowrap;cursor:default;}
+  .appver b{font-size:11.5px;font-weight:700;} .appver:empty{display:none;}
+  .wrap.slim .appver{display:none;}
   .themesw button{display:grid;place-items:center;padding:6px;}
   .pini{display:none;}
   .addbtn .adi{font-weight:700;}
@@ -620,8 +627,24 @@
   .dev.open .devbody{display:block;padding-top:12px;}
   #ag_list .devanon{border:1px solid var(--accent);border-radius:16px;padding:12px 14px;margin:0 0 10px;background:var(--panel);box-shadow:var(--shadow);animation:devpop .45s ease;}
   .devcards>.actions{margin-top:4px;}
+  .devx{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 0;}
+  .dbri{display:flex;align-items:center;gap:8px;flex:1 1 260px;min-width:0;font-size:13px;}
+  .dbri input{flex:1;min-width:80px;} .dbri b{min-width:44px;text-align:right;font-variant-numeric:tabular-nums;}
   #dev_list .devlive .ag>.dot,#dev_list .devlive .ag>.agn{display:none;}   /* Name/Status stehen im Kachelkopf */
-  #dev_list .devlive .ag{border:0;padding:0 0 10px;margin:0 0 10px;border-bottom:1px solid var(--line);border-radius:0;background:transparent;}
+  /* Geraetekachel: Abschnitte mit kleiner Ueberschrift, Kurzhinweis darunter */
+  #dev_list .devlive .ag{display:block;border:0;padding:0;margin:0;background:transparent;}
+  .dev .dinfo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px;}
+  .dev .dsec{padding:10px 0;border-top:1px solid var(--line);}
+  .dev .dsh{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px;}
+  .dev .dsi{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--panel2);color:var(--fg);flex:none;}
+  .dev .dsi svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+  .dev .dsetup{border-top:0;}
+  .dev .devlive:empty{display:none;}
+  .dev .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+  .dev .drow+.drow{margin-top:8px;}
+  .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
+  .dev .dmrows{margin-top:6px;}
+  .dev .ddwrap{padding-top:10px;border-top:1px solid var(--line);}
   .devanon{margin-top:4px;} .devanon .note{margin:2px 0 8px;}
   .devhelp summary{cursor:pointer;list-style:none;} .devhelp summary h3{display:inline;margin:0;}
   .devhelp summary::before{content:'›';display:inline-block;margin-right:8px;transition:transform .15s;} .devhelp[open] summary::before{transform:rotate(90deg);}
@@ -905,8 +928,8 @@
         <button type="button" data-cth="hell" title="Hell" aria-label="Hell"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
         <button type="button" data-cth="dunkel" title="Dunkel" aria-label="Dunkel"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
       </div>
+      <span class="appver" id="appVersion"></span>
     </div>
-    <span id="appVersion" hidden></span>
   </aside>
 
   <main class="main">
@@ -995,6 +1018,17 @@
             <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
             <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
           </div>
+          <details class="card" id="fullySrc">
+            <summary><h3 data-i18n>Fully-Kiosk-Quelle</h3></summary>
+            <p class="note" data-i18n>Woher „Fully installieren“ die App holt: eigene Datei → eigene Adresse → offizielle Seite.</p>
+            <div class="note" id="fs_info">…</div>
+            <div class="field" style="max-width:none;margin-top:10px"><label class="lbl" data-i18n>Eigene Adresse (Download-Seite oder direkter .apk-Link, leer = offizielle Seite)</label>
+              <input type="text" id="fs_url" placeholder="https://www.fully-kiosk.com/en/" autocomplete="off"></div>
+            <div class="actions"><button class="btn" id="fs_save" type="button" data-i18n>Adresse speichern</button>
+              <label class="btn ghost" style="cursor:pointer"><input type="file" id="fs_file" accept=".apk,application/vnd.android.package-archive" hidden><span data-i18n>Eigene APK hochladen</span></label>
+              <button class="btn ghost" id="fs_del" type="button" hidden data-i18n>Eigene APK entfernen</button>
+              <span class="toast" id="fs_toast"></span></div>
+          </details>
           <details class="card devhelp">
             <summary><h3 data-i18n>Hinweise</h3></summary>
             <p class="note" data-i18n><b>Gerät &amp; Fully:</b> Daraus ergeben sich die Knöpfe „Fully neu starten“ und „Gerät neu starten“ (Android per adb, Shelly zuerst über seine eigene Schnittstelle).</p>
@@ -1833,7 +1867,8 @@ function renderEditor(){
          (((p.ui||{}).dpmsOff==null)?'':(p.ui||{}).dpmsOff)+'" placeholder="'+T('0 = nie')+'"></div>'+
        '<div class="field" style="max-width:220px"><label class="lbl">'+T('Seite neu laden alle (Std.)')+'</label>'+
          '<input type="number" min="0" max="168" step="1" data-ui="reloadHours" value="'+
-         (((p.ui||{}).reloadHours==null)?'':(p.ui||{}).reloadHours)+'" placeholder="'+T('0 = nie')+'"></div>'+
+         (((p.ui||{}).reloadHours==null)?'':(p.ui||{}).reloadHours)+'" placeholder="'+T('nachts um 3 Uhr')+'">'+
+         '<div class="hint">'+T('Leer = einmal je Nacht (3 Uhr), nur während das Dashboard steht. Zahl = alle so viele Stunden, 0 = nie.')+'</div></div>'+
        '</div><div class="lbl2" style="margin-top:12px">'+T('Nacht')+'</div><div class="sizes">'+
        '<div class="field" style="max-width:220px"><label class="lbl">'+T('Abdunkeln um (%)')+'</label>'+
          '<input type="number" min="0" max="90" step="5" data-ui="nightDim" value="'+
@@ -1967,6 +2002,10 @@ function gridSizesBase(type,g,tab){ if(g===2) return SIZES2[type]||[[1,1]];
   if(type==='tile'||type==='room'||type==='cat') return tab?[[1,1],[2,1],[2,2]]:SV_W.tile.sizes; return (SV_W[type]||{}).sizes||[[1,1]]; }
 function gridDef(type,g,tab){ const sz=gridSizes(type,g,tab), d=(type==='tile'||type==='room'||type==='cat')?[1,1]:(SV_W[type]||{}).def||sz[0];
   return sz.some(([w,h])=>w===d[0]&&h===d[1]) ? d : sz[0]; }
+// Neue Widgets kommen in ihrer KLEINSTEN Groesse ins Raster (passt so auch neben
+// andere, z.B. Kalender 3x1 neben Energiefluss); groesser ziehen geht danach rechts.
+function gridMin(type,g,tab){ const sz=gridSizes(type,g,tab).filter(([w,h])=>w<=g*2&&h<=g);
+  return (sz.length?sz:gridSizes(type,g,tab)).slice().sort((a,b)=>(a[0]*a[1])-(b[0]*b[1])||(b[0]-a[0]))[0]; }
 function gridCell(g){ return g===2?108:72; }   // Editor: gleiche Seitenbreite fuer 2x2 und 3x3
 // Belegung an ein anderes Raster anpassen: der Reihe nach einsortieren, Groesse
 // behalten wenn erlaubt, sonst die naechstpassende; was nicht passt, faellt weg.
@@ -2151,10 +2190,10 @@ function stPickHTML(selIds, boxId, compact){
     :'<div class="hintp">'+T('Keine passenden Bausteine in der Anlage.')+'</div>')+
     (compact?'':'<div class="hintp">'+T('Farben und Logik kommen aus dem Miniserver: Fenster offen = gelb, Alarm/Rauch ausgelöst = rot, Alarm scharf = blau, Statusbausteine in ihrer Farbe aus Loxone Config.')+'</div>');
 }
-function stPickBind(box, onIds, rerender){
-  if(!box) return;
+function stPickBind(box, onIds, rerender, max){
+  if(!box) return; max=max||4;
   const apply=()=>{ const rows=[...box.querySelectorAll('.camopt')], ids=rows.filter(r=>r.querySelector('input').checked).map(r=>r.dataset.id);
-    if(ids.length>4){ snack(T('Höchstens 4 Bausteine')); rerender(); return; }
+    if(ids.length>max){ snack(T('Höchstens')+' '+max+' '+T('Bausteine')); rerender(); return; }
     onIds(ids); };
   box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=apply);
   let drag=null;
@@ -2165,6 +2204,13 @@ function stPickBind(box, onIds, rerender){
     r.ondrop=e=>{ e.preventDefault(); apply(); }; });
 }
 // Dashboard-Eigenschaften (statt Typ/Name/Symbol): Raster, Schliessen, Vorlagen
+let dBarIcoFor='';   // Statusleiste: Baustein, dessen Symbol gerade gewaehlt wird
+// Vorschau des Symbols eines Statusleisten-Bausteins (eigenes oder Loxone-Standard)
+function barIcoHtml(c,ic){
+  if(ic&&ic.src==='builtin') return svg(BICONS[ic.id]||BICONS.info);
+  if(ic&&ic.src==='loxone') return '<span class="loxi" style="--u:url(\'/icon?p='+encodeURIComponent(ic.p)+'\')"></span>';
+  if(ic&&ic.src==='loxlib') return '<span class="loxi" style="--u:url(\'/loxlib?n='+encodeURIComponent(ic.name)+'\')"></span>';
+  return c.iconUrl ? '<span class="loxi" style="--u:url(\''+esc(c.iconUrl)+'\')"></span>' : svg(BICONS.info); }
 let dBarOpen=false;   // Haken "Statusleiste" gesetzt, aber noch nichts gewaehlt
 function renderDashProps(p){
   const box=$('#tbProps'), sv=p.saver||{}, ex=sv.exit||[], g=svGrid(p), two=tbDashPages(p)===2;
@@ -2185,7 +2231,14 @@ function renderDashProps(p){
       '<div class="hint">'+T('Tageslicht: morgens leicht hell, mittags hell, abends dunkler, nachts ganz dunkel (Sonnenzeiten aus dem Wetter). Außentemperatur: kalt blau, mild grün, warm gelb, heiß orange bis rot. Ohne Wetterdaten bleiben die festen Farben.')+'</div></div>'+
     '<div class="field dbar"><label class="lbl">'+T('Statusleiste')+'</label>'+
       '<label class="chk"><input type="checkbox" id="dBarOn"'+(barOn?' checked':'')+'> <span>'+T('Statusleiste oben anzeigen')+'</span></label>'+
-      (barOn?'<div class="dbarbox"><div class="dbarlbl">'+T('Bausteine (max. 4) – Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+'</div>':'')+
+      (barOn?'<div class="dbarbox"><div class="dbarlbl">'+T('Bausteine (max. 6) – Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+
+        ((sv.bar||[]).length?'<div class="dbarlbl" style="margin-top:8px">'+T('Symbol je Baustein (Tippen zum Ändern)')+'</div><div class="dbaricons">'+
+          (sv.bar||[]).map(u=>{ const c=tileRef(u)||{}; const ic=(sv.barIcons||{})[u];
+            return '<button type="button" class="tbicobtn dbic'+(dBarIcoFor===u?' on':'')+'" data-bic="'+esc(u)+'"><span class="tbico">'+barIcoHtml(c,ic)+'</span>'+esc(c.name||u)+'</button>'; }).join('')+
+          '</div><div id="dBarIcoPick" class="tbicopick"'+(dBarIcoFor?'':' hidden')+'><div class="itabs">'+
+            '<span class="itab on" data-bsrc="builtin">'+T('Eingebaut')+'</span><span class="itab" data-bsrc="loxone">Loxone</span>'+
+            (((META.icons||{}).loxlib)?'<span class="itab" data-bsrc="loxlib">'+T('Bibliothek')+'</span>':'')+
+          '</div><div class="ipick" id="dBarIpick"></div></div>':'')+'</div>':'')+
       '<div class="hint">'+T('Symbole oben in der Menüleiste – neutral, bis etwas passiert. Unabhängig vom Widget „Status (Ampel)“.')+'</div></div>'+
     '<div class="field"><label class="lbl">'+T('Vorlagen')+'</label><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">'+
       '<button type="button" class="minibtn" id="dTplClassic">'+T('Wie bisher (Uhr, Wetter, Termine)')+'</button>'+
@@ -2197,7 +2250,19 @@ function renderDashProps(p){
       const s2=svCfg(p), cur0=items(); s2.grid=ng; s2.items=[];
       tbEff[DK]=gridReflow(cur0, tbDashPages(p)*ng, ng, ng, t=>gridSizes(t,ng,false));
       tbHist[DK]=[]; delete tbLast[DK]; tbSel=-1; tbCommit(p); renderTabList(p); }); });
-  stPickBind($('#dBar'), ids=>{ const s2=svCfg(p); if(ids.length) s2.bar=ids; else delete s2.bar; dBarOpen=true; markDirty(); renderDashProps(p); renderTabEditor(); }, ()=>renderDashProps(p));
+  stPickBind($('#dBar'), ids=>{ const s2=svCfg(p); if(ids.length) s2.bar=ids; else delete s2.bar;
+    if(s2.barIcons){ Object.keys(s2.barIcons).forEach(u=>{ if((s2.bar||[]).indexOf(u)<0) delete s2.barIcons[u]; }); if(!Object.keys(s2.barIcons).length) delete s2.barIcons; }
+    dBarOpen=true; markDirty(); renderDashProps(p); renderTabEditor(); }, ()=>renderDashProps(p), 6);
+  // Eigenes Symbol je Statusleisten-Baustein (gleicher Waehler wie bei den Tabs)
+  { const tgt=()=>({box:'dBarIpick', get:()=>((svCfg(p).barIcons)||{})[dBarIcoFor],
+      set:ic=>{ const s2=svCfg(p); s2.barIcons=s2.barIcons||{}; if(ic) s2.barIcons[dBarIcoFor]=ic; else delete s2.barIcons[dBarIcoFor];
+        if(!Object.keys(s2.barIcons).length) delete s2.barIcons; markDirty();
+        const b=box.querySelector('[data-bic="'+CSS.escape(dBarIcoFor)+'"] .tbico'); if(b) b.innerHTML=barIcoHtml(tileRef(dBarIcoFor)||{},(s2.barIcons||{})[dBarIcoFor]); }});
+    box.querySelectorAll('[data-bic]').forEach(b=>b.onclick=()=>{ dBarIcoFor=(dBarIcoFor===b.dataset.bic)?'':b.dataset.bic; renderDashProps(p);
+      if(dBarIcoFor) renderIconPick('builtin',tgt()); });
+    box.querySelectorAll('[data-bsrc]').forEach(t=>t.onclick=()=>{ box.querySelectorAll('[data-bsrc]').forEach(x=>x.classList.remove('on'));
+      t.classList.add('on'); renderIconPick(t.dataset.bsrc,tgt()); });
+    if(dBarIcoFor && $('#dBarIpick') && !$('#dBarIpick').children.length) renderIconPick('builtin',tgt()); }
   { const on=$('#dBarOn'); if(on) on.onchange=()=>{ if(on.checked){ dBarOpen=true; }
       else { dBarOpen=false; const s2=svCfg(p); if(s2.bar){ delete s2.bar; if(!s2.items.length&&!s2.exit.length) delete p.saver; markDirty(); } }
       renderDashProps(p); renderTabEditor(); }; }
@@ -2280,7 +2345,7 @@ const WG_ICONS={clock:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l2.5 2"/>'
   tile:'<rect x="4" y="4" width="16" height="16" rx="3"/>',
   camera:'<path d="M4 8h3l1.5-2h7L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
   status:'<circle cx="12" cy="12" r="8"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/>'};
-let tbLibTab='blocks', tbLibQ='', tbHist={}, tbLast={};
+let tbLibTab='blocks', tbLibQ='', tbLibRoom='', tbLibCat='', tbHist={}, tbLast={};
 function tbFace(p,k){   // Kartenfarbe des Tabs wie am Panel (Design des Panels bzw. Standard)
   const ui=((p.ui||{}).design)?p.ui:((PANELS.__global__||{}).ui||{}), d=designOf(ui), col=x=>d.colors[x]||d.base[x];
   const n=Math.max(0,(p.tabs||[]).indexOf(k))+1;
@@ -2363,7 +2428,7 @@ function tbLibHTML(p,k){
   if(tbLibTab==='widgets')
     return tabs+'<div class="liblist">'+Object.keys(SV_W).filter(t=>t!=='tile').sort((a,b)=>(usedT.has(b)?1:0)-(usedT.has(a)?1:0)).map(t=>
       '<div class="libit wg c-'+t+(usedT.has(t)?' used':'')+'" data-new="'+t+'">'+tbIcoHtml('',WG_ICONS[t])+'<span class="lnm">'+esc(SV_W[t].label)+'</span>'+
-      '<small>'+gridDef(t,g,tbTabF()).join('×')+'</small></div>').join('')+'</div>'+
+      '<small>'+gridMin(t,g,tbTabF()).join('×')+'</small></div>').join('')+'</div>'+
       '<div class="libhint">'+T('Widget ins Raster ziehen, dann rechts den Baustein bzw. die Quelle wählen.')+'</div>';
   const q=tbLibQ.toLowerCase();
   let list;
@@ -2372,7 +2437,8 @@ function tbLibHTML(p,k){
       '<div class="libit'+(placed.has(o.uuid)?' used':'')+'" data-new="'+fk+'" data-uuid="'+esc(o.uuid)+'">'+tbIcoHtml('',BICONS.folder)+
       '<span class="lnm">'+esc(o.name)+'</span>'+(placed.has(o.uuid)?'<small>✓</small>':'')+'</div>').join(''); }
   else {
-    const cs=(META.controls||[]).filter(c=>c.type!=='Intercom' && (!q||(c.name||'').toLowerCase().includes(q)||(c.roomName||'').toLowerCase().includes(q)))
+    const cs=(META.controls||[]).filter(c=>(!q||(c.name||'').toLowerCase().includes(q)||(c.roomName||'').toLowerCase().includes(q))
+        && (!tbLibRoom||(c.room||'')===tbLibRoom) && (!tbLibCat||(c.cat||'')===tbLibCat))
       .sort((a,b)=>(a.roomName||'').localeCompare(b.roomName||'')||(a.name||'').localeCompare(b.name||''));
     let room=null; list='';
     // schon im Tab: oben als eigene Gruppe, danach alle uebrigen nach Raum
@@ -2384,7 +2450,12 @@ function tbLibHTML(p,k){
       list+='<div class="libit'+(placed.has(c.uuid)?' used':'')+'" data-new="tile" data-uuid="'+esc(c.uuid)+'">'+tbIcoHtml(c.iconUrl)+
         '<span class="lnm">'+esc(c.name)+'</span>'+(placed.has(c.uuid)?'<small title="'+T('schon im Tab')+'">✓</small>':'')+'</div>'; });
   }
-  return tabs+'<input type="search" id="tbLibQ" class="libq" placeholder="'+T('Suchen…')+'" value="'+esc(tbLibQ)+'">'+
+  // Filter nach Raum / Kategorie (nur in der Bausteinliste)
+  const opt=(arr,sel,all)=>'<option value="">'+all+'</option>'+arr.slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'','de'))
+    .map(o=>'<option value="'+esc(o.uuid)+'"'+(o.uuid===sel?' selected':'')+'>'+esc(o.name||'')+'</option>').join('');
+  const filt=fk?'':'<div class="libfilt"><select id="tbLibRoom">'+opt(META.rooms||[],tbLibRoom,T('Alle Räume'))+'</select>'+
+    '<select id="tbLibCat">'+opt(META.cats||[],tbLibCat,T('Alle Kategorien'))+'</select></div>';
+  return tabs+'<input type="search" id="tbLibQ" class="libq" placeholder="'+T('Suchen…')+'" value="'+esc(tbLibQ)+'">'+filt+
     '<div class="liblist">'+(list||'<div class="libhint">'+T('Nichts gefunden.')+'</div>')+'</div>'+
     '';
 }
@@ -2403,6 +2474,8 @@ function tbBindLib(p){
   const q=$('#tbLibQ'); if(q) q.oninput=()=>{ tbLibQ=q.value; const pos=q.selectionStart;
     const lib=host.querySelector('.lib'); lib.innerHTML=tbLibHTML(p,tbTab); tbBindLib(p); tbBindDrag(p,true);
     const q2=$('#tbLibQ'); q2.focus(); try{ q2.setSelectionRange(pos,pos); }catch(e){} };
+  [['#tbLibRoom',v=>tbLibRoom=v],['#tbLibCat',v=>tbLibCat=v]].forEach(([id,set])=>{ const sel=$(id); if(sel) sel.onchange=()=>{ set(sel.value);
+    const lib=host.querySelector('.lib'); lib.innerHTML=tbLibHTML(p,tbTab); tbBindLib(p); tbBindDrag(p,true); }; });
 }
 // Rueckgaengig: Stand vor jeder Aenderung merken (tbCommit)
 function tbUndo(p){ const k=tbTab, h=tbHist[k]||[]; if(!h.length) return;
@@ -2594,7 +2667,7 @@ function tbBindDrag(p, libOnly){
     else { const it=items[d.i]; it.x=t.x; it.y=t.y; it.w=t.w; it.h=t.h; delete it.auto; tbSel=d.i; }
     tbCommit(p); renderTabEditor(); };
   $('#tbEd').querySelectorAll('.lib [data-new]').forEach(ch=>ch.addEventListener('pointerdown',ev=>{
-    const type=ch.dataset.new, [w,h]=gridDef(type,g,tbTabF());
+    const type=ch.dataset.new, [w,h]=gridMin(type,g,tbTabF());
     if(ch.classList.contains('used') && tbFolder(tbTab)===type) return;
     start(ev,{kind:'new',type,uuid:ch.dataset.uuid||'',w,h,src:ch}); }));
   if(libOnly) return;
@@ -3057,7 +3130,12 @@ async function loadSettings(){
   // Tatsaechlich laufender Code-Stand - unabhaengig von der Plugin-Version,
   // die LoxBerry anzeigt (die kennt nur plugin.cfg, nicht den Docker-Build).
   // Einziger Weg, ein haengendes Build-Cache-Problem direkt sichtbar zu machen.
-  fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion'); if(e) e.textContent=v.version; const b=$('#brand'); if(b) b.title='Version '+v.version; }).catch(()=>{});
+  // Version · Commit · Installiert (Commit/Zeit stempelt preroot.sh bei der Installation)
+fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion');
+  const bt=v.built?new Date(v.built):null, bts=bt&&!isNaN(bt)?bt.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  if(e){ e.innerHTML='<b>'+esc(v.version)+'</b>'+(v.commit?'<span>'+esc(v.commit.slice(0,7))+'</span>':'')+(bts?'<span>'+esc(bts)+'</span>':'');
+    e.title='LoxPanel '+v.version+(v.commit?'\nCommit '+v.commit:'')+(bts?'\nInstalliert '+bts:''); }
+  const b=$('#brand'); if(b) b.title='Version '+v.version; }).catch(()=>{});
   CAMS=(SET.cameras||[]).map(c=>Object.assign({},c)); renderCams();
   const box=$('#ic_list');
   if(box){
@@ -3477,29 +3555,56 @@ function profSelect(cls, cur){
   return '<select class="'+cls+'"><option value="">'+T('(Standard)')+'</option>'+
     PANEL_IDS.map(id=>'<option value="'+esc(id)+'"'+(cur===id?' selected':'')+'>'+esc(id)+'</option>').join('')+'</select>';
 }
+// Abschnittskopf einer Geraetekachel mit kleinem Symbol
+const DSI={
+  setup:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  view:'<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  ctl:'<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.8 0"/>',
+  auto:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+};
+const dsh=(ic,t)=>'<div class="dsh"><span class="dsi">'+svg(DSI[ic])+'</span>'+t+'</div>';
+// Live-Teil einer Geraetekachel, in Abschnitten: Anzeige (welche Ansicht), Steuerung
+// (Display, Neustarts, Helligkeit, Fully). Einstellungen folgen darunter (devRow).
 function deviceRow(d, sel){
   const cur=(sel!==undefined)?sel:(d.profile||'');
-  const info=[d.ip, (d.agent&&d.agent.kiosk)?T('Kiosk läuft'):'', d.connections?T('Visu offen'):''].filter(Boolean).join(' · ');
-  let btns='';
-  if(d.connections) btns+='<button class="btn sm" data-act="switch">'+T('Ansicht wechseln')+'</button>'+
-                          '<button class="btn sm ghost" data-act="wsreload">'+T('Neu laden')+'</button>';
-  // Display an/aus nur mit eingerichtetem Display-Treiber (Fully Remote Admin / WallPanel)
-  if((DEV[d.name]||{}).display) btns+='<button class="btn sm ghost" data-act="dispoff">'+T('Display aus')+'</button>'+
-                             '<button class="btn sm ghost" data-act="dispon">'+T('Display an')+'</button>';
-  // Neustart je nach Geraetetyp (Einstellungen je Geraet): Android per adb, Shelly zusaetzlich ueber seine Schnittstelle
-  const caps=d.caps||[];
-  if(caps.indexOf('kioskrestart')>=0) btns+='<button class="btn sm ghost" data-act="kioskrestart" title="'+T('Fully beenden und neu öffnen (per adb)')+'">'+T('Fully neu starten')+'</button>';
-  if(caps.indexOf('reboot')>=0) btns+='<button class="btn sm ghost" data-act="devreboot" title="'+T('Ganzes Gerät neu starten, wenn das Display hängt')+'">'+T('Gerät neu starten')+'</button>';
-  if(!d.agent && !d.model) btns+='<span class="ccmut">'+T('Gerätetyp wählen ↓')+'</span>';
-  if(d.agent) btns+='<button class="btn sm'+(d.connections?' ghost':'')+'" data-act="start">'+T('Start')+'</button>'+
-                    '<button class="btn sm ghost" data-act="reload">'+T('Reload')+'</button>'+
-                    '<button class="btn sm ghost" data-act="stop">'+T('Stop')+'</button>';
-  return '<div class="ag" data-name="'+esc(d.name)+'" data-ip="'+esc(d.agent?d.agent.ip:'')+'" data-devip="'+esc(d.ip||'')+'">'+
-    '<span class="dot'+(d.online?' on':'')+'"></span>'+
-    '<span class="agn">'+esc(d.name)+'</span>'+
-    '<span class="tag">'+esc(((META.deviceModels||[]).find(m=>m.key===d.model)||{}).label||TYPE_LABEL[d.type]||d.type)+(d.type==='fully'?' · Fully':'')+'</span>'+
-    '<span class="agip">'+esc(info)+'</span>'+
-    '<span class="sp"></span>'+profSelect('agsel',cur)+btns+'</div>';
+  const caps=d.caps||[], has=c=>caps.indexOf(c)>=0, disp=!!(DEV[d.name]||{}).display;
+  const btn=(act,label,tip,primary)=>'<button class="btn sm'+(primary?'':' ghost')+'" data-act="'+act+'"'+(tip?' title="'+esc(tip)+'"':'')+'>'+label+'</button>';
+  // Steuerung: was das Geraet kann (Agent, Display-Treiber, adb)
+  let ctl='';
+  if(d.agent) ctl+=btn('start',T('Start'),T('Kiosk-Browser starten'),!d.connections)+btn('reload',T('Reload'),T('Browser neu laden'))+btn('stop',T('Stop'),T('Kiosk-Browser beenden'));
+  if(disp) ctl+=btn('dispoff',T('Display aus'))+btn('dispon',T('Display an'));
+  if(has('kioskrestart')) ctl+=btn('kioskrestart',T('Fully neu starten'),T('Fully beenden und neu öffnen (per adb)'));
+  if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'));
+  if(has('fullyinstall')) ctl+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'));
+  const extra=devExtraHTML(d,caps), adb=has('reboot')||has('brightness');
+  return '<div class="ag dlive" data-name="'+esc(d.name)+'" data-ip="'+esc(d.agent?d.agent.ip:'')+'" data-devip="'+esc(d.ip||'')+'">'+
+    '<div class="dsec">'+dsh('view',T('Anzeige'))+
+      '<div class="drow">'+profSelect('agsel',cur)+(d.connections?btn('switch',T('Ansicht wechseln'),'',true)+btn('wsreload',T('Neu laden')):'')+'</div>'+
+      '<div class="dhint">'+(d.connections?T('Ansicht wählen und „Ansicht wechseln“ – wirkt sofort am Gerät.'):T('Wechseln geht, sobald die Visu am Gerät geöffnet ist.'))+'</div></div>'+
+    (ctl||extra?'<div class="dsec">'+dsh('ctl',T('Steuerung'))+(ctl?'<div class="drow">'+ctl+'</div>':'')+extra+
+      (adb?'<div class="dhint">'+T('Per adb: ADB über WLAN muss am Gerät aktiv und für diesen Server freigegeben sein.')+'</div>':'')+'</div>'
+      :'')+
+  '</div>';
+}
+// Android: Display-Helligkeit per adb; mit Fully: Link zum Fully Remote Admin (Port 2323)
+function devExtraHTML(d,caps){
+  const bri=caps.indexOf('brightness')>=0, fully=d.ip&&(d.type==='fully'||caps.indexOf('kioskrestart')>=0);
+  if(!bri&&!fully) return '';
+  return '<div class="devx drow" data-name="'+esc(d.name)+'" data-devip="'+esc(d.ip||'')+'">'+
+    (bri?'<label class="dbri"><span>'+T('Helligkeit')+'</span><input type="range" min="1" max="100" step="1" value="'+(DEV_BRI[d.name]||70)+'" class="dbri_r">'+
+      '<b class="dbri_v">'+(DEV_BRI[d.name]?DEV_BRI[d.name]+' %':'–')+'</b><button type="button" class="btn sm ghost dbri_get" title="'+T('Aktuellen Wert vom Gerät lesen')+'">↻</button></label>':'')+
+    (fully?'<a class="btn sm ghost" href="http://'+esc(d.ip)+':2323" target="_blank" rel="noopener" title="'+T('Fully Remote Admin (in Fully unter Remote Administration aktivieren)')+'">'+T('Fully Remote Admin')+' ↗</a>':'')+
+  '</div>';
+}
+const DEV_BRI={};   // zuletzt gelesene/gesetzte Helligkeit je Geraet (%)
+async function devBrightness(row, pct){
+  const name=row.dataset.name, ip=row.dataset.devip, v=row.querySelector('.dbri_v');
+  if(v) v.textContent='…';
+  try{ const j=await postJson('/api/kiosk/brightness', pct==null?{device:name,ip}:{device:name,ip,value:Math.round(pct*2.55)});
+    if(j.ok&&j.value!=null){ const p=Math.max(1,Math.round(j.value/2.55)); DEV_BRI[name]=p;
+      if(v) v.textContent=p+' %'; const r=row.querySelector('.dbri_r'); if(r) r.value=p; }
+    else { if(v) v.textContent='–'; flash($('#ag_toast'), T('Fehler: ')+(j.error||''), false); }
+  }catch(e){ if(v) v.textContent='–'; flash($('#ag_toast'),'Fehler: '+e,false); }
 }
 function anonRow(a, typed){
   const info=[a.ip, a.kiosk==='fully'?'Fully Kiosk':T('Browser'), a.profile?(T('Ansicht')+' '+a.profile):''].filter(Boolean).join(' · ');
@@ -3524,9 +3629,13 @@ function renderDeviceList(j){
     const dot=n.querySelector('.devtg .sdot'), st=n.querySelector('.devtg .devst');
     const up=!!(d&&d.online);
     if(dot) dot.classList.toggle('on',up);
-    if(st) st.textContent=(up?T('online'):T('offline'))+(d&&d.profile?' · '+d.profile:''); });
+    if(st) st.textContent=(up?T('online'):T('offline'))+(d&&d.profile?' · '+d.profile:'')+(d&&d.ip?' · '+d.ip:''); });
   box.innerHTML=anon.length?'<div class="devanon"><b>'+T('Ohne Kennung')+'</b><div class="note">'+T('Nach IP erkannt. Einen Namen vergeben, damit das Gerät dauerhaft gelistet und per Betriebsmodus umgeschaltet werden kann.')+'</div>'+
     anon.map(a=>anonRow(a,prevName[a.ip])).join('')+'</div>':'';
+  list.querySelectorAll('.devx').forEach(x=>{
+    const r=x.querySelector('.dbri_r'), v=x.querySelector('.dbri_v');
+    if(r){ r.oninput=()=>{ if(v) v.textContent=r.value+' %'; }; r.onchange=()=>{ devBrightness(x,+r.value); r.blur(); }; }
+    const g=x.querySelector('.dbri_get'); if(g) g.onclick=()=>devBrightness(x,null); });
   list.querySelectorAll('.ag[data-name] button[data-act]').forEach(b=>{
     const row=b.closest('.ag');
     b.onclick=()=>deviceAction(b.dataset.act, row.dataset.name, row.dataset.ip, row.querySelector('.agsel').value, row.dataset.devip);
@@ -3537,6 +3646,31 @@ function renderDeviceList(j){
   });
 }
 let LAST_DEVS=null;
+// ---- Fully-Kiosk-Quelle (Anzeige, eigene Adresse, eigener Upload) ----
+function fullySrcShow(j){
+  const i=$('#fs_info'); if(!i||!j) return;
+  const up=j.upload, d=up&&new Date(up.date);
+  i.innerHTML='<b>'+T('Aktuell')+':</b> '+(j.mode==='upload'
+      ? T('Eigene hochgeladene Datei')+' ('+Math.round(up.size/1048576*10)/10+' MB, '+d.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})+')'
+      : '<a href="'+esc(j.url||j.default)+'" target="_blank" rel="noopener">'+esc(j.url||j.default)+'</a>'+(j.url?'':' ('+T('offiziell')+')'))+
+    (j.cached&&j.mode!=='upload'?' · '+T('zuletzt geladen')+': v'+esc(j.cached):'');
+  const u=$('#fs_url'); if(u && document.activeElement!==u) u.value=j.url||'';
+  const del=$('#fs_del'); if(del) del.hidden=!up;
+}
+async function fullySrcLoad(){ try{ fullySrcShow(await (await fetch('/api/kiosk/fully/source')).json()); }catch(e){} }
+if($('#fs_save')){
+  $('#fs_save').onclick=async()=>{ try{ const j=await postJson('/api/kiosk/fully/source',{url:$('#fs_url').value.trim()});
+      flash($('#fs_toast'), j.ok?T('✓ Gespeichert'):(j.error||T('Fehler')), !!j.ok); if(j.ok) fullySrcShow(j); }catch(e){ flash($('#fs_toast'),'Fehler: '+e,false); } };
+  $('#fs_file').onchange=async()=>{ const f=$('#fs_file').files[0]; if(!f) return;
+    flash($('#fs_toast'), T('Lade hoch …'), true);
+    const fd=new FormData(); fd.append('file',f);
+    try{ const j=await (await fetch('/api/kiosk/fully/upload',{method:'POST',body:fd})).json();
+      flash($('#fs_toast'), j.ok?T('✓ Eigene APK gespeichert'):(j.error||T('Fehler')), !!j.ok); if(j.ok) fullySrcShow(j); }catch(e){ flash($('#fs_toast'),'Fehler: '+e,false); }
+    $('#fs_file').value=''; };
+  $('#fs_del').onclick=async()=>{ if(!confirm(T('Eigene APK entfernen? Danach gilt wieder die Adresse.'))) return;
+    try{ const j=await (await fetch('/api/kiosk/fully/upload?delete=1',{method:'POST'})).json(); if(j.ok) fullySrcShow(j); }catch(e){} };
+  fullySrcLoad();
+}
 async function postJson(url, body){
   const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   return r.json();
@@ -3549,6 +3683,13 @@ async function deviceAction(act, name, ip, panel, devip){
     else if(act==='wsreload') j=await postJson('/api/reload',{device:name});
     else if(act==='dispoff') j=await postJson('/api/display',{device:name,on:false});
     else if(act==='dispon') j=await postJson('/api/display',{device:name,on:true});
+    else if(act==='fullyinstall'){
+      if(!confirm(T('Fully Kiosk Browser auf „')+name+T('“ installieren bzw. aktualisieren?\n\nDer Server lädt die aktuelle Version von fully-kiosk.com und installiert sie per adb. Voraussetzung: ADB über WLAN ist am Gerät aktiv und für diesen Server freigegeben. Das dauert bis zu einer Minute.'))) return;
+      flash($('#ag_toast'), T('Lade Fully und installiere per adb …'), true);
+      j=await postJson('/api/kiosk/fully',{device:name, ip:devip||''});
+      flash($('#ag_toast'), j.ok ? '✓ '+T('Fully Kiosk')+' '+(j.version||'')+' '+T('installiert') : T('Fehler: ')+(j.error||''), !!j.ok);
+      fullySrcLoad();
+      return; }
     else if(act==='kioskrestart'||act==='devreboot'){
       const reb=act==='devreboot';
       if(!confirm(reb ? T('Gerät „')+name+T('“ komplett neu starten? Das dauert etwa eine Minute.')
@@ -3716,16 +3857,20 @@ function devRow(name){
     '<button type="button" class="devtg"><i class="sdot"></i><b>'+esc(name)+'</b><small class="devst">'+T('offline')+'</small>'+
       (isNew?'<span class="newb">'+T('neu')+'</span>':'')+'<span class="chev">›</span></button>'+
     '<div class="devbody">'+
+    '<div class="dsec dsetup">'+dsh('setup',T('Einrichtung'))+
+      '<div class="drow devhead">'+
+        '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
+          models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
+        '<label class="chk dev_fullyl"'+(mo&&mo.os==='android'?'':' style="display:none"')+'><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
+      '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div></div>'+
     '<div class="devlive"></div>'+
-    '<div class="devhead" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px">'+
-      '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerät wählen –')+'</option>'+
-        models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
-      '<label class="dev_fullyl" style="font-size:13px;'+(mo&&mo.os==='android'?'':'display:none')+'"><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('Fully Kiosk')+'</label>'+
-      '<label style="margin-left:auto;font-size:13px;opacity:.85"><input type="checkbox" class="dev_auto"'+(d.auto?' checked':'')+'> '+T('Betriebsmodus-Automatik')+'</label>'+
-    '</div>'+
-    '<div class="dmwrap"'+(d.auto?'':' hidden')+'><div class="dmrows">'+rows+'</div>'+
-    '<button class="btn sm ghost dm_add" type="button" style="margin-top:4px">'+T('+ Modus')+'</button></div>'+
-    displayRow(d.display)+
+    '<div class="dsec">'+dsh('auto',T('Betriebsmodus'))+
+      '<label class="chk"><input type="checkbox" class="dev_auto"'+(d.auto?' checked':'')+'> '+T('Ansicht automatisch nach Betriebsmodus wechseln')+'</label>'+
+      '<div class="dmwrap"'+(d.auto?'':' hidden')+'><div class="dmrows">'+rows+'</div>'+
+      '<button class="btn sm ghost dm_add" type="button" style="margin-top:4px">'+T('+ Modus')+'</button>'+
+      '<div class="dhint">'+T('Modus → Ansicht. Den Modus schickt Loxone per HTTP (siehe Hinweise unten).')+'</div></div></div>'+
+    // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
+    '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display)+'</div>'+
   '</div></div>';
 }
 const DRIVER_PORT={fully:2323, wallpanel:2971};
@@ -3775,8 +3920,10 @@ function renderDevices(){
   // Betriebsmodus-Automatik: Modus-Zeilen nur bei gesetztem Haken
   box.querySelectorAll('.dev_auto').forEach(cb=>cb.onchange=()=>{ const w=cb.closest('.dev').querySelector('.dmwrap'); if(w) w.hidden=!cb.checked; });
   box.querySelectorAll('.dev_model').forEach(sel=>sel.onchange=()=>{
-    const m=(META.deviceModels||[]).find(x=>x.key===sel.value), l=sel.closest('.dev').querySelector('.dev_fullyl');
-    if(l) l.style.display=(m&&m.os==='android')?'':'none'; });
+    const m=(META.deviceModels||[]).find(x=>x.key===sel.value), dv=sel.closest('.dev'), l=dv.querySelector('.dev_fullyl'), dh=dv.querySelector('.ddhost');
+    const andr=!!(m&&m.os==='android');
+    if(l) l.style.display=andr?'':'none';
+    if(dh) dh.hidden=!andr && !dv.querySelector('.dd_drv').value; });
   box.querySelectorAll('.dd_drv').forEach(sel=>sel.onchange=()=>{
     const row=sel.closest('.dev'), name=row.dataset.name, drv=sel.value;
     const host=row.querySelector('.dd_host'), port=row.querySelector('.dd_port');

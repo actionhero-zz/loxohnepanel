@@ -3,6 +3,10 @@ FROM python:3.12-slim
 # Kennzeichnung: loxpanel-ctl.sh raeumt nach einem Neubau nur verwaiste Images
 # MIT diesem Label weg - Images anderer Plugins bleiben unberuehrt.
 LABEL de.loxpanelfav.image="1"
+# Ruhigeres Build-Log: apt ohne Rueckfragen (nur beim Bauen, ARG statt ENV),
+# pip ohne Root-Warnung und ohne Hinweis auf neue pip-Versionen.
+ARG DEBIAN_FRONTEND=noninteractive
+ENV PIP_ROOT_USER_ACTION=ignore PIP_DISABLE_PIP_VERSION_CHECK=1
 
 WORKDIR /app
 

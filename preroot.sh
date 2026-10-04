@@ -55,6 +55,20 @@ if [ -d "$CFGDATA" ] && [ -n "$(ls -A "$CFGDATA" 2>/dev/null)" ]; then
 	fi
 fi
 
+# Versionsstempel fuer die Konfiguration (Version · Commit · Installiert):
+# Das GitHub-ZIP traegt die Commit-Kennung als Archiv-Kommentar. Das Skript
+# liegt im entpackten Ordner (uploads/<ID>/<repo-branch>/), das ZIP daneben
+# (uploads/<ID>.zip). Fehlt etwas (anderes ZIP, kein unzip), bleibt der Commit leer.
+SRC="$(cd "$(dirname "$0")" && pwd)"
+COMMIT=""
+for Z in "$(dirname "$SRC").zip" "$SRC.zip"; do
+	[ -f "$Z" ] && COMMIT=$(unzip -z "$Z" 2>/dev/null | grep -oE '^[0-9a-f]{40}$' | head -1) && [ -n "$COMMIT" ] && break
+done
+if [ -d "$SRC/config/app/bin" ]; then
+	printf '{"commit": "%s", "built": "%s"}\n' "$COMMIT" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SRC/config/app/bin/version.json"
+	echo "<INFO> Versionsstempel: ${COMMIT:0:7} $(date '+%d.%m.%Y %H:%M')"
+fi
+
 # Besitzrechte der Daten-/Config-Ordner auf loxberry setzen.
 chown -R loxberry:loxberry "$ARGV5/data/plugins/$ARGV3/" 2>/dev/null
 chown -R loxberry:loxberry "$ARGV5/config/plugins/$ARGV3/" 2>/dev/null

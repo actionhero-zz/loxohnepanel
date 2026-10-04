@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.43"
+APP_VERSION = "0.19.44"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -98,6 +98,7 @@ SOUNDS_DIR = _CFGDIR / "sounds"
 LAUNCHER_APK = Path(__file__).resolve().parent.parent / "android" / "LoxPanel-Launcher.apk"
 LAUNCHER_PKG = "de.loxpanel.launcher"
 ADB_HOME = _CFGDIR / "adb"
+FULLY_DIR = ADB_HOME / "fully"   # geladene / hochgeladene Fully-Kiosk-APKs
 _SOUND_EXT_BY_MIME = {"audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/ogg": "ogg",
                       "audio/wav": "wav", "audio/x-wav": "wav", "audio/wave": "wav",
                       "audio/mp4": "m4a", "audio/x-m4a": "m4a", "audio/aac": "aac"}
@@ -538,20 +539,37 @@ def _sanitize_saver(sv, dg: int = 3) -> dict | None:
     out = {"items": items, "exit": exits}
     if sv.get("grid") in (2, 3, "2", "3"):
         out["grid"] = g
-    # Statusleiste oben im Dashboard: bis zu 4 Bausteine (unabhaengig vom
-    # Ampel-Widget, gleiche Logik - s. App.status_data)
+    # Statusleiste oben im Dashboard: bis zu BAR_MAX Bausteine (unabhaengig vom
+    # Ampel-Widget, gleiche Logik - s. App.status_data), je Baustein optional
+    # ein eigenes Symbol (barIcons).
     bar = []
     for u in (sv.get("bar") or [])[:32]:
         if isinstance(u, str) and _UUID_RE.match(u) and u not in bar:
             bar.append(u)
-            if len(bar) == 4:
+            if len(bar) == BAR_MAX:
                 break
     if bar:
         out["bar"] = bar
+        bi = sv.get("barIcons") if isinstance(sv.get("barIcons"), dict) else {}
+        icons = {u: ic for u, ic in ((u, _clean_icon(bi.get(u))) for u in bar) if ic}
+        if icons:
+            out["barIcons"] = icons
     return out
 
 
+BAR_MAX = 6   # Statusleiste: hoechstens so viele Bausteine (480 px: kompakt ab 5)
+
+
+# Neuladen gegen Einfrieren ohne Agent (Android, Tablet): Ist reloadHours nicht
+# eingestellt, laedt die Visu einmal je Nacht ab dieser Stunde neu, sobald ihre
+# Uhr-/Dashboard-Seite steht (aus LoxPanel #82).
+NEULADEN_STUNDE = 3
 AMBIENT_MODES = ("light", "temp")   # Dashboard-Farbverlauf: nach Tageslicht / Aussentemperatur
+# Fully Kiosk Browser: offizielle Download-Seite, Link mit Version im Namen
+FULLY_PAGE = "https://www.fully-kiosk.com/en/"
+_FULLY_APK_RE = re.compile(r'(https://www\.fully-kiosk\.com/files/\d{4}/\d{2}/Fully-Kiosk-Browser-v(\d+(?:\.\d+){1,3})\.apk)')
+FULLY_MAX_BYTES = 80 * 1024 * 1024
+FULLY_UPLOAD = "eigene-fully.apk"   # selbst hochgeladene APK (hat Vorrang)
 CAM_RECONNECT_HOURS = (6, 12, 24)   # waehlbare Intervalle fuer den Kamera-Neuaufbau
 _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 
@@ -2074,6 +2092,13 @@ class App:
         if sv.get("bar"):
             try:
                 out["bar"] = self.status_data(sv["bar"], None)
+                for ch in out["bar"].get("chips") or []:   # eigene Symbole je Baustein
+                    ic = (sv.get("barIcons") or {}).get(ch.get("id"))
+                    ref = self._icon_ref(ic) if ic else {}
+                    if ref:
+                        for k in ("icon", "iconUrl", "iconImg"):
+                            ch.pop(k, None)
+                        ch.update(ref)
             except Exception:
                 log.exception("Dashboard-Statusleiste fehlgeschlagen")
         return out
@@ -2799,6 +2824,8 @@ class App:
             # Aktionen je Geraetetyp: Android -> adb; Fully nur wenn angegeben
             os_ = (DEVICE_MODELS.get(model) or {}).get("os")
             e["caps"] = ([c for c, ok in (("kioskrestart", os_ == "android" and fully),
+                                          ("fullyinstall", os_ == "android"),
+                                          ("brightness", os_ == "android"),
                                           ("reboot", os_ == "android")) if ok])
             if e["agent"] and not e["profile"]:
                 e["profile"] = e["agent"]["panel"]
@@ -2880,6 +2907,136 @@ class App:
             if a.get("name") == device and a.get("ip"):
                 return a["ip"]
         return ""
+
+    def fully_source(self) -> dict:
+        """Woher kommt die Fully-APK? Reihenfolge: eigene hochgeladene Datei >
+        eigene Adresse (Download-Seite oder direkter .apk-Link) > offizielle
+        Seite fully-kiosk.com. Dazu die zuletzt geladene Version."""
+        cfg = _load_cfg().get("fully") or {}
+        url = cfg.get("url") if isinstance(cfg, dict) else ""
+        up = FULLY_DIR / FULLY_UPLOAD
+        cached = sorted(FULLY_DIR.glob("Fully-Kiosk-Browser-v*.apk")) if FULLY_DIR.is_dir() else []
+        return {
+            "default": FULLY_PAGE,
+            "url": url or "",
+            "upload": ({"size": up.stat().st_size, "date": int(up.stat().st_mtime * 1000)} if up.is_file() else None),
+            "cached": (cached[-1].name.replace("Fully-Kiosk-Browser-v", "").replace(".apk", "") if cached else ""),
+            "mode": "upload" if up.is_file() else ("url" if url else "default"),
+        }
+
+    async def _fully_apk(self) -> tuple[Path | None, str, str]:
+        """Fully-Kiosk-APK bereitstellen -> (Datei, Version, Quelle) bzw.
+        (None, Fehlertext, Quelle). Offizielle Seite: der Download-Link traegt die
+        Version im Namen (".../Fully-Kiosk-Browser-v1.61.3.apk"), genommen wird
+        die hoechste. Geladene Dateien bleiben liegen, bis eine neuere erscheint."""
+        src = self.fully_source()
+        FULLY_DIR.mkdir(parents=True, exist_ok=True)
+        if src["mode"] == "upload":
+            return FULLY_DIR / FULLY_UPLOAD, "eigene Datei", "Eigene hochgeladene Datei"
+        page = src["url"] or FULLY_PAGE
+        hint = (" - unter Geräte → Fully-Quelle eine andere Adresse eintragen oder die APK hochladen")
+        sess = self._drv_session
+        if sess is None or sess.closed:
+            sess = self._drv_session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=6))
+        hdr = {"User-Agent": "Mozilla/5.0 LoxPanel"}
+        if re.search(r"\.apk(\?.*)?$", page, re.I):   # direkter Link
+            url = page
+            m = re.search(r"v?(\d+(?:\.\d+){1,3})", page.rsplit("/", 1)[-1])
+            ver = m.group(1) if m else "unbekannt"
+        else:
+            try:
+                async with sess.get(page, timeout=aiohttp.ClientTimeout(total=20), headers=hdr) as r:
+                    html = await r.text()
+            except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as err:
+                return None, f"Download-Seite nicht erreichbar ({err}){hint}", page
+            links = {}
+            for m in _FULLY_APK_RE.finditer(html):
+                links[tuple(int(x) for x in m.group(2).split("."))] = (m.group(1), m.group(2))
+            if not links:
+                return None, "Kein Fully-Download-Link auf der Seite gefunden (Seite geändert?)" + hint, page
+            url, ver = links[max(links)]
+        f = FULLY_DIR / f"Fully-Kiosk-Browser-v{ver}.apk"
+        if ver != "unbekannt" and f.is_file() and f.stat().st_size > 1_000_000:
+            return f, ver, url
+        try:
+            async with sess.get(url, timeout=aiohttp.ClientTimeout(total=180), headers=hdr) as r:
+                if r.status != 200:
+                    return None, f"Download fehlgeschlagen (HTTP {r.status}){hint}", url
+                data = await r.content.read(FULLY_MAX_BYTES + 1)
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as err:
+            return None, f"Download fehlgeschlagen ({err}){hint}", url
+        if len(data) > FULLY_MAX_BYTES or not data.startswith(b"PK"):
+            return None, "Download ist keine gültige APK" + hint, url
+        for old in FULLY_DIR.glob("Fully-Kiosk-Browser-v*.apk"):   # aeltere Versionen aufraeumen
+            old.unlink(missing_ok=True)
+        f.write_bytes(data)
+        log.info("Fully Kiosk %s heruntergeladen von %s (%d KB)", ver, url, len(data) // 1024)
+        return f, ver, url
+
+    async def fully_install(self, device: str, ip: str = "") -> dict:
+        """Fully Kiosk Browser per adb auf ein Android-Panel installieren bzw.
+        aktualisieren. Voraussetzung wie beim Launcher: adb ueber WLAN am Panel
+        aktiv und diesem Server erlaubt."""
+        ip = ip or self._device_ip(device)
+        try:
+            ip = str(ipaddress.ip_address(ip.strip()))
+        except (ValueError, AttributeError):
+            return {"ok": False, "error": "IP des Geraets unbekannt - Visu am Panel einmal öffnen"}
+        if not shutil.which("adb"):
+            return {"ok": False, "error": "adb fehlt im Container"}
+        apk, ver, src = await self._fully_apk()
+        if apk is None:
+            return {"ok": False, "error": ver, "source": src}
+        target = f"{ip}:5555"
+        async with _adb_lock:
+            code, out = await _adb("connect", target, timeout=15)
+            if "connected" not in out or "failed" in out:
+                return {"ok": False, "error": "Panel per adb nicht erreichbar - ADB über WLAN am Panel aktiv?"}
+            code, out = await _adb("-s", target, "get-state", timeout=10)
+            if out != "device":
+                return {"ok": False, "error": "adb nicht freigegeben - am Panel \"USB-Debugging zulassen\" bestätigen"}
+            # -g: App-Rechte (Kamera, Mikrofon, Speicher ...) gleich erteilen; alte
+            # Android-Versionen (< 6) kennen -g nicht -> ohne wiederholen.
+            code, out = await _adb("-s", target, "install", "-r", "-g", str(apk), timeout=240)
+            if "Success" not in out and ("-g" in out or "Unknown option" in out or "unknown option" in out):
+                code, out = await _adb("-s", target, "install", "-r", str(apk), timeout=240)
+        ok = "Success" in out
+        log.info("Fully Kiosk %s auf %s (%s): %s", ver, device or ip, target, "ok" if ok else out[-200:])
+        return {"ok": ok, "version": ver, "source": src,
+                **({} if ok else {"error": "Installation fehlgeschlagen: " + out[-200:]})}
+
+    async def device_brightness(self, device: str, ip: str = "", value=None) -> dict:
+        """Display-Helligkeit eines Android-Panels per adb lesen bzw. setzen
+        (0-255). Beim Setzen wird die automatische Helligkeit abgeschaltet -
+        sonst ueberschreibt Android den Wert gleich wieder."""
+        ip = ip or self._device_ip(device)
+        try:
+            ip = str(ipaddress.ip_address(ip.strip()))
+        except (ValueError, AttributeError):
+            return {"ok": False, "error": "IP des Geraets unbekannt - Visu am Panel einmal öffnen"}
+        if not shutil.which("adb"):
+            return {"ok": False, "error": "adb fehlt im Container"}
+        target = f"{ip}:5555"
+        async with _adb_lock:
+            code, out = await _adb("connect", target, timeout=15)
+            if "connected" not in out or "failed" in out:
+                return {"ok": False, "error": "Panel per adb nicht erreichbar - ADB über WLAN am Panel aktiv?"}
+            code, out = await _adb("-s", target, "get-state", timeout=10)
+            if out != "device":
+                return {"ok": False, "error": "adb nicht freigegeben - am Panel \"USB-Debugging zulassen\" bestätigen"}
+            if value is not None:
+                v = max(1, min(255, int(value)))
+                await _adb("-s", target, "shell", "settings", "put", "system", "screen_brightness_mode", "0", timeout=10)
+                code, out = await _adb("-s", target, "shell", "settings", "put", "system", "screen_brightness", str(v), timeout=10)
+                if code != 0:
+                    return {"ok": False, "error": "Helligkeit nicht gesetzt: " + out[-200:]}
+                log.info("Helligkeit %s (%s) auf %d gesetzt", device or ip, target, v)
+            code, out = await _adb("-s", target, "shell", "settings", "get", "system", "screen_brightness", timeout=10)
+        try:
+            cur = int(out.strip().splitlines()[-1])
+        except (ValueError, IndexError):
+            return {"ok": value is not None, "error": None if value is not None else "Helligkeit nicht lesbar"}
+        return {"ok": True, "value": cur}
 
     async def kiosk_restart(self, device: str, action: str = "app", ip: str = "") -> dict:
         """Android-Panel per adb neu starten (ohne Fully-PLUS-Lizenz):
@@ -4151,10 +4308,14 @@ class App:
             it.update(icon="alarm", sublabel=("Alles ok" if ok else "Alarm!"),
                       tone=("good" if ok else "crit"))
         elif t == "Radio":
-            outs = (c.get("details") or {}).get("outputs") or {}
+            det = c.get("details") or {}
+            outs = det.get("outputs") or {}
             aoi = int(self._state(c, "activeOutput") or 0)
+            # Kein Ausgang aktiv: der Text, den Loxone dafuer vergibt (allOff,
+            # etwa "Automatik"), wie in der Detailseite; ohne ihn ein Strich (LoxPanel #80).
+            ruhe = _clean(det.get("allOff")) or "–"
             it.update(icon="switch", nav={"view": "control", "id": uuid},
-                      sublabel=(outs.get(str(aoi)) or ("–" if aoi == 0 else f"Ausgang {aoi}")))
+                      sublabel=(outs.get(str(aoi)) or (ruhe if aoi == 0 else f"Ausgang {aoi}")))
         elif t == "LightController":
             scenes = self._lc_scenes(c)
             asc = int(self._state(c, "activeScene") or 0)
@@ -7095,7 +7256,16 @@ async def version_handler(request: web.Request) -> web.Response:
     kennt nur plugin.cfg, nicht den Docker-Build). Einfachster Weg, ein
     haengendes Docker-Build-Cache-Problem von einem echten Code-Bug zu
     unterscheiden: Browser -> /api/version, kein Werkzeug noetig."""
-    return web.json_response({"version": APP_VERSION}, headers=_NOCACHE)
+    # Commit und Installationszeit stempelt preroot.sh bei der Installation in
+    # bin/version.json (aus dem GitHub-ZIP); ohne die Datei nur die Version.
+    out = {"version": APP_VERSION, "commit": "", "built": ""}
+    try:
+        vj = json.loads((Path(__file__).resolve().parent / "version.json").read_text())
+        out["commit"] = str(vj.get("commit") or "")[:40]
+        out["built"] = str(vj.get("built") or "")[:32]
+    except (OSError, ValueError, AttributeError):
+        pass
+    return web.json_response(out, headers=_NOCACHE)
 
 
 async def config_index(request: web.Request) -> web.Response:
@@ -7945,6 +8115,92 @@ async def api_kiosk_restart(request: web.Request) -> web.Response:
     return web.json_response(await app.kiosk_restart(dev, action, str(d.get("ip") or "")))
 
 
+async def api_kiosk_fully(request: web.Request) -> web.Response:
+    """Fully Kiosk per adb installieren/aktualisieren: POST {device, ip?}."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    dev = str(d.get("device") or "").strip()
+    return web.json_response(await app.fully_install(dev, str(d.get("ip") or "")))
+
+
+async def api_kiosk_brightness(request: web.Request) -> web.Response:
+    """Display-Helligkeit per adb: POST {device, ip?, value?} (value 1-255; ohne = nur lesen)."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    v = d.get("value")
+    if v is not None:
+        try:
+            v = int(v)
+        except (TypeError, ValueError):
+            return web.json_response({"ok": False, "error": "ungültiger Wert"}, status=400)
+    return web.json_response(await app.device_brightness(str(d.get("device") or "").strip(), str(d.get("ip") or ""), v))
+
+
+async def api_kiosk_fully_source(request: web.Request) -> web.Response:
+    """GET: aktuelle Fully-Quelle. POST {url}: eigene Adresse setzen ("" = offizielle Seite)."""
+    app: App = request.app["app"]
+    if request.method == "POST":
+        d = await _json_or_empty(request)
+        url = str(d.get("url") or "").strip()
+        if url and not re.match(r"^https?://[^\s]{4,500}$", url):
+            return web.json_response({"ok": False, "error": "Adresse muss mit http:// oder https:// beginnen"}, status=400)
+        cfg = _load_cfg()
+        if url:
+            cfg["fully"] = {"url": url}
+        else:
+            cfg.pop("fully", None)
+        try:
+            _write_cfg(cfg)
+        except OSError as err:
+            return web.json_response({"ok": False, "error": str(err)}, status=500)
+    return web.json_response({"ok": True, **app.fully_source()})
+
+
+async def api_kiosk_fully_upload(request: web.Request) -> web.Response:
+    """Eigene Fully-APK hochladen (multipart, Feld 'file', max. 80 MB) bzw.
+    mit ?delete=1 wieder entfernen. Die eigene Datei hat Vorrang vor jeder Adresse."""
+    app: App = request.app["app"]
+    dest = FULLY_DIR / FULLY_UPLOAD
+    if request.query.get("delete"):
+        dest.unlink(missing_ok=True)
+        return web.json_response({"ok": True, **app.fully_source()})
+    try:
+        reader = await request.multipart()
+    except Exception:
+        return web.json_response({"ok": False, "error": "kein multipart/form-data"}, status=400)
+    field = None
+    async for part in reader:
+        if part.name == "file":
+            field = part
+            break
+    if field is None:
+        return web.json_response({"ok": False, "error": "keine Datei übertragen"}, status=400)
+    FULLY_DIR.mkdir(parents=True, exist_ok=True)
+    tmp = FULLY_DIR / (FULLY_UPLOAD + ".tmp")
+    size, head = 0, b""
+    try:
+        with open(tmp, "wb") as f:
+            while True:
+                chunk = await field.read_chunk(262144)
+                if not chunk:
+                    break
+                if not head:
+                    head = chunk[:2]
+                size += len(chunk)
+                if size > FULLY_MAX_BYTES:
+                    break
+                f.write(chunk)
+    except OSError as err:
+        tmp.unlink(missing_ok=True)
+        return web.json_response({"ok": False, "error": str(err)}, status=500)
+    if size > FULLY_MAX_BYTES or head != b"PK":
+        tmp.unlink(missing_ok=True)
+        return web.json_response({"ok": False, "error": "keine gültige APK (max. 80 MB)"}, status=400)
+    tmp.replace(dest)
+    log.info("Eigene Fully-APK hochgeladen (%d KB)", size // 1024)
+    return web.json_response({"ok": True, **app.fully_source()})
+
+
 async def api_display(request: web.Request) -> web.Response:
     """Display der Panels schalten: ?on=1|0, optional ?panel= / ?device=.
     Wirkt auf Geraete mit Kiosk-App (Fully Kiosk), die die Visu offen haben;
@@ -8549,6 +8805,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "panes": prof.get("panes") or {},
                             "dpmsOff": app.panel_dpms(prof["id"]),
                             "reloadHours": app.panel_reload(prof["id"]),
+                            "reloadAt": NEULADEN_STUNDE,   # nachts neu laden, wenn reloadHours fehlt
                             "night": {**app.panel_night(prof["id"]), "on": app._night_on},
                             "screensaverCam": app._screensaver_cam(),
                             "camCrop": app.cam_crops(),
@@ -8949,6 +9206,10 @@ def main() -> None:
     a.router.add_get("/api/display", api_display)
     a.router.add_post("/api/display", api_display)
     a.router.add_post("/api/kiosk/restart", api_kiosk_restart)
+    a.router.add_post("/api/kiosk/fully", api_kiosk_fully)
+    a.router.add_route("*", "/api/kiosk/fully/source", api_kiosk_fully_source)
+    a.router.add_post("/api/kiosk/fully/upload", api_kiosk_fully_upload)
+    a.router.add_post("/api/kiosk/brightness", api_kiosk_brightness)
     a.router.add_post("/api/tablayout", api_tab_layout)
     a.router.add_get("/api/mode", api_mode)
     a.router.add_post("/api/mode", api_mode)

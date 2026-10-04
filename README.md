@@ -27,6 +27,14 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Geräte, Statusleiste & Original-Updates (0.19.44)** — Geräte-Seite neu geordnet (Einrichtung →
+  Anzeige → Steuerung → Betriebsmodus → Erweitert, nur Benötigtes, mit Symbolen); Fully Kiosk per adb
+  installieren (Quelle sichtbar, eigene Adresse oder eigene APK), Display-Helligkeit per adb, Link zum
+  Fully Remote Admin; Statusleiste bis 6 Einträge mit eigenen Symbolen (auf 480 px kompakt);
+  Widgets in Minimalgröße einfügen; Wetter 3×1 nebeneinander; Bausteinauswahl mit Raum-/Kategorie-
+  Filter und Türstationen; Türstation-Widget mit Türöffner/Licht; Versionsstempel (Version · Commit ·
+  Installiert) unten in der Konfiguration. Aus LoxPanel 0.7.0: nächtliches Neuladen gegen Einfrieren
+  (#82), Detailseiten-Fixes inkl. 0,5er-Schritte (#81), Radiotasten-Ruhetext (#80). Ruhigeres Build-Log.
 - **Betrieb & Wartung (0.19.43)** — Container übernimmt die Zeitzone des LoxBerry; Sonnenzeiten für
   Folgetage berechnet (am Miniserver ausgerichtet); Docker-Logs begrenzt (3 × 5 MB); Healthcheck mit
   automatischem Neustart über den 5-Minuten-Cronjob; Build ohne Compiler, wo fertige Pakete

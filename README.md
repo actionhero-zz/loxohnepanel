@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Auto-Update aus dem Fork (0.19.40)** — LoxBerry holt neue Versionen selbst aus diesem Repository
+  (Plugin-Verwaltung → Update-Modus). Versionen ab jetzt rein numerisch (0.19.40, 0.19.41 …).
 - **Wetter-Details im Design (0.19.0-fav39)** — Tagesdetails in den Farben des gewählten Designs,
   Temperaturkurve pastellig nach Temperatur gefärbt (kalt blau, warm apricot/rot); nur Werte des
   Miniservers (zusätzlich Gefühlt, Luftfeuchte Ø, Luftdruck Ø, Einstrahlung max.); Kamera-Umschalter

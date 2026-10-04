@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Info-Popups einheitlich (0.19.42)** — Status- und Wetter-Popup im gleichen Rahmen (Breite, Kopf,
+  ✕ rechts oben) und mit Zoom aus dem angetippten Element; Wetter: Sonnenbogen mit Tageslicht-
+  dauer, Einstrahlung je Stunde und aktueller Sonnenposition, Luftdruck-Chip entfernt;
+  Dashboard-Symbol mit dünnerem Rahmen.
 - **Wetter-Details interaktiv (0.19.41)** — Chips schalten den Graphen um: Temperatur (Start),
   Regen je Stunde, Wind, gefühlte Temperatur, Luftfeuchte, Luftdruck (Stundenwerte des Miniservers);
   Legende und „Einstrahlung max.“ entfernt.

@@ -1233,9 +1233,14 @@
   /* Status-Seite (Tipp auf die Kachel) */
   .stsheet{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.35);display:grid;place-items:center;padding:16px;}
   .stsheet[hidden]{display:none;}
-  .stsbox{width:min(440px,100%);max-height:100%;overflow:auto;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 18px 40px rgba(0,0,0,.35);}
+  /* Info-Popups (Status, Wetter): einheitlicher Rahmen - gleiche Breite, Raender,
+     Radius, Schatten; Hoehe nach Inhalt; Kopf = Symbol, Titel, (Extra), X rechts oben. */
+  .stsbox,.wxsbox{width:min(440px,100%);max-height:100%;overflow:auto;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 40px rgba(0,0,0,.35);}
+  .stsbox .sthd,.wxsbox .wxhd{display:flex;align-items:center;gap:10px;min-height:34px;}
+  .stsbox .sthd .sthi,.wxsbox .wxhd .wxico,.wxsbox .wxhd .wxico svg{width:30px;height:30px;flex:none;}
+  .stsbox .stsx,.wxsbox .stsx{margin-left:auto;flex:none;align-self:flex-start;}
   .stsbox.lv-ok{background:#D2EDE0;color:#0F5132;} .stsbox.lv-hint{background:#FAE6B8;color:#633806;} .stsbox.lv-alarm{background:#F5C9C9;color:#791F1F;}
-  .stsbox .sthd{font-size:20px;gap:10px;} .stsbox .sthi{width:24px;height:24px;}
+  .stsbox .sthd{font-size:20px;}
   .stsx{margin-left:auto;border:0;background:rgba(255,255,255,.6);color:inherit;width:34px;height:34px;border-radius:50%;font-size:14px;cursor:pointer;}
   .strow{display:flex;align-items:center;gap:10px;border:0;border-radius:14px;padding:12px 14px;font:inherit;font-size:15px;background:rgba(255,255,255,.7);color:#1f2440;cursor:pointer;text-align:left;}
   .strow .stci{width:20px;height:20px;} .strow .stn{display:flex;flex-direction:column;min-width:0;font-weight:600;}
@@ -1243,16 +1248,13 @@
   /* Wetter-Tagesdetails (Popup im Stil des Status-Fensters, Pastell-Blau) */
   .wxtap{cursor:pointer;border-radius:12px;transition:background var(--anim-fast,.15s) ease;}
   .wxtap:active{background:rgba(var(--wash,255,255,255),.12);}
-  .wxsbox{width:min(460px,100%);max-height:100%;overflow:auto;border-radius:22px;padding:16px;display:flex;flex-direction:column;gap:10px;
-    background:var(--face-2,var(--tile,#D3E8FF));color:var(--ink,#1f2440);box-shadow:0 18px 40px rgba(0,0,0,.35);animation:wxin .32s var(--ease,ease) both;}
+  .wxsbox{background:var(--face-2,var(--tile,#D3E8FF));color:var(--ink,#1f2440);}
   .wxsbox .stsx{background:rgba(var(--wash,255,255,255),.10);}
   @keyframes wxin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
-  .wxhd{display:flex;align-items:center;gap:12px;}
-  .wxhd .wxico{width:46px;height:46px;flex:none;} .wxhd .wxico svg{width:46px;height:46px;}
-  .wxtt{display:flex;flex-direction:column;min-width:0;} .wxtt b{font-size:20px;} .wxtt small{font-size:13.5px;color:var(--muted);}
+  .wxtt{display:flex;flex-direction:column;min-width:0;} .wxtt b{font-size:20px;font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));font-weight:var(--name-weight,450);} .wxtt small{font-size:13.5px;color:var(--muted);}
   .wxhl{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;line-height:1.05;font-variant-numeric:tabular-nums;}
   .wxhl b{font-size:28px;font-weight:600;font-family:var(--font-num,inherit);} .wxhl small{font-size:16px;font-weight:600;}
-  .wxhd .stsx{margin-left:8px;}
+  .wxhd .wxhl+.stsx{margin-left:6px;}
   .wxchart{width:100%;height:auto;display:block;background:var(--tile,rgba(255,255,255,.55));border-radius:16px;overflow:visible;}
   .wxline{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round;
     stroke-dasharray:1;stroke-dashoffset:1;animation:wxdraw .9s var(--ease,ease) .15s forwards;}
@@ -1263,6 +1265,10 @@
   .wxpt{fill:var(--tile,#fff);stroke-width:2.4;opacity:0;animation:wxfade .3s ease 1s forwards;}
   .wxlab{font-size:12px;font-weight:700;fill:var(--ink,#1f2440);text-anchor:middle;opacity:0;animation:wxfade .3s ease 1s forwards;}
   .wxax{font-size:10.5px;fill:var(--muted,#565c7c);}
+  .wxnight{fill:var(--ink,#1f2440);opacity:.06;}
+  .wxrad{fill:#f6d27a;opacity:.55;}
+  .wxhz{stroke:var(--muted,#565c7c);stroke-opacity:.35;stroke-width:1;stroke-dasharray:3 3;}
+  .wxsun{fill:#ffd36a;stroke:#fff6d6;stroke-width:2.5;filter:drop-shadow(0 0 6px rgba(255,200,80,.8));opacity:0;animation:wxfade .4s ease 1s forwards;}
   .wxttl{font-size:11.5px;font-weight:700;fill:var(--muted,#565c7c);letter-spacing:.02em;}
   .wxc.wxsel{cursor:pointer;transition:box-shadow .2s ease,transform .15s ease;}
   .wxc.wxsel:active{transform:scale(.97);}
@@ -1478,7 +1484,7 @@ function dashIconInner(){
   const rows=saverGrid(), cols=saverCols(), list=its.filter(it=>it.x+it.w<=cols);
   const fw=cols>rows?22:20, fh=fw*rows/cols, fx=12-fw/2, fy=12-fh/2, pad=3.1, gap=1.0;
   const uw=(fw-2*pad+gap)/cols, uh=(fh-2*pad+gap)/rows, f=v=>Math.round(v*10)/10;
-  return '<rect stroke-width="1.15" x="'+f(fx)+'" y="'+f(fy)+'" width="'+f(fw)+'" height="'+f(fh)+'" rx="2.6"/>'+
+  return '<rect stroke-width="0.9" x="'+f(fx)+'" y="'+f(fy)+'" width="'+f(fw)+'" height="'+f(fh)+'" rx="2.6"/>'+
     list.map(it=>'<rect fill="currentColor" stroke="none" x="'+f(fx+pad+it.x*uw)+'" y="'+f(fy+pad+it.y*uh)+'" width="'+f(it.w*uw-gap)+'" height="'+f(it.h*uh-gap)+'" rx="0.8"/>').join('');
 }
 function svg(inner){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+inner+'</svg>';}
@@ -3701,7 +3707,38 @@ const WXM={
   hum:{k:'hum',u:' %',col:'#8ab8f2',t:'Luftfeuchte'},
   press:{k:'press',u:' hPa',col:'#b9a6ec',t:'Luftdruck',sp:4}
 };
-function wxChartHTML(hrs, m){
+// Sonnenbogen ueber 24 h: Nacht abgedunkelt, Bogen von Auf- bis Untergang
+// (Hoehe ~ Sonnenstand), dahinter die erwartete Einstrahlung je Stunde, bei
+// "heute" die Sonne an ihrer aktuellen Position.
+function wxSunHTML(hrs, dt, today){
+  const W=400,H=170,pL=8,pR=8,pT=30,pB=24, ch=H-pT-pB, r=v=>Math.round(v*10)/10, base=H-pB;
+  const mm=v=>{ const x=/^(\d{1,2}):(\d{2})/.exec(v||''); return x?(+x[1])*60+(+x[2]):null; };
+  const rise=mm(dt.sunrise), set=mm(dt.sunset); if(rise==null||set==null||set<=rise) return '';
+  const Xt=t=>pL+t/1440*(W-pL-pR), amp=ch*0.78;
+  const Ys=t=>base-Math.sin(Math.PI*(t-rise)/(set-rise))*amp;
+  let arc=''; for(let k=0;k<=40;k++){ const t=rise+(set-rise)*k/40; arc+=(k?'L':'M')+r(Xt(t))+' '+r(Ys(t))+' '; }
+  const area=arc+'L'+r(Xt(set))+' '+base+' L'+r(Xt(rise))+' '+base+' Z';
+  const night='<rect class="wxnight" x="'+pL+'" y="'+pT+'" width="'+r(Xt(rise)-pL)+'" height="'+ch+'"/>'+
+    '<rect class="wxnight" x="'+r(Xt(set))+'" y="'+pT+'" width="'+r(W-pR-Xt(set))+'" height="'+ch+'"/>';
+  const rv=hrs.filter(h=>h.rad!=null), rmx=Math.max(400,...rv.map(h=>h.rad)), bw=Math.max(2,(W-pL-pR)/24-2);
+  const bars=rv.map((h,i)=>h.rad>0?'<rect class="wxbar wxrad" style="animation-delay:'+(300+i*18)+'ms" x="'+r(Xt(h.h*60+30)-bw/2)+'" y="'+r(base-h.rad/rmx*amp*0.7)+'" width="'+r(bw)+'" height="'+r(h.rad/rmx*amp*0.7)+'" rx="1.5"/>':'').join('');
+  const now=new Date(), tn=now.getHours()*60+now.getMinutes();
+  const sun=(today&&tn>rise&&tn<set)?'<circle class="wxsun" cx="'+r(Xt(tn))+'" cy="'+r(Ys(tn))+'" r="7"/>':'';
+  const dl=set-rise, dur=Math.floor(dl/60)+' h '+String(dl%60).padStart(2,'0')+' min';
+  const ticks=[0,6,12,18,24].map(h=>{ const x=Xt(h*60), an=h===0?'start':(h===24?'end':'middle');
+    return '<text class="wxax" text-anchor="'+an+'" x="'+r(x)+'" y="'+(H-6)+'">'+h+' Uhr</text>'; }).join('');
+  return '<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+
+    '<defs><linearGradient id="wxsg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d27a" stop-opacity=".55"/><stop offset="1" stop-color="#f6d27a" stop-opacity="0"/></linearGradient></defs>'+
+    night+'<text class="wxttl" x="'+(pL+4)+'" y="16">Tageslicht '+dur+'</text>'+bars+
+    '<path class="wxarea" d="'+area+'" fill="url(#wxsg)"/><path class="wxline" stroke="#efb94f" d="'+arc+'" pathLength="1"/>'+
+    '<line class="wxhz" x1="'+pL+'" x2="'+(W-pR)+'" y1="'+base+'" y2="'+base+'"/>'+
+    // Zeiten im Nachtbereich neben dem Bogen (nicht auf ihm)
+    '<text class="wxlab" text-anchor="end" x="'+r(Math.max(52,Xt(rise)-6))+'" y="'+(base-8)+'">↑ '+esc(dt.sunrise)+'</text>'+
+    '<text class="wxlab" text-anchor="start" x="'+r(Math.min(W-52,Xt(set)+6))+'" y="'+(base-8)+'">↓ '+esc(dt.sunset)+'</text>'+
+    sun+ticks+'</svg>';
+}
+function wxChartHTML(hrs, m, dt, today){
+  if(m==='sun') return wxSunHTML(hrs, dt||{}, today);
   const M=WXM[m]||WXM.temp, W=400,H=170,pL=8,pR=8,pT=26,pB=24, ch=H-pT-pB, r=v=>Math.round(v*10)/10;
   const X=i=>pL+i*(W-pL-pR)/(hrs.length-1);
   const fmt=v=>(M.d?String(Math.round(v*10)/10).replace('.',','):Math.round(v))+M.u;
@@ -3751,22 +3788,21 @@ function wxSheet(fi){
   if(dt.uv!=null) chips.push(['UV-Index', String(dt.uv), '']);
   if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlt', dt.feels_lo+'° – '+dt.feels_hi+'°', has('feels')?'feels':'']);
   if(dt.humidity!=null) chips.push(['Luftfeuchte Ø', dt.humidity+' %', has('hum')?'hum':'']);
-  if(dt.pressure!=null) chips.push(['Luftdruck Ø', dt.pressure+' hPa', has('press')?'press':'']);
-  if(dt.sunrise&&dt.sunset) chips.push(['Sonne', dt.sunrise+' – '+dt.sunset, '']);
+  if(dt.sunrise&&dt.sunset) chips.push(['Sonne', dt.sunrise+' – '+dt.sunset, 'sun']);
   ov.innerHTML='<div class="wxsbox"><div class="wxhd"><span class="wxico ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
     '<span class="wxtt"><b>'+esc(f.day||'')+'</b><small>'+esc(dt.cond||'')+'</small></span>'+
     '<span class="wxhl"><b'+(f.hi!=null?' style="color:'+wxTcTxt(f.hi)+'"':'')+'>'+tdeg(f.hi)+'</b><small'+(f.lo!=null?' style="color:'+wxTcTxt(f.lo)+'"':'')+'>'+tdeg(f.lo)+'</small></span>'+
     '<button type="button" class="stsx" aria-label="Schließen">✕</button></div>'+
     '<div class="wxch">'+(hrs.length>1?wxChartHTML(hrs,'temp'):'')+'</div>'+
     (chips.length?'<div class="wxchips">'+chips.map(([k,v,m],i)=>'<div class="wxc'+(m?' wxsel':'')+(m==='temp'?' on':'')+'"'+(m?' data-m="'+m+'"':'')+' style="animation-delay:'+(250+i*60)+'ms"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')+'</div>':'')+'</div>';
-  ov.hidden=false;
+  ov.hidden=false; popZoomIn(ov.querySelector('.wxsbox'));
   // Chip antippen: Graph zeigt diese Kennzahl; nochmal (oder Kopf) -> zurueck zur Temperatur
   let cur='temp';
-  const show=m=>{ cur=m; const host=ov.querySelector('.wxch'); if(host&&hrs.length>1) host.innerHTML=wxChartHTML(hrs,m);
+  const show=m=>{ cur=m; const host=ov.querySelector('.wxch'); if(host&&hrs.length>1) host.innerHTML=wxChartHTML(hrs,m,dt,fi===0);
     ov.querySelectorAll('.wxc[data-m]').forEach(c=>c.classList.toggle('on',c.dataset.m===m)); };
   ov.querySelectorAll('.wxc[data-m]').forEach(c=>c.onclick=e=>{ e.stopPropagation(); show(cur===c.dataset.m?'temp':c.dataset.m); });
   ov.querySelector('.wxhd').onclick=e=>{ if(!e.target.closest('.stsx') && cur!=='temp') show('temp'); };
-  const close=()=>{ ov.hidden=true; };
+  const close=()=>popZoomOut(ov.querySelector('.wxsbox'), ()=>{ ov.hidden=true; });
   ov.querySelector('.stsx').onclick=e=>{ e.stopPropagation(); close(); };
   ov.onclick=e=>{ e.stopPropagation(); if(e.target===ov) close(); };
 }
@@ -3777,6 +3813,27 @@ document.addEventListener('click', e=>{ const t=e.target.closest&&e.target.close
 // Detail-Eintrag "Raum<TAB>Name": Raum fett vorangestellt
 function stDet(d){ const i=String(d).indexOf('\t');
   return i<0 ? esc(d) : '<b class="stroom">'+esc(d.slice(0,i))+':</b> '+esc(d.slice(i+1)); }
+// Info-Popups (Status, Wetter) zoomen aus dem angetippten Element auf - wie die
+// Detailseiten, nur mit eingeschalteten Animationen (zoomOn); Schliessen zoomt zurueck.
+let _popSrc=null;
+document.addEventListener('pointerdown', e=>{ _popSrc=e.target; }, true);
+function popZoomIn(box){
+  const src=_popSrc&&_popSrc.closest&&(_popSrc.closest('.svsti,.stw,.wxtap,.tile,.svw')||_popSrc);
+  box._zsrc=null;
+  if(!box.animate) return;
+  if(!zoomOn()||!src||!src.getBoundingClientRect){   // Animation "nur Ueberblendungen": sanft einblenden
+    if((document.documentElement.dataset.motion||'full')!=='off') box.animate([{opacity:0,transform:'scale(.97)'},{opacity:1,transform:'none'}],{duration:220,easing:'ease-out'});
+    return; }
+  const a=src.getBoundingClientRect(), b=box.getBoundingClientRect(); if(!a.width||!b.width) return;
+  const fr='translate('+((a.left+a.width/2)-(b.left+b.width/2))+'px,'+((a.top+a.height/2)-(b.top+b.height/2))+'px) scale('+Math.max(.12,Math.min(a.width/b.width,a.height/b.height))+')';
+  box._zsrc=fr;
+  box.animate([{transform:fr,opacity:.25},{transform:'none',opacity:1}],{duration:260,easing:'cubic-bezier(.2,0,0,1)'});
+}
+function popZoomOut(box, done){
+  if(!zoomOn()||!box._zsrc||!box.animate){ done(); return; }
+  const an=box.animate([{transform:'none',opacity:1},{transform:box._zsrc,opacity:0}],{duration:200,easing:'cubic-bezier(.4,0,1,1)'});
+  an.onfinish=done;
+}
 function stSheet(st, go){
   let ov=el('stSheet'); if(!ov){ ov=document.createElement('div'); ov.id='stSheet'; ov.className='stsheet'; document.querySelector('.screen').appendChild(ov); }
   ov.innerHTML='<div class="stsbox lv-'+esc(st.level)+'"><div class="sthd">'+stHeadIco(st.level)+'<span>'+esc(st.head)+'</span>'+
@@ -3786,11 +3843,11 @@ function stSheet(st, go){
       '<span class="stn">'+esc(c.name)+(c.detail&&c.detail.length?c.detail.map(d=>'<small>'+stDet(d)+'</small>').join(''):'')+'</span>'+
       '<span class="stt">'+esc(c.text)+'</span><span class="stgo">›</span></button>').join('')+
     ((st.log||[]).length?'<div class="stlog"><b>Verlauf</b>'+st.log.map(x=>'<div>'+esc(x)+'</div>').join('')+'</div>':'')+'</div>';
-  ov.hidden=false;
-  const close=()=>{ ov.hidden=true; };
+  ov.hidden=false; popZoomIn(ov.querySelector('.stsbox'));
+  const close=()=>popZoomOut(ov.querySelector('.stsbox'), ()=>{ ov.hidden=true; });
   ov.querySelector(".stsx").onclick=e=>{ e.stopPropagation(); close(); };
   ov.onclick=e=>{ if(e.target===ov) close(); };
-  ov.querySelectorAll('[data-stid]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); close(); go(b.dataset.stid); });
+  ov.querySelectorAll('[data-stid]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); ov.hidden=true; go(b.dataset.stid); });
 }
 // Kamera-Widget: Live-Bild einer Kamera (Intercoms + eigene), Pillen oben rechts
 // schalten durch. Die Wahl bleibt je Widget erhalten, solange die Seite offen ist.

@@ -347,7 +347,8 @@ def build(cfg: dict, actual: list, forecast: list, *,
                           "feels": round(fe, 1) if fe is not None else None,
                           "wind": round(wi * w_fak) if (wi is not None and w_unit_cfg) else None,
                           "hum": round(hu) if hu is not None else None,
-                          "press": round(pa) if (pa is not None and p_hpa) else None})
+                          "press": round(pa) if (pa is not None and p_hpa) else None,
+                          "rad": round(_zahl(e.get("radiation"))) if _zahl(e.get("radiation")) is not None else None})
         tag["det"] = {
             "cond": max(typen, key=typen.get) if typen else "",
             "rain": round(regen, 1) if mm_ok else None,

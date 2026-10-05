@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Fix Bubble in der Statusleiste (0.19.60)** — Statussymbole nutzen die volle Leistenhöhe; die Zahlen-Bubble
+  wird auf dem iPad (größere Symbole) nicht mehr oben abgeschnitten.
 - **Geräte umbenennen, größere Tablet-Symbole (0.19.59)** — Gerätename in der Gerätekarte änderbar (Einstellungen
   und Erkennung ziehen mit, verbundenes Gerät übernimmt den Namen sofort). Im Tablet-Zoom Tab-Symbole 36 px,
   Statusleisten-Symbole 29 px.

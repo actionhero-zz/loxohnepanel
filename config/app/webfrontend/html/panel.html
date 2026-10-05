@@ -781,7 +781,10 @@
   .saver .sv-bar{display:none;}
   .saver.layout .sv-bar{display:flex;position:absolute;left:12px;right:12px;top:8px;height:52px;align-items:center;gap:8px;z-index:3;
     animation:svgriddrift 120s linear infinite;}   /* Einbrennschutz wie das Raster (immer, auch bei Animation "Keine") */
-  .sv-st{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;}
+  .sv-st{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;
+    align-self:stretch;}   /* volle Leistenhoehe: Platz fuer die Zahlen-Bubble ueber dem Symbol (sonst abgeschnitten) */
+  .sv-st .svsti{height:100%;max-height:52px;}
+  .sv-st .cbw{margin-top:calc(var(--sv-ico,20px) * .2);}   /* Symbol samt Bubble optisch mittig */
   .svsti{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border:0;border-radius:18px;background:transparent;
     color:var(--tab-idle,var(--muted));font:inherit;font-size:13.5px;font-weight:500;white-space:nowrap;cursor:pointer;touch-action:manipulation;}
   .svsti .stci{width:var(--sv-ico,20px);height:var(--sv-ico,20px);} .svsti .cbw{--cbs:var(--sv-ico,20px);} .svsti img.stci{object-fit:contain;}

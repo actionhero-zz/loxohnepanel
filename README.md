@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Fix offene Fenster (0.19.58)** — Fensterüberwachung zählt offene/gekippte Fenster aus dem Zustand je Fenster
+  (windowStates) statt aus den Zählern numOpen/numTilted, die bei manchen Miniservern auf 0 hängen bleiben.
+  Statusleiste und Kachel zeigen wieder „n offen“ mit Bubble.
 - **Tablet: Abstand oben, größere Leisten (0.19.57)** — Im Zoom-Modus (iPad/Tablet) rücken Tab- und Statusleiste
   etwas nach unten (Abstand zur iPad-Statuszeile, als Home-Bildschirm-App plus Safe-Area); Leisten 60 px hoch,
   Tab-Symbole 30 px, Statusleisten-Symbole 24 px. Kacheln bleiben quadratisch.

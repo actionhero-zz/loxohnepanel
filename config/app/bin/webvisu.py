@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.57"
+APP_VERSION = "0.19.58"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -1797,6 +1797,31 @@ class App:
         code = ll.get("Code") or ll.get("code")
         return (str(code) if code is not None else str(status)), ll.get("value")
 
+    def _win_counts(self, c: dict) -> tuple[int, int]:
+        """(offen, gekippt) einer Fensterueberwachung. Massgeblich ist die
+        Bitmaske windowStates je Fenster (4 offen, 2 gekippt) - die Zaehler
+        numOpen/numTilted bleiben bei manchen Miniservern auf 0 haengen.
+        Ohne Bitmaske zaehlen die Zaehler."""
+        raw = str(self._state(c, "windowStates") or "")
+        op = ti = 0
+        seen = False
+        for v in (x for x in raw.split(",") if x != ""):
+            try:
+                bits = int(float(v))
+            except ValueError:
+                continue
+            seen = True
+            if bits & 4:
+                op += 1
+            elif bits & 2:
+                ti += 1
+        if not seen:
+            try:
+                op, ti = int(self._state(c, "numOpen") or 0), int(self._state(c, "numTilted") or 0)
+            except (TypeError, ValueError):
+                op = ti = 0
+        return op, ti
+
     # ---- Zustands-Helfer ----
     def _state(self, control: dict, name: str):
         su = (control.get("states") or {}).get(name)
@@ -2421,8 +2446,7 @@ class App:
         lvl, txt, icon, detail = "ok", "", "info", []
         count = 0                                 # Anzahl fuer die Plakette in der Statusleiste
         if t == "WindowMonitor":
-            op = int(self._state(c, "numOpen") or 0)
-            ti = int(self._state(c, "numTilted") or 0)
+            op, ti = self._win_counts(c)
             n = op + ti
             lvl, icon = ("hint" if n else "ok"), "window"
             count = n
@@ -4763,7 +4787,7 @@ class App:
             if on:
                 it["colorFixed"] = "#52b881"        # gruen, solange Anwesenheit erkannt
         elif t == "WindowMonitor":
-            op = int(self._state(c, "numOpen") or 0) + int(self._state(c, "numTilted") or 0)
+            op = sum(self._win_counts(c))
             it.update(icon="window", on=op > 0, nav={"view": "control", "id": uuid},
                       # Gleiches Fenster-Piktogramm wie beim einzelnen Fenster -
                       # Sammelmelder ueber mehrere Fenster, daher nur binaer

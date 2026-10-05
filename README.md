@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Größere, quadratische Zahlen-Bubbles (0.19.55)** — Bubble 70 % der Symbolhöhe, immer quadratisch (ein- und
+  zweistellig gleich groß, zweistellig mit kleinerer Schrift; nur „99+“ etwas breiter); Aussparung im Symbol angepasst.
 - **Tablet ohne Balken, inaktive Geräte (0.19.54)** — Gezoomt auf Tablets/iPad füllt die Ebene 0 (Hintergrund,
   Tab-Leiste, Statusleiste) den ganzen Schirm; Kachelfläche, Panes und Dashboard-Raster bleiben quadratisch und
   stehen mittig. Geräte, die sich 30 Tage nicht gemeldet haben, erscheinen blass mit „seit … Tagen nicht gesehen“

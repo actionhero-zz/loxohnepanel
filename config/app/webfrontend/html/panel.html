@@ -784,14 +784,15 @@
   .svsti.lv-hint{color:#f0c27a;} .svsti.lv-alarm{color:#ff9d9b;} .svsti.lv-info{color:#9cc4ea;}
   /* Zahlen-Plakette mit "ausgebissenem" Symbol: das Piktogramm bekommt um die
      Plakette eine Aussparung (Maske), egal auf welchem Hintergrund. Plakette als
-     viereckige Pille. --cbs = Symbolgroesse; n1/n2/n3 = Stellen. */
-  .cbw{position:relative;display:inline-grid;place-items:center;--cbs:var(--ico-size,38px);}
+     viereckige Pille, moeglichst quadratisch (1-2 Stellen gleich gross, kleinere
+     Schrift bei 2). --cbs = Symbolgroesse; n1/n2/n3 = Stellen. */
+  .cbw{position:relative;display:inline-grid;place-items:center;--cbs:var(--ico-size,38px);width:var(--cbs);height:var(--cbs);}   /* quadratisch -> Plakette quadratisch */
   .cbw>.cbi{display:inline-grid;place-items:center;-webkit-mask:var(--cbm) 0 0/100% 100% no-repeat;mask:var(--cbm) 0 0/100% 100% no-repeat;}
-  .cbw.n1{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM91 -29H110A25 25 0 0 1 135 -4V15A25 25 0 0 1 110 40H91A25 25 0 0 1 66 15V-4A25 25 0 0 1 91 -29Z'/%3E%3C/svg%3E");--cbw:55%;}
-  .cbw.n2{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM74 -29H110A25 25 0 0 1 135 -4V15A25 25 0 0 1 110 40H74A25 25 0 0 1 49 15V-4A25 25 0 0 1 74 -29Z'/%3E%3C/svg%3E");--cbw:72%;}
-  .cbw.n3{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM56 -29H110A25 25 0 0 1 135 -4V15A25 25 0 0 1 110 40H56A25 25 0 0 1 31 15V-4A25 25 0 0 1 56 -29Z'/%3E%3C/svg%3E");--cbw:90%;}
-  .cbn{position:absolute;top:-22%;right:-28%;height:55%;width:var(--cbw,55%);display:grid;place-items:center;box-sizing:border-box;
-    border-radius:calc(var(--cbs) * .17);font-size:calc(var(--cbs) * .36);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
+  .cbw.n1{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM82 -35H116A25 25 0 0 1 141 -10V24A25 25 0 0 1 116 49H82A25 25 0 0 1 57 24V-10A25 25 0 0 1 82 -35Z'/%3E%3C/svg%3E");--cbw:70%;--cbf:0.47;}
+  .cbw.n2{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM82 -35H116A25 25 0 0 1 141 -10V24A25 25 0 0 1 116 49H82A25 25 0 0 1 57 24V-10A25 25 0 0 1 82 -35Z'/%3E%3C/svg%3E");--cbw:70%;--cbf:0.38;}
+  .cbw.n3{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM66 -35H116A25 25 0 0 1 141 -10V24A25 25 0 0 1 116 49H66A25 25 0 0 1 41 24V-10A25 25 0 0 1 66 -35Z'/%3E%3C/svg%3E");--cbw:86%;--cbf:0.32;}
+  .cbn{position:absolute;top:-28%;right:-34%;height:70%;width:var(--cbw,70%);display:grid;place-items:center;box-sizing:border-box;
+    border-radius:calc(var(--cbs) * .21);font-size:calc(var(--cbs) * var(--cbf,.47));letter-spacing:-.02em;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
     font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));background:var(--glow,var(--accent));color:var(--tile,#fff);}
   .cbn.hint{background:var(--st-hint,#f0c27a);color:#2a2208;} .cbn.crit{background:var(--st-alarm,#ff9d9b);color:#3d0c0b;}
   html.ianim:not([data-motion="off"]) .cbn{animation:cbIn .28s cubic-bezier(.2,.8,.3,1.3);}

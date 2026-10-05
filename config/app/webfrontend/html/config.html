@@ -598,6 +598,7 @@
   /* Versionsstempel rechts neben der Farbauswahl: Version · Commit · Installiert */
   .appver{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;font-size:10.5px;opacity:.62;
     font-variant-numeric:tabular-nums;white-space:nowrap;cursor:default;}
+  a.appver{color:inherit;text-decoration:none;cursor:pointer;} a.appver:hover{opacity:1;} a.appver:hover b{text-decoration:underline;}
   .appver b{font-size:11.5px;font-weight:700;} .appver:empty{display:none;}
   .wrap.slim .appver{display:none;}
   .themesw button{display:grid;place-items:center;padding:6px;}
@@ -697,6 +698,13 @@
   .dev .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .dev .drow+.drow{margin-top:8px;}
   .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
+  .dev .ddetbox{margin-top:10px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--good) 8%,var(--panel2));border:1px solid color-mix(in srgb,var(--good) 30%,var(--line));font-size:12.5px;}
+  .dev .ddeth{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
+  .dev .ddeth small{color:var(--muted);}
+  .dev .ddetchips{display:flex;flex-wrap:wrap;gap:4px;}
+  .dev .ddetchips span{padding:2px 8px;border-radius:6px;background:var(--panel);border:1px solid var(--line);white-space:nowrap;}
+  .dev .ddetid{margin-top:6px;color:var(--muted);font-family:ui-monospace,Menlo,monospace;font-size:11px;word-break:break-all;}
+  .dev .ddetuse{margin-top:8px;}
   .dev .dtip{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);font-size:12.5px;line-height:1.45;}
   .dev .dtip b{display:block;margin-bottom:4px;font-size:12.5px;}
   .dev .dtip ul{margin:0;padding-left:18px;color:var(--muted);} .dev .dtip li+li{margin-top:3px;}
@@ -1049,7 +1057,7 @@
         <button type="button" data-cth="hell" title="Hell" aria-label="Hell"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
         <button type="button" data-cth="dunkel" title="Dunkel" aria-label="Dunkel"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></button>
       </div>
-      <span class="appver" id="appVersion"></span>
+      <a class="appver" id="appVersion" href="https://github.com/actionhero-zz/loxohnepanel" target="_blank" rel="noopener"></a>
     </div>
   </aside>
 
@@ -3399,7 +3407,7 @@ async function loadSettings(){
 fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion');
   const bt=v.built?new Date(v.built):null, bts=bt&&!isNaN(bt)?bt.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
   if(e){ e.innerHTML='<b>'+esc(v.version)+'</b>'+(v.commit?'<span>'+esc(v.commit.slice(0,7))+'</span>':'')+(bts?'<span>'+esc(bts)+'</span>':'');
-    e.title='LoxPanel '+v.version+(v.commit?'\nCommit '+v.commit:'')+(bts?'\nInstalliert '+bts:''); }
+    e.title='LoxPanel '+v.version+(v.commit?'\nCommit '+v.commit:'')+(bts?'\nInstalliert '+bts:'')+'\n'+T('GitHub öffnen'); }
   const b=$('#brand'); if(b) b.title='Version '+v.version; }).catch(()=>{});
   CAMS=(SET.cameras||[]).map(c=>Object.assign({},c)); renderCams();
   const box=$('#ic_list');
@@ -3929,7 +3937,8 @@ function renderDeviceList(j){
     const fs=$('#fullySrc'); if(fs) fs.hidden=!devs.some(d=>(d.caps||[]).indexOf('fullyinstall')>=0); }
   const box=$('#ag_list'), list=$('#dev_list'); if(!box||!list) return;
   list.querySelectorAll('.dev').forEach(dv=>{ const tp=dv.querySelector('.dtips'), ms=dv.querySelector('.dev_model'); if(!tp||!ms) return;
-    const h=devTipsHTML(dv.dataset.name,(META.deviceModels||[]).find(x=>x.key===ms.value)); if(tp.innerHTML!==h) tp.innerHTML=h; });
+    const h=devTipsHTML(dv.dataset.name,(META.deviceModels||[]).find(x=>x.key===ms.value)); if(tp.innerHTML!==h) tp.innerHTML=h;
+    const dd=dv.querySelector('.ddet'), h2=dd?devDetHTML(dv.dataset.name,ms.value):''; if(dd&&dd.innerHTML!==h2) dd.innerHTML=h2; });
   // Waehrend jemand in einer Live-Zeile tippt oder auswaehlt, nicht neu zeichnen.
   const ae=document.activeElement;
   if(ae && ae.tagName!=='BUTTON' && ae.closest && ae.closest('.devlive, #ag_list')) return;
@@ -4183,6 +4192,7 @@ function devRow(name){
           models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
         '<label class="chk dev_fullyl"'+(mo&&mo.os==='android'?'':' style="display:none"')+'><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
       '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div>'+
+      '<div class="ddet">'+devDetHTML(name,d.model)+'</div>'+
       '<div class="dtips">'+devTipsHTML(name,mo)+'</div></div>'+
     '<div class="devlive"></div>'+
     '<div class="dsec">'+dsh('zoom',T('Zoom'))+
@@ -4196,6 +4206,19 @@ function devRow(name){
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
     '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display)+'</div>'+
   '</div></div>';
+}
+// Auto-Erkennung: Steckbrief, den das Geraet beim Verbinden gemeldet hat
+function devDetHTML(name,model){
+  const live=((LAST_DEVS||{}).devices||[]).find(x=>x.name===name), d=live&&live.detected;
+  if(!d) return '';
+  const ago=t=>{ if(!t) return ''; const m=Math.round((Date.now()/1000-t)/60); return m<2?T('gerade eben'):m<60?m+' min':m<1440?Math.round(m/60)+' h':Math.round(m/1440)+' '+T('Tage'); };
+  const chips=[d.hw, d.os, d.browser, d.screen&&(T('Bildschirm')+' '+d.screen), d.view&&(T('Fenster')+' '+d.view),
+    d.cores?d.cores+' '+T('Kerne'):'', d.mem?d.mem+' GB':'', d.touch?T('Touch'):'', d.pwa?T('als App'):''].filter(Boolean);
+  const gm=(META.deviceModels||[]).find(m=>m.key===d.guess);
+  const sug=(gm&&d.guess!==model)?'<button type="button" class="minibtn ddetuse" data-guess="'+esc(d.guess)+'">'+T('Als')+' „'+esc(gm.label)+'“ '+T('übernehmen')+'</button>':'';
+  return '<div class="ddetbox"><div class="ddeth"><b>'+T('Automatisch erkannt')+'</b><small>'+(d.ip?'IP '+esc(d.ip)+' · ':'')+T('zuletzt')+' '+ago(d.last)+'</small></div>'+
+    '<div class="ddetchips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>'+
+    '<div class="ddetid" title="'+T('Dauerhafte Geräte-ID – bleibt gleich, auch wenn sich die IP ändert')+'">ID '+esc(d.uid)+(d.mac?' · MAC '+esc(d.mac):'')+'</div>'+sug+'</div>';
 }
 // Hinweise je Geraetetyp (vom Server, DEVICE_MODELS.tips) + Abgleich mit dem
 // gerade gezeigten Profil: 2-Panel-Geraet mit 1-Panel-Profil (oder umgekehrt)
@@ -4269,6 +4292,9 @@ function renderDevices(){
   });
   // Betriebsmodus-Automatik: Modus-Zeilen nur bei gesetztem Haken
   box.querySelectorAll('.dev_auto').forEach(cb=>cb.onchange=()=>{ const w=cb.closest('.dev').querySelector('.dmwrap'); if(w) w.hidden=!cb.checked; });
+  // Erkannten Typ uebernehmen = Auswahl setzen wie von Hand (Aenderung -> Speicherleiste)
+  if(!box._ddet) box._ddet=1, box.addEventListener('click',e=>{ const b=e.target.closest('.ddetuse'); if(!b) return; const dv=b.closest('.dev'), sel=dv&&dv.querySelector('.dev_model');
+    if(!sel) return; sel.value=b.dataset.guess; sel.dispatchEvent(new Event('change',{bubbles:true})); b.remove(); });
   box.querySelectorAll('.dev_model').forEach(sel=>sel.onchange=()=>{
     const m=(META.deviceModels||[]).find(x=>x.key===sel.value), dv=sel.closest('.dev'), l=dv.querySelector('.dev_fullyl'), dh=dv.querySelector('.ddhost');
     const andr=!!(m&&m.os==='android');

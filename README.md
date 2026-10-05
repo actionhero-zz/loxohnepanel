@@ -27,6 +27,13 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Geräte-Erkennung, Serverzeit, LoxBerry-Seite neu (0.19.51)** — Jedes Gerät bekommt eine dauerhafte ID
+  (Fully: Geräte-ID, sonst Zufalls-ID in localStorage + Cookie; IP-Wechsel egal) und meldet seinen Steckbrief
+  (Bildschirm, Browser, OS, Hardware, bei Fully Modell/MAC). Beim ersten Erkennen legt der Server das Gerät mit
+  Namensvorschlag und passendem Gerätetyp an (Shelly, NSPanel, YC-SM41/55, Tablet, iPad, Smartphone, PC);
+  Anzeige „Automatisch erkannt“ in der Gerätekarte, neuer Typ „Smartphone“. Panels zeigen die Uhrzeit des
+  Servers statt der Geräteuhr. LoxBerry-Seite neu gestaltet (Statuskacheln, Schnellzugriffe, Sicherungen),
+  Versionsnummer in der Konfiguration verlinkt GitHub.
 - **Kacheln & Pillen, Intercom-Boxen (0.19.50)** — Erkennungszeichen konsequent: alle Kreise (Punkte, Knöpfe,
   Regler, Plaketten, Großsymbol) sind jetzt viereckige Pillen; lange Pillen bleiben. Tab-Einstellungen als
   einklappbare Box wie beim Dashboard. Intercoms je Türstation als eigene Box (Status, Video, Klingelton),

@@ -20,3 +20,4 @@ dist/
 .idea/
 .vscode/
 *.swp
+config/app/config/devinfo.json

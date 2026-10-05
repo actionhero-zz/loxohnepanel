@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.50"
+APP_VERSION = "0.19.51"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -209,6 +209,9 @@ DEVICE_MODELS = {
                       "Die Seite hält den Schirm wach bis zur Leerlaufzeit (Display & Nacht); danach greift die iOS-Sperre.",
                       "Für Wandbetrieb: Einstellungen → Bedienungshilfen → Geführter Zugriff (App fixieren), Automatische Sperre nach Wunsch.",
                       "Ton (Klingel) erst nach einmaligem Antippen – iOS gibt Audio nur nach Berührung frei."]},
+    "phone": {"label": "Smartphone", "os": "browser", "scale": "off", "panes": 1,
+              "tips": ["Als App installieren: iPhone Safari → Teilen → „Zum Home-Bildschirm“, Android Chrome → Menü → „App installieren“.",
+                       "Profil: Panel-Größe „Handy“ (Tabs unten, volle Höhe); hochkant greift der Handy-Modus auch automatisch."]},
     "other": {"label": "Anderes Gerät / PC-Browser", "os": "browser", "scale": "off",
               "tips": ["Fenstergröße bestimmt die Ansicht; Zoom bei Bedarf manuell setzen."]},
 }
@@ -232,6 +235,168 @@ def _clean_scale(v):
     if isinstance(v, bool) or not isinstance(v, (int, float)) or v != v:
         return None
     return round(min(SCALE_MAX, max(SCALE_MIN, float(v))), 2)
+
+
+# ---- Geraete-Erkennung ----
+# Jede Visu meldet beim Verbinden eine dauerhafte Kennung (uid) und einen
+# Steckbrief (Bildschirm, Browser, Betriebssystem, Hardware; bei Fully Kiosk
+# auch Hersteller/Modell/Android-ID/MAC). Browser kennen keine MAC-Adresse und
+# die IP wechselt - Standard ist daher eine zufaellige ID, die das Geraet selbst
+# speichert (localStorage + Cookie); Fully liefert eine feste Geraete-ID. Der
+# Server merkt sich uid -> Name in config/devinfo.json, erkennt den Geraetetyp
+# und legt das Geraet beim ersten Mal mit passenden Einstellungen an.
+DEVINFO_FILE = Path(__file__).resolve().parent.parent / "config" / "devinfo.json"
+_UID_RE = re.compile(r"^[A-Za-z0-9._:-]{6,80}$")
+
+
+def _clean_devinfo(d) -> dict:
+    """Steckbrief vom Client pruefen: nur bekannte Felder, kurze Strings/Zahlen."""
+    if not isinstance(d, dict):
+        return {}
+    out: dict = {}
+    for k in ("ua", "plat", "pver", "model", "lang", "tz", "arch", "orient"):
+        v = d.get(k)
+        if isinstance(v, str) and v.strip():
+            out[k] = v.strip()[:300 if k == "ua" else 60]
+    for k in ("sw", "sh", "vw", "vh", "dpr", "touch", "cores", "mem"):
+        v = d.get(k)
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and 0 <= v < 100000:
+            out[k] = round(float(v), 2) if k == "dpr" else int(v)
+    for k in ("mob", "pwa"):
+        if isinstance(d.get(k), bool):
+            out[k] = d[k]
+    f = d.get("fully")
+    if isinstance(f, dict):
+        fo = {k: str(f.get(k)).strip()[:60] for k in ("manuf", "model", "android", "ver", "mac", "devid", "ssid")
+              if f.get(k) not in (None, "") and str(f.get(k)).strip()}
+        if fo:
+            out["fully"] = fo
+    return out
+
+
+def _ua_parts(info: dict) -> tuple[str, str]:
+    """(Betriebssystem, Browser) aus User-Agent/Client-Hints, kurz und lesbar."""
+    ua = info.get("ua", "")
+    touch = info.get("touch", 0) or 0
+    if info.get("fully"):
+        osn = "Android " + info["fully"].get("android", "") if info["fully"].get("android") else "Android"
+        return osn.strip(), "Fully Kiosk " + info["fully"].get("ver", "")
+    if "iPad" in ua or ("Macintosh" in ua and touch > 1):
+        osn = "iPadOS"
+    elif "iPhone" in ua:
+        osn = "iOS"
+    elif "Android" in ua:
+        m = re.search(r"Android ([\d.]+)", ua)
+        osn = "Android " + (m.group(1) if m else "")
+    elif "Windows" in ua:
+        osn = "Windows"
+    elif "Mac OS X" in ua or "Macintosh" in ua:
+        osn = "macOS"
+    elif "CrOS" in ua:
+        osn = "ChromeOS"
+    elif "Linux" in ua:
+        osn = "Linux"
+    else:
+        osn = info.get("plat", "") or "unbekannt"
+    pv = (info.get("pver") or "").split(".")
+    if osn == "macOS" and pv[0] and pv[0] != "0" and not info.get("fully"):
+        osn += " " + pv[0] + ("." + pv[1] if len(pv) > 1 and pv[1] != "0" else "")
+    if "wv)" in ua or "; wv" in ua:
+        br = "WebView"
+    elif "Edg/" in ua:
+        br = "Edge"
+    elif "Firefox/" in ua or "FxiOS" in ua:
+        br = "Firefox"
+    elif "CriOS" in ua or ("Chrome/" in ua and "Chromium" not in ua):
+        br = "Chrome"
+    elif "Chromium" in ua:
+        br = "Chromium"
+    elif "Safari/" in ua:
+        br = "Safari"
+    else:
+        br = "Browser"
+    return osn.strip(), br
+
+
+def guess_device_model(info: dict) -> str:
+    """Geraetetyp (DEVICE_MODELS-Schluessel) aus dem Steckbrief schaetzen."""
+    f = info.get("fully") or {}
+    man = (f.get("manuf") or "").lower()
+    mdl = (f.get("model") or info.get("model") or "").lower()
+    ua = info.get("ua", "")
+    sw, sh = info.get("sw", 0) or 0, info.get("sh", 0) or 0
+    square = sw and sh and abs(sw - sh) <= 8
+    short = min(sw, sh) if sw and sh else 0
+    if "shelly" in man or "shelly" in mdl or mdl.startswith("sawd") or "wall display" in mdl:
+        return "shelly-x1" if square else "shelly-x2"
+    if "sonoff" in man or "itead" in man or "nspanel" in mdl:
+        return "nspro86" if square else "nspro120"
+    if "rk3566" in mdl or "sm55" in mdl:
+        return "sm55"
+    if "iPad" in ua or ("Macintosh" in ua and (info.get("touch") or 0) > 1):
+        return "ipad"
+    if "iPhone" in ua:
+        return "phone"
+    if "Android" in ua or f:
+        if square and short <= 520:
+            return "sm41-android"
+        if (info.get("mob") or "Mobile" in ua) and short and short < 600:
+            return "phone"
+        return "tablet"
+    if "Linux" in ua and square and short <= 520:
+        return "sm41-debian"
+    return "other"
+
+
+def device_auto_name(info: dict) -> str:
+    """Lesbarer Vorschlag fuer ein neu erkanntes Geraet."""
+    model = guess_device_model(info)
+    if model == "other":
+        osn, br = _ua_parts(info)
+        return f"{br} ({osn})"
+    if model == "phone":
+        return "iPhone" if "iPhone" in info.get("ua", "") else "Android-Handy"
+    if model == "ipad":
+        return "iPad"
+    return DEVICE_MODELS[model]["label"].split(" / ")[0].split(" (")[0]
+
+
+def _server_tz() -> str:
+    """IANA-Zeitzone des Servers (TZ, /etc/timezone, /etc/localtime-Link)."""
+    tz = os.environ.get("TZ", "").strip().lstrip(":")
+    if tz and "/" in tz:
+        return tz
+    try:
+        t = Path("/etc/timezone").read_text(encoding="utf-8").strip()
+        if t:
+            return t
+    except OSError:
+        pass
+    try:
+        lk = os.path.realpath("/etc/localtime")
+        if "zoneinfo/" in lk:
+            return lk.split("zoneinfo/", 1)[1]
+    except OSError:
+        pass
+    return ""
+
+
+_SRV_TZ = _server_tz()
+
+
+def server_clock() -> dict:
+    """Serverzeit fuer die Panels: ms seit 1970, Zeitzone, UTC-Abstand (Minuten)."""
+    off = datetime.now().astimezone().utcoffset()
+    return {"now": int(time.time() * 1000), "tz": _SRV_TZ,
+            "utcoff": int(off.total_seconds() // 60) if off is not None else 0}
+
+
+def load_devinfo() -> dict:
+    try:
+        d = json.loads(DEVINFO_FILE.read_text(encoding="utf-8"))
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
 
 
 # Nachtmodus: Rueckfall-Fenster, wenn keine Sonnenzeiten vorliegen (kein Wetter
@@ -1138,6 +1303,7 @@ class App:
         self.conn_chart: dict[web.WebSocketResponse, tuple[str, str]] = {}   # ws -> (Baustein-UUID, Zeitraum) der Verlaufs-Pane (via setchart)
         self.panels = load_panels()
         self.devices = load_devices()   # Agent-Name -> {auto, modes:{modus:profil}}
+        self.devinfo = load_devinfo()   # uid -> {name, info, ip, first, last} (Geraete-Erkennung)
         self.last_mode = ""             # zuletzt gesetzter Betriebsmodus (fuer Nachziehen beim Verbinden)
         self._struct_sig: str | None = None   # Signatur der Loxone-Struktur (erkennt Config-Aenderungen)
         self._pending_reload = False          # -> Panels beim naechsten Tick neu laden ({t:"reload"})
@@ -2874,6 +3040,7 @@ class App:
         for name in self.devices:
             entry(name)["configured"] = True
         for e in devs.values():
+            e["detected"] = self.device_summary(e["name"])
             cfg = self.devices.get(e["name"]) if isinstance(self.devices.get(e["name"]), dict) else {}
             model = cfg.get("model") or ""
             fully = bool(cfg.get("fully")) or e["kiosk"] == "fully"
@@ -3598,6 +3765,77 @@ class App:
     def _write_panels(self, panels: dict) -> None:
         self._persist_panels_file(panels, self.devices)
         self.panels = load_panels()
+
+    def _save_devinfo(self) -> None:
+        try:
+            _atomic_write(DEVINFO_FILE, json.dumps(self.devinfo, indent=1, ensure_ascii=False) + "\n")
+        except OSError as err:
+            log.warning("devinfo.json nicht geschrieben: %s", err)
+
+    def devinfo_name(self, uid: str) -> str:
+        """Gespeicherter Name zu einer Geraete-ID (falls schon erkannt)."""
+        e = self.devinfo.get(uid) if uid else None
+        return (e or {}).get("name", "") if isinstance(e, dict) else ""
+
+    def device_detect(self, uid: str, dev: str, info: dict, ip: str) -> tuple[str, bool]:
+        """Steckbrief eines Geraets verarbeiten. Liefert (Name, neu angelegt).
+        Ohne Namen bekommt das Geraet einen Vorschlag (eindeutig gemacht); ist
+        der Geraetetyp noch nicht gesetzt, wird er aus dem Steckbrief erkannt
+        und mit seinen Vorgaben (Fully, Zoom ueber den Typ) eingetragen."""
+        now = time.time()
+        e = self.devinfo.get(uid) if isinstance(self.devinfo.get(uid), dict) else {}
+        name = dev or e.get("name") or ""
+        created = False
+        if not name:
+            base = device_auto_name(info)
+            taken = set(self.devices) | {v.get("name") for v in self.devinfo.values() if isinstance(v, dict)}
+            name, n = base, 2
+            while name in taken:
+                name, n = f"{base} {n}", n + 1
+            created = True
+        changed = (e.get("name") != name or e.get("info") != info or e.get("ip") != ip)
+        self.devinfo[uid] = {"name": name, "info": info, "ip": ip,
+                             "first": e.get("first") or now, "last": now}
+        cfg = self.devices.get(name) if isinstance(self.devices.get(name), dict) else None
+        if cfg is None or not cfg.get("model"):
+            model = guess_device_model(info)
+            ncfg = dict(cfg or {"auto": True, "modes": {}})
+            ncfg["model"] = model
+            if info.get("fully") and DEVICE_MODELS[model]["os"] == "android":
+                ncfg["fully"] = True
+            devs = dict(self.devices)
+            devs[name] = ncfg
+            try:
+                self._write_devices(devs)
+                log.info("Geraet erkannt: '%s' -> %s", name, model)
+            except Exception as err:
+                log.warning("Geraet '%s' nicht gespeichert: %s", name, err)
+            created = created or cfg is None
+        if changed or created:
+            self._save_devinfo()
+        return name, created
+
+    def device_summary(self, name: str) -> dict | None:
+        """Erkannte Eigenschaften eines Geraets fuer die Geraeteliste."""
+        best = None
+        for uid, e in self.devinfo.items():
+            if isinstance(e, dict) and e.get("name") == name and (best is None or e.get("last", 0) > best[1].get("last", 0)):
+                best = (uid, e)
+        if not best:
+            return None
+        uid, e = best
+        i = e.get("info") or {}
+        osn, br = _ua_parts(i)
+        f = i.get("fully") or {}
+        hw = " ".join(x for x in (f.get("manuf"), f.get("model") or i.get("model")) if x)
+        scr = ""
+        if i.get("sw") and i.get("sh"):
+            scr = f"{i['sw']}×{i['sh']}" + (f" @{i['dpr']:g}x" if i.get("dpr") and i["dpr"] != 1 else "")
+        return {"uid": uid, "os": osn, "browser": br, "hw": hw, "screen": scr,
+                "view": f"{i['vw']}×{i['vh']}" if i.get("vw") else "",
+                "cores": i.get("cores"), "mem": i.get("mem"), "touch": bool(i.get("touch")),
+                "mac": f.get("mac", ""), "pwa": bool(i.get("pwa")), "ip": e.get("ip", ""),
+                "first": e.get("first"), "last": e.get("last"), "guess": guess_device_model(i)}
 
     def effective_scale(self, dev: str) -> str | float:
         """Wirksame Skalierung eines Geraets: eigene Einstellung, sonst die
@@ -8934,6 +9172,10 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     ws = web.WebSocketResponse()
     await ws.prepare(request)
     dev = (request.query.get("device", "") or "").strip()[:60]
+    uid = (request.query.get("uid", "") or "").strip()
+    uid = uid if _UID_RE.match(uid) else ""
+    if not dev and uid:
+        dev = app.devinfo_name(uid)      # bekannt: Name ueber die Geraete-ID (IP egal)
     pid = request.query.get("panel", "")
     # Frisch verbundenes Geraet direkt auf den aktuell laufenden Betriebsmodus
     # setzen (statt der Start-Ansicht aus ?panel=), falls dafuer eine Zuordnung
@@ -8998,6 +9240,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
             app._last_sent.setdefault(ws, {})["saver"] = _sv
         await ws.send_json({"t": "ms", "ok": app.ms_ok(), "since": int(app.ms_down_since * 1000)})
         await ws.send_json({"t": "cmdwatch", "on": app.cmd_watch})
+        await ws.send_json({"t": "clock", **server_clock()})
         # Klingelt es gerade noch (bell-Impuls steht an), bekommt auch ein neu
         # bzw. wieder verbundenes Panel das Klingeln. Ein Panel, das waehrend des
         # Klingelns schlief, hat sonst das Ende verpasst und klingelt ewig weiter
@@ -9043,8 +9286,16 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 if route.get("view") in ("control", "sources") and route.get("id"):
                     app._spawn(app.prime_favs(route["id"]))
             elif data.get("t") == "ping":
-                # Lebenszeichen des Panels: es erkennt so eine tote Verbindung
-                await ws.send_json({"t": "pong"})
+                # Lebenszeichen des Panels: es erkennt so eine tote Verbindung.
+                # Dazu die Serverzeit, damit falsch gestellte Geraete richtig anzeigen.
+                await ws.send_json({"t": "pong", "at": data.get("at"), **server_clock()})
+            elif data.get("t") == "devinfo" and uid:
+                # Steckbrief -> Geraet erkennen/anlegen. Neu benannt: Name an die
+                # Visu, die verbindet sich damit neu (Zoom/Wach-Sperre greifen).
+                info = _clean_devinfo(data.get("info"))
+                name, _new = app.device_detect(uid, dev, info, request.remote or "")
+                if name != dev:
+                    await ws.send_json({"t": "setdevice", "name": name})
             elif data.get("t") == "idle":
                 # Visu ohne Kiosk-JS meldet Leerlauf -> Display ueber Treiber aus
                 if dev:

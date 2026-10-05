@@ -3221,6 +3221,60 @@ const PANEL_ID = new URLSearchParams(location.search).get('panel') || '';
 // unter Einstellungen -> Panels vergebener Name (t:'setdevice', localStorage).
 let DEVICE_ID = new URLSearchParams(location.search).get('device') || '';
 try{ if(!DEVICE_ID) DEVICE_ID = localStorage.getItem('lp_device') || ''; }catch(e){}
+// Dauerhafte Geraete-ID (Standard im Web: Browser kennen keine MAC-Adresse,
+// die IP kann wechseln). Fully Kiosk liefert eine feste Geraete-ID; sonst eine
+// einmal erzeugte Zufalls-ID in localStorage, gespiegelt in einem Cookie (falls
+// einer von beiden geleert wird). Der Server ordnet darueber Name und Einstellungen zu.
+const DEVICE_UID=(function(){
+  const ok=v=>typeof v==='string'&&/^[A-Za-z0-9._:-]{6,80}$/.test(v);
+  let u='';
+  try{ const f=window.fully; if(f&&typeof f.getDeviceId==='function'){ const d=String(f.getDeviceId()||'').replace(/[^A-Za-z0-9]/g,''); if(d.length>=6) u='fk-'+d.slice(0,40); } }catch(e){}
+  if(!u){ try{ u=localStorage.getItem('lp_uid')||''; }catch(e){} }
+  if(!ok(u)){ const m=document.cookie.match(/(?:^|; )lp_uid=([^;]+)/); u=m?decodeURIComponent(m[1]):''; }
+  if(!ok(u)){ const r=new Uint8Array(12); (window.crypto||{}).getRandomValues ? crypto.getRandomValues(r) : r.forEach((x,i)=>r[i]=Math.random()*256|0);
+    u='lp-'+[...r].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+  try{ localStorage.setItem('lp_uid',u); }catch(e){}
+  try{ document.cookie='lp_uid='+encodeURIComponent(u)+'; max-age=315360000; path=/; SameSite=Lax'; }catch(e){}
+  return u;
+})();
+// Steckbrief des Geraets fuer die Auto-Erkennung (Bildschirm, Browser, OS, Hardware)
+async function deviceInfo(){
+  const n=navigator, sc=window.screen||{}, i={ua:n.userAgent||'', lang:n.language||'',
+    tz:(Intl.DateTimeFormat().resolvedOptions().timeZone)||'', sw:sc.width||0, sh:sc.height||0, dpr:window.devicePixelRatio||1,
+    vw:innerWidth, vh:innerHeight, touch:n.maxTouchPoints||0, cores:n.hardwareConcurrency||0, mem:n.deviceMemory||0,
+    pwa:!!(matchMedia&&matchMedia('(display-mode: standalone)').matches)||n.standalone===true,
+    orient:((sc.orientation||{}).type)||''};
+  try{ const d=n.userAgentData; if(d){ i.plat=d.platform||''; i.mob=!!d.mobile;
+    if(d.getHighEntropyValues){ const h=await d.getHighEntropyValues(['model','platformVersion','architecture']);
+      i.model=h.model||''; i.pver=h.platformVersion||''; i.arch=h.architecture||''; } } }catch(e){}
+  try{ const f=window.fully; if(f){ const g=k=>{ try{ return typeof f[k]==='function'?String(f[k]()||''):''; }catch(e){ return ''; } };
+    i.fully={manuf:g('getDeviceManufacturer'), model:g('getDeviceModel'), android:g('getAndroidVersion'), ver:g('getFullyVersion'),
+      mac:g('getMacAddress'), devid:g('getDeviceId'), ssid:g('getWifiSsid')}; } }catch(e){}
+  return i;
+}
+// Uhrzeit vom Server (LoxBerry/Miniserver) statt der Geraeteuhr: falsch
+// gestellte Geraete (z. B. iPad ohne automatische Zeit) zeigen sonst eine
+// falsche Uhr, falsches Datum und falsche Tageszeit-Farben. CLOCK_OFF =
+// Abstand Server - Geraet (ms, per Ping nachgefuehrt), SRV_TZ = Zeitzone des
+// Servers. nowDate() liefert ein Date, dessen getHours()/getDate()... die
+// Wanduhr des Servers zeigen.
+let CLOCK_OFF=0, SRV_TZ='', SRV_UTCOFF=null, _tzFmt=null;
+function setServerClock(now, sent, tz, utcoff){
+  if(typeof now!=='number') return;
+  const rtt=sent?Math.max(0,Date.now()-sent):0, off=now+rtt/2-Date.now();
+  // kleine Schwankungen ignorieren (sonst springt die Sekunde)
+  if(Math.abs(off-CLOCK_OFF)>1500 || !sent) CLOCK_OFF=off;
+  if(typeof utcoff==='number') SRV_UTCOFF=utcoff;
+  if(tz && tz!==SRV_TZ){ try{ _tzFmt=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}); SRV_TZ=tz; }catch(e){ _tzFmt=null; } }
+}
+function nowDate(){
+  const t=Date.now()+CLOCK_OFF;
+  if(_tzFmt){ try{ const p=_tzFmt.formatToParts(new Date(t)), g=k=>+(p.find(x=>x.type===k)||{}).value;
+    return new Date(g('year'),g('month')-1,g('day'),g('hour')%24,g('minute'),g('second'),t%1000); }catch(e){} }
+  if(SRV_UTCOFF!==null){ const u=new Date(t+SRV_UTCOFF*60000);   // feste Abweichung von UTC (Minuten)
+    return new Date(u.getUTCFullYear(),u.getUTCMonth(),u.getUTCDate(),u.getUTCHours(),u.getUTCMinutes(),u.getUTCSeconds()); }
+  return new Date(t);
+}
 let LANG='de-DE';   // Panel-Sprache (aus dem Profil, Server sendet sie im theme); steuert Datum/Uhr
 // Horizontaler Feinversatz der ganzen Visu — live einstellbar ohne Redeploy:
 //   ?x=-6  -> 6px nach links     ?x=8 -> nach rechts     ?x=0 -> zuruecksetzen
@@ -3245,7 +3299,7 @@ setInterval(()=>{
   if(!ws || ws.readyState!==1) return;
   if(Date.now()-wsRx>25000){ const w=ws; ws=null; w.onclose=null; w.onmessage=null;
     try{ w.close(); }catch(e){} wsLost(); connect(); return; }
-  send({t:'ping'});
+  send({t:'ping', at:Date.now()});
 },10000);
 function linkBanner(){
   const txt = !srvOk ? 'Keine Verbindung zum LoxPanel-Server'
@@ -3261,6 +3315,7 @@ function connect(){
   const q=[];
   if(PANEL_ID) q.push('panel='+encodeURIComponent(PANEL_ID));
   if(DEVICE_ID) q.push('device='+encodeURIComponent(DEVICE_ID));
+  q.push('uid='+encodeURIComponent(DEVICE_UID));
   if(kiosk()) q.push('kiosk=fully');   // Kiosk-App melden -> Typ in der Geraeteliste
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws'
                    +(q.length?('?'+q.join('&')):''));
@@ -3269,6 +3324,7 @@ function connect(){
   wsRx=Date.now();
   ws.onopen=()=>{ el('conn').classList.add('ok'); wsRx=Date.now(); clearTimeout(srvDownT); srvDownT=null; srvOk=true; linkBanner();
     curChartKey=''; if(booted) send({t:'nav',route:stack[stack.length-1]});
+    deviceInfo().then(info=>send({t:'devinfo', info})).catch(()=>{});
     // Wieder verbunden (z.B. Laptop aufgewacht): ein Klingeln, dessen Ende
     // waehrend der Trennung verpasst wurde, beenden. Klingelt es noch, schickt
     // der Server das Klingeln beim Verbinden erneut.
@@ -3340,7 +3396,8 @@ function connect(){
     if(msg.t==='reload'){ location.reload(); return; }                       // Server -> Panel neu laden
     if(msg.t==='night'){ setNight(msg.on); return; }                         // Tag/Nacht gewechselt
     if(msg.t==='goto'){ if(msg.route){ wake(); nav(msg.route); } return; }  // auf Seite springen
-    if(msg.t==='pong') return;
+    if(msg.t==='pong'){ setServerClock(msg.now, msg.at, msg.tz, msg.utcoff); return; }
+    if(msg.t==='clock'){ setServerClock(msg.now, 0, msg.tz, msg.utcoff); return; }
     if(msg.t==='cmdack'){ cmdAck(msg); return; }
     if(msg.t==='cmdwatch'){ cmdWatch=!!msg.on; if(!cmdWatch){ cmdPend.forEach(e=>clearTimeout(e.t)); cmdPend.clear(); } return; }
     if(msg.t==='ms'){ msOk=!!msg.ok; msSince=msg.since||0; linkBanner(); return; }
@@ -3385,7 +3442,7 @@ function connect(){
 const SAVER_IDLE_MS = 60000;   // nach 60 s Inaktivitaet zurueck zur Uhr
 let idleTimer=null;
 function tickClock(){
-  const d=new Date();
+  const d=nowDate();
   const t=el('svTime'), dd=el('svDate');
   // Nur schreiben, wenn sich der Text aendert (sonst jede Sekunde neues Layout)
   const ts=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
@@ -3420,7 +3477,7 @@ function ambSun(){   // [Aufgang, Untergang] in Minuten; ohne Wetter 6:30 / 19:3
   return (a!=null&&b!=null&&b>a) ? [a,b] : [390,1170];
 }
 function ambLight(){   // {L: 0 Nacht .. 1 Mittag, warm: 0..1 Naehe zur Daemmerung}
-  const d=new Date(), t=d.getHours()*60+d.getMinutes(), [r,s]=ambSun(), a=r-45, b=s+45;
+  const d=nowDate(), t=d.getHours()*60+d.getMinutes(), [r,s]=ambSun(), a=r-45, b=s+45;
   const L=(t<=a||t>=b) ? 0 : Math.pow(Math.sin(Math.PI*(t-a)/(b-a)),0.7);
   const warm=Math.max(0,1-Math.abs(t-r)/90,1-Math.abs(t-s)/90);
   return {L,warm};
@@ -3576,7 +3633,7 @@ function svClockHTML(it){
     (it.date!=='none'?'<div class="d" data-fmt="'+esc(it.date||'short')+'"></div>':'')+'</div>';
 }
 function tickSaverClocks(){
-  const d=new Date();
+  const d=nowDate();
   document.querySelectorAll('.svw-clock').forEach(c=>{
     const t=c.querySelector('.t'), ts=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
     if(t&&t.textContent!==ts) t.textContent=ts;
@@ -3867,7 +3924,7 @@ function wxSunHTML(hrs, dt, today){
     '<rect class="wxnight" x="'+r(Xt(set))+'" y="'+pT+'" width="'+r(W-pR-Xt(set))+'" height="'+ch+'"/>';
   const rv=hrs.filter(h=>h.rad!=null), rmx=Math.max(400,...rv.map(h=>h.rad)), bw=Math.max(2,(W-pL-pR)/24-2);
   const bars=rv.map((h,i)=>h.rad>0?'<rect class="wxbar wxrad" style="animation-delay:'+(300+i*18)+'ms" x="'+r(Xt(h.h*60+30)-bw/2)+'" y="'+r(base-h.rad/rmx*amp*0.7)+'" width="'+r(bw)+'" height="'+r(h.rad/rmx*amp*0.7)+'" rx="1.5"/>':'').join('');
-  const now=new Date(), tn=now.getHours()*60+now.getMinutes();
+  const now=nowDate(), tn=now.getHours()*60+now.getMinutes();
   const sun=(today&&tn>rise&&tn<set)?'<circle class="wxsun" cx="'+r(Xt(tn))+'" cy="'+r(Ys(tn))+'" r="7"/>':'';
   const dl=set-rise, dur=Math.floor(dl/60)+' h '+String(dl%60).padStart(2,'0')+' min';
   const ticks=[0,6,12,18,24].map(h=>{ const x=Xt(h*60), an=h===0?'start':(h===24?'end':'middle');
@@ -4215,7 +4272,7 @@ function evRow(d,e){
 function fpCalHTML(d){
   const evs=Array.isArray(d.events)?d.events:[], hol=d.holidays||{};
   if(calSel){   // ein Tag gewaehlt -> nur dessen Termine (+ Feiertag)
-    let dt; try{ dt=new Date(calSel+'T00:00'); }catch(e){ dt=new Date(); }
+    let dt; try{ dt=new Date(calSel+'T00:00'); }catch(e){ dt=nowDate(); }
     const lbl=dt.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long'});
     let html='<div class="fp-h"><span>'+esc(lbl)+'</span><button class="fp-allbtn" data-calall="1">Alle ›</button></div>';
     if(hol[calSel]) html+='<div class="fp-ev holi"><span class="tm all">Feiertag</span><span class="ttl">'+esc(hol[calSel])+'</span></div>';
@@ -4377,7 +4434,7 @@ function renderWeatherPane(elc){ if(!elc) return; const d=frontData||{}, w=d.wea
   elc.innerHTML='<div class="fp-page">'+fpWeatherMainHTML(w)+'</div>'
     +(det?'<div class="fp-page">'+det+'</div>':''); }
 function fpMonthHTML(events, holidays, colors){
-  const base=new Date(); base.setDate(1); base.setMonth(base.getMonth()+calMonthOff);
+  const base=nowDate(); base.setDate(1); base.setMonth(base.getMonth()+calMonthOff);
   const y=base.getFullYear(), m=base.getMonth();
   const startDow=(new Date(y,m,1).getDay()+6)%7;    // 0 = Montag
   const dim=new Date(y,m+1,0).getDate();
@@ -4388,7 +4445,7 @@ function fpMonthHTML(events, holidays, colors){
   (events||[]).forEach(e=>{ if(!e||!e.date) return;
     const f=evd.get(e.date)||[]; if(e.color&&f.indexOf(e.color)<0) f.push(e.color);
     evd.set(e.date,f); });
-  const hol=holidays||{}, todayISO=isoDay(new Date());
+  const hol=holidays||{}, todayISO=isoDay(nowDate());
   const pad=n=>String(n).padStart(2,'0');
   const mn=new Date(y,m,1).toLocaleDateString(LANG,{month:'long',year:'numeric'});
   let html='<div class="fp-mon"><div class="fp-mon-h">'+

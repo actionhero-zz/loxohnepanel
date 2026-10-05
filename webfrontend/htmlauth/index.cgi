@@ -185,6 +185,14 @@ if ($sr->is_success) {
         $mport = $m->{port} // 443; $haspass = $m->{hasPass} ? 1 : 0;
     }
 }
+# Laufender Code-Stand (Version/Commit) fuer die Statuskachel
+my ($av, $ac) = ($version, '');
+if ($running) {
+    my $vr = LWP::UserAgent->new(timeout => 4)->get("$api/api/version");
+    if ($vr->is_success) { my $vj = eval { decode_json($vr->decoded_content) };
+        if ($vj) { $av = $vj->{version} // $av; $ac = substr($vj->{commit} // '', 0, 7); } }
+}
+my $repo = "https://github.com/actionhero-zz/loxohnepanel";
 my $stat = !$running ? "<span style='color:#a94442'>Container l&auml;uft nicht</span>"
     : $conn ? "<span style='color:#3c763d'>l&auml;uft &middot; Miniserver verbunden</span>"
     : "<span style='color:#8a6d3b'>l&auml;uft &middot; noch kein Miniserver</span>";
@@ -214,13 +222,11 @@ my $log_html = "";
 if ($logtail ne "") {
     my $spin = $busy ? " &middot; l&auml;uft&hellip;" : "";
     $log_html = <<"LOGH";
-<div class="panel panel-default">
-  <div class="panel-heading">Letzte Aktion$spin</div>
-  <div class="panel-body">
-    <pre style="max-height:260px;overflow:auto;background:#1e1e1e;color:#d4d4d4;padding:10px;border-radius:6px;font-size:12px;line-height:1.45;white-space:pre-wrap">$logtail</pre>
-    <a class="lpbtn lpgrey" href="#" onclick="location.replace(location.pathname);return false;">Aktualisieren</a>
-  </div>
-</div>
+<section class="lpx-card lpx-wide">
+  <div class="lpx-h"><h3>Letzte Aktion$spin</h3>
+    <a class="lpx-btn lpx-ghost lpx-sm" href="#" data-role="none" data-ajax="false" onclick="location.replace(location.pathname);return false;">Aktualisieren</a></div>
+  <pre class="lpx-log">$logtail</pre>
+</section>
 LOGH
 }
 
@@ -238,112 +244,168 @@ for my $b (@backups) {
     my $when= @st ? strftime("%d.%m.%Y %H:%M", localtime($st[9])) : "";
     my $hb  = h($b);
     $blist .= "<tr>"
-        . "<td style='padding:5px 8px;font-family:monospace;font-size:12px'>$hb</td>"
-        . "<td style='padding:5px 8px;color:#777;white-space:nowrap'>$when</td>"
-        . "<td style='padding:5px 8px;color:#777;white-space:nowrap'>${kb}&nbsp;KB</td>"
-        . "<td style='padding:5px 8px;white-space:nowrap'>"
+        . "<td class='lpx-mono'>$hb</td>"
+        . "<td class='lpx-mut'>$when</td>"
+        . "<td class='lpx-mut'>${kb}&nbsp;KB</td>"
+        . "<td class='lpx-act'>"
           . "<form method='post' style='display:inline;margin:0' "
           . "onsubmit=\"return confirm('Diesen Stand wiederherstellen? Die aktuellen Panels werden ersetzt (der jetzige Stand wird vorher automatisch gesichert). Das Panel startet neu.');\">"
           . "<input type='hidden' name='action' value='restore'>"
           . "<input type='hidden' name='file' value='$hb'>"
-          . "<button class='lpbtn lpblue' style='padding:5px 12px;font-size:13px' type='submit'>Wiederherstellen</button></form> "
+          . "<button class='lpx-btn lpx-sec lpx-sm' data-role='none' type='submit'>Wiederherstellen</button></form> "
           . "<form method='post' style='display:inline;margin:0' "
           . "onsubmit=\"return confirm('Dieses Backup l&#246;schen?');\">"
           . "<input type='hidden' name='action' value='delete_backup'>"
           . "<input type='hidden' name='file' value='$hb'>"
-          . "<button class='lpbtn lpgrey' style='padding:5px 10px;font-size:13px' type='submit'>&#215;</button></form>"
+          . "<button class='lpx-x' data-role='none' type='submit' title='Backup l&ouml;schen' aria-label='Backup l&ouml;schen'>&#215;</button></form>"
         . "</td></tr>";
 }
 my $backups_html = $blist
-    ? "<div style='overflow-x:auto'><table style='width:100%;border-collapse:collapse'>"
-      . "<tr style='text-align:left;color:#999;font-size:12px'><th style='padding:4px 8px'>Datei</th>"
-      . "<th style='padding:4px 8px'>Datum</th><th style='padding:4px 8px'>Gr&ouml;&szlig;e</th><th></th></tr>"
-      . "$blist</table></div>"
-    : "<p style='color:#777;margin:6px 0 0'>Noch keine Sicherung vorhanden.</p>";
+    ? "<div class='lpx-tbl'><table><tr><th>Datei</th><th>Datum</th><th>Gr&ouml;&szlig;e</th><th></th></tr>$blist</table></div>"
+    : "<p class='lpx-note'>Noch keine Sicherung vorhanden.</p>";
 
 # ---- Ausgabe im LoxBerry-Rahmen ----
-LoxBerry::Web::lbheader("LoxPanel V$version", "https://github.com/Lenardo1/Loxpanel", "");
+LoxBerry::Web::lbheader("LoxPanel Favoriten V$version", $repo, "");
+
+# Status-Kacheln (Punkte als viereckige Pillen, Farben wie im Panel)
+my ($cst, $ccl) = $running ? ("l&auml;uft", "ok") : ("gestoppt", "bad");
+my ($mst, $mcl) = !$running ? ("&ndash;", "off") : $conn ? ("verbunden", "ok") : ("nicht verbunden", "warn");
+my $msub = ($running && $mhost ne '') ? $hh : "noch nicht eingerichtet";
+my $ver_html = h($av) . ($ac ne '' ? " <small>&middot; $ac</small>" : "");
+my $nb = scalar(@backups);
+my $bcl = $nb ? "ok" : "off";
+my $bsub = "noch keine";
+if ($nb) { (my $n = $backups[0]) =~ s/^loxpanelfav-config-//; $n =~ s/\.tar\.gz$//; $bsub = "neueste: " . h($n); }
 
 print <<"HTML";
 <style>
-  .lpbtn{display:inline-block;padding:11px 20px;border-radius:6px;text-decoration:none;
-    font-weight:600;font-size:14px;border:none;cursor:pointer;text-align:center;box-sizing:border-box;line-height:1.4}
-  .lpgreen{background:#5cb85c;color:#000 !important}        .lpgreen:hover{background:#4cae4c;color:#000 !important}
-  .lpblue{background:#337ab7;color:#fff}         .lpblue:hover{background:#2e6da4;color:#fff}
-  .lpgrey{background:#f2f2f2;color:#333;border:1px solid #ccc}  .lpgrey:hover{background:#e6e6e6;color:#333}
-  .lprow{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
-  .lprow .lpbtn,.lprow form{flex:1;min-width:170px}
-  .lprow form{margin:0}  .lprow form .lpbtn{width:100%}
-  .lpfields{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
-  .lpfields .lpf{display:flex;flex-direction:column;gap:3px;min-width:120px}
-  .lpfields label{font-size:12px;color:#777;margin:0;font-weight:600}
-  .lpfields .form-control{width:100%}
+  .lpx{--lpx-g:#6dac20;--lpx-gd:#5a9419;--lpx-acc:#f3d27a;--lpx-ink:#1f2430;--lpx-mut:#6b7280;--lpx-line:#e4e7ec;
+    --lpx-bg:#f6f7f9;--lpx-ok:#52b881;--lpx-warn:#e9b949;--lpx-bad:#e2695f;
+    font-family:inherit;color:var(--lpx-ink);max-width:1180px;margin:0 auto;padding:4px 0 24px;}
+  .lpx *{box-sizing:border-box;}
+  .lpx h3{margin:0;font-size:16px;font-weight:700;}
+  .lpx-hero{position:relative;overflow:hidden;border-radius:20px;padding:22px 24px;margin-bottom:16px;
+    background:linear-gradient(135deg,#232838 0%,#2d3448 60%,#38405a 100%);color:#fff;box-shadow:0 10px 30px rgba(31,36,48,.18);}
+  .lpx-hero::after{content:"";position:absolute;right:-80px;bottom:-110px;width:240px;height:240px;border-radius:60px;transform:rotate(18deg);
+    background:var(--lpx-acc);opacity:.16;}
+  .lpx-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;position:relative;z-index:1;}
+  .lpx-brand{display:flex;align-items:center;gap:12px;}
+  .lpx-logo{width:42px;height:42px;border-radius:13px;background:var(--lpx-acc);display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:8px;}
+  .lpx-logo i{background:#232838;border-radius:3px;opacity:.85;} .lpx-logo i:nth-child(2){opacity:.45;}
+  .lpx-brand b{display:block;font-size:20px;letter-spacing:.2px;} .lpx-brand span{font-size:12.5px;color:#c9cfdb;}
+  .lpx-ver{color:#fff !important;text-decoration:none !important;background:rgba(255,255,255,.12);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;}
+  .lpx-ver small{color:#c9cfdb;font-weight:400;} .lpx-ver:hover{background:rgba(255,255,255,.2);}
+  .lpx-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:18px;position:relative;z-index:1;}
+  .lpx-stat{background:rgba(255,255,255,.08);border-radius:14px;padding:12px 14px;}
+  .lpx-stat .k{font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:#aab2c2;}
+  .lpx-stat .v{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:700;margin-top:4px;}
+  .lpx-stat .s{font-size:12px;color:#c9cfdb;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .lpx-dot{width:10px;height:10px;border-radius:32%;flex:none;background:#8a93a3;}
+  .lpx-dot.ok{background:var(--lpx-ok);box-shadow:0 0 0 3px rgba(82,184,129,.25);} .lpx-dot.warn{background:var(--lpx-warn);} .lpx-dot.bad{background:var(--lpx-bad);}
+  .lpx-go{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;position:relative;z-index:1;}
+  .lpx-msg:empty{display:none;} .lpx-msg{margin-bottom:16px;} .lpx-msg .alert{border-radius:14px;margin:0;}
+  .lpx-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start;}
+  .lpx-card{background:#fff;border:1px solid var(--lpx-line);border-radius:16px;padding:18px 20px;box-shadow:0 2px 10px rgba(31,36,48,.04);}
+  .lpx-wide{grid-column:1/-1;margin-top:16px;}
+  .lpx-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+  .lpx-h small{color:var(--lpx-mut);font-weight:400;font-size:12.5px;}
+  .lpx-note{color:var(--lpx-mut);font-size:13px;line-height:1.5;margin:0 0 12px;}
+  .lpx-f{display:grid;grid-template-columns:minmax(0,2fr) minmax(70px,.7fr);gap:10px;}
+  .lpx-f2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .lpx label.l{display:block;font-size:12px;font-weight:600;color:var(--lpx-mut);margin:0 0 4px;}
+  .lpx input.i{width:100%;height:40px;border:1px solid var(--lpx-line);border-radius:10px;padding:0 12px;font:inherit;font-size:14px;background:var(--lpx-bg);color:var(--lpx-ink);}
+  .lpx input.i:focus{outline:none;border-color:var(--lpx-g);box-shadow:0 0 0 3px rgba(109,172,32,.18);background:#fff;}
+  .lpx-chk{display:flex;align-items:center;gap:8px;font-size:13px;margin:12px 0 2px;color:var(--lpx-ink);font-weight:400;}
+  .lpx-chk input{width:16px;height:16px;accent-color:var(--lpx-g);margin:0;}
+  .lpx-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;} .lpx-row form{margin:0;display:contents;}
+  .lpx-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;padding:0 20px;border-radius:999px;border:1px solid transparent;
+    font:inherit;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none !important;white-space:nowrap;transition:background .15s,transform .1s;}
+  .lpx-btn:active{transform:scale(.98);}
+  .lpx-pri{background:var(--lpx-g);color:#fff !important;} .lpx-pri:hover{background:var(--lpx-gd);}
+  .lpx-acc{background:var(--lpx-acc);color:#2a2208 !important;} .lpx-acc:hover{filter:brightness(.96);}
+  .lpx-sec{background:#fff;color:var(--lpx-ink) !important;border-color:var(--lpx-line);} .lpx-sec:hover{background:var(--lpx-bg);}
+  .lpx-ghost{background:rgba(255,255,255,.12);color:#fff !important;} .lpx-ghost:hover{background:rgba(255,255,255,.2);}
+  .lpx-card .lpx-ghost{background:var(--lpx-bg);color:var(--lpx-ink) !important;}
+  .lpx-warnbtn{background:#fff;color:#b5443b !important;border-color:#f0c4c0;} .lpx-warnbtn:hover{background:#fdf1f0;}
+  .lpx-sm{height:32px;padding:0 14px;font-size:13px;}
+  .lpx-sep{height:1px;background:var(--lpx-line);margin:16px 0;}
+  .lpx-tbl{overflow-x:auto;margin-top:4px;} .lpx-tbl table{width:100%;border-collapse:collapse;font-size:13px;}
+  .lpx-tbl th{text-align:left;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--lpx-mut);font-weight:600;padding:6px 8px;}
+  .lpx-tbl td{padding:7px 8px;border-top:1px solid var(--lpx-line);vertical-align:middle;}
+  .lpx-mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all;} .lpx-mut{color:var(--lpx-mut);white-space:nowrap;}
+  .lpx-act{white-space:nowrap;text-align:right;} .lpx-act form{display:inline;margin:0;}
+  .lpx-x{width:30px;height:30px;border-radius:32%;border:1px solid var(--lpx-line);background:#fff;color:var(--lpx-mut);cursor:pointer;font-size:16px;line-height:1;vertical-align:middle;}
+  .lpx-x:hover{color:#b5443b;border-color:#f0c4c0;background:#fdf1f0;}
+  .lpx-log{max-height:260px;overflow:auto;background:#1e2230;color:#d6dae3;padding:12px 14px;border-radius:12px;font-size:12px;line-height:1.5;white-space:pre-wrap;margin:0;border:0;}
+  \@media (max-width:760px){ .lpx-grid{grid-template-columns:1fr;} }
+  \@media (max-width:560px){ .lpx-hero{padding:18px;} .lpx-f,.lpx-f2{grid-template-columns:1fr;} .lpx-btn{flex:1 1 auto;} }
 </style>
-<div class="panel panel-default">
-  <div class="panel-heading"><b>Status:</b> $stat</div>
-  <div class="panel-body">$msg</div>
-</div>
+<div class="lpx">
+  <section class="lpx-hero">
+    <div class="lpx-top">
+      <div class="lpx-brand"><div class="lpx-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <div><b>LoxPanel Favoriten</b><span>Wandpanels, Tablets &amp; Handy f&uuml;r Loxone</span></div></div>
+      <a class="lpx-ver" href="$repo" target="_blank" rel="noopener" title="GitHub-Repository &ouml;ffnen">V $ver_html</a>
+    </div>
+    <div class="lpx-stats">
+      <div class="lpx-stat"><div class="k">Container</div><div class="v"><i class="lpx-dot $ccl"></i>$cst</div><div class="s">Port 8098</div></div>
+      <div class="lpx-stat"><div class="k">Miniserver</div><div class="v"><i class="lpx-dot $mcl"></i>$mst</div><div class="s">$msub</div></div>
+      <div class="lpx-stat"><div class="k">Sicherungen</div><div class="v"><i class="lpx-dot $bcl"></i>$nb</div><div class="s">$bsub</div></div>
+    </div>
+    <div class="lpx-go">
+      <a class="lpx-btn lpx-acc" href="http://$lbhost:8098/config" target="_blank" rel="noopener" data-role="none">Konfiguration &ouml;ffnen</a>
+      <a class="lpx-btn lpx-ghost" href="http://$lbhost:8098/config#devices:newpanel" target="_blank" rel="noopener" data-role="none">Neues Ger&auml;t einrichten</a>
+      <a class="lpx-btn lpx-ghost" href="http://$lbhost:8098/" target="_blank" rel="noopener" data-role="none">Web-App &ouml;ffnen</a>
+    </div>
+  </section>
 
-<div class="panel panel-default">
-  <div class="panel-heading">Miniserver-Zugang</div>
-  <div class="panel-body">
-    <form method="post" id="msform">
-      <input type="hidden" name="action" value="miniserver">
-      <div class="lpfields">
-        <div class="lpf" style="flex:2"><label>Host / IP</label><input class="form-control" name="host" value="$hh" placeholder="192.168.1.50"></div>
-        <div class="lpf" style="flex:1.4"><label>Benutzer</label><input class="form-control" name="user" value="$hu" autocomplete="off"></div>
-        <div class="lpf" style="flex:1.4"><label>Passwort</label><input type="password" class="form-control" name="pass" placeholder="$passph"></div>
-        <div class="lpf" style="flex:.6;min-width:80px"><label>Port</label><input class="form-control" name="port" value="$hp"></div>
+  <div class="lpx-msg">$msg</div>
+
+  <div class="lpx-grid">
+    <section class="lpx-card">
+      <div class="lpx-h"><h3>Miniserver-Zugang</h3></div>
+      <form method="post" id="msform" data-ajax="false">
+        <input type="hidden" name="action" value="miniserver">
+        <div class="lpx-f">
+          <div><label class="l">Host / IP</label><input class="i" data-role="none" name="host" value="$hh" placeholder="192.168.1.50"></div>
+          <div><label class="l">Port</label><input class="i" data-role="none" name="port" value="$hp"></div>
+        </div>
+        <div class="lpx-f2">
+          <div><label class="l">Benutzer</label><input class="i" data-role="none" name="user" value="$hu" autocomplete="off"></div>
+          <div><label class="l">Passwort</label><input class="i" data-role="none" type="password" name="pass" placeholder="$passph" autocomplete="new-password"></div>
+        </div>
+        <label class="lpx-chk"><input type="checkbox" data-role="none" name="tls"> Zertifikat pr&uuml;fen (Gen2 selbstsigniert: aus)</label>
+        <p class="lpx-note" style="margin:6px 0 0">Port 443 = HTTPS (Gen2), Port 80 = HTTP (Gen1).</p>
+      </form>
+      <div class="lpx-row">
+        <button class="lpx-btn lpx-pri" data-role="none" type="submit" form="msform">Verbinden &amp; Speichern</button>
+        <form method="post" data-ajax="false"><input type="hidden" name="action" value="fromlox"><button class="lpx-btn lpx-sec" data-role="none" type="submit">Aus LoxBerry &uuml;bernehmen</button></form>
       </div>
-      <p style="color:#777;font-size:12px;margin:7px 0 8px">Schema automatisch: <b>Port&nbsp;443</b> = HTTPS (Gen2), <b>Port&nbsp;80</b> = HTTP (Gen1). „Zertifikat pr&uuml;fen" nur bei g&uuml;ltigem Zertifikat aktivieren.</p>
-      <div class="checkbox" style="margin:2px 0 12px"><label>
-        <input type="checkbox" name="tls"> Zertifikat pr&uuml;fen (Gen2 selbstsigniert: aus)
-      </label></div>
-    </form>
-    <div class="lprow" style="margin-top:0">
-      <button class="lpbtn lpblue" type="submit" form="msform">Verbinden &amp; Speichern</button>
-      <form method="post"><input type="hidden" name="action" value="fromlox"><button class="lpbtn lpgrey" type="submit">Aus LoxBerry &uuml;bernehmen</button></form>
-    </div>
-    <hr>
-    <div class="lprow">
-      <a class="lpbtn lpgreen" href="http://$lbhost:8098/config" target="_blank">Panels &amp; Kacheln &ouml;ffnen</a>
-      <a class="lpbtn lpgreen" href="http://$lbhost:8098/settings" target="_blank">Settings &ouml;ffnen</a>
-    </div>
-  </div>
-</div>
+    </section>
 
-<div class="panel panel-default">
-  <div class="panel-heading">Android-Panel einrichten (optional)</div>
-  <div class="panel-body">
-    <p style="color:#777;margin-top:0">Die Einrichtung per ADB (LoxPanel-Launcher + Fully Kiosk) ist in die Konfiguration umgezogen:
-      <b>Ger&auml;te &rarr; Neues Ger&auml;t &rarr; Automatisch einrichten per ADB</b>.</p>
-    <div class="lprow"><a class="lpbtn lpgreen" href="http://$lbhost:8098/config#devices:newpanel" target="_blank">Neues Ger&auml;t einrichten</a></div>
-  </div>
-</div>
+    <section class="lpx-card">
+      <div class="lpx-h"><h3>Container &amp; Updates</h3></div>
+      <p class="lpx-note">Updates kommen automatisch aus GitHub. &bdquo;Jetzt updaten&ldquo; l&auml;dt sofort den neuesten Stand und startet neu (1&ndash;2&nbsp;Min).</p>
+      <div class="lpx-row">
+        <form method="post" data-ajax="false"><input type="hidden" name="action" value="restart"><button class="lpx-btn lpx-pri" data-role="none" type="submit">Jetzt updaten / Neu starten</button></form>
+        <form method="post" data-ajax="false"><input type="hidden" name="action" value="start"><button class="lpx-btn lpx-sec" data-role="none" type="submit">Starten</button></form>
+        <form method="post" data-ajax="false"><input type="hidden" name="action" value="stop"><button class="lpx-btn lpx-sec" data-role="none" type="submit">Stoppen</button></form>
+      </div>
+      <div class="lpx-sep"></div>
+      <div class="lpx-h" style="margin-bottom:6px"><h3>Passwort vergessen?</h3></div>
+      <p class="lpx-note">Entfernt den Passwortschutz der Konfiguration &ndash; danach dort ein neues setzen.</p>
+      <form method="post" data-ajax="false" onsubmit="return confirm('Passwortschutz der Konfiguration entfernen?')"><input type="hidden" name="action" value="resetpw"><button class="lpx-btn lpx-warnbtn" data-role="none" type="submit">Passwort zur&uuml;cksetzen</button></form>
+    </section>
 
-<div class="panel panel-default">
-  <div class="panel-heading">Container &amp; Updates</div>
-  <div class="panel-body">
-    <div class="lprow">
-      <form method="post"><input type="hidden" name="action" value="restart"><button class="lpbtn lpgrey" type="submit">Jetzt updaten / Neu starten</button></form>
-      <form method="post"><input type="hidden" name="action" value="start"><button class="lpbtn lpgrey" type="submit">Starten</button></form>
-      <form method="post"><input type="hidden" name="action" value="stop"><button class="lpbtn lpgrey" type="submit">Stoppen</button></form>
-    </div>
+    <section class="lpx-card lpx-wide" style="margin-top:0">
+      <div class="lpx-h"><h3>Sichern &amp; Wiederherstellen <small>&middot; die letzten 20 bleiben, auch bei Updates</small></h3>
+        <form method="post" data-ajax="false" style="margin:0"><input type="hidden" name="action" value="backup"><button class="lpx-btn lpx-pri lpx-sm" data-role="none" type="submit">Backup jetzt erstellen</button></form></div>
+      <p class="lpx-note">Panels, Kacheln, Design und Miniserver-Zugang als Archiv unter <code>$bdir</code>.</p>
+      $backups_html
+    </section>
   </div>
-</div>
-
-<div class="panel panel-default">
-  <div class="panel-heading">Panels sichern &amp; wiederherstellen</div>
-  <div class="panel-body">
-    <p style="color:#777;margin-top:0">Sichert die komplette Konfiguration (Panels, Kacheln, Theme &amp; Miniserver-Zugang) als Archiv unter <code>$bdir</code>. Diese Sicherungen bleiben auch bei Plugin-Updates erhalten; nur die letzten 20 werden behalten.</p>
-    <form method="post" style="margin-bottom:12px"><input type="hidden" name="action" value="backup"><button class="lpbtn lpgreen" type="submit">Backup jetzt erstellen</button></form>
-    $backups_html
-    <hr>
-    <p style="color:#777">Passwort der Konfiguration (http://$lbhost:8098/config) vergessen? Hier den Schutz entfernen &ndash; danach in der Konfiguration ein neues setzen.</p>
-    <form method="post" onsubmit="return confirm('Passwortschutz der Konfiguration entfernen?')"><input type="hidden" name="action" value="resetpw"><button class="lpbtn" type="submit">Passwort zur&uuml;cksetzen</button></form>
-  </div>
-</div>
 $log_html
+</div>
 $refresh_html
 HTML
 

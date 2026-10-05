@@ -82,16 +82,24 @@
      Hintergrund statt wie ein Rahmen. */
   html.scaled,html.scaled body{background:var(--bezel,var(--bg));}
   html.sqfit .screen>#grid,html.sqfit .screen.split>#playerpane,html.sqfit .screen.split>#frontpane{
-    height:var(--sq-h);max-height:var(--sq-h);align-self:center;}
-  html.sqfit .screen{padding-top:calc(var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));box-sizing:border-box;}
+    height:var(--sq-h);max-height:var(--sq-h);align-self:start;margin-top:var(--sq-g,10px);margin-bottom:0;}
+  html.sqfit .screen{padding-top:calc(var(--sqtop,0px) + var(--sq-e,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));
+    padding-bottom:var(--sq-e,0px);box-sizing:border-box;}
+  html.sqfit .screen>.tabs{margin-top:0;}
   /* Tablet: Leiste mit ✕ bleibt oben (mit Abstand zur iPad-Statuszeile), nur die
      Status-Symbole wandern an den unteren Rand. position:fixed bezieht sich hier
      auf den gezoomten .screen (transform) - also dessen unteren Rand. */
-  html.sqfit .saver.layout .sv-bar{top:calc(8px + var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));}
-  .saver>.sv-st{display:none;}
-  html.sqfit .saver.layout>.sv-st{display:flex;position:absolute;left:24px;right:24px;bottom:calc(6px + env(safe-area-inset-bottom,0px) / var(--ui-scale,1));
-    height:60px;z-index:3;justify-content:flex-start;}
-  html.sqfit .saver.layout .sv-grid{top:calc(70px + var(--sqtop,0px) + (100% - 142px - var(--sqtop,0px) - var(--sq-sv)) / 2);bottom:auto;height:var(--sq-sv);}
+  html.sqfit .saver.layout .sv-bar{top:calc(var(--sqtop,0px) + var(--sq-e,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));height:var(--sq-t,60px);}
+  /* Tablet: Status-Symbole als eigene Zeile am unteren Rand - in JEDEM Tab und im
+     Dashboard (ueber dem Dashboard-Overlay, z-index > .saver) */
+  .screen>.sv-st{display:none;}
+  /* left 16 + 10 Innenabstand der Symbole = buendig mit der Kachelkante (12 + 14) */
+  html.sqfit .screen>.sv-st{display:flex;position:absolute;left:16px;right:16px;bottom:calc(var(--sq-e,6px) + env(safe-area-inset-bottom,0px) / var(--ui-scale,1));
+    height:60px;z-index:35;justify-content:flex-start;}
+  html.sqfit.sqst .screen{padding-bottom:calc(var(--sq-e,0px) + 60px + var(--sq-g,0px));}
+  /* Dashboard: Raster beginnt auf derselben Linie wie die Kacheln in den Tabs */
+  html.sqfit .saver.layout .sv-grid{top:calc(var(--sqtop,0px) + var(--sq-e,0px) + var(--sq-t,60px) + var(--sq-g,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));
+    bottom:auto;height:var(--sq-sv);}
   /* Platz uebrig: Tab- und Statusleiste etwas groesser (Symbole gut treffbar) */
   .screen>.tabs .tab .tlbl{display:none;}
   html.sqbig .screen>.tabs{height:72px;} html.sqbig .screen>.tabs .tab,html.sqbig .screen>.tabs .tabback,html.sqbig .crumb{height:72px;}
@@ -101,8 +109,8 @@
     line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:inherit;}
   html.sqbig .screen>.tabs .tab svg,html.sqbig .screen>.tabs .tab .tico,html.sqbig .crumb svg,html.sqbig .crumb .rawico,
   html.sqbig .screen>.tabs .tabback svg{width:36px;height:36px;}
-  html.sqbig .saver.layout .sv-bar{height:60px;} html.sqbig{--sv-ico:29px;}
-  html.sqbig .sv-close{height:60px;}
+  html.sqbig{--sv-ico:29px;}
+  html.sqfit .sv-close{height:100%;}
   /* "Bildschirm fuellen": ganzen Tablet-Schirm nutzen (Voll-Zoom). Die Kacheln
      passen sich der Geraeteform an (koennen leicht rechteckig werden) statt als
      zentrierter cols:rows-Kasten mit Rand zu stehen. Gilt auch fuer Vollbreit. */
@@ -3196,7 +3204,7 @@ function scaleCfg(v){ return (v==='auto' || (typeof v==='number' && v>0)) ? v : 
 function applyScale(){
   const s=document.querySelector('.screen'); if(!s) return;
   s.style.width=''; s.style.height=''; s.style.maxWidth=''; s.style.maxHeight='';
-  document.documentElement.classList.remove('sqfit','sqbig');   // natuerliche Groesse messen
+  document.documentElement.classList.remove('sqfit','sqbig','sqst');   // natuerliche Groesse messen
   const w=s.offsetWidth, h=s.offsetHeight;          // Layout-Groesse, vom transform unberuehrt
   const passt=(w&&h) ? Math.min(innerWidth/w, innerHeight/h) : 1;
   let k=1;
@@ -3220,17 +3228,27 @@ function applyScale(){
       const sqw=Math.round(w/panes), spare=Math.max(0, frei-chrome-sqw);
       const top=Math.round(Math.min(16, spare*0.3)), boost=(spare-top>=20)?20:0;
       s.style.setProperty('--sqtop', top+'px');
-      s.style.setProperty('--sq-h', Math.min(frei-chrome-top-boost, sqw)+'px');
-      s.style.setProperty('--sq-sv', Math.min(frei-142-top-boost, Math.round((w-24)/panes))+'px');   // oben Leiste, unten Status-Symbole
+      const stH=(el('svSt')&&el('svSt').children.length)?60:0;   // Status-Zeile unten
+      document.documentElement.classList.toggle('sqst', !!stH);
       document.documentElement.classList.toggle('sqbig', !!boost);
+      // Vertikaler Rhythmus: Rand E oben/unten gleich, Abstand G zwischen den
+      // Bereichen (Tab-Leiste | Kacheln | Status-Zeile) im goldenen Schnitt
+      // G = E * 1,618 - zusammengehoerige Teile enger, Rand ruhiger.
+      const PHI=1.618, T=boost?72:52;
+      const sq=Math.min(sqw, frei-top-T-stH-24);                  // Kachelflaeche (quadratisch)
+      const L=Math.max(0, frei-top-T-sq-stH);                        // was bleibt
+      const E=Math.max(6, Math.round(stH ? L/(2+2*PHI) : L/(2+PHI))), G=Math.max(8, Math.round(E*PHI));
+      s.style.setProperty('--sq-h', sq+'px');
+      s.style.setProperty('--sq-sv', Math.min(sq, Math.round((w-24)/panes))+'px');
+      s.style.setProperty('--sq-e', E+'px'); s.style.setProperty('--sq-g', G+'px'); s.style.setProperty('--sq-t', T+'px');
       fill=true;
     }
   }
   document.documentElement.classList.toggle('sqfit', fill);
   // Status-Symbole: auf Tablets an den unteren Rand (eigene Zeile im Dashboard),
   // sonst zurueck in die obere Leiste vor das ✕
-  { const st=el('svSt'), bar=el('svBar'), sv=el('saver');
-    if(st&&bar&&sv){ if(fill&&st.parentNode!==sv) sv.appendChild(st);
+  { const st=el('svSt'), bar=el('svBar');
+    if(st&&bar){ if(fill&&st.parentNode!==s) s.appendChild(st);
       else if(!fill&&st.parentNode!==bar) bar.insertBefore(st, bar.firstChild); } }
   if(k!==uiScaleEff){
     uiScaleEff=k;
@@ -3860,6 +3878,8 @@ function svPaintPlayer(cell, d){
 let _svStPrev={};
 function svStRender(){
   const host=el('svSt'); if(!host) return;
+  const had=host.children.length>0;
+  queueMicrotask(()=>{ if((host.children.length>0)!==had && document.documentElement.classList.contains('sqfit')) applyScale(); });
   const b=saverData&&saverData.bar, chips=(b&&b.chips)||[];
   // Nur Symbole: Anzahl (z.B. offene Fenster) als Plakette oben rechts wie bei
   // Mail-Apps; reine Zustaende (scharf, ausgeloest ...) nur ueber die Symbolfarbe.

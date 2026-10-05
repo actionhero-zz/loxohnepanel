@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Tablet: Statusleiste in allen Tabs, harmonische Abstände (0.19.64)** — Auf Tablets/iPad stehen die
+  Status-Symbole in jedem Tab unten. Platz verteilt nach festen Regeln: gleiche Ränder oben/unten, Abstände
+  zwischen Tab-Leiste, Kacheln und Status-Zeile im goldenen Schnitt (1,618 × Rand), Status-Symbole bündig mit
+  der Kachelkante; Dashboard-Leiste und -Raster auf denselben Linien wie in den Tabs.
 - **Update-Hinweis, Launcher am Gerät (0.19.63)** — Die Config zeigt unten links eine Pille „Update x.y.z“, sobald
   im Repo eine neuere Version liegt (gleiche release.cfg wie LoxBerrys Auto-Update, 6 h gepuffert); Klick öffnet
   die LoxBerry-Pluginverwaltung. „Launcher einrichten“ (ADB) jetzt direkt in der Steuerung jedes Android-Geräts

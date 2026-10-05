@@ -81,6 +81,9 @@
      der Rand um ihn traegt dieselbe Farbe wie die Visu - wirkt wie ein groesserer
      Hintergrund statt wie ein Rahmen. */
   html.scaled,html.scaled body{background:var(--bezel,var(--bg));}
+  html.sqfit .screen>#grid,html.sqfit .screen.split>#playerpane,html.sqfit .screen.split>#frontpane{
+    height:var(--sq-h);max-height:var(--sq-h);align-self:center;}
+  html.sqfit .saver.layout .sv-grid{top:calc(70px + (100% - 82px - var(--sq-sv)) / 2);bottom:auto;height:var(--sq-sv);}
   /* "Bildschirm fuellen": ganzen Tablet-Schirm nutzen (Voll-Zoom). Die Kacheln
      passen sich der Geraeteform an (koennen leicht rechteckig werden) statt als
      zentrierter cols:rows-Kasten mit Rand zu stehen. Gilt auch fuer Vollbreit. */
@@ -3165,6 +3168,7 @@ function scaleCfg(v){ return (v==='auto' || (typeof v==='number' && v>0)) ? v : 
 function applyScale(){
   const s=document.querySelector('.screen'); if(!s) return;
   s.style.width=''; s.style.height=''; s.style.maxWidth=''; s.style.maxHeight='';
+  document.documentElement.classList.remove('sqfit');   // natuerliche Groesse messen
   const w=s.offsetWidth, h=s.offsetHeight;          // Layout-Groesse, vom transform unberuehrt
   const passt=(w&&h) ? Math.min(innerWidth/w, innerHeight/h) : 1;
   let k=1;
@@ -3173,15 +3177,22 @@ function applyScale(){
     else if(typeof uiScaleCfg==='number') k=Math.min(uiScaleCfg,passt);
   }
   k=Math.round(k*1000)/1000;
-  // Bleibt in der Hoehe Platz (Breite begrenzt den Zoom), den Kasten hoeher
-  // machen - aber nur bis die Kacheln quadratisch sind: Kachelflaeche einer
-  // Pane = so hoch wie breit. Darueber hinaus fuellt der Hintergrund.
+  // Bleibt in der Hoehe Platz (Breite begrenzt den Zoom, iPad 3:2, Tablet
+  // 16:10): Ebene 0 (Hintergrund, Tab-Leiste, Statusleiste) fuellt den ganzen
+  // Schirm - keine Balken. Kachelflaeche, Panes und Dashboard-Raster bleiben
+  // quadratisch (Pane so hoch wie breit) und stehen mittig im freien Platz.
+  let fill=false;
   if(k>1){
     const g=el('grid'), panes=(s.classList.contains('split')||w>=900)?2:1;
     const chrome=g?Math.max(0,h-g.clientHeight):0, frei=Math.floor(innerHeight/k);
-    const ziel=Math.round(w/panes+chrome);
-    if(frei>h+4 && ziel>h){ s.style.maxHeight='none'; s.style.height=Math.min(frei,ziel)+'px'; }
+    if(frei>h+4){
+      s.style.maxHeight='none'; s.style.height=frei+'px';
+      s.style.setProperty('--sq-h', Math.min(frei-chrome, Math.round(w/panes))+'px');
+      s.style.setProperty('--sq-sv', Math.min(frei-82, Math.round((w-24)/panes))+'px');
+      fill=true;
+    }
   }
+  document.documentElement.classList.toggle('sqfit', fill);
   if(k!==uiScaleEff){
     uiScaleEff=k;
     s.style.setProperty('--ui-scale', String(k));

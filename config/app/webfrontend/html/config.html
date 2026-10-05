@@ -698,6 +698,7 @@
   .dev .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .dev .drow+.drow{margin-top:8px;}
   .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
+  #dev_list .dev.inactive>.devtg{opacity:.55;} #dev_list .dev.inactive.open>.devtg{opacity:.8;}
   .dev .ddelrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
   .dev .ddelrow .dhint{margin:0;} .dev .ddel{color:var(--crit,#e2695f);}
   .dev .ddetbox{margin-top:10px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--good) 8%,var(--panel2));border:1px solid color-mix(in srgb,var(--good) 30%,var(--line));font-size:12.5px;}
@@ -3954,7 +3955,8 @@ function renderDeviceList(j){
     const dot=n.querySelector('.devtg .sdot'), st=n.querySelector('.devtg .devst');
     const up=!!(d&&d.online);
     if(dot) dot.classList.toggle('on',up);
-    if(st) st.textContent=(up?T('online'):T('offline'))+(d&&d.profile?' · '+d.profile:'')+(d&&d.ip?' · '+d.ip:''); });
+    const ia=devInactiveDays(n.dataset.name); n.classList.toggle('inactive', ia>0);
+    if(st) st.textContent=(up?T('online'):(ia?T('seit')+' '+ia+' '+T('Tagen nicht gesehen'):T('offline')))+(d&&d.profile?' · '+d.profile:'')+(d&&d.ip?' · '+d.ip:''); });
   box.innerHTML=anon.length?'<div class="devanon"><b>'+T('Ohne Kennung')+'</b><div class="note">'+T('Nach IP erkannt. Einen Namen vergeben, damit das Gerät dauerhaft gelistet und per Betriebsmodus umgeschaltet werden kann.')+'</div>'+
     anon.map(a=>anonRow(a,prevName[a.ip])).join('')+'</div>':'';
   list.querySelectorAll('.devx').forEach(x=>{
@@ -4151,6 +4153,13 @@ async function nameDevice(ip,name){
     setTimeout(pollDevices,2500);   // Geraet verbindet sich mit Kennung neu
   }catch(e){ flash($('#ag_toast'),'Fehler: '+e,false); }
 }
+// Laenger als 30 Tage nicht gemeldet (und nicht online): Tage, sonst 0
+function devInactiveDays(name){
+  const d=((LAST_DEVS||{}).devices||[]).find(x=>x.name===name);
+  if(!d||d.online) return 0;
+  const last=(d.detected&&d.detected.last)||d.lastSeen||0; if(!last) return 0;
+  const days=Math.floor((Date.now()/1000-last)/86400); return days>=30?days:0;
+}
 async function pollDevices(){
   try{
     const r=await fetch('/api/devices'); const j=await r.json();
@@ -4289,7 +4298,8 @@ function renderDevices(){
   const box=$('#dev_list'); if(!box) return;
   const on=n=>((LAST_DEVS||{}).devices||[]).some(d=>d.name===n)?0:1;   // erreichbare Geraete zuerst
   const nw=n=>DEV_NEW.has(n)?0:1;
-  const names=Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort((a,b)=>nw(a)-nw(b)||on(a)-on(b)||a.localeCompare(b));
+  const ia=n=>devInactiveDays(n)?1:0;   // lange nicht gesehen -> ans Ende
+  const names=Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort((a,b)=>nw(a)-nw(b)||ia(a)-ia(b)||on(a)-on(b)||a.localeCompare(b));
   { const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=names.length?'':'none'; }
   if(!names.length){ box.innerHTML='<div class="muted">'+T('Noch kein Panel bekannt. Sobald ein Panel die Visu mit Kennung öffnet oder ein Agent läuft, erscheint es hier.')+'</div>'; return; }
   box.innerHTML=names.map(devRow).join('');

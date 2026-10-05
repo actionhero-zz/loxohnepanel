@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Tablet ohne Balken, inaktive Geräte (0.19.54)** — Gezoomt auf Tablets/iPad füllt die Ebene 0 (Hintergrund,
+  Tab-Leiste, Statusleiste) den ganzen Schirm; Kachelfläche, Panes und Dashboard-Raster bleiben quadratisch und
+  stehen mittig. Geräte, die sich 30 Tage nicht gemeldet haben, erscheinen blass mit „seit … Tagen nicht gesehen“
+  am Ende der Liste.
 - **Zahlen-Bubbles „ausgebissen“ (0.19.53)** — Anzahl als viereckige Pille oben rechts am Symbol; das Piktogramm
   darunter bekommt eine Aussparung (Maske), wirkt auf jedem Hintergrund wie ausgebissen. In der Statusleiste und
   auf Kacheln, wo es Sinn ergibt: Fensterüberwachung (offen), Zentral Licht/Audio (aktive Räume), Zentral

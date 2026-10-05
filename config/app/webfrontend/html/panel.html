@@ -84,10 +84,16 @@
   html.sqfit .screen>#grid,html.sqfit .screen.split>#playerpane,html.sqfit .screen.split>#frontpane{
     height:var(--sq-h);max-height:var(--sq-h);align-self:center;}
   html.sqfit .screen{padding-top:calc(var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));box-sizing:border-box;}
-  html.sqfit .saver.layout .sv-bar{top:calc(8px + var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));}
-  html.sqfit .saver.layout .sv-grid{top:calc(70px + var(--sqtop,0px) + (100% - 82px - var(--sqtop,0px) - var(--sq-sv)) / 2);bottom:auto;height:var(--sq-sv);}
+  /* Tablet: Statusleiste des Dashboards unten (oben ist die iPad-Statuszeile) */
+  html.sqfit .saver.layout .sv-bar{top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px) / var(--ui-scale,1));}
+  html.sqfit .saver.layout .sv-grid{top:calc(12px + var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1) + (100% - 82px - var(--sqtop,0px) - var(--sq-sv)) / 2);bottom:auto;height:var(--sq-sv);}
   /* Platz uebrig: Tab- und Statusleiste etwas groesser (Symbole gut treffbar) */
-  html.sqbig .screen>.tabs{height:60px;} html.sqbig .screen>.tabs .tab,html.sqbig .screen>.tabs .tabback,html.sqbig .crumb{height:60px;}
+  .screen>.tabs .tab .tlbl{display:none;}
+  html.sqbig .screen>.tabs{height:72px;} html.sqbig .screen>.tabs .tab,html.sqbig .screen>.tabs .tabback,html.sqbig .crumb{height:72px;}
+  html.sqbig .screen>.tabs .tab{flex-basis:84px;gap:4px;}
+  html.sqbig .screen>.tabs .tab::after{display:none;}   /* aktiv = Flaeche + Farbe, statt Punkt */
+  html.sqbig .screen>.tabs .tab .tlbl{display:block;max-width:100%;padding:0 4px;box-sizing:border-box;font-size:11.5px;font-weight:600;
+    line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:inherit;}
   html.sqbig .screen>.tabs .tab svg,html.sqbig .screen>.tabs .tab .tico,html.sqbig .crumb svg,html.sqbig .crumb .rawico,
   html.sqbig .screen>.tabs .tabback svg{width:36px;height:36px;}
   html.sqbig .saver.layout .sv-bar{height:60px;} html.sqbig{--sv-ico:29px;}
@@ -784,7 +790,7 @@
   .sv-st{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;
     align-self:stretch;}   /* volle Leistenhoehe: Platz fuer die Zahlen-Bubble ueber dem Symbol (sonst abgeschnitten) */
   .sv-st .svsti{height:100%;max-height:52px;}
-  .sv-st .cbw{margin-top:calc(var(--sv-ico,20px) * .2);}   /* Symbol samt Bubble optisch mittig */
+  .sv-st .cbw{margin-top:calc(var(--sv-ico,20px) * .3);margin-right:calc(var(--sv-ico,20px) * .3);}   /* Symbol samt Bubble optisch mittig */
   .svsti{display:flex;align-items:center;gap:6px;height:36px;padding:0 10px;border:0;border-radius:18px;background:transparent;
     color:var(--tab-idle,var(--muted));font:inherit;font-size:13.5px;font-weight:500;white-space:nowrap;cursor:pointer;touch-action:manipulation;}
   .svsti .stci{width:var(--sv-ico,20px);height:var(--sv-ico,20px);} .svsti .cbw{--cbs:var(--sv-ico,20px);} .svsti img.stci{object-fit:contain;}
@@ -808,6 +814,9 @@
   .cbn.hint{background:var(--st-hint,#f0c27a);color:#2a2208;} .cbn.crit{background:var(--st-alarm,#ff9d9b);color:#3d0c0b;}
   html.ianim:not([data-motion="off"]) .cbn{animation:cbIn .28s cubic-bezier(.2,.8,.3,1.3);}
   @keyframes cbIn{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+  /* Statusleiste: Bubble groesser (82 % des Symbols), eigene Aussparungen */
+  .cbw.big.n1{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM79 -41H119A28 28 0 0 1 147 -13V27A28 28 0 0 1 119 55H79A28 28 0 0 1 51 27V-13A28 28 0 0 1 79 -41Z'/%3E%3C/svg%3E");--cbw:82%;} .cbw.big.n2{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM79 -41H119A28 28 0 0 1 147 -13V27A28 28 0 0 1 119 55H79A28 28 0 0 1 51 27V-13A28 28 0 0 1 79 -41Z'/%3E%3C/svg%3E");--cbw:82%;} .cbw.big.n3{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM61 -41H119A28 28 0 0 1 147 -13V27A28 28 0 0 1 119 55H61A28 28 0 0 1 33 27V-13A28 28 0 0 1 61 -41Z'/%3E%3C/svg%3E");--cbw:100%;}
+  .cbw.big .cbn{top:-34%;right:-40%;height:82%;border-radius:calc(var(--cbs) * .24);font-size:calc(var(--cbs) * var(--cbf,.47) * 1.15);}
   .svsico{position:relative;display:inline-grid;place-items:center;}
   .svsti .cbn{background:var(--tab-idle,var(--muted));color:#1f2430;} .svsti.lv-hint .cbn{background:#f0c27a;color:#2a2208;}
   .svsti.lv-alarm .cbn{background:#ff9d9b;color:#3d0c0b;} .svsti.lv-info .cbn{background:#9cc4ea;color:#0b2338;}
@@ -2661,6 +2670,8 @@ function renderTabs(){
     items = bar(items);
   }
   el('tabs').innerHTML = items.join('');
+  // Tab-Namen (nur sichtbar auf Tablets mit Platz, html.sqbig): aus dem title
+  el('tabs').querySelectorAll('.tab[title]').forEach(t=>{ const l=t.getAttribute('title'); if(l) t.insertAdjacentHTML('beforeend','<span class="tlbl">'+esc(l)+'</span>'); });
   applyFace();
   if(ct) el('tabs').querySelectorAll('.tab[data-cat]').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) scrollToCat(n.dataset.cat); });
   else   el('tabs').querySelectorAll('.tab').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) goTab(n.dataset.tab); });
@@ -2861,9 +2872,9 @@ function updateGrid(items){
 const DBL_TAP_MS=350;
 let _dblTap=null;   // {id,timer} - wartender erster Tipp auf eine Lichtkachel
 // Symbol mit Zahlen-Plakette ("ausgebissen", s. .cbw). size: feste Symbolgroesse in px (sonst --ico-size)
-function cbHtml(icon, n, tone, size){
+function cbHtml(icon, n, tone, size, big){
   const t=n>99?'99+':String(n), cls=t.length>=3?'n3':(t.length===2?'n2':'n1');
-  return '<span class="cbw '+cls+'"'+(size?' style="--cbs:'+size+'px"':'')+'><span class="cbi">'+icon+'</span>'+
+  return '<span class="cbw '+cls+(big?' big':'')+'"'+(size?' style="--cbs:'+size+'px"':'')+'><span class="cbi">'+icon+'</span>'+
     '<b class="cbn'+(tone?' '+esc(tone):'')+'">'+t+'</b></span>';
 }
 // Eine Kachel als HTML - gemeinsam fuer das Raster und den Screensaver.
@@ -3202,7 +3213,7 @@ function applyScale(){
       // Vom Platz ueber den quadratischen Kacheln: etwas Abstand oben (iPad-
       // Statuszeile) und eine groessere Tab-/Statusleiste (+8 px, Symbole 30/24 px)
       const sqw=Math.round(w/panes), spare=Math.max(0, frei-chrome-sqw);
-      const top=Math.round(Math.min(16, spare*0.3)), boost=(spare-top>=8)?8:0;
+      const top=Math.round(Math.min(16, spare*0.3)), boost=(spare-top>=20)?20:0;
       s.style.setProperty('--sqtop', top+'px');
       s.style.setProperty('--sq-h', Math.min(frei-chrome-top-boost, sqw)+'px');
       s.style.setProperty('--sq-sv', Math.min(frei-82-top-boost, Math.round((w-24)/panes))+'px');
@@ -3839,7 +3850,7 @@ function svStRender(){
   // Mail-Apps; reine Zustaende (scharf, ausgeloest ...) nur ueber die Symbolfarbe.
   const html=chips.map(c=>{ const n=+c.count||0;
     return '<button type="button" class="svsti lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+(c.text?': '+c.text:''))+'">'+
-      (n>0?cbHtml(stIco(c),n,''):'<span class="svsico">'+stIco(c)+'</span>')+'</button>'; }).join('');
+      (n>0?cbHtml(stIco(c),n,'',0,true):'<span class="svsico">'+stIco(c)+'</span>')+'</button>'; }).join('');
   if(host._html!==html){ host._html=html; host.innerHTML=html;
     // 480 px: ab 5 Eintraegen kompakter; passt es dann noch nicht, nur Symbole
     // (Zustand bleibt ueber Farbe/Hintergrund sichtbar, Text steht im Info-Fenster).

@@ -699,6 +699,7 @@
   .dev .drow+.drow{margin-top:8px;}
   .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
   #dev_list .dev.inactive>.devtg{opacity:.55;} #dev_list .dev.inactive.open>.devtg{opacity:.8;}
+  .dev .dren{display:flex;gap:8px;margin-bottom:8px;} .dev .dren_in{flex:1;min-width:0;max-width:320px;}
   .dev .ddelrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
   .dev .ddelrow .dhint{margin:0;} .dev .ddel{color:var(--crit,#e2695f);}
   .dev .ddetbox{margin-top:10px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--good) 8%,var(--panel2));border:1px solid color-mix(in srgb,var(--good) 30%,var(--line));font-size:12.5px;}
@@ -4198,6 +4199,8 @@ function devRow(name){
       (isNew?'<span class="newb">'+T('neu')+'</span>':'')+'<span class="chev">›</span></button>'+
     '<div class="devbody">'+
     '<div class="dsec dsetup">'+dsh('setup',T('Einrichtung'))+
+      '<div class="drow dren"><input type="text" class="dren_in" data-live="1" maxlength="60" value="'+esc(name)+'" aria-label="'+T('Gerätename')+'">'+
+        '<button type="button" class="btn ghost sm dren_go" data-live="1">'+T('Umbenennen')+'</button></div>'+
       '<div class="drow devhead">'+
         '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
           models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
@@ -4219,6 +4222,16 @@ function devRow(name){
     '<div class="ddelrow"><button type="button" class="btn ghost sm ddel" data-live="1">'+T('Gerät löschen')+'</button>'+
       '<span class="dhint">'+T('Entfernt Einstellungen und Erkennung. Ist das Gerät verbunden, meldet es sich neu an.')+'</span></div>'+
   '</div></div>';
+}
+async function devRename(old, nw){
+  nw=(nw||'').trim(); if(!nw||nw===old) return;
+  try{ const r=await fetch('/api/device/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old,new:nw})}); const j=await r.json();
+    if(!j.ok){ snack(j.error||T('Umbenennen fehlgeschlagen')); return; } }catch(e){ snack('Fehler: '+e); return; }
+  if(DEV[old]){ DEV[nw]=DEV[old]; delete DEV[old]; }
+  KNOWN_NAMES=KNOWN_NAMES.map(n=>n===old?nw:n);
+  if(DEV_OPEN.delete(old)) DEV_OPEN.add(nw); DEV_NEW.delete(old);
+  if(LAST_DEVS) (LAST_DEVS.devices||[]).forEach(d=>{ if(d.name===old) d.name=nw; });
+  renderDevices(); snack(T('Umbenannt in „')+nw+'“'); setTimeout(()=>pollDevices&&pollDevices(),1500);
 }
 async function devDelete(name){
   if(!confirm(T('Gerät „')+name+T('“ löschen? Einstellungen (Typ, Betriebsmodus, Display) gehen verloren.'))) return;
@@ -4315,7 +4328,9 @@ function renderDevices(){
   // Betriebsmodus-Automatik: Modus-Zeilen nur bei gesetztem Haken
   box.querySelectorAll('.dev_auto').forEach(cb=>cb.onchange=()=>{ const w=cb.closest('.dev').querySelector('.dmwrap'); if(w) w.hidden=!cb.checked; });
   // Erkannten Typ uebernehmen = Auswahl setzen wie von Hand (Aenderung -> Speicherleiste)
-  if(!box._ddel) box._ddel=1, box.addEventListener('click',e=>{ const b=e.target.closest('.ddel'); if(b) devDelete(b.closest('.dev').dataset.name); });
+  if(!box._ddel) box._ddel=1, box.addEventListener('click',e=>{ const b=e.target.closest('.ddel'); if(b) devDelete(b.closest('.dev').dataset.name);
+    const rn=e.target.closest('.dren_go'); if(rn){ const dv=rn.closest('.dev'); devRename(dv.dataset.name, dv.querySelector('.dren_in').value); } });
+  if(!box._dren) box._dren=1, box.addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.classList.contains('dren_in')){ const dv=e.target.closest('.dev'); devRename(dv.dataset.name, e.target.value); } });
   if(!box._ddet) box._ddet=1, box.addEventListener('click',e=>{ const b=e.target.closest('.ddetuse'); if(!b) return; const dv=b.closest('.dev'), sel=dv&&dv.querySelector('.dev_model');
     if(!sel) return; sel.value=b.dataset.guess; sel.dispatchEvent(new Event('change',{bubbles:true})); b.remove(); });
   box.querySelectorAll('.dev_model').forEach(sel=>sel.onchange=()=>{

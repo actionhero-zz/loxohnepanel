@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Geräte umbenennen, größere Tablet-Symbole (0.19.59)** — Gerätename in der Gerätekarte änderbar (Einstellungen
+  und Erkennung ziehen mit, verbundenes Gerät übernimmt den Namen sofort). Im Tablet-Zoom Tab-Symbole 36 px,
+  Statusleisten-Symbole 29 px.
 - **Fix offene Fenster (0.19.58)** — Fensterüberwachung zählt offene/gekippte Fenster aus dem Zustand je Fenster
   (windowStates) statt aus den Zählern numOpen/numTilted, die bei manchen Miniservern auf 0 hängen bleiben.
   Statusleiste und Kachel zeigen wieder „n offen“ mit Bubble.

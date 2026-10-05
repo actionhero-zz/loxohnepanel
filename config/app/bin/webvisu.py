@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.58"
+APP_VERSION = "0.19.59"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -3904,6 +3904,27 @@ class App:
         if changed or created:
             self._save_devinfo()
         return name, created
+
+    async def device_rename(self, old: str, new: str) -> dict:
+        """Geraet umbenennen: Einstellungen und Steckbriefe ziehen mit; verbundene
+        Visu bekommt den neuen Namen (merkt ihn sich, verbindet neu)."""
+        if not new or new == old:
+            return {"ok": False, "error": "neuer Name fehlt"}
+        if new in self.devices or any(isinstance(e, dict) and e.get("name") == new for e in self.devinfo.values()):
+            return {"ok": False, "error": "Name schon vergeben"}
+        devs = {(new if k == old else k): v for k, v in self.devices.items()}
+        n_info = 0
+        for e in self.devinfo.values():
+            if isinstance(e, dict) and e.get("name") == old:
+                e["name"] = new
+                n_info += 1
+        if old in self.devices:
+            self._write_devices(devs)
+        if n_info:
+            self._save_devinfo()
+        n = await _push(self, {"t": "setdevice", "name": new}, "", old)
+        log.info("Geraet umbenannt: '%s' -> '%s' (%d verbunden)", old, new, n)
+        return {"ok": old in devs or new in devs or n_info > 0 or n > 0, "online": n}
 
     async def device_delete(self, name: str) -> dict:
         """Geraet vergessen: Einstellungen und Steckbriefe. Ist es gerade
@@ -8578,6 +8599,17 @@ async def api_msio(request: web.Request) -> web.Response:
     return web.json_response({"ok": code == "200", "code": code, "path": path, "value": val})
 
 
+async def api_device_rename(request: web.Request) -> web.Response:
+    """Geraet umbenennen: {old, new}."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    old = str(d.get("old") or "").strip()[:60]
+    new = str(d.get("new") or "").strip()[:60]
+    if not old or not new:
+        return web.json_response({"ok": False, "error": "alter und neuer Name noetig"}, status=400)
+    return web.json_response(await app.device_rename(old, new))
+
+
 async def api_device_delete(request: web.Request) -> web.Response:
     """Geraet loeschen: {name}."""
     app: App = request.app["app"]
@@ -9776,6 +9808,7 @@ def main() -> None:
     a.router.add_post("/api/device/switch", api_device_switch)
     a.router.add_post("/api/device/name", api_device_name)
     a.router.add_post("/api/device/delete", api_device_delete)
+    a.router.add_post("/api/device/rename", api_device_rename)
     a.router.add_get("/api/msio", api_msio)
     a.router.add_get("/api/display", api_display)
     a.router.add_post("/api/display", api_display)

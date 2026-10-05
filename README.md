@@ -27,6 +27,13 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Geräte-Optimierung, Standard-Dashboard, aufgeräumte Konfiguration (0.19.49)** — Zoom füllt den ganzen
+  Schirm (iPad/Tablet ohne Rand); je Gerätetyp Zoom-Vorgabe und Tipps unter „Einrichtung“ (inkl. Hinweis bei
+  falscher Panel-Größe); iPad/Android-Tablet ohne Fully halten den Schirm bis zur Leerlaufzeit wach.
+  Dashboard: Vorlagen ersetzt durch „als globale Standardansicht verwenden“ (Vorlage für neue Panels und den
+  Assistenten); Einstellungen kompakt in einer Reihe, als Block einklappbar, Statusleisten-Bausteine einklappbar.
+  Konfiguration: eine Speicherleiste für alles (Panels, System, Geräte), Karten als Mauerwerk ohne Lücken,
+  Kameras/Kalender/„Schrift & Größen“ einklappbar, Miniserver-Felder kompakter.
 - **Bausteine ausblenden, Tablet-Zoom, Lichtszenen-Fix (0.19.48)** — Raster-Editor: Seitenleiste in
   einklappbare Bereiche (Größe · Inhalt · Bausteine · Aussehen); bei Raum-, Kategorie- und Zentral-Kacheln
   lassen sich einzelne Bausteine abwählen (in der Web-App ausgeblendet). Zoom je Gerät (Aus/Automatisch/

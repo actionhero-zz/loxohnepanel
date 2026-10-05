@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.48"
+APP_VERSION = "0.19.49"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -172,16 +172,45 @@ DISPLAY_DRIVERS = {"fully": 2323, "wallpanel": 2971}
 # bestimmt, was sich fernsteuern laesst - Android per adb (Fully neu starten,
 # Geraet neu starten), Shelly zusaetzlich per eigener Schnittstelle, Linux per Agent.
 DEVICE_MODELS = {
-    "shelly-x2": {"label": "Shelly Wall Display X2 / X2i", "os": "android", "shelly": True},
-    "shelly-x1": {"label": "Shelly Wall Display X1i", "os": "android", "shelly": True},
-    "nspro86": {"label": "Sonoff NSPanel Pro 86", "os": "android"},
-    "nspro120": {"label": "Sonoff NSPanel Pro 120", "os": "android"},
-    "sm41-android": {"label": "4″-Standardpanel YC-SM41 (Android)", "os": "android"},
-    "sm41-debian": {"label": "4″-Standardpanel YC-SM41 (Debian + Agent)", "os": "linux"},
-    "sm55": {"label": "YC-SM55P", "os": "android"},
-    "tablet": {"label": "Android-Tablet (7–10″)", "os": "android", "scale": "auto"},
-    "ipad": {"label": "iPad / iPad mini", "os": "browser", "scale": "auto"},
-    "other": {"label": "Anderes Gerät / PC-Browser", "os": "browser"},
+    # scale: Vorgabe-Zoom (auto = 480er-Raster gleichmaessig auf den Schirm),
+    # wake: Wach-Sperre der Seite (Browser ohne Kiosk-App), tips: Hinweise unter
+    # Einrichtung (Konfigurator). Eigenheiten je Geraet stehen in den Tipps.
+    "shelly-x2": {"label": "Shelly Wall Display X2 / X2i", "os": "android", "shelly": True, "scale": "auto",
+                  "panes": 2,
+                  "tips": ["Querformat, 2 Panels nebeneinander (Profil: Panel-Größe „2 Panels“).",
+                           "Fully Kiosk + LoxPanel-Launcher: Gerät hinzufügen → Automatisch einrichten per ADB.",
+                           "Display aus/an über Fully (JavaScript-Schnittstelle einschalten)."]},
+    "shelly-x1": {"label": "Shelly Wall Display X1i", "os": "android", "shelly": True, "scale": "auto",
+                  "panes": 1,
+                  "tips": ["720×720 – Zoom „Automatisch“ vergrößert das 480er-Raster auf den ganzen Schirm.",
+                           "Profil: Panel-Größe „1 Panel“.",
+                           "Fully Kiosk + LoxPanel-Launcher per ADB (Gerät hinzufügen)."]},
+    "nspro86": {"label": "Sonoff NSPanel Pro 86", "os": "android", "scale": "off", "panes": 1,
+                "tips": ["480×480 – passt 1:1, kein Zoom nötig. Profil: „1 Panel“.",
+                         "Kiosk-App (Fully) mit Start-URL inkl. ?device=… einrichten."]},
+    "nspro120": {"label": "Sonoff NSPanel Pro 120", "os": "android", "scale": "auto", "panes": 1,
+                 "tips": ["Hochformat – Zoom „Automatisch“ füllt die Breite. Profil: „1 Panel“.",
+                          "Kiosk-App (Fully) mit Start-URL inkl. ?device=… einrichten."]},
+    "sm41-android": {"label": "4″-Standardpanel YC-SM41 (Android)", "os": "android", "scale": "off", "panes": 1,
+                     "tips": ["480×480 – Referenzgröße, kein Zoom. Profil: „1 Panel“."]},
+    "sm41-debian": {"label": "4″-Standardpanel YC-SM41 (Debian + Agent)", "os": "linux", "scale": "off", "panes": 1,
+                    "tips": ["480×480 – Referenzgröße. Agent per SSH (Gerät hinzufügen → Linux-Panel);",
+                             "Display und Neustart übernimmt der Agent."]},
+    "sm55": {"label": "YC-SM55P", "os": "android", "scale": "auto", "panes": 2,
+             "tips": ["720×1280 quer – Zoom „Automatisch“, Profil: „2 Panels“.",
+                      "LAN/PoE: feste IP im Router vergeben (für ADB/Fully)."]},
+    "tablet": {"label": "Android-Tablet (7–10″)", "os": "android", "scale": "auto", "wake": True, "panes": 2,
+               "tips": ["Querformat, Profil: „2 Panels“; Zoom „Automatisch“ füllt den Schirm.",
+                        "Mit Fully Kiosk: Display aus/an und Autostart; ohne Fully hält die Seite den Schirm wach, bis die Leerlaufzeit abläuft.",
+                        "Hochkant zeigt das Tablet ein Panel; unter 600 px Breite greift der Handy-Modus."]},
+    "ipad": {"label": "iPad / iPad mini", "os": "browser", "scale": "auto", "wake": True, "panes": 2,
+             "tips": ["Safari: Teilen → „Zum Home-Bildschirm“ – startet ohne Adressleiste als Vollbild-App (Start-URL mit ?device=…).",
+                      "Querformat, Profil: „2 Panels“; Zoom „Automatisch“ füllt den Schirm (iPad mini ≈ 118 %).",
+                      "Die Seite hält den Schirm wach bis zur Leerlaufzeit (Display & Nacht); danach greift die iOS-Sperre.",
+                      "Für Wandbetrieb: Einstellungen → Bedienungshilfen → Geführter Zugriff (App fixieren), Automatische Sperre nach Wunsch.",
+                      "Ton (Klingel) erst nach einmaligem Antippen – iOS gibt Audio nur nach Berührung frei."]},
+    "other": {"label": "Anderes Gerät / PC-Browser", "os": "browser", "scale": "off",
+              "tips": ["Fenstergröße bestimmt die Ansicht; Zoom bei Bedarf manuell setzen."]},
 }
 # Skalierung je Geraet: "off" | "auto" | Faktor. Die Visu rechnet mit festen
 # 240er Kacheln (2 Panels = 960x480); auf groesseren Schirmen (7"-Tablet,
@@ -560,6 +589,8 @@ def _sanitize_saver(sv, dg: int = 3) -> dict | None:
     if not items:
         return None
     out = {"items": items, "exit": exits}
+    if sv.get("std") is True:
+        out["std"] = True                    # Vorlage fuer neue Panels (Konfigurator)
     if sv.get("grid") in (2, 3, "2", "3"):
         out["grid"] = g
     # Statusleiste oben im Dashboard: bis zu BAR_MAX Bausteine (unabhaengig vom
@@ -8938,6 +8969,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
                             "phone": prof.get("phone", False),
                             "scale": app.effective_scale(dev),
+                            "wake": bool((DEVICE_MODELS.get(((app.devices.get(dev) or {}) if dev else {}).get("model") or "") or {}).get("wake")),
                             "panes": prof.get("panes") or {},
                             "dpmsOff": app.panel_dpms(prof["id"]),
                             "reloadHours": app.panel_reload(prof["id"]),

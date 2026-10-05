@@ -3135,8 +3135,11 @@ function setupSchemeZoom(viewEl, stage, sw, sh){
 // Handy-Modus und "Bildschirm fuellen" fuellen schon selbst -> dort 1.
 let uiScaleCfg='off', uiScaleEff=0;
 function scaleCfg(v){ return (v==='auto' || (typeof v==='number' && v>0)) ? v : 'off'; }
+// Danach fuellt der Kasten den Rest des Schirms (iPad 3:2, Tablet 16:10 statt
+// 2:1): Breite/Hoehe = Fenster / Faktor -> kein Rand, Kacheln etwas hoeher.
 function applyScale(){
   const s=document.querySelector('.screen'); if(!s) return;
+  s.style.width=''; s.style.height=''; s.style.maxWidth=''; s.style.maxHeight='';
   const w=s.offsetWidth, h=s.offsetHeight;          // Layout-Groesse, vom transform unberuehrt
   const passt=(w&&h) ? Math.min(innerWidth/w, innerHeight/h) : 1;
   let k=1;
@@ -3145,6 +3148,8 @@ function applyScale(){
     else if(typeof uiScaleCfg==='number') k=Math.min(uiScaleCfg,passt);
   }
   k=Math.round(k*1000)/1000;
+  if(k>1){ s.style.maxWidth='none'; s.style.maxHeight='none';
+    s.style.width=Math.floor(innerWidth/k)+'px'; s.style.height=Math.floor(innerHeight/k)+'px'; }
   if(k!==uiScaleEff){
     uiScaleEff=k;
     s.style.setProperty('--ui-scale', String(k));
@@ -4586,7 +4591,7 @@ function nightWake(){          // Beruehrung -> kurz voll aufhellen, dann zuruec
 // bei Klingel / Wecker / Notify / Goto wieder an. Erkannt wird Fully Kiosk
 // Browser (window.fully; dort "Enable JavaScript Interface" einschalten).
 // Neu laden gegen Einfrieren erledigt die Seite ohne Agent selbst (s. neuladenFaellig).
-const DISP = { dpmsOff: 0, reloadHours: 0, reloadAt: null, agent: false };
+const DISP = { dpmsOff: 0, reloadHours: 0, reloadAt: null, agent: false, wake: false };
 let dpmsTimer=null;
 function kiosk(){
   const f=window.fully;
@@ -4595,17 +4600,30 @@ function kiosk(){
 function screenOff(){ const f=kiosk(); if(!f) return; _screenWasOff=true; try{ f.turnScreenOff(); }catch(e){} }
 function screenOn(){ const f=kiosk(); if(!f) return; _screenWasOff=false;
   try{ if(typeof f.isScreenOn!=='function' || !f.isScreenOn()) f.turnScreenOn(); }catch(e){} }
+// Wach-Sperre (Screen Wake Lock) fuer Tablets/iPad ohne Kiosk-App: das Geraet
+// geht sonst nach der System-Sperrzeit schlafen. Gehalten, solange das Panel
+// genutzt wird; nach der Leerlaufzeit (dpmsOff) losgelassen, damit das System
+// den Schirm abschalten darf. Ohne Leerlaufzeit bleibt der Schirm an.
+let _wake=null;
+function wakeOn(){
+  if(!DISP.wake || kiosk() || _wake || !navigator.wakeLock || document.visibilityState!=='visible') return;
+  navigator.wakeLock.request('screen').then(l=>{ _wake=l; l.addEventListener('release',()=>{ if(_wake===l) _wake=null; }); }).catch(()=>{});
+}
+function wakeOff(){ const l=_wake; _wake=null; if(l) l.release().catch(()=>{}); }
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') armDpms(); });
 function armDpms(){ clearTimeout(dpmsTimer);
+  wakeOn();
   if(DISP.agent || !(DISP.dpmsOff>0)) return;
   // Mit Kiosk-JS (Fully) direkt abschalten; sonst dem Server Leerlauf melden,
   // der schaltet ueber den Display-Treiber des Geraets (Fully REST / WallPanel).
-  dpmsTimer=setTimeout(()=>{ if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
+  dpmsTimer=setTimeout(()=>{ wakeOff(); if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
 function applyDisplayCfg(msg){
   DISP.dpmsOff = (typeof msg.dpmsOff==='number' && msg.dpmsOff>0) ? msg.dpmsOff : 0;
   // Neu laden: null = nicht eingestellt (nachts um reloadAt Uhr), sonst Stunden, 0 = aus
   DISP.reloadHours = (typeof msg.reloadHours==='number') ? Math.max(0, msg.reloadHours) : null;
   DISP.reloadAt = (typeof msg.reloadAt==='number') ? msg.reloadAt : null;
   DISP.agent = !!msg.agent;
+  DISP.wake = !!msg.wake;
   armDpms();
 }
 // Neu laden gegen Einfrieren, nur ohne Agent (der startet den Browser selbst

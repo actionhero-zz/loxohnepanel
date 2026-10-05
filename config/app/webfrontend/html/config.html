@@ -289,9 +289,9 @@
   .ic .icname{font-weight:600;margin-bottom:10px;}
   .ic .field{max-width:none;margin-bottom:12px;}
   /* Kalenderliste (mehrere iCal-Abos, je eines pro Zeile) */
-  .cal{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;}
+  .cal{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;}
   .cal:first-child{border-top:none;padding-top:0;margin-top:0;}
-  .cal .calh{display:flex;align-items:center;gap:9px;margin-bottom:10px;flex-wrap:wrap;}
+  .cal .calh{display:flex;align-items:center;gap:9px;margin-bottom:0;flex-wrap:nowrap;}
   .cal .caldot{width:11px;height:11px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,.18);}
   .cal .caln{font-weight:600;}
   .cal .calst{font-size:12.5px;color:var(--muted);order:2;}
@@ -628,11 +628,38 @@
   .tbchip[draggable="true"]{cursor:grab;}
   .tbchip.dragging{opacity:.4;}
   .tbchip.dropto{box-shadow:0 0 0 2px var(--dot,#ffc145) inset;}
-  .dashprops{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;}
-  .dashprops .field{width:auto;margin:0;}
+  .dpwrap{border:1px solid var(--line);border-radius:12px;background:var(--panel2);}
+  .dphd{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:10px;width:100%;padding:10px 14px;cursor:pointer;font-weight:600;font-size:13.5px;color:var(--fg);}
+  .dphd small{flex:1;min-width:0;color:var(--muted);font-weight:400;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .dphd svg{color:var(--muted);transition:transform .22s ease;flex:none;}
+  .dphd:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:12px;}
+  .dpwrap.open .dphd svg{transform:rotate(180deg);}
+  .dpbody{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.2,0,0,1);}
+  .dpbody>div{overflow:hidden;min-height:0;}
+  .dpwrap.open .dpbody{grid-template-rows:1fr;}
+  .dpwrap .dashprops{border:0;border-top:1px solid var(--line);border-radius:0 0 12px 12px;background:transparent;}
+  @media (prefers-reduced-motion:reduce){ .dpbody,.dphd svg{transition:none;} }
+  .dashprops{display:grid;grid-template-columns:minmax(96px,.6fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.1fr);gap:10px 18px;align-items:start;padding:10px 14px;}
+  .dashprops .field{width:auto;margin:0;min-width:0;}
+  .dashprops .lbl{margin-bottom:5px;}
+  .dashprops .hint{font-size:11.5px;margin-top:4px;line-height:1.35;}
+  .dashprops .dstd{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:2px 12px;padding-top:8px;border-top:1px solid var(--line);}
+  .dashprops .dstd{flex-direction:row;justify-content:flex-start;align-items:center;text-align:left;}
+  .dashprops .dstd .lbl{margin:0;width:auto;display:inline-block;} .dashprops .dstd .chk{margin:0;width:auto;} .dashprops .dstd .hint{margin:0;width:auto;flex:1 1 220px;}
+  .dashprops .dinfo{color:var(--muted);font-weight:400;cursor:help;}
+  .dashprops .dambrow{display:flex;flex-direction:column;gap:2px;margin:0 0 6px;font-size:12.5px;color:var(--muted);}
+  .dashprops .dambrow select{width:100%;}
+  .dashprops .dbarhd{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--fg);}
+  .dashprops .dbarhd small{color:var(--muted);font-weight:400;margin-left:4px;}
+  .dashprops .dbarhd svg{color:var(--muted);transition:transform .22s ease;flex:none;}
+  .dashprops .dbarbox.open .dbarhd svg{transform:rotate(180deg);}
+  .dashprops .dbarbody{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s cubic-bezier(.2,0,0,1);}
+  .dashprops .dbarbody>div{overflow:hidden;min-height:0;}
+  .dashprops .dbarbox.open .dbarbody{grid-template-rows:1fr;} .dashprops .dbarbox.open .dbarbody>div{padding-top:8px;}
+  @media (prefers-reduced-motion:reduce){ .dashprops .dbarbody,.dashprops .dbarhd svg{transition:none;} }
 
-  .dashprops .dexits{display:flex;flex-direction:column;gap:4px;}
-  .dashprops .dexits .chk{font-size:13px;}
+  .dashprops .dexits{display:flex;flex-direction:column;gap:0;}
+  .dashprops .dexits .chk{font-size:12.5px;margin:0;padding:2px 0;gap:8px;} .dashprops .chk input{width:16px;height:16px;}
   .ddwrap{margin:8px 0 2px;} .ddwrap summary{cursor:pointer;font-size:13px;color:var(--muted);}
 
   /* Meine Geraete: ein Block je Geraet (Status + Knoepfe oben, Einstellungen darunter) */
@@ -668,6 +695,10 @@
   .dev .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .dev .drow+.drow{margin-top:8px;}
   .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
+  .dev .dtip{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);font-size:12.5px;line-height:1.45;}
+  .dev .dtip b{display:block;margin-bottom:4px;font-size:12.5px;}
+  .dev .dtip ul{margin:0;padding-left:18px;color:var(--muted);} .dev .dtip li+li{margin-top:3px;}
+  .dev .dtip .dwarn{margin:0 0 6px;color:var(--accent);}
   .dev .dmrows{margin-top:6px;}
   .dev .ddwrap{padding-top:10px;border-top:1px solid var(--line);}
   .devanon{margin-top:4px;} .devanon .note{margin:2px 0 8px;}
@@ -678,11 +709,15 @@
      Bildschirmen nebeneinander; Editoren und Listen immer ueber die volle Breite */
   .card,.svedcard,.ovw{max-width:none;}
   .lead{max-width:none;}
-  .spane.active,#sysBehavior{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
-  .spane>*,#sysBehavior>*{flex:1 1 100%;min-width:0;}
-  .spane>.card,#sysBehavior>.card{flex:1 1 460px;margin:0;}
-  .spane>.card:has(#tbStrip,#tbEd,#hidList,#dev_list,.sved,.cmdout,table),
-  .spane>.devhelp{flex-basis:100%;}
+  /* Karten als Mauerwerk: Spalten je nach Breite (max. 3), Karten fuellen
+     Luecken von oben nach unten - keine Loecher unter kurzen Karten. Editoren,
+     Listen und Einleitung laufen ueber die volle Breite. */
+  .spane.active{display:block;columns:3 420px;column-gap:18px;}
+  #sysBehavior{display:contents;}
+  .spane>*,#sysBehavior>*{column-span:all;min-width:0;margin:0 0 18px;}
+  .spane>.card,#sysBehavior>.card,.spane>details.card{column-span:none;break-inside:avoid;display:block;width:100%;box-sizing:border-box;margin:0 0 18px;}
+  .spane>.card:has(#tbStrip,#tbEd,#hidList,#dev_list,.sved,table),
+  .spane>.devhelp:not(#fullySrc){column-span:all;}
   .tbchip{position:relative;}
   .tbchip .tbx{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:#e2695f;color:#fff;
     font-size:11px;line-height:22px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);cursor:pointer;}
@@ -715,10 +750,10 @@
     .g2ed .lib{position:static;max-height:280px;min-height:0;}
   }
   /* Dashboard-Eigenschaften: Spalten nach verfuegbarer Breite, nichts ragt heraus */
-  @container (max-width:820px){ .dashprops{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  @container (max-width:1000px){ .dashprops{grid-template-columns:repeat(2,minmax(0,1fr));} }
   @container (max-width:520px){ .dashprops{grid-template-columns:minmax(0,1fr);} }
   .dashprops select{max-width:100%;min-width:0;}
-  .dashprops [data-amb]{flex:1 1 140px;}
+  .dashprops .dambrow [data-amb]{flex:none;}
 
   /* ===== Moderne Bedienung ===== */
   /* Hinweis unten mit Rueckgaengig */
@@ -730,6 +765,9 @@
   .snack button:hover{background:rgba(255,255,255,.08);} .snack .sx{color:var(--bezel-muted,#9ea5c4);font-weight:400;}
   /* Speicherleiste */
   .savebar{display:flex;align-items:center;gap:12px;transition:box-shadow .2s;}
+  /* Karten ohne eigene Knoepfe (gespeichert wird unten): Zeile nur fuer die Rueckmeldung */
+  .actions:has(> .sectsave):not(:has(> .btn:not(.sectsave))){margin-top:6px;min-height:0;}
+  .actions:has(> .sectsave):not(:has(> .btn:not(.sectsave))) .toast:empty{display:none;}
   .saveinfo{font-size:13px;color:var(--muted);}
   .savebar.dirty .saveinfo{color:var(--fg);font-weight:600;}
   .savebar.dirty .saveinfo::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dot,#ffc145);margin-right:8px;vertical-align:1px;}
@@ -812,12 +850,32 @@
   /* Weitere Kameras */
   /* Kamera-Zeile zweizeilig: Name + URL, darunter Benutzer + Passwort + ✕ (passt auch in schmale Karten) */
   .camrow .camcrop{grid-column:1 / -1;} .camrow .camcrop .crp{margin-top:4px;}
-  .camrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:10px;align-items:end;
-    padding:12px 0;border-top:1px solid var(--line);}
+  .camrow{padding:8px 0;border-top:1px solid var(--line);}
+  .camb{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:end;padding-top:8px;}
+  .camb .camurl{grid-column:auto !important;}
+  /* Einklappbare Listenzeilen (Kameras, Kalender) */
+  .xfold .xhd{display:flex;align-items:center;gap:8px;margin:0;}
+  .xfold .xtg{all:unset;box-sizing:border-box;flex:1;min-width:0;display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;flex-wrap:wrap;}
+  .xfold .xtg:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;}
+  .xfold .xtg .xchev{margin-left:auto;color:var(--muted);transition:transform .22s ease;flex:none;order:9;}
+  .xfold.open .xtg .xchev{transform:rotate(180deg);}
+  .xfold .xbd{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s cubic-bezier(.2,0,0,1);}
+  .xfold .xbd>div{overflow:hidden;min-height:0;}
+  .xfold.open .xbd{grid-template-rows:1fr;}
+  .xfold.open .xbd>div>.row2{margin-top:6px;}
+  @media (prefers-reduced-motion:reduce){ .xfold .xbd,.xfold .xchev{transition:none;} }
+  /* Erweiterte Optionen (eingeklappt): Schrift & Groessen */
+  .xdet>summary{cursor:pointer;list-style:none;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;padding:6px 0;}
+  .xdet>summary::-webkit-details-marker{display:none;}
+  .xdet>summary::before{content:'›';display:inline-block;transition:transform .15s;color:var(--muted);}
+  .xdet[open]>summary::before{transform:rotate(90deg);}
+  .xdet>summary small{color:var(--muted);font-weight:400;}
+  .xdetb{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;padding-top:4px;}
+  .camhn{font-weight:600;} .camhu{color:var(--muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 120px;}
   .camrow:first-child{border-top:0;} .camrow .field{max-width:none;margin:0;min-width:0;}
   .camrow .field input{width:100%;max-width:none;}
   .camrow .camurl{grid-column:2 / span 2;}
-  .camdel{width:32px;height:32px;border-radius:50%;border:0;background:#e2695f;color:#fff;cursor:pointer;margin-bottom:4px;}
+  .camdel{width:28px;height:28px;flex:none;border-radius:50%;border:0;background:#e2695f;color:#fff;cursor:pointer;}
   /* Kamera-Auswahl im Widget */
   .camsel{display:flex;flex-direction:column;gap:4px;margin:4px 0 6px;}
   .camopt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:var(--field);border:1px solid var(--line);cursor:grab;font-size:13px;}
@@ -917,7 +975,7 @@
   .crpdot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#fff;border:3px solid #2b6cff;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5);}
   .crpctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;max-width:520px;}
   .crpz{flex:1;min-width:120px;} .crpzv{min-width:38px;font-variant-numeric:tabular-nums;font-size:13px;}
-  .dashprops .dbarbox{margin-top:6px;padding:8px;border:1px solid var(--line,#e3e3e3);border-radius:12px;}
+  .dashprops .dbarbox{margin-top:6px;padding:7px 9px;border:1px solid var(--line,#e3e3e3);border-radius:10px;}
   .dashprops .dbarbox .camsel{max-height:190px;overflow:auto;}
   .dashprops .dbarlbl{font-size:12px;color:var(--muted);margin-bottom:6px;}
   .sved .egrid .pgl.haspgbar{display:flex;align-items:center;gap:6px;}
@@ -1003,13 +1061,13 @@
           <p class="lead" data-i18n>Zugang zum Loxone Miniserver. Nach dem Speichern verbindet der Server sofort neu.</p>
           <div class="card">
             <h3 data-i18n>Miniserver-Zugang</h3>
-            <div class="field" style="max-width:none"><label class="lbl" data-i18n>Host / IP</label><input type="text" id="ms_host" placeholder="192.168.1.50"></div>
+            <div class="row2">
+              <div class="field" style="flex:3 1 200px"><label class="lbl" data-i18n>Host / IP</label><input type="text" id="ms_host" placeholder="192.168.1.50"></div>
+              <div class="field" style="flex:0 1 96px;min-width:80px"><label class="lbl" data-i18n>Port</label><input type="number" id="ms_port" value="443"></div>
+            </div>
             <div class="row2" style="margin-top:12px">
               <div class="field"><label class="lbl" data-i18n>Benutzer</label><input type="text" id="ms_user" autocomplete="off"></div>
               <div class="field"><label class="lbl" data-i18n>Passwort</label><input type="password" id="ms_pass" autocomplete="new-password" placeholder="unverändert lassen" data-i18n-ph></div>
-            </div>
-            <div class="row2" style="margin-top:12px">
-              <div class="field" style="max-width:120px"><label class="lbl" data-i18n>Port</label><input type="number" id="ms_port" value="443"></div>
             </div>
             <label class="chk" style="margin-top:12px"><input type="checkbox" id="ms_tls"><span data-i18n>Zertifikat prüfen (Gen2 mit selbstsigniertem Zertifikat: aus)</span></label>
             <div class="actions"><button class="btn" id="ms_save" data-i18n>Verbinden &amp; Speichern</button><span class="toast" id="ms_toast"></span></div>
@@ -1574,7 +1632,7 @@ function setRubric(r){
   const oh=$('#overviewHost'); if(oh) oh.style.display = ov?'':'none';
   $('#pconfHost').style.display = pc?'':'none';
   $('#setHost').style.display = (ov||pc)?'none':'';     // System und Geraete teilen sich setHost
-  $('#savebar').style.display = pc?'':'none';
+  $('#savebar').style.display = ov?'none':'';   // eine Speicherleiste fuer Panels, System und Geraete
   $('#phead').style.display = pc?'':'none';
   $('#subtabs').style.display = ov?'none':'';
   if(ov){ renderOverview(); refreshAdmin(); return; }
@@ -1594,11 +1652,9 @@ function renderSysBehavior(){
       '<label class="chk"><input type="checkbox" id="sysDblOff"'+(ui.dblTapOff===false?'':' checked')+'><span>'+T('Licht bei Doppelklick auf Beleuchtungskachel aus')+'</span></label>'+
       '<p class="hint">'+T('Nur bei eingeschaltetem Licht. Ein einfacher Tipp öffnet die Kachel dann mit kurzer Verzögerung (0,35 s).')+'</p>'+
       '<label class="chk"><input type="checkbox" id="sysAlarms"'+(ui.alarmsEnabled===false?'':' checked')+'><span>'+T('Weckton &amp; automatisches Aufwecken/Umschalten auf allen Panels')+'</span></label>'+
-      '<p class="hint">'+T('Betrifft nur die Weck-Benachrichtigung (Ton, Bildschirm an, Sprung zur Wecker-Ansicht). Wecker-Kacheln bleiben überall bedienbar.')+'</p>'+
-      '<div class="actions"><button class="btn" id="sys_bsave">'+T('Speichern')+'</button><span class="toast" id="sys_btoast"></span></div></div>';
+      '<p class="hint">'+T('Betrifft nur die Weck-Benachrichtigung (Ton, Bildschirm an, Sprung zur Wecker-Ansicht). Wecker-Kacheln bleiben überall bedienbar.')+'</p></div>';
   $('#sysDblOff').onchange=e=>{ if(e.target.checked) delete ui.dblTapOff; else ui.dblTapOff=false; markDirty(); };
   $('#sysAlarms').onchange=e=>{ if(e.target.checked) delete ui.alarmsEnabled; else ui.alarmsEnabled=false; markDirty(); };
-  $('#sys_bsave').onclick=async()=>{ await save(); flash($('#sys_btoast'),T('✓ Gespeichert'),true); };
 }
 function getSub(){ return rubric==='pconf'?subPconf:rubric==='global'?subGlob:(rubric==='devices'?subDev:subSet); }
 function setSub(k){ if(rubric==='pconf') subPconf=k; else if(rubric==='global') subGlob=k; else if(rubric==='devices') subDev=k; else subSet=k; }
@@ -1629,18 +1685,52 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-goto]'); 
 { const sc=$('#scroll'), tb=document.querySelector('.topbar');
   const on=()=>{ const y=Math.max(sc?sc.scrollTop:0, window.scrollY||0); tb.classList.toggle('compact', y>24); };
   if(sc) sc.addEventListener('scroll',on,{passive:true}); window.addEventListener('scroll',on,{passive:true}); }
+// ---- Einstellungen unter System/Geraete: gleiche Speicherleiste wie die Panels ----
+// Jede Karte meldet Aenderungen (Eingaben, Zeilen hinzu/weg) als "ungespeichert";
+// "Speichern" unten speichert alle geaenderten Karten ueber ihre bisherige
+// Routine. Aktionen (Test-Ton, Umschalten, Helligkeit, Hochladen) wirken sofort.
+const SECTS=[
+  {k:'ms', label:'Miniserver-Zugang', btn:'#ms_save'},
+  {k:'wx', label:'Wetter', btn:'#wx_save'},
+  {k:'cw', label:'Befehls-Monitoring', btn:'#cw_save'},
+  {k:'ic', label:'Kameras', btn:'#ic_save', root:'section[data-sub="intercom"]'},
+  {k:'dev', label:'Meine Geräte', btn:'#dev_save', root:'#dev_list'},
+  {k:'fs', label:'Fully-Kiosk-Quelle', btn:'#fs_save', root:'#fullySrc'},
+  {k:'am', label:'Audioserver', btn:'#am_save'},
+  {k:'cal', label:'Kalender', btn:'#cal_save', root:'section[data-sub="calendar"]'},
+  {k:'nt', label:'Nachtmodus', btn:'#nt_save'}];
+const SECT_DIRTY=new Set();
+function sectDirty(k){ if(!SECT_DIRTY.has(k)){ SECT_DIRTY.add(k); const t=$('#toast'); if(t){ t.className='toast'; t.textContent=''; } } saveInfo(); }
+function sectBind(){
+  SECTS.forEach(sc=>{ const b=$(sc.btn); if(!b) return; b.hidden=true; b.classList.add('sectsave');
+    const root=sc.root?$(sc.root):b.closest('.card'); if(!root||root._sect) return; root._sect=sc.k;
+    const live=e=>e.target.closest('.devlive,.devx,[data-live],input[type=file]');
+    const on=e=>{ if(!live(e)) sectDirty(sc.k); };
+    root.addEventListener('input',on); root.addEventListener('change',on);
+    // Zeilen hinzufuegen/entfernen und Bildausschnitt ziehen sind auch Aenderungen
+    root.addEventListener('click',e=>{ if(e.target.closest('#cal_add,#cam_add,.camdel,[data-caldel],.dm_add,.dm_del,.crpctl button')) sectDirty(sc.k); });
+    root.addEventListener('pointerup',e=>{ if(e.target.closest('.crpbox')) sectDirty(sc.k); }); });
+}
+async function sectSaveAll(){
+  let ok=true;
+  for(const sc of SECTS){ if(!SECT_DIRTY.has(sc.k)) continue; const b=$(sc.btn); if(!b||!b.onclick) continue;
+    const toast=b.parentNode&&b.parentNode.querySelector('.toast');
+    if(toast) toast.className='toast';
+    try{ await b.onclick(); }catch(e){ ok=false; }
+    if(toast&&/err|bad/.test(toast.className)) ok=false; else SECT_DIRTY.delete(sc.k); }
+  return ok;
+}
 // Strg/⌘+S speichert, Strg/⌘+K oeffnet die Suche
 document.addEventListener('keydown',e=>{
   const mod=e.ctrlKey||e.metaKey, k=(e.key||'').toLowerCase();
   if(mod&&k==='s'){ e.preventDefault();
-    if(rubric==='pconf'||rubric==='global'){ if(dirty) save(); else snack(T('Nichts zu speichern')); return; }
-    const b=[...document.querySelectorAll('#setHost .spane.active .actions .btn')].find(x=>x.offsetParent); if(b) b.click(); return; }
+    if(dirty||SECT_DIRTY.size) save(); else snack(T('Nichts zu speichern')); return; }
   if(mod&&k==='k'){ e.preventDefault(); openPalette(); }
 });
 $('#palBtn').onclick=()=>openPalette();
 // Speicherleiste: beim Darueberfahren/Antippen die einzelnen Aenderungen zeigen
 { const si=$('#saveInfo'); let pop=null;
-  const show=()=>{ if(!dirty) return; const l=changeList();
+  const show=()=>{ if(!dirty&&!SECT_DIRTY.size) return; const l=changeList();
     if(!pop){ pop=document.createElement('div'); pop.className='chgpop'; document.body.appendChild(pop); }
     pop.innerHTML='<b>'+T('Nicht gespeicherte Änderungen')+'</b>'+(l.length?'<ul>'+l.slice(0,14).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>'+
       (l.length>14?'<div class="more">… '+T('und')+' '+(l.length-14)+' '+T('weitere')+'</div>':''):'<div class="more">'+T('Geändert und wieder zurückgesetzt')+'</div>');
@@ -1648,7 +1738,8 @@ $('#palBtn').onclick=()=>openPalette();
   const hide=()=>{ if(pop) pop.hidden=true; };
   si.addEventListener('mouseenter',show); si.addEventListener('mouseleave',hide); si.addEventListener('click',()=>{ if(pop&&!pop.hidden) hide(); else show(); }); }
 $('#mzOpenBtn').onclick=()=>{ goTo('devices','panels'); mzOpen(); };
-$('#discardBtn').onclick=()=>{ dirty=false; location.reload(); };
+$('#discardBtn').onclick=()=>{ dirty=false; SECT_DIRTY.clear(); location.reload(); };
+$('#saveBtn').onclick=save;
 saveInfo();
 
 function subTabs(){
@@ -1766,14 +1857,16 @@ function sceneLightOpts(cur,withGlobal){
 // Profil, die Textfarbe kommt aus dem Design (Farbe "Schrift").
 function appearanceFields(ui){
   ui=ui||{};
+  const cust=['font','fontNum','bold','iconSize','nameSize','subSize','saverFcSize'].some(k=>ui[k]!==undefined&&ui[k]!==''&&ui[k]!==null);
   return designField(ui)+
+    '<details class="xdet" style="flex:1 1 100%"><summary>'+T('Schrift & Größen')+' <small>'+(cust?T('angepasst'):T('Standard'))+'</small></summary><div class="xdetb">'+
     '<div class="grph" style="flex:1 1 100%">'+T('Schrift')+'</div>'+
     fontField('Schriftart','font',ui,'fFont')+fontField('Schrift für Zahlen & Titel','fontNum',ui,'fFontNum')+
     '<div class="field" style="max-width:170px"><label class="lbl">'+T('Kachelnamen')+'</label>'+
       '<select id="fBold"><option value="">'+T('Normal')+'</option><option value="1"'+(ui.bold?' selected':'')+'>'+T('Fett')+'</option></select></div>'+
     '<div class="grph" style="flex:1 1 100%">'+T('Größen (px, leer = Standard)')+'</div>'+
     sizeField('Symbol','iconSize',ui)+sizeField('Kachelname','nameSize',ui)+sizeField('Statuszeile','subSize',ui)+
-    sizeField('Wettervorschau','saverFcSize',ui);
+    sizeField('Wettervorschau','saverFcSize',ui)+'</div></details>';
 }
 
 function renderGlobalEditor(p){
@@ -2260,7 +2353,11 @@ function stPickBind(box, onIds, rerender, max){
     r.ondragover=e=>{ if(!drag||drag===r) return; e.preventDefault(); const q=r.getBoundingClientRect(); box.insertBefore(drag,(e.clientY-q.top)>q.height/2?r.nextSibling:r); };
     r.ondrop=e=>{ e.preventDefault(); apply(); }; });
 }
-// Dashboard-Eigenschaften (statt Typ/Name/Symbol): Raster, Schliessen, Vorlagen
+// Panel, dessen Dashboard globale Standardansicht ist (Vorlage fuer neue Panels)
+function dashStdId(){ return Object.keys(PANELS).find(id=>id!=='__global__'&&PANELS[id]&&PANELS[id].saver&&PANELS[id].saver.std&&(PANELS[id].saver.items||[]).length)||''; }
+function dashStdSaver(){ const id=dashStdId(); if(!id) return null;
+  const sv=JSON.parse(JSON.stringify(PANELS[id].saver)); delete sv.std; return sv; }
+// Dashboard-Eigenschaften (statt Typ/Name/Symbol): Raster, Schliessen, Standardansicht
 let dBarIcoFor='';   // Statusleiste: Baustein, dessen Symbol gerade gewaehlt wird
 // Vorschau des Symbols eines Statusleisten-Bausteins (eigenes oder Loxone-Standard)
 function barIcoHtml(c,ic){
@@ -2269,38 +2366,47 @@ function barIcoHtml(c,ic){
   if(ic&&ic.src==='loxlib') return '<span class="loxi" style="--u:url(\'/loxlib?n='+encodeURIComponent(ic.name)+'\')"></span>';
   return c.iconUrl ? '<span class="loxi" style="--u:url(\''+esc(c.iconUrl)+'\')"></span>' : svg(BICONS.info); }
 let dBarOpen=false;   // Haken "Statusleiste" gesetzt, aber noch nichts gewaehlt
+let dBarSecOpen=false;
+let dPropsOpen=false;    // Block "Dashboard-Einstellungen" aufgeklappt   // Bausteinauswahl der Statusleiste aufgeklappt
 function renderDashProps(p){
   const box=$('#tbProps'), sv=p.saver||{}, ex=sv.exit||[], g=svGrid(p), two=tbDashPages(p)===2;
   const barOn=dBarOpen||(sv.bar||[]).length>0;
-  box.innerHTML='<div class="tbprops dashprops">'+
+  box.innerHTML='<div class="dpwrap'+(dPropsOpen?' open':'')+'"><button type="button" class="dphd" aria-expanded="'+(dPropsOpen?'true':'false')+'"><span>'+T('Dashboard-Einstellungen')+'</span>'+
+      '<small>'+[g+'×'+g, ex.length?ex.length+' '+T('Schließen'):'', (sv.bar||[]).length?T('Statusleiste'):'', sv.std?T('Standard'):''].filter(Boolean).join(' · ')+'</small>'+
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>'+
+    '<div class="dpbody"><div><div class="tbprops dashprops">'+
     '<div class="field"><label class="lbl">'+T('Raster')+'</label><div class="seg" style="display:flex;gap:4px">'+
       '<button type="button" class="minibtn'+(g===3?' on':'')+'" data-dgrid="3">3×3</button>'+
       '<button type="button" class="minibtn'+(g===2?' on':'')+'" data-dgrid="2">2×2</button></div>'+
-      '<div class="hint">'+(two?T('Zwei Flächen nebeneinander (Profil: 2 Panels).'):T('Eine Fläche (Profil: 1 Panel).'))+'</div></div>'+
+      '<div class="hint">'+(two?T('2 Flächen (2 Panels)'):T('1 Fläche (1 Panel)'))+'</div></div>'+
     '<div class="field dexits"><label class="lbl">'+T('Dashboard schließen')+'</label>'+
       SV_EXITS.map(([k,l])=>'<label class="chk"><input type="checkbox" data-exit="'+k+'"'+(ex.indexOf(k)>=0?' checked':'')+'> <span>'+esc(T(l))+'</span></label>').join('')+
-      '<div class="hint">'+T('Beliebig kombinierbar. Nichts angehakt = Tipp auf eine freie Stelle schließt. Kacheln bleiben bedienbar.')+'</div></div>'+
-    '<div class="field"><label class="lbl">'+T('Farbverlauf')+'</label>'+
-      [['ambBg',T('Hintergrund')],['ambClock',T('Schriftfarbe der Uhrzeit')]].map(([k,l])=>
-        '<div style="display:flex;align-items:center;gap:4px 8px;margin:3px 0;flex-wrap:wrap"><span style="flex:1 0 140px">'+l+'</span><select data-amb="'+k+'">'+
+      '<div class="hint">'+T('Kombinierbar. Ohne Haken: Tipp auf freie Stelle.')+'</div></div>'+
+    '<div class="field damb"><label class="lbl" title="'+esc(T('Tageslicht: morgens leicht hell, mittags hell, abends dunkler, nachts ganz dunkel (Sonnenzeiten aus dem Wetter). Außentemperatur: kalt blau, mild grün, warm gelb, heiß orange bis rot. Ohne Wetterdaten bleiben die festen Farben.'))+'">'+T('Farbverlauf')+' <span class="dinfo">ⓘ</span></label>'+
+      [['ambBg',T('Hintergrund')],['ambClock',T('Uhrzeit')]].map(([k,l])=>
+        '<div class="dambrow"><span>'+l+'</span><select data-amb="'+k+'">'+
         [['',T('Feste Farben (Design)')],['light',T('Nach Tageslicht')],['temp',T('Nach Außentemperatur')]].map(([v,t])=>
-          '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+
-      '<div class="hint">'+T('Tageslicht: morgens leicht hell, mittags hell, abends dunkler, nachts ganz dunkel (Sonnenzeiten aus dem Wetter). Außentemperatur: kalt blau, mild grün, warm gelb, heiß orange bis rot. Ohne Wetterdaten bleiben die festen Farben.')+'</div></div>'+
+          '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+'</div>'+
     '<div class="field dbar"><label class="lbl">'+T('Statusleiste')+'</label>'+
       '<label class="chk"><input type="checkbox" id="dBarOn"'+(barOn?' checked':'')+'> <span>'+T('Statusleiste oben anzeigen')+'</span></label>'+
-      (barOn?'<div class="dbarbox"><div class="dbarlbl">'+T('Bausteine (max. 6) – Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+
+      (barOn?'<div class="dbarbox'+(dBarSecOpen?' open':'')+'"><button type="button" class="dbarhd" aria-expanded="'+(dBarSecOpen?'true':'false')+'"><span>'+T('Bausteine')+' <small>'+(sv.bar||[]).length+'/6</small></span>'+
+        '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>'+
+        '<div class="dbarbody"><div><div class="dbarlbl">'+T('Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+
         ((sv.bar||[]).length?'<div class="dbarlbl" style="margin-top:8px">'+T('Symbol je Baustein (Tippen zum Ändern)')+'</div><div class="dbaricons">'+
           (sv.bar||[]).map(u=>{ const c=tileRef(u)||{}; const ic=(sv.barIcons||{})[u];
             return '<button type="button" class="tbicobtn dbic'+(dBarIcoFor===u?' on':'')+'" data-bic="'+esc(u)+'"><span class="tbico">'+barIcoHtml(c,ic)+'</span>'+esc(c.name||u)+'</button>'; }).join('')+
           '</div><div id="dBarIcoPick" class="tbicopick"'+(dBarIcoFor?'':' hidden')+'><div class="itabs">'+
             '<span class="itab on" data-bsrc="builtin">'+T('Eingebaut')+'</span><span class="itab" data-bsrc="loxone">Loxone</span>'+
             (((META.icons||{}).loxlib)?'<span class="itab" data-bsrc="loxlib">'+T('Bibliothek')+'</span>':'')+
-          '</div><div class="ipick" id="dBarIpick"></div></div>':'')+'</div>':'')+
-      '<div class="hint">'+T('Symbole oben in der Menüleiste – neutral, bis etwas passiert. Unabhängig vom Widget „Status (Ampel)“.')+'</div></div>'+
-    '<div class="field"><label class="lbl">'+T('Vorlagen')+'</label><div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">'+
-      '<button type="button" class="minibtn" id="dTplClassic">'+T('Wie bisher (Uhr, Wetter, Termine)')+'</button>'+
-      '<button type="button" class="minibtn" id="dTplClear">'+T('Leeren (klassisches Dashboard)')+'</button></div></div>'+
-    '</div>';
+          '</div><div class="ipick" id="dBarIpick"></div></div>':'')+'</div></div></div>':'')+
+      '<div class="hint">'+T('Symbole oben, neutral bis etwas passiert.')+'</div></div>'+
+    '<div class="field dstd"><label class="lbl">'+T('Standardansicht')+'</label>'+
+      '<label class="chk"><input type="checkbox" id="dStd"'+(sv.std?' checked':'')+((sv.items||[]).length?'':' disabled')+'> <span>'+T('Dieses Dashboard als globale Standardansicht verwenden')+'</span></label>'+
+      '<div class="hint">'+((sv.items||[]).length?T('Neue Panels starten mit diesem Dashboard. Nur ein Panel kann Standard sein.'):T('Erst Widgets ins Dashboard ziehen.'))+
+        (()=>{ const o=dashStdId(); return (o&&o!==cur)?' '+T('Derzeit Standard:')+' „'+esc((PANELS[o]||{}).title||o)+'“.':''; })()+'</div></div>'+
+    '</div></div></div></div>';
+  { const hd=box.querySelector('.dphd'); hd.onclick=()=>{ const w=hd.parentNode; dPropsOpen=!w.classList.contains('open');
+      w.classList.toggle('open',dPropsOpen); hd.setAttribute('aria-expanded',dPropsOpen?'true':'false'); }; }
   const items=()=>tbEff[DK]||tbDashLoad(p);
   box.querySelectorAll('[data-dgrid]').forEach(b=>b.onclick=()=>{ const ng=+b.dataset.dgrid; if(ng===g) return;
     undoable(p, T('Raster auf ')+ng+'×'+ng+T(' umgestellt'), ()=>{
@@ -2320,7 +2426,9 @@ function renderDashProps(p){
     box.querySelectorAll('[data-bsrc]').forEach(t=>t.onclick=()=>{ box.querySelectorAll('[data-bsrc]').forEach(x=>x.classList.remove('on'));
       t.classList.add('on'); renderIconPick(t.dataset.bsrc,tgt()); });
     if(dBarIcoFor && $('#dBarIpick') && !$('#dBarIpick').children.length) renderIconPick('builtin',tgt()); }
-  { const on=$('#dBarOn'); if(on) on.onchange=()=>{ if(on.checked){ dBarOpen=true; }
+  { const hd=box.querySelector('.dbarhd'); if(hd) hd.onclick=()=>{ const bx=hd.parentNode; dBarSecOpen=!bx.classList.contains('open');
+      bx.classList.toggle('open',dBarSecOpen); hd.setAttribute('aria-expanded',dBarSecOpen?'true':'false'); }; }
+  { const on=$('#dBarOn'); if(on) on.onchange=()=>{ if(on.checked){ dBarOpen=true; dBarSecOpen=true; }
       else { dBarOpen=false; const s2=svCfg(p); if(s2.bar){ delete s2.bar; if(!s2.items.length&&!s2.exit.length) delete p.saver; markDirty(); } }
       renderDashProps(p); renderTabEditor(); }; }
   box.querySelectorAll('[data-amb]').forEach(sel=>sel.onchange=()=>{ p.ui=p.ui||{};
@@ -2328,16 +2436,10 @@ function renderDashProps(p){
   box.querySelectorAll('[data-exit]').forEach(cb=>cb.onchange=()=>{ const s2=svCfg(p);
     s2.exit=SV_EXITS.map(e=>e[0]).filter(k=>box.querySelector('[data-exit="'+k+'"]').checked);
     s2.items=s2.items||[]; if(!s2.items.length && !s2.exit.length && !(s2.bar||[]).length) delete p.saver; markDirty(); });
-  $('#dTplClassic').onclick=()=>undoable(p, T('Vorlage übernommen'), ()=>{
-    const wide=two, l=[];
-    if(g===2){ l.push({type:'clock',x:0,y:0,w:2,h:1,align:'center',date:'long'},{type:'weather',x:0,y:1,w:2,h:1});
-      if(wide) l.push({type:'calendar',x:2,y:0,w:2,h:2}); }
-    else { l.push({type:'clock',x:wide?2:0,y:0,w:wide?2:3,h:1,align:'center',date:'long'},{type:'weather',x:0,y:1,w:3,h:wide?2:1});
-      l.push(wide?{type:'calendar',x:3,y:1,w:3,h:2}:{type:'calendar',x:0,y:2,w:3,h:1}); }
-    tbEff[DK]=tbDashLoad(p, l);
-    tbSel=-1; tbCommit(p); renderTabList(p); });
-  $('#dTplClear').onclick=()=>undoable(p, T('Dashboard geleert – das Panel zeigt das klassische Dashboard'), ()=>{
-    tbEff[DK]=[]; tbSel=-1; tbCommit(p); renderTabList(p); });
+  { const sd=$('#dStd'); if(sd) sd.onchange=()=>{
+    if(sd.checked){ Object.keys(PANELS).forEach(id=>{ const q=PANELS[id]; if(q&&q.saver&&q.saver.std) delete q.saver.std; }); svCfg(p).std=true; }
+    else if(p.saver) delete p.saver.std;
+    markDirty(); renderDashProps(p); }; }
 }
 function renderTabProps(p){
   const box=$('#tbProps'); if(!box) return;
@@ -2849,7 +2951,8 @@ const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Displa
   nightWake:'Nach Antippen hell',phone:'Panel-Größe (Handy)',ambBg:'Farbverlauf Hintergrund',ambClock:'Farbverlauf Uhrzeit',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
   nudgeX:'Horizontaler Versatz',iconSize:'Symbolgröße',nameSize:'Namensgröße',subSize:'Zusatztext-Größe',bold:'Fett',dblTapOff:'Doppeltipp',alarmsEnabled:'Wecker',
   lang:'Sprache',saverFcSize:'Wettervorschau-Größe',tileShadow:'Kachel-Schatten'};
-function changeList(){
+function changeList(){ return panelChanges().concat([...SECT_DIRTY].map(k=>T((SECTS.find(x=>x.k===k)||{}).label||k))); }
+function panelChanges(){
   const out=[], old=SAVED_SNAP||{}, ids=new Set(Object.keys(old).concat(Object.keys(PANELS)));
   const ctl=u=>{ const c=tileRef?tileRef(u):null; return c?c.name:u.slice(0,8); };
   ids.forEach(id=>{ const a=old[id], b=PANELS[id], pn=id==='__global__'?T('Darstellung (alle Panels)'):'„'+((b||a||{}).title||id)+'“';
@@ -2869,10 +2972,10 @@ function changeList(){
 }
 function saveInfo(){ const i=$('#saveInfo'), sb=$('#savebar'), d=$('#discardBtn'); if(!i) return;
   // Alles wieder wie gespeichert (z. B. nach Rueckgaengig) -> nicht mehr "ungespeichert"
-  if(dirty && SAVED_SNAP && !changeList().length){ dirty=false; dirtyN=0; }
-  const n=dirty?(SAVED_SNAP?changeList().length:dirtyN):0;
-  i.textContent = dirty ? (n===1?T('1 Änderung'):(n||dirtyN)+' '+T('Änderungen')) : T('Alles gespeichert');
-  if(sb) sb.classList.toggle('dirty',!!dirty); if(d) d.hidden=!dirty; }
+  if(dirty && SAVED_SNAP && !panelChanges().length){ dirty=false; dirtyN=0; }
+  const n=(dirty?(SAVED_SNAP?panelChanges().length:dirtyN)||dirtyN:0)+SECT_DIRTY.size, any=dirty||SECT_DIRTY.size>0;
+  i.textContent = any ? (n===1?T('1 Änderung'):n+' '+T('Änderungen')) : T('Alles gespeichert');
+  if(sb) sb.classList.toggle('dirty',any); if(d) d.hidden=!any; }
 // Hinweis unten mit "Rueckgaengig" (statt Rueckfragen), verschwindet nach 7 s
 function snack(msg, undo){
   let el=$('#snack'); if(!el){ el=document.createElement('div'); el.id='snack'; el.className='snack'; el.setAttribute('role','status'); document.body.appendChild(el); }
@@ -2892,6 +2995,10 @@ function undoable(p, msg, fn){
 
 async function save(){
   const t=$('#toast');
+  if(SECT_DIRTY.size){ const n=SECT_DIRTY.size, ok=await sectSaveAll(); saveInfo();
+    if(!dirty){ t.className='toast show'+(ok?'':' err'); t.textContent=ok?'✓ '+T('Gespeichert')+' ('+n+' '+T(n===1?'Bereich':'Bereiche')+')':T('Nicht alles gespeichert – Hinweis in der Karte beachten');
+      setTimeout(()=>t.classList.remove('show'),4000); return; } }
+  if(!dirty){ return; }
   try{
     const panels={}; for(const k in PANELS){ if(k!=='__global__') panels[k]=PANELS[k]; }
     const r=await fetch('/api/panels',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -3101,7 +3208,7 @@ const PW_TABS=[['favoriten','★ Favoriten','aus Loxone, vorbefüllt'],['raeume'
 const PW_DASH=[['uhrwetter','Uhr & Wetter','ruhig, für jeden Raum'],['kamera','Uhr, Wetter & Kamera','Kamera-Bild im Blick'],
   ['termine','Uhr, Wetter & Termine','Kalender auf dem Dashboard'],['klassisch','Klassisch','ohne eigene Belegung']];
 function pwOpen(){
-  Object.assign(PW,{step:0,split:true,phone:false,grid:2,tabs:['favoriten','raeume'],room:'',dash:'uhrwetter',design:'',title:'',id:'',idTouched:false,blank:false});
+  Object.assign(PW,{step:0,split:true,phone:false,grid:2,tabs:['favoriten','raeume'],room:'',dash:(dashStdId()?'std':'uhrwetter'),design:'',title:'',id:'',idTouched:false,blank:false});
   let ov=$('#pwOv');
   if(!ov){ ov=document.createElement('div'); ov.id='pwOv'; ov.className='wzov';
     ov.innerHTML='<div class="wzbox" role="dialog" aria-label="'+T('Neues Panel')+'">'+
@@ -3155,7 +3262,9 @@ function pwRender(){
       '<div class="wznote">'+T('Reihenfolge = Reihenfolge der Auswahl. Später im Raster-Editor per Ziehen änderbar.')+'</div>';
     const rs=$('#pwRoom'); if(rs){ if(!PW.room&&rooms[0]) PW.room=rooms[0].tab; rs.value=PW.room; rs.onchange=()=>{ PW.room=rs.value; pwRender(); }; }
   } else if(key==='dashboard'){
+    const sid=dashStdId();
     b.innerHTML='<p class="wzq">'+T('Was zeigt das Dashboard (Ruhebildschirm)?')+'</p><div class="mzopts">'+
+      (sid?pwOpt(PW.dash==='std','data-pwdash="std"',T('Standard-Dashboard'),T('wie „')+esc((PANELS[sid]||{}).title||sid)+'“'):'')+
       PW_DASH.map(([k,l,sub])=>{ // 1 Panel: nur zwei Widgets passen -> Kamera/Termine statt Wetter
         if(!PW.split&&k==='kamera') l='Uhr & Kamera'; if(!PW.split&&k==='termine') l='Uhr & Termine';
         if(PW.split&&k==='uhrwetter') sub='rechts die Termine';
@@ -3224,6 +3333,7 @@ async function pwNext(){
   if(key==='start'&&PW.blank){   // ohne Assistent: nur Name -> Profil
     const nm=($('#pwBlankName').value||'').trim(), id=pwFreeId(pwId(nm)||'panel');
     PANELS[id]={title:nm||id, tabs:defaultTabs(), rooms:[], cats:[], ui:{grid:2}, states:{}, tiles:{}};
+    { const sv=dashStdSaver(); if(sv) PANELS[id].saver=sv; }
     pwClose(); cur=id; tileSel=null; tbReset(); subPconf='profile'; renderList(); setRubric('pconf'); markDirty(); return; }
   if(PW.step<PW_FLOW.length-1){ PW.step++; pwRender(); return; }
   // Panel aus den Antworten anlegen
@@ -3231,7 +3341,8 @@ async function pwNext(){
   const ui={grid:PW.grid}; if(!PW.split) ui.split=false; if(PW.phone) ui.phone=true;
   if(PW.design) ui.design={preset:PW.design,colors:{}};
   const p={title:PW.title||PW.id, tabs, rooms:[], cats:[], ui, states:{}, tiles:{}};
-  const items=pwDashItems(); if(items.length) p.saver={grid:PW.grid, exit:['x'], items};
+  if(PW.dash==='std'&&dashStdSaver()) p.saver=dashStdSaver();
+  else { const items=pwDashItems(); if(items.length) p.saver={grid:PW.grid, exit:['x'], items}; }
   PANELS[PW.id]=p; const goDev=!!($('#pwGoDev')&&$('#pwGoDev').checked);
   pwClose(); cur=PW.id; tileSel=null; tbReset(); markDirty(); await save();
   if(goDev){ goTo('devices','newpanel'); const n=$('#nk_name'); if(n) n.value=PW.title||PW.id; }
@@ -3240,7 +3351,7 @@ async function pwNext(){
 }
 $('#addBtn').onclick=()=>pwOpen();
 
-window.addEventListener('beforeunload',e=>{ if(dirty){ e.preventDefault(); e.returnValue=''; } });
+window.addEventListener('beforeunload',e=>{ if(dirty||SECT_DIRTY.size){ e.preventDefault(); e.returnValue=''; } });
 
 /* ============================================================
    SETTINGS-Rubrik (frühere /settings-Seite als Reiter)
@@ -3486,14 +3597,19 @@ function crpBind(row, ic){
 }
 // Weitere Kameras (Settings -> Intercom / Kameras)
 let CAMS=[];
+const CAM_OPEN=new Set();   // aufgeklappte Kamera-Zeilen (neue/leere immer offen)
 function camRow(c,i){
-  return '<div class="camrow" data-i="'+i+'">'+
+  const op=CAM_OPEN.has(i)||!c.url;
+  return '<div class="camrow xfold'+(op?' open':'')+'" data-i="'+i+'">'+
+    '<div class="xhd"><button type="button" class="xtg" aria-expanded="'+(op?'true':'false')+'"><b class="camhn">'+esc(c.name||T('Kamera')+' '+(i+1))+'</b>'+
+      '<small class="camhu">'+esc(c.url||'')+'</small>'+'<svg class="xchev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>'+'</button>'+
+      '<button type="button" class="camdel" title="'+T('Kamera entfernen')+'" aria-label="'+T('Kamera entfernen')+'">✕</button></div>'+
+    '<div class="xbd"><div><div class="camb">'+
     '<div class="field"><label class="lbl">'+T('Name')+'</label><input type="text" class="cam_name" maxlength="40" value="'+esc(c.name||'')+'" placeholder="'+T('z. B. Garten')+'"></div>'+
     '<div class="field camurl"><label class="lbl">'+T('Video-URL (MJPEG)')+'</label><input type="text" class="cam_url" value="'+esc(c.url||'')+'" placeholder="http://192.168.1.60/mjpg/video.mjpg"></div>'+
     '<div class="field"><label class="lbl">'+T('Benutzer')+'</label><input type="text" class="cam_user" value="'+esc(c.user||'')+'" autocomplete="off"></div>'+
     '<div class="field"><label class="lbl">'+T('Passwort')+'</label><input type="password" class="cam_pass" autocomplete="new-password" placeholder="'+(c.hasPass?T('unverändert lassen'):'')+'"></div>'+
-    '<button type="button" class="camdel" title="'+T('Kamera entfernen')+'" aria-label="'+T('Kamera entfernen')+'">✕</button>'+
-    (c.id&&c.url?'<div class="camcrop">'+crpHTML({uuid:c.id,crop:c.crop})+'</div>':'')+'</div>';
+    (c.id&&c.url?'<div class="camcrop">'+crpHTML({uuid:c.id,crop:c.crop})+'</div>':'')+'</div></div></div></div>';
 }
 function readCams(){ document.querySelectorAll('#cam_list .camrow').forEach(r=>{ const c=CAMS[+r.dataset.i]; if(!c) return;
   c.name=r.querySelector('.cam_name').value.trim(); c.url=r.querySelector('.cam_url').value.trim();
@@ -3502,7 +3618,11 @@ function readCams(){ document.querySelectorAll('#cam_list .camrow').forEach(r=>{
 function renderCams(){
   const box=$('#cam_list'); if(!box) return;
   box.innerHTML=CAMS.length?CAMS.map(camRow).join(''):'<div class="muted">'+T('Noch keine weiteren Kameras.')+'</div>';
-  box.querySelectorAll('.camrow').forEach(r=>{ const c=CAMS[+r.dataset.i]; if(c&&c.id&&c.url) crpBind(r,{uuid:c.id,crop:c.crop}); });
+  box.querySelectorAll('.camrow').forEach(r=>{ const c=CAMS[+r.dataset.i]; if(c&&c.id&&c.url) crpBind(r,{uuid:c.id,crop:c.crop});
+    xfoldBind(r, CAM_OPEN, +r.dataset.i);
+    const nm=r.querySelector('.cam_name'), hn=r.querySelector('.camhn'), ur=r.querySelector('.cam_url'), hu=r.querySelector('.camhu');
+    nm.addEventListener('input',()=>{ hn.textContent=nm.value.trim()||T('Kamera')+' '+(+r.dataset.i+1); });
+    ur.addEventListener('input',()=>{ hu.textContent=ur.value.trim(); }); });
   box.querySelectorAll('.camdel').forEach(b=>b.onclick=()=>{ readCams(); const i=+b.closest('.camrow').dataset.i, gone=CAMS.splice(i,1)[0]; renderCams();
     snack(T('Kamera „')+(gone.name||gone.url||'')+T('“ entfernt – wirksam mit Speichern'), ()=>{ readCams(); CAMS.splice(i,0,gone); renderCams(); }); });
 }
@@ -3565,15 +3685,20 @@ function calStatHTML(q){
     +(st.stale?' · '+T('Panel zeigt den Stand von {zeit} Uhr.').replace('{zeit}',esc(st.stale)):'')+'</span>';
   return '<span class="calst"><b class="ok">'+T('geladen')+'</b> · '+(st.count||0)+' '+T('Termine')+'</span>';
 }
+const CAL_OPEN=new Set();   // aufgeklappte Kalender-Zeilen (neue/leere immer offen)
+// Einklappbare Listenzeile: Kopf (.xtg) klappt den Inhalt (.xbd) auf, Zustand im Set
+function xfoldBind(row, set, i){ const b=row.querySelector('.xtg'); if(!b) return;
+  b.onclick=()=>{ const o=!row.classList.contains('open'); row.classList.toggle('open',o); b.setAttribute('aria-expanded',o?'true':'false');
+    if(o) set.add(i); else set.delete(i); }; }
 function renderCals(){
   const box=$('#cal_list'); if(!box) return;
   if(!CALS.length){ box.innerHTML='<div class="calempty">'+T('Noch kein Kalender. Mit „＋ Kalender hinzufügen" den ersten Abo-Link eintragen.')+'</div>'; }
-  else box.innerHTML=CALS.map((q,i)=>
-    '<div class="cal" data-i="'+i+'">'+
-      '<div class="calh"><span class="caldot" style="background:'+esc(q.color||CAL_PALETTE[i%CAL_PALETTE.length])+'"></span>'+
-      '<span class="caln">'+esc(q.name||(T('Kalender')+' '+(i+1)))+'</span>'+calStatHTML(q)+
+  else box.innerHTML=CALS.map((q,i)=>{ const op=CAL_OPEN.has(i)||!q.url; return ''+
+    '<div class="cal xfold'+(op?' open':'')+'" data-i="'+i+'">'+
+      '<div class="calh xhd"><button type="button" class="xtg" aria-expanded="'+(op?'true':'false')+'"><span class="caldot" style="background:'+esc(q.color||CAL_PALETTE[i%CAL_PALETTE.length])+'"></span>'+
+      '<span class="caln">'+esc(q.name||(T('Kalender')+' '+(i+1)))+'</span>'+calStatHTML(q)+'<svg class="xchev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>'+'</button>'+
       '<button class="btn del sm" data-caldel="'+i+'">'+T('Entfernen')+'</button></div>'+
-      '<div class="row2">'+
+      '<div class="xbd"><div><div class="row2">'+
         '<div class="field" style="max-width:260px"><label class="lbl">'+T('Name')+'</label>'+
           '<input type="text" class="cal_n" data-i="'+i+'" value="'+esc(q.name||'')+'" placeholder="'+T('z.B. Müllabfuhr')+'"></div>'+
         '<div class="field" style="max-width:90px"><label class="lbl">'+T('Farbe')+'</label>'+
@@ -3581,7 +3706,8 @@ function renderCals(){
       '</div>'+
       '<div class="field"><label class="lbl">'+T('iCal-Abo-URL')+'</label>'+
         '<input type="text" class="cal_u" data-i="'+i+'" value="'+esc(q.url||'')+'" placeholder="webcal://p…-caldav.icloud.com/published/2/…"></div>'+
-    '</div>').join('');
+    '</div></div></div>'; }).join('');
+  box.querySelectorAll('.cal.xfold').forEach(r=>xfoldBind(r, CAL_OPEN, +r.dataset.i));
   // Eingaben laufen in die Arbeitskopie, ohne die Liste neu zu zeichnen (das
   // wuerde den Cursor aus dem Feld werfen).
   box.querySelectorAll('.cal_n').forEach(inp=>inp.oninput=()=>{
@@ -3766,6 +3892,8 @@ function renderDeviceList(j){
     const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=any?'':'none';   // nichts zu speichern ohne Geraete
     const fs=$('#fullySrc'); if(fs) fs.hidden=!devs.some(d=>(d.caps||[]).indexOf('fullyinstall')>=0); }
   const box=$('#ag_list'), list=$('#dev_list'); if(!box||!list) return;
+  list.querySelectorAll('.dev').forEach(dv=>{ const tp=dv.querySelector('.dtips'), ms=dv.querySelector('.dev_model'); if(!tp||!ms) return;
+    const h=devTipsHTML(dv.dataset.name,(META.deviceModels||[]).find(x=>x.key===ms.value)); if(tp.innerHTML!==h) tp.innerHTML=h; });
   // Waehrend jemand in einer Live-Zeile tippt oder auswaehlt, nicht neu zeichnen.
   const ae=document.activeElement;
   if(ae && ae.tagName!=='BUTTON' && ae.closest && ae.closest('.devlive, #ag_list')) return;
@@ -4018,7 +4146,8 @@ function devRow(name){
         '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
           models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
         '<label class="chk dev_fullyl"'+(mo&&mo.os==='android'?'':' style="display:none"')+'><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
-      '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div></div>'+
+      '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div>'+
+      '<div class="dtips">'+devTipsHTML(name,mo)+'</div></div>'+
     '<div class="devlive"></div>'+
     '<div class="dsec">'+dsh('zoom',T('Zoom'))+
       '<select class="dev_scale">'+devScaleOpts(d.scale,mo)+'</select>'+
@@ -4031,6 +4160,21 @@ function devRow(name){
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
     '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display)+'</div>'+
   '</div></div>';
+}
+// Hinweise je Geraetetyp (vom Server, DEVICE_MODELS.tips) + Abgleich mit dem
+// gerade gezeigten Profil: 2-Panel-Geraet mit 1-Panel-Profil (oder umgekehrt)
+function devTipsHTML(name,mo){
+  if(!mo) return '';
+  const live=((LAST_DEVS||{}).devices||[]).find(x=>x.name===name), prof=live&&live.profile, P=prof&&PANELS[prof];
+  let warn='';
+  if(P&&mo.panes){ const ui=P.ui||{}, one=ui.split===false&&!ui.phone;
+    if(mo.panes===2&&one) warn=T('Zeigt gerade „')+esc(P.title||prof)+T('“ mit 1 Panel – für dieses Gerät passt „2 Panels“.');
+    if(mo.panes===1&&!one&&!ui.phone) warn=T('Zeigt gerade „')+esc(P.title||prof)+T('“ mit 2 Panels – für dieses Gerät passt „1 Panel“.'); }
+  const tips=(mo.tips||[]);
+  if(!tips.length&&!warn) return '';
+  return '<div class="dtip"><b>'+T('Tipps für')+' '+esc(mo.label)+'</b>'+
+    (warn?'<p class="dwarn">'+warn+'</p>':'')+
+    '<ul>'+tips.map(t=>'<li>'+esc(T(t))+'</li>').join('')+'</ul></div>';
 }
 // Zoom je Geraet: '' = Vorgabe des Geraetetyps (Tablet/iPad: auto), off, auto, Faktor
 function devScaleOpts(cur,mo){
@@ -4094,6 +4238,7 @@ function renderDevices(){
     const andr=!!(m&&m.os==='android');
     if(l) l.style.display=andr?'':'none';
     const zs=dv.querySelector('.dev_scale'); if(zs) zs.innerHTML=devScaleOpts(zs.value,m);
+    const tp=dv.querySelector('.dtips'); if(tp) tp.innerHTML=devTipsHTML(dv.dataset.name,m);
     if(dh) dh.hidden=!andr && !dv.querySelector('.dd_drv').value; });
   box.querySelectorAll('.dd_drv').forEach(sel=>sel.onchange=()=>{
     const row=sel.closest('.dev'), name=row.dataset.name, drv=sel.value;
@@ -4193,6 +4338,7 @@ $('#np_copy').onclick=()=>{ navigator.clipboard.writeText($('#np_out').textConte
 // ---- Start ----
 load().catch(e=>{ $('#pconfHost').innerHTML='<div class="empty">Konnte Daten nicht laden: '+esc(e)+'</div>'; });
 loadSettings().catch(e=>console.warn('Einstellungen nicht geladen:',e));
+sectBind();
 { const mh=$('#mode_host'); if(mh) mh.textContent=location.host; }
 loadPanelIds().then(()=>{ fillNewPanel(); fillAudioPanels(); renderDevices(); pollDevices(); setInterval(pollDevices,6000); });
 

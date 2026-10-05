@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.61"
+APP_VERSION = "0.19.62"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -362,16 +362,12 @@ def device_auto_name(info: dict) -> str:
 
 
 def _server_tz() -> str:
-    """IANA-Zeitzone des Servers (TZ, /etc/timezone, /etc/localtime-Link)."""
+    """IANA-Zeitzone des Servers (TZ oder /etc/localtime-Link). /etc/timezone
+    NICHT: im Container stammt sie aus dem Image ("Etc/UTC"), waehrend die
+    echte Zeit ueber das gemountete /etc/localtime des LoxBerry kommt."""
     tz = os.environ.get("TZ", "").strip().lstrip(":")
     if tz and "/" in tz:
         return tz
-    try:
-        t = Path("/etc/timezone").read_text(encoding="utf-8").strip()
-        if t:
-            return t
-    except OSError:
-        pass
     try:
         lk = os.path.realpath("/etc/localtime")
         if "zoneinfo/" in lk:

@@ -84,9 +84,14 @@
   html.sqfit .screen>#grid,html.sqfit .screen.split>#playerpane,html.sqfit .screen.split>#frontpane{
     height:var(--sq-h);max-height:var(--sq-h);align-self:center;}
   html.sqfit .screen{padding-top:calc(var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));box-sizing:border-box;}
-  /* Tablet: Statusleiste des Dashboards unten (oben ist die iPad-Statuszeile) */
-  html.sqfit .saver.layout .sv-bar{top:auto;bottom:calc(8px + env(safe-area-inset-bottom,0px) / var(--ui-scale,1));}
-  html.sqfit .saver.layout .sv-grid{top:calc(12px + var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1) + (100% - 82px - var(--sqtop,0px) - var(--sq-sv)) / 2);bottom:auto;height:var(--sq-sv);}
+  /* Tablet: Leiste mit ✕ bleibt oben (mit Abstand zur iPad-Statuszeile), nur die
+     Status-Symbole wandern an den unteren Rand. position:fixed bezieht sich hier
+     auf den gezoomten .screen (transform) - also dessen unteren Rand. */
+  html.sqfit .saver.layout .sv-bar{top:calc(8px + var(--sqtop,0px) + env(safe-area-inset-top,0px) / var(--ui-scale,1));}
+  .saver>.sv-st{display:none;}
+  html.sqfit .saver.layout>.sv-st{display:flex;position:absolute;left:24px;right:24px;bottom:calc(6px + env(safe-area-inset-bottom,0px) / var(--ui-scale,1));
+    height:60px;z-index:3;justify-content:flex-start;}
+  html.sqfit .saver.layout .sv-grid{top:calc(70px + var(--sqtop,0px) + (100% - 142px - var(--sqtop,0px) - var(--sq-sv)) / 2);bottom:auto;height:var(--sq-sv);}
   /* Platz uebrig: Tab- und Statusleiste etwas groesser (Symbole gut treffbar) */
   .screen>.tabs .tab .tlbl{display:none;}
   html.sqbig .screen>.tabs{height:72px;} html.sqbig .screen>.tabs .tab,html.sqbig .screen>.tabs .tabback,html.sqbig .crumb{height:72px;}
@@ -3216,12 +3221,17 @@ function applyScale(){
       const top=Math.round(Math.min(16, spare*0.3)), boost=(spare-top>=20)?20:0;
       s.style.setProperty('--sqtop', top+'px');
       s.style.setProperty('--sq-h', Math.min(frei-chrome-top-boost, sqw)+'px');
-      s.style.setProperty('--sq-sv', Math.min(frei-82-top-boost, Math.round((w-24)/panes))+'px');
+      s.style.setProperty('--sq-sv', Math.min(frei-142-top-boost, Math.round((w-24)/panes))+'px');   // oben Leiste, unten Status-Symbole
       document.documentElement.classList.toggle('sqbig', !!boost);
       fill=true;
     }
   }
   document.documentElement.classList.toggle('sqfit', fill);
+  // Status-Symbole: auf Tablets an den unteren Rand (eigene Zeile im Dashboard),
+  // sonst zurueck in die obere Leiste vor das ✕
+  { const st=el('svSt'), bar=el('svBar'), sv=el('saver');
+    if(st&&bar&&sv){ if(fill&&st.parentNode!==sv) sv.appendChild(st);
+      else if(!fill&&st.parentNode!==bar) bar.insertBefore(st, bar.firstChild); } }
   if(k!==uiScaleEff){
     uiScaleEff=k;
     s.style.setProperty('--ui-scale', String(k));
@@ -3340,6 +3350,11 @@ function setServerClock(now, sent, tz, utcoff){
   if(Math.abs(off-CLOCK_OFF)>1500 || !sent) CLOCK_OFF=off;
   if(typeof utcoff==='number') SRV_UTCOFF=utcoff;
   if(tz && tz!==SRV_TZ){ try{ _tzFmt=new Intl.DateTimeFormat('en-US',{timeZone:tz,hourCycle:'h23',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}); SRV_TZ=tz; }catch(e){ _tzFmt=null; } }
+  // Zonen-Name passt nicht zum tatsaechlichen UTC-Abstand des Servers (z. B.
+  // "Etc/UTC" aus dem Container-Image)? Dann zaehlt der Abstand, nicht der Name.
+  if(_tzFmt && SRV_UTCOFF!==null){ try{ const p=_tzFmt.formatToParts(new Date()), g=k=>+(p.find(x=>x.type===k)||{}).value;
+    const off=Math.round((Date.UTC(g('year'),g('month')-1,g('day'),g('hour')%24,g('minute'))-Math.floor(Date.now()/60000)*60000)/60000);
+    if(Math.abs(off-SRV_UTCOFF)>1) _tzFmt=null; }catch(e){ _tzFmt=null; } }
 }
 function nowDate(){
   const t=Date.now()+CLOCK_OFF;

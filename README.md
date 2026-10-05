@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Fix Uhrzeit, Tablet-Statussymbole unten (0.19.62)** — Panels zeigten 2 h zu wenig: die Zeitzone „Etc/UTC“
+  aus dem Container-Image wird ignoriert, maßgeblich ist der echte UTC-Abstand des LoxBerry. Tablet-Dashboard:
+  Leiste mit ✕ bleibt oben, nur die Status-Symbole stehen unten.
 - **Tablet: Tab-Namen, Infoleiste unten (0.19.61)** — Auf Tablets/iPad steht unter jedem Tab-Symbol der Name
   (Tab-Leiste 72 px, aktiver Tab als Fläche) und die Statusleiste des Dashboards sitzt unten. Größere Zahlen-Bubble
   in der Statusleiste (82 % des Symbols) auf allen Geräten.

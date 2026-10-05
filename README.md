@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Tablet: Abstand oben, größere Leisten (0.19.57)** — Im Zoom-Modus (iPad/Tablet) rücken Tab- und Statusleiste
+  etwas nach unten (Abstand zur iPad-Statuszeile, als Home-Bildschirm-App plus Safe-Area); Leisten 60 px hoch,
+  Tab-Symbole 30 px, Statusleisten-Symbole 24 px. Kacheln bleiben quadratisch.
 - **Miniserver-Ein-/Ausgänge lesen (0.19.56)** — Neue, rein lesende Admin-Schnittstelle `/api/msio`
   (Zustand eines Ein-/Ausgangs über seinen Namen, Liste der Ein-/Ausgänge) als Grundlage für „Aufwachen bei
   Bewegung“ direkt über Melder-Ausgänge ohne Visualisierungs-Haken.

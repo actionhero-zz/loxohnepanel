@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.55"
+APP_VERSION = "0.19.56"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -8532,6 +8532,28 @@ async def api_device_name(request: web.Request) -> web.Response:
                               **({} if n else {"error": "kein Geraet ohne Kennung unter dieser IP"})})
 
 
+async def api_msio(request: web.Request) -> web.Response:
+    """Nur lesend: Zustand eines Ein-/Ausgangs des Miniservers ueber seinen Namen
+    (`?name=` -> jdev/sps/io/<name>/state) bzw. die Liste der Ein-/Ausgaenge
+    (`?list=in|out` -> jdev/sps/enumin|enumout). Fuer Bewegungs-/Praesenz-
+    melder ohne Visualisierungs-Haken. Schaltet nichts - es gibt keinen Pfad
+    fuer Werte, nur /state und die beiden Listen."""
+    app: App = request.app["app"]
+    lst = request.query.get("list", "")
+    name = (request.query.get("name") or "").strip()
+    if lst in ("in", "out"):
+        path = "sps/enumin" if lst == "in" else "sps/enumout"
+    elif name and len(name) <= 120 and "/" not in name:
+        path = f"sps/io/{quote(name, safe='')}/state"
+    else:
+        return web.json_response({"ok": False, "error": "name= oder list=in|out"}, status=400)
+    try:
+        code, val = await app._ms_jdev(path, 8)
+    except Exception as err:
+        return web.json_response({"ok": False, "error": str(err)})
+    return web.json_response({"ok": code == "200", "code": code, "path": path, "value": val})
+
+
 async def api_device_delete(request: web.Request) -> web.Response:
     """Geraet loeschen: {name}."""
     app: App = request.app["app"]
@@ -9499,7 +9521,7 @@ _ADMIN_PAGES = ("/config", "/settings")
 _ADMIN_API = ("/api/settings", "/api/panels", "/api/theme", "/api/devices", "/api/device/",
               "/api/kiosk/", "/api/panel/launcher", "/api/agent/command", "/api/agents",
               "/api/tablayout", "/api/meta", "/api/types", "/api/testtone", "/api/testring",
-              "/api/loxicons", "/api/admin/password", "/api/msstatus")
+              "/api/loxicons", "/api/admin/password", "/api/msstatus", "/api/msio")
 _ADMIN_TTL = 30 * 86400                     # Anmeldung haelt 30 Tage (bis Server-Neustart)
 _ADMIN_SESSIONS: dict[str, float] = {}
 CGI_TOKEN_FILE = _CFGDIR / ".cgi_token"
@@ -9730,6 +9752,7 @@ def main() -> None:
     a.router.add_post("/api/device/switch", api_device_switch)
     a.router.add_post("/api/device/name", api_device_name)
     a.router.add_post("/api/device/delete", api_device_delete)
+    a.router.add_get("/api/msio", api_msio)
     a.router.add_get("/api/display", api_display)
     a.router.add_post("/api/display", api_display)
     a.router.add_post("/api/kiosk/restart", api_kiosk_restart)

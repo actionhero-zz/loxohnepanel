@@ -292,7 +292,7 @@
   .cal{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;}
   .cal:first-child{border-top:none;padding-top:0;margin-top:0;}
   .cal .calh{display:flex;align-items:center;gap:9px;margin-bottom:0;flex-wrap:nowrap;}
-  .cal .caldot{width:11px;height:11px;border-radius:50%;flex:none;border:1px solid rgba(255,255,255,.18);}
+  .cal .caldot{width:11px;height:11px;border-radius:var(--r-round,32%);flex:none;border:1px solid rgba(255,255,255,.18);}
   .cal .caln{font-weight:600;}
   .cal .calst{font-size:12.5px;color:var(--muted);order:2;}
   .cal .calst .ok{color:var(--good);} .cal .calst .bad{color:var(--crit);}
@@ -305,7 +305,7 @@
   .calempty{color:var(--muted);font-size:14px;padding:4px 0 10px;}
   .ag{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--line);padding:12px 0;}
   .ag:first-child{border-top:none;}
-  .ag .dot{width:9px;height:9px;border-radius:50%;background:var(--crit);flex:none;}
+  .ag .dot{width:9px;height:9px;border-radius:var(--r-round,32%);background:var(--crit);flex:none;}
   .ag .dot.on{background:var(--good);}
   .ag .agn{font-weight:600;}
   .ag .tag{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--line);color:var(--muted);white-space:nowrap;}
@@ -326,7 +326,7 @@
     padding:8px;position:relative;overflow:hidden;flex:none;}
   .ovw .visu{display:grid;grid-template-columns:repeat(var(--c,2),1fr);grid-template-rows:repeat(var(--r,2),1fr);gap:5px;height:100%;}
   .ovw .visu i{background:var(--tile);border:1px solid var(--tline);border-radius:5px;position:relative;}
-  .ovw .visu i::after{content:"";position:absolute;left:5px;top:5px;width:7px;height:7px;border-radius:3px;background:color-mix(in srgb,var(--accent) 55%,transparent);}
+  .ovw .visu i::after{content:"";position:absolute;left:5px;top:5px;width:7px;height:7px;border-radius:2px;background:color-mix(in srgb,var(--accent) 55%,transparent);}
 
   .ovw .plist{display:flex;flex-direction:column;gap:5px;height:100%;} .ovw .plist u{flex:1;background:var(--tile);border:1px solid var(--tline);border-radius:5px;}
 
@@ -570,7 +570,7 @@
   @keyframes ewpop{0%{transform:scale(.92)}60%{transform:scale(1.04)}100%{transform:none}}
   .g2ed .ew.dragging{opacity:.35;transform:scale(.97);}
   .g2ed .ew .rs{opacity:0;transition:opacity .15s;} .g2ed .ew:hover .rs,.g2ed .ew.sel .rs{opacity:1;}
-  .g2ed .edel{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;border:0;background:#e2695f;color:#fff;
+  .g2ed .edel{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:var(--r-round,32%);border:0;background:#e2695f;color:#fff;
     font-size:12px;line-height:24px;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:3;}
   .g2ed .edel:hover{transform:scale(1.1);}
   .g2ed .ghost{border-radius:14px;z-index:3;border:2px dashed #52b881;background:rgba(82,184,129,.18);}
@@ -637,6 +637,8 @@
   .dpbody{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s cubic-bezier(.2,0,0,1);}
   .dpbody>div{overflow:hidden;min-height:0;}
   .dpwrap.open .dpbody{grid-template-rows:1fr;}
+  .dpwrap .tbprops{border:0;border-top:1px solid var(--line);border-radius:0;background:transparent;}
+  .dpwrap .tbicopick{margin:0 14px 12px;}
   .dpwrap .dashprops{border:0;border-top:1px solid var(--line);border-radius:0 0 12px 12px;background:transparent;}
   @media (prefers-reduced-motion:reduce){ .dpbody,.dphd svg{transition:none;} }
   .dashprops{display:grid;grid-template-columns:minmax(96px,.6fr) minmax(0,1.1fr) minmax(0,1fr) minmax(0,1.1fr);gap:10px 18px;align-items:start;padding:10px 14px;}
@@ -717,9 +719,9 @@
   .spane>*,#sysBehavior>*{column-span:all;min-width:0;margin:0 0 18px;}
   .spane>.card,#sysBehavior>.card,.spane>details.card{column-span:none;break-inside:avoid;display:block;width:100%;box-sizing:border-box;margin:0 0 18px;}
   .spane>.card:has(#tbStrip,#tbEd,#hidList,#dev_list,.sved,table),
-  .spane>.devhelp:not(#fullySrc){column-span:all;}
+  .spane>details.card.devhelp{column-span:all;}
   .tbchip{position:relative;}
-  .tbchip .tbx{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:50%;background:#e2695f;color:#fff;
+  .tbchip .tbx{position:absolute;top:-8px;right:-8px;width:22px;height:22px;border-radius:var(--r-round,32%);background:#e2695f;color:#fff;
     font-size:11px;line-height:22px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.25);cursor:pointer;}
   .tbchip .tbx:hover{transform:scale(1.1);}
 
@@ -770,7 +772,7 @@
   .actions:has(> .sectsave):not(:has(> .btn:not(.sectsave))) .toast:empty{display:none;}
   .saveinfo{font-size:13px;color:var(--muted);}
   .savebar.dirty .saveinfo{color:var(--fg);font-weight:600;}
-  .savebar.dirty .saveinfo::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dot,#ffc145);margin-right:8px;vertical-align:1px;}
+  .savebar.dirty .saveinfo::before{content:'';display:inline-block;width:8px;height:8px;border-radius:var(--r-round,32%);background:var(--dot,#ffc145);margin-right:8px;vertical-align:1px;}
   /* Kopfzeile schrumpft beim Scrollen */
   .topbar{transition:padding .2s ease, box-shadow .2s ease;position:relative;z-index:5;}
   .topbar #phead{transition:padding .2s ease;}
@@ -782,7 +784,7 @@
   /* ?-Hilfe */
   .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .cardhead h3{margin:0;}
-  .qhelp{width:22px;height:22px;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:700;
+  .qhelp{width:22px;height:22px;border-radius:var(--r-round,32%);border:1px solid var(--line);background:transparent;color:var(--muted);font:inherit;font-size:12px;font-weight:700;
     cursor:pointer;display:grid;place-items:center;padding:0;flex:none;transition:all .15s;}
   .qhelp:hover,.qhelp.on{background:var(--prim);border-color:var(--prim);color:var(--prim-ink);}
   .qpop{background:var(--panel2);border-radius:12px;padding:10px 14px;margin:0 0 12px;animation:qin .18s ease-out;}
@@ -799,7 +801,7 @@
   .ovcard small{color:var(--muted);font-size:12.5px;}
   .ovcard small.ovlink{display:flex;align-items:center;gap:6px;margin-top:2px;font-variant-numeric:tabular-nums;}
   .ovcard small.ovlink:empty{display:none;}
-  .ldot{width:7px;height:7px;border-radius:50%;background:#e2695f;flex:none;}
+  .ldot{width:7px;height:7px;border-radius:var(--r-round,32%);background:#e2695f;flex:none;}
   .ldot.ok{background:#52b881;}
   .ldot.wait{background:#e0a24d;}
   .msmon{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:6px;margin-top:10px;}
@@ -810,7 +812,7 @@
   .msmon .mmbar{display:block;height:3px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:2px;}
   .msmon .mmbar i{display:block;height:100%;background:var(--mmc);border-radius:3px;transition:width .4s ease;}
   .msmon .mmfw{grid-column:1/-1;font-size:11.5px;color:var(--muted);font-variant-numeric:tabular-nums;}
-  .sdot{width:10px;height:10px;border-radius:50%;background:#e2695f;display:inline-block;flex:none;}
+  .sdot{width:10px;height:10px;border-radius:var(--r-round,32%);background:#e2695f;display:inline-block;flex:none;}
   .sdot.on{background:#52b881;box-shadow:0 0 0 4px rgba(82,184,129,.18);}
   .ovp{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border:0;background:var(--panel2);border-radius:10px;padding:8px 10px;font:inherit;color:var(--fg);cursor:pointer;text-align:left;}
   .ovp:hover{background:var(--hover-tint,var(--panel2));outline:1px solid var(--line);}
@@ -823,7 +825,7 @@
   .ovbar i{display:block;height:100%;background:var(--dot,#ffc145);border-radius:6px;transition:width .4s ease;}
   .ovstep{display:flex;align-items:center;gap:10px;border:0;background:transparent;font:inherit;font-size:13.5px;color:var(--fg);padding:4px 2px;cursor:pointer;text-align:left;border-radius:8px;}
   .ovstep:hover{background:var(--panel2);}
-  .ovstep .ck{width:20px;height:20px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:11px;flex:none;}
+  .ovstep .ck{width:20px;height:20px;border-radius:var(--r-round,32%);border:2px solid var(--line);display:grid;place-items:center;font-size:11px;flex:none;}
   .ovstep.ok{color:var(--muted);} .ovstep.ok .ck{background:#52b881;border-color:#52b881;color:#fff;}
   /* Befehlspalette */
   .palbtn{margin-left:auto;display:flex;align-items:center;gap:8px;border:1px solid var(--bezel-line);background:var(--bezel-tint);color:var(--bezel-muted);
@@ -871,11 +873,29 @@
   .xdet[open]>summary::before{transform:rotate(90deg);}
   .xdet>summary small{color:var(--muted);font-weight:400;}
   .xdetb{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;padding-top:4px;}
+  /* Intercoms: je Tuerstation eine Box wie bei den Geraeten */
+  .icwrap .sech{margin:0 0 10px;font-size:15px;}
+  .icwrap #ic_list{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px;align-items:start;}
+  .icbox{border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow);overflow:hidden;}
+  .icbox .xhd{padding:0 14px;} .icbox .xtg{padding:12px 0;}
+  .ic.icbox{border-top:1px solid var(--line);padding-top:0;margin-top:0;} .icbox .icname{font-weight:600;margin:0;} .icbox .icsum{color:var(--muted);font-size:12px;}
+  .icbox .sdot{width:8px;height:8px;border-radius:var(--r-round,32%);background:var(--muted);flex:none;opacity:.6;} .icbox .sdot.on{background:var(--good);opacity:1;}
+  .icbox .icb{padding:4px 14px 14px;border-top:1px solid var(--line);}
+  .spane>.card.camcard{column-span:all;}
+  .icsnd{margin-top:12px;padding-top:10px;border-top:1px solid var(--line);}
+  .icsnd .lbl{margin-bottom:6px;} .icsnd .chk{margin:0 0 8px;}
+  .icsndrow{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;flex-wrap:wrap;}
+  .icsndst{display:inline-flex;align-items:center;gap:7px;font-size:13px;color:var(--muted);min-width:0;}
+  .icsndst.own{color:var(--fg);} .icsndst.own svg{color:var(--good);}
+  .icsndbtns{display:flex;gap:6px;flex-wrap:wrap;}
+  .icsndbtns .minibtn{display:inline-flex;align-items:center;cursor:pointer;white-space:nowrap;}
+  .icsnd .ic_soundtoast:not(.show){display:none;}
+  .icsnd .hint{margin:6px 0 0;font-size:11.5px;}
   .camhn{font-weight:600;} .camhu{color:var(--muted);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 120px;}
   .camrow:first-child{border-top:0;} .camrow .field{max-width:none;margin:0;min-width:0;}
   .camrow .field input{width:100%;max-width:none;}
   .camrow .camurl{grid-column:2 / span 2;}
-  .camdel{width:28px;height:28px;flex:none;border-radius:50%;border:0;background:#e2695f;color:#fff;cursor:pointer;}
+  .camdel{width:28px;height:28px;flex:none;border-radius:var(--r-round,32%);border:0;background:#e2695f;color:#fff;cursor:pointer;}
   /* Kamera-Auswahl im Widget */
   .camsel{display:flex;flex-direction:column;gap:4px;margin:4px 0 6px;}
   .camopt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:10px;background:var(--field);border:1px solid var(--line);cursor:grab;font-size:13px;}
@@ -898,12 +918,12 @@
 
   /* Panel loeschen per ✕ in der Liste */
   .pitem{position:relative;}
-  .pitem .pdel{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;border:0;background:transparent;color:var(--bezel-muted);
+  .pitem .pdel{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:var(--r-round,32%);border:0;background:transparent;color:var(--bezel-muted);
     font-size:11px;line-height:22px;padding:0;cursor:pointer;opacity:0;transition:opacity .15s,background .15s;}
   .pitem:hover .pdel,.pitem.active .pdel{opacity:1;} .pitem .pdel:hover{background:#e2695f;color:#fff;}
   .wrap.slim .pitem .pdel{display:none;}
   /* Panel oeffnen per Pfeil in der Liste (unten rechts, wie das ✕ oben rechts) */
-  .pitem .popen{position:absolute;bottom:6px;right:6px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;
+  .pitem .popen{position:absolute;bottom:6px;right:6px;width:22px;height:22px;border-radius:var(--r-round,32%);display:grid;place-items:center;
     color:var(--dot);opacity:0;transition:opacity .15s,background .15s;}
   .pitem .popen svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
   .pitem:hover .popen,.pitem.active .popen{opacity:1;} .pitem .popen:hover{background:rgba(255,193,69,.22);}
@@ -915,7 +935,7 @@
   .wzbox{width:min(640px,96vw);max-height:90vh;background:var(--panel);border-radius:20px;box-shadow:0 24px 60px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden;animation:qin .18s ease-out;}
   .wzhd{display:flex;align-items:center;gap:10px;padding:16px 20px;}
   .wzhd b{font-family:var(--font-head);font-size:17px;} .wzstep{margin-left:auto;color:var(--muted);font-size:12.5px;}
-  .wzx{border:0;background:var(--panel2);color:var(--muted);width:30px;height:30px;border-radius:50%;cursor:pointer;}
+  .wzx{border:0;background:var(--panel2);color:var(--muted);width:30px;height:30px;border-radius:var(--r-round,32%);cursor:pointer;}
   .wzprog{height:4px;background:var(--panel2);} .wzprog i{display:block;height:100%;background:var(--dot,#ffc145);transition:width .25s ease;}
   .wzbody{padding:18px 20px;overflow-y:auto;}
   .wzft{display:flex;justify-content:space-between;gap:10px;padding:14px 20px;border-top:1px solid var(--line);}
@@ -972,7 +992,7 @@
   .crpfr span{position:absolute;left:4px;top:3px;font-size:11px;font-weight:600;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.8);white-space:nowrap;}
   .crpfr.f1 span{top:auto;bottom:3px;color:#ffd56b;}
   .crpbox.whole .crpfr.f1{display:none;}
-  .crpdot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;background:#fff;border:3px solid #2b6cff;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5);}
+  .crpdot{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:var(--r-round,32%);background:#fff;border:3px solid #2b6cff;pointer-events:none;box-shadow:0 1px 4px rgba(0,0,0,.5);}
   .crpctl{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px;max-width:520px;}
   .crpz{flex:1;min-width:120px;} .crpzv{min-width:38px;font-variant-numeric:tabular-nums;font-size:13px;}
   .dashprops .dbarbox{margin-top:6px;padding:7px 9px;border:1px solid var(--line,#e3e3e3);border-radius:10px;}
@@ -1098,11 +1118,11 @@
         <!-- Intercom / Kameras -->
         <section class="spane" data-sub="intercom">
           <p class="lead" data-i18n>Video-Streams (MJPEG) der Türstationen aus Loxone und eigener Überwachungskameras. Alle erscheinen im Widget „Kamera“ und lassen sich dort durchschalten.</p>
-          <div class="card">
-            <h3 data-i18n>Intercoms aus Loxone</h3>
+          <div class="icwrap">
+            <h3 class="sech" data-i18n>Intercoms aus Loxone</h3>
             <div id="ic_list"><div class="muted">…</div></div>
           </div>
-          <div class="card">
+          <div class="card camcard">
             <h3 data-i18n>Weitere Kameras</h3>
             <p class="note" data-i18n>Reine Überwachungskameras mit MJPEG-Stream (z. B. <code>http://192.168.1.60/mjpg/video.mjpg</code>). Der Server holt das Bild einmal ab und verteilt es an alle Panels.</p>
             <div id="cam_list"></div>
@@ -2367,7 +2387,8 @@ function barIcoHtml(c,ic){
   return c.iconUrl ? '<span class="loxi" style="--u:url(\''+esc(c.iconUrl)+'\')"></span>' : svg(BICONS.info); }
 let dBarOpen=false;   // Haken "Statusleiste" gesetzt, aber noch nichts gewaehlt
 let dBarSecOpen=false;
-let dPropsOpen=false;    // Block "Dashboard-Einstellungen" aufgeklappt   // Bausteinauswahl der Statusleiste aufgeklappt
+let dPropsOpen=false;
+let tPropsOpen=false;    // Block "Tab-Einstellungen" aufgeklappt    // Block "Dashboard-Einstellungen" aufgeklappt   // Bausteinauswahl der Statusleiste aufgeklappt
 function renderDashProps(p){
   const box=$('#tbProps'), sv=p.saver||{}, ex=sv.exit||[], g=svGrid(p), two=tbDashPages(p)===2;
   const barOn=dBarOpen||(sv.bar||[]).length>0;
@@ -2448,7 +2469,11 @@ function renderTabProps(p){
   const i=p.tabs.indexOf(k), ty=tbType(k), g=tbGrid(p,k);
   const rooms=(META.tabs||[]).filter(t=>t.room), cats=(META.tabs||[]).filter(t=>t.cat);
   const opts=list=>list.map(t=>'<option value="'+esc(t.tab)+'"'+(t.tab===k?' selected':'')+'>'+esc(t.label)+'</option>').join('');
-  box.innerHTML='<div class="tbprops">'+
+  const tyL=(TB_TYPES.find(x=>x[0]===ty)||[,''])[1];
+  box.innerHTML='<div class="dpwrap'+(tPropsOpen?' open':'')+'"><button type="button" class="dphd" aria-expanded="'+(tPropsOpen?'true':'false')+'"><span>'+T('Tab-Einstellungen')+'</span>'+
+      '<small>'+[T(tyL), tbIsLayout(k)?g+'×'+g:''].filter(Boolean).join(' · ')+'</small>'+
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>'+
+    '<div class="dpbody"><div><div class="tbprops">'+
     '<div class="field"><label class="lbl">'+T('Typ')+'</label><select id="tbType">'+
       TB_TYPES.map(([v,l])=>'<option value="'+v+'"'+(v===ty?' selected':'')+'>'+T(l)+'</option>').join('')+'</select></div>'+
     (ty==='room'?'<div class="field"><label class="lbl">'+T('Raum')+'</label><select id="tbRef">'+opts(rooms)+'</select></div>'
@@ -2464,7 +2489,9 @@ function renderTabProps(p){
       '<span class="itab on" data-tsrc="builtin">'+T('Eingebaut')+'</span>'+
       '<span class="itab" data-tsrc="loxone">Loxone</span>'+
       (((META.icons||{}).loxlib)?'<span class="itab" data-tsrc="loxlib">'+T('Bibliothek')+'</span>':'')+
-    '</div><div class="ipick" id="tbIpick"></div></div>';
+    '</div><div class="ipick" id="tbIpick"></div></div></div></div></div>';
+  { const hd=box.querySelector('.dphd'); hd.onclick=()=>{ const w=hd.parentNode; tPropsOpen=!w.classList.contains('open');
+      w.classList.toggle('open',tPropsOpen); hd.setAttribute('aria-expanded',tPropsOpen?'true':'false'); }; }
   const redo=()=>{ markDirty(); renderTabList(p); };
   const dropLay=o=>{ if(p.tabs.indexOf(o)<0){ if(p.layouts) delete p.layouts[o]; if(p.tabIcons) delete p.tabIcons[o]; delete tbEff[o]; } };
   const setKey=nk=>{ if(p.tabs.indexOf(nk)>=0 && nk!==k){ alert(T('Diesen Tab gibt es schon.')); renderTabProps(p); return; }
@@ -3379,30 +3406,38 @@ fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion');
   if(box){
     if(!(SET.intercoms||[]).length){ box.innerHTML='<div class="muted">'+T('Keine Intercom-Bausteine gefunden (Miniserver verbunden?).')+'</div>'; }
     else {
-      box.innerHTML=SET.intercoms.map(ic=>
-        '<div class="ic" data-uuid="'+esc(ic.uuid)+'"><div class="icname">'+esc(ic.name)+'</div>'+
+      box.innerHTML=SET.intercoms.map(ic=>{ const op=IC_OPEN.has(ic.uuid);
+        return '<div class="ic icbox xfold'+(op?' open':'')+'" data-uuid="'+esc(ic.uuid)+'">'+
+        '<div class="xhd"><button type="button" class="xtg" aria-expanded="'+(op?'true':'false')+'"><i class="sdot'+(ic.url?' on':'')+'"></i><b class="icname">'+esc(ic.name)+'</b>'+
+          '<small class="icsum">'+[ic.url?T('Video'):T('kein Video'), ic.sound?T('Ton an'):'', ic.hasCustomSound?T('eigener Klingelton'):''].filter(Boolean).join(' · ')+'</small><svg class="xchev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>'+
+        '<div class="xbd"><div><div class="icb">'+
         '<div class="field"><label class="lbl">'+T('Video-URL (MJPEG)')+'</label><input type="text" class="ic_url" value="'+esc(ic.url)+'" placeholder="http://192.168.1.201/cgi-bin/faststream.jpg?stream=full&fps=8"></div>'+
         '<div class="row2"><div class="field"><label class="lbl">'+T('Benutzer')+'</label><input type="text" class="ic_user" value="'+esc(ic.user)+'" autocomplete="off"></div>'+
         '<div class="field"><label class="lbl">'+T('Passwort')+'</label><input type="password" class="ic_pass" autocomplete="new-password" placeholder="'+(ic.hasPass?T('unverändert lassen'):'')+'"></div></div>'+
         '<div class="field" style="margin-top:8px"><label class="lbl">'+T('Verbindung zur Kamera automatisch neu aufbauen')+'</label>'+
           '<select class="ic_reconnect">'+[[0,T('aus')],[6,T('alle 6 Stunden')],[12,T('alle 12 Stunden')],[24,T('alle 24 Stunden')]]
             .map(o=>'<option value="'+o[0]+'"'+((ic.reconnect||0)===o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select></div>'+
-        '<label class="chk" style="margin-top:8px"><input type="checkbox" class="ic_sound"'+(ic.sound?' checked':'')+'>'+
-          '<span>'+T('Ton bei Klingeln (Panel piept, solange es klingelt)')+'</span></label>'+
-        '<div class="row2" style="margin-top:8px;align-items:flex-end">'+
-          '<div class="field"><label class="lbl">'+T('Eigener Klingelton (statt Standardton)')+'</label>'+
-            '<input type="file" class="ic_soundfile" accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/mp4,audio/aac,.mp3,.ogg,.wav,.m4a,.aac"></div>'+
-          '<div class="field"><span class="ic_soundstatus muted" style="font-size:12.5px">'+
-            (ic.hasCustomSound?T('eigene Datei hinterlegt'):T('Standardton (Wecker-Piep)'))+'</span>'+
-            (ic.hasCustomSound?' <button type="button" class="minibtn ic_soundrm">'+T('Entfernen')+'</button>':'')+
-            ' <button type="button" class="minibtn ic_soundtest">'+T('Klingeln testen')+'</button>'+
-            '<span class="toast ic_soundtoast"></span>'+
-          '</div></div>'+
-        '<p class="hint" style="margin-top:4px">'+T('MP3/OGG/WAV/M4A/AAC, max. 5 MB — wird hochgeladen, sobald eine Datei gewählt wird. „Klingeln testen" schickt ein echtes Klingel-Event ans Panel (unten „Alle Panels“/Panel wählen unter „Test-Ton“) — praktisch, um zu prüfen, ob der Ton auf einem bestimmten Gerät (z. B. Kiosk-Browser auf einem Shelly Wall Display) tatsächlich abspielt. Manche Kiosk-Apps erlauben automatische Audiowiedergabe nur bei aktivierter „Autoplay Audio“-Einstellung.')+'</p>'+
-        (ic.url?crpHTML(ic):'')+'</div>'
+        '<div class="icsnd">'+
+          '<div class="lbl">'+T('Klingelton')+'</div>'+
+          '<label class="chk"><input type="checkbox" class="ic_sound"'+(ic.sound?' checked':'')+'>'+
+            '<span>'+T('Ton bei Klingeln (Panel piept, solange es klingelt)')+'</span></label>'+
+          '<div class="icsndrow">'+
+            '<span class="icsndst'+(ic.hasCustomSound?' own':'')+'"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>'+
+              '<span class="ic_soundstatus">'+(ic.hasCustomSound?T('Eigene Datei'):T('Standardton (Wecker-Piep)'))+'</span></span>'+
+            '<span class="icsndbtns">'+
+              '<label class="minibtn icsndup">'+T(ic.hasCustomSound?'Ersetzen…':'Eigene Datei…')+
+                '<input type="file" class="ic_soundfile" hidden accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/mp4,audio/aac,.mp3,.ogg,.wav,.m4a,.aac"></label>'+
+              (ic.hasCustomSound?'<button type="button" class="minibtn ic_soundrm">'+T('Entfernen')+'</button>':'')+
+              '<button type="button" class="minibtn ic_soundtest">'+T('Klingeln testen')+'</button>'+
+            '</span></div>'+
+          '<span class="toast ic_soundtoast"></span>'+
+          '<p class="hint">'+T('MP3/OGG/WAV/M4A/AAC, max. 5 MB – wird sofort hochgeladen. „Klingeln testen“ schickt ein echtes Klingel-Event an das unter „Audio → Test-Ton“ gewählte Panel. Manche Kiosk-Apps spielen Ton nur mit „Autoplay Audio“.')+'</p>'+
+        '</div>'+
+        (ic.url?crpHTML(ic):'')+'</div></div></div></div>'; }
       ).join('');
       box.querySelectorAll('.ic').forEach(row=>{
         const uuid=row.dataset.uuid;
+        xfoldBind(row, IC_OPEN, uuid);
         crpBind(row, SET.intercoms.find(x=>x.uuid===uuid));
         const fi=row.querySelector('.ic_soundfile');
         if(fi) fi.onchange=async()=>{
@@ -3685,7 +3720,8 @@ function calStatHTML(q){
     +(st.stale?' · '+T('Panel zeigt den Stand von {zeit} Uhr.').replace('{zeit}',esc(st.stale)):'')+'</span>';
   return '<span class="calst"><b class="ok">'+T('geladen')+'</b> · '+(st.count||0)+' '+T('Termine')+'</span>';
 }
-const CAL_OPEN=new Set();   // aufgeklappte Kalender-Zeilen (neue/leere immer offen)
+const CAL_OPEN=new Set();
+const IC_OPEN=new Set();    // aufgeklappte Intercom-Boxen (uuid)   // aufgeklappte Kalender-Zeilen (neue/leere immer offen)
 // Einklappbare Listenzeile: Kopf (.xtg) klappt den Inhalt (.xbd) auf, Zustand im Set
 function xfoldBind(row, set, i){ const b=row.querySelector('.xtg'); if(!b) return;
   b.onclick=()=>{ const o=!row.classList.contains('open'); row.classList.toggle('open',o); b.setAttribute('aria-expanded',o?'true':'false');

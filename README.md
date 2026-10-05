@@ -27,6 +27,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Kacheln & Pillen, Intercom-Boxen (0.19.50)** — Erkennungszeichen konsequent: alle Kreise (Punkte, Knöpfe,
+  Regler, Plaketten, Großsymbol) sind jetzt viereckige Pillen; lange Pillen bleiben. Tab-Einstellungen als
+  einklappbare Box wie beim Dashboard. Intercoms je Türstation als eigene Box (Status, Video, Klingelton),
+  Klingelton-Bereich aufgeräumt (Status + Knöpfe in einer Zeile, Dateiwahl per Knopf); weitere Kameras darunter.
+  Geräte: Fully-Kiosk-Quelle und Hinweise wieder über die volle Breite.
 - **Geräte-Optimierung, Standard-Dashboard, aufgeräumte Konfiguration (0.19.49)** — Zoom füllt den ganzen
   Schirm (iPad/Tablet ohne Rand); je Gerätetyp Zoom-Vorgabe und Tipps unter „Einrichtung“ (inkl. Hinweis bei
   falscher Panel-Größe); iPad/Android-Tablet ohne Fully halten den Schirm bis zur Leerlaufzeit wach.

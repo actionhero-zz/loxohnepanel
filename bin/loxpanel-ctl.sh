@@ -28,6 +28,9 @@ DATADIR="REPLACELBPDATADIR"
 CONFIGDATA="REPLACELBPDATADIR/config"
 BACKUPDIR="REPLACELBPDATADIR/backups"
 KEEP=20                 # so viele Backups behalten, aeltere werden entfernt
+# Nicht ins Backup: heruntergeladene Fully-APKs (bis 80 MB, jederzeit neu ladbar)
+# und die Ein-Generationen-Sicherung panels.json.bak - sonst waechst jedes Backup.
+TAREX="--exclude=./adb/fully --exclude=./panels.json.bak"
 
 # Image aus der Compose-Datei lesen (Fallback fest: lokal gebautes Tag).
 _img() {
@@ -51,7 +54,7 @@ backup() {
 	local ts f
 	ts=$(date +%Y%m%d-%H%M%S)
 	f="loxpanelfav-config-$ts.tar.gz"
-	if _indocker "cd /data/config 2>/dev/null && tar -czf /data/backups/$f . 2>/dev/null"; then
+	if _indocker "cd /data/config 2>/dev/null && tar -czf /data/backups/$f $TAREX . 2>/dev/null"; then
 		echo "Backup erstellt: $f ($(du -h "$BACKUPDIR/$f" 2>/dev/null | cut -f1))"
 	else
 		echo "Backup fehlgeschlagen (Konfiguration vorhanden?)."; exit 1
@@ -76,11 +79,13 @@ restore() {
 	mkdir -p "$BACKUPDIR"
 	ts=$(date +%Y%m%d-%H%M%S)
 	# Ist-Stand vor dem Ueberschreiben sichern (Rueckweg offen halten)
-	_indocker "cd /data/config 2>/dev/null && tar -czf /data/backups/loxpanelfav-config-$ts-vor-restore.tar.gz . 2>/dev/null" \
+	_indocker "cd /data/config 2>/dev/null && tar -czf /data/backups/loxpanelfav-config-$ts-vor-restore.tar.gz $TAREX . 2>/dev/null" \
 		&& echo "Aktuellen Stand gesichert (loxpanelfav-config-$ts-vor-restore.tar.gz)."
 	echo "Spiele $bn ein..."
 	# config leeren und Backup als root einspielen (ueberschreibt root-Dateien)
-	if _indocker "mkdir -p /data/config && cd /data/config && rm -rf ./* && tar -xzf /data/backups/$bn -C /data/config"; then
+	# adb/ (Schluessel + Fully-Cache) bleibt stehen: der Schluessel kommt aus dem
+	# Backup zurueck, die APK muss nicht erneut geladen werden.
+	if _indocker "mkdir -p /data/config && cd /data/config && find . -mindepth 1 -maxdepth 1 ! -name adb -exec rm -rf {} + && tar -xzf /data/backups/$bn -C /data/config"; then
 		echo "Konfiguration wiederhergestellt."
 	else
 		echo "Wiederherstellung fehlgeschlagen."; exit 1
@@ -103,6 +108,9 @@ start() {
 	# Vorgaengerversion des Images (nach dem Neubau namenlos, ~200 MB) entfernen -
 	# nur verwaiste Images mit unserem Label, sonst sammeln sie sich je Update an.
 	sudo docker image prune -f --filter "label=de.loxpanelfav.image=1" > /dev/null 2>&1 || true
+	# Build-Cache: Schichten, die 30 Tage nicht mehr gebraucht wurden (alte
+	# pip-Staende frueherer Updates) - waechst sonst mit jedem Update.
+	sudo docker builder prune -f --filter "until=720h" > /dev/null 2>&1 || true
 }
 
 stop() {

@@ -27,6 +27,12 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Sauberkeit, Geräte löschen, quadratischer Zoom (0.19.52)** — Offene Panels laden nach einem Update selbst neu
+  (Code-Kennung), Manifest ungecacht. Kein Zugriffsprotokoll mehr im Log; Backups ohne Fully-APK; Docker-Build-Cache
+  wird aufgeräumt; Reste gelöschter Bausteine/Türstationen und lange nicht gesehene Geräte verschwinden automatisch.
+  Geräte lassen sich löschen; Kennung aus ?device= wird gemerkt; alte Einträge werden bei Erkennung übernommen.
+  Zoom hält Kacheln quadratisch (Rest = Hintergrund). LoxBerry-Seite: Panel-Auswahl für „Web-App öffnen“,
+  Updates nur über die LoxBerry-Pluginverwaltung, Umlaute/Schrift korrigiert.
 - **Geräte-Erkennung, Serverzeit, LoxBerry-Seite neu (0.19.51)** — Jedes Gerät bekommt eine dauerhafte ID
   (Fully: Geräte-ID, sonst Zufalls-ID in localStorage + Cookie; IP-Wechsel egal) und meldet seinen Steckbrief
   (Bildschirm, Browser, OS, Hardware, bei Fully Modell/MAC). Beim ersten Erkennen legt der Server das Gerät mit

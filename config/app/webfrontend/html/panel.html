@@ -77,6 +77,10 @@
     display:grid;grid-template-rows:minmax(0,1fr) auto;}
   /* Skaliert: Rundung darf keine Scrollleiste erzeugen (nur html, nicht body). */
   html.scaled{overflow:hidden;}
+  /* Gezoomt (Tablet/iPad): Kasten bleibt im 240er-Raster (quadratische Kacheln),
+     der Rand um ihn traegt dieselbe Farbe wie die Visu - wirkt wie ein groesserer
+     Hintergrund statt wie ein Rahmen. */
+  html.scaled,html.scaled body{background:var(--bezel,var(--bg));}
   /* "Bildschirm fuellen": ganzen Tablet-Schirm nutzen (Voll-Zoom). Die Kacheln
      passen sich der Geraeteform an (koennen leicht rechteckig werden) statt als
      zentrierter cols:rows-Kasten mit Rand zu stehen. Gilt auch fuer Vollbreit. */
@@ -3135,8 +3139,8 @@ function setupSchemeZoom(viewEl, stage, sw, sh){
 // Handy-Modus und "Bildschirm fuellen" fuellen schon selbst -> dort 1.
 let uiScaleCfg='off', uiScaleEff=0;
 function scaleCfg(v){ return (v==='auto' || (typeof v==='number' && v>0)) ? v : 'off'; }
-// Danach fuellt der Kasten den Rest des Schirms (iPad 3:2, Tablet 16:10 statt
-// 2:1): Breite/Hoehe = Fenster / Faktor -> kein Rand, Kacheln etwas hoeher.
+// Der Kasten behaelt dabei sein Seitenverhaeltnis (quadratische Kacheln); was
+// auf iPad (3:2) oder 16:10-Tablets uebrig bleibt, fuellt der Hintergrund.
 function applyScale(){
   const s=document.querySelector('.screen'); if(!s) return;
   s.style.width=''; s.style.height=''; s.style.maxWidth=''; s.style.maxHeight='';
@@ -3148,8 +3152,15 @@ function applyScale(){
     else if(typeof uiScaleCfg==='number') k=Math.min(uiScaleCfg,passt);
   }
   k=Math.round(k*1000)/1000;
-  if(k>1){ s.style.maxWidth='none'; s.style.maxHeight='none';
-    s.style.width=Math.floor(innerWidth/k)+'px'; s.style.height=Math.floor(innerHeight/k)+'px'; }
+  // Bleibt in der Hoehe Platz (Breite begrenzt den Zoom), den Kasten hoeher
+  // machen - aber nur bis die Kacheln quadratisch sind: Kachelflaeche einer
+  // Pane = so hoch wie breit. Darueber hinaus fuellt der Hintergrund.
+  if(k>1){
+    const g=el('grid'), panes=(s.classList.contains('split')||w>=900)?2:1;
+    const chrome=g?Math.max(0,h-g.clientHeight):0, frei=Math.floor(innerHeight/k);
+    const ziel=Math.round(w/panes+chrome);
+    if(frei>h+4 && ziel>h){ s.style.maxHeight='none'; s.style.height=Math.min(frei,ziel)+'px'; }
+  }
   if(k!==uiScaleEff){
     uiScaleEff=k;
     s.style.setProperty('--ui-scale', String(k));
@@ -3220,7 +3231,9 @@ const PANEL_ID = new URLSearchParams(location.search).get('panel') || '';
 // Einstellungen -> Panels. Quelle: ?device=<name> in der Kiosk-URL, sonst ein
 // unter Einstellungen -> Panels vergebener Name (t:'setdevice', localStorage).
 let DEVICE_ID = new URLSearchParams(location.search).get('device') || '';
-try{ if(!DEVICE_ID) DEVICE_ID = localStorage.getItem('lp_device') || ''; }catch(e){}
+// Kennung aus der URL merken: spaeter ohne ?device= geoeffnet (anderes Panel,
+// Lesezeichen) bleibt das Geraet dasselbe.
+try{ if(DEVICE_ID) localStorage.setItem('lp_device', DEVICE_ID); else DEVICE_ID = localStorage.getItem('lp_device') || ''; }catch(e){}
 // Dauerhafte Geraete-ID (Standard im Web: Browser kennen keine MAC-Adresse,
 // die IP kann wechseln). Fully Kiosk liefert eine feste Geraete-ID; sonst eine
 // einmal erzeugte Zufalls-ID in localStorage, gespiegelt in einem Cookie (falls
@@ -3258,7 +3271,7 @@ async function deviceInfo(){
 // Abstand Server - Geraet (ms, per Ping nachgefuehrt), SRV_TZ = Zeitzone des
 // Servers. nowDate() liefert ein Date, dessen getHours()/getDate()... die
 // Wanduhr des Servers zeigen.
-let CLOCK_OFF=0, SRV_TZ='', SRV_UTCOFF=null, _tzFmt=null;
+let CLOCK_OFF=0, SRV_TZ='', SRV_UTCOFF=null, _tzFmt=null, CODE_BUILD='';
 function setServerClock(now, sent, tz, utcoff){
   if(typeof now!=='number') return;
   const rtt=sent?Math.max(0,Date.now()-sent):0, off=now+rtt/2-Date.now();
@@ -3397,12 +3410,18 @@ function connect(){
     if(msg.t==='night'){ setNight(msg.on); return; }                         // Tag/Nacht gewechselt
     if(msg.t==='goto'){ if(msg.route){ wake(); nav(msg.route); } return; }  // auf Seite springen
     if(msg.t==='pong'){ setServerClock(msg.now, msg.at, msg.tz, msg.utcoff); return; }
-    if(msg.t==='clock'){ setServerClock(msg.now, 0, msg.tz, msg.utcoff); return; }
+    if(msg.t==='clock'){ setServerClock(msg.now, 0, msg.tz, msg.utcoff);
+      // Nach einem Update (neuer Code auf dem Server) neu laden - sonst laeuft
+      // das offene Panel mit altem Code weiter, bis jemand es neu startet.
+      if(msg.build){ if(CODE_BUILD && msg.build!==CODE_BUILD){ location.reload(); return; } CODE_BUILD=msg.build; }
+      return; }
     if(msg.t==='cmdack'){ cmdAck(msg); return; }
     if(msg.t==='cmdwatch'){ cmdWatch=!!msg.on; if(!cmdWatch){ cmdPend.forEach(e=>clearTimeout(e.t)); cmdPend.clear(); } return; }
     if(msg.t==='ms'){ msOk=!!msg.ok; msSince=msg.since||0; linkBanner(); return; }
     if(msg.t==='notify'){ wake(); showNotify(msg.text, msg.level, msg.secs); return; }  // Nachricht einblenden
     if(msg.t==='display'){ if(msg.on) wake(); else screenOff(); return; }   // Server schaltet Display (Kiosk-App)
+    if(msg.t==='forget'){ try{ localStorage.removeItem('lp_device'); }catch(e){}   // in der Config geloescht -> neu anmelden
+      DEVICE_ID=''; ws.close(); return; }
     if(msg.t==='setdevice'){ if(msg.name){ try{ localStorage.setItem('lp_device', msg.name); }catch(e){}
         DEVICE_ID=msg.name; ws.close(); } return; }   // in den Einstellungen benannt -> mit Kennung neu verbinden
     if(msg.t==='cmdresult'){ if(msg.ok===false && pendingSecure){ const p=pendingSecure; pendingSecure=null; doSecure(p.uuid,p.cmd,'PIN falsch – nochmal'); } else pendingSecure=null; return; }

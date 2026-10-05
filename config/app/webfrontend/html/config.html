@@ -698,6 +698,8 @@
   .dev .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .dev .drow+.drow{margin-top:8px;}
   .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
+  .dev .ddelrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+  .dev .ddelrow .dhint{margin:0;} .dev .ddel{color:var(--crit,#e2695f);}
   .dev .ddetbox{margin-top:10px;padding:10px 12px;border-radius:9px;background:color-mix(in srgb,var(--good) 8%,var(--panel2));border:1px solid color-mix(in srgb,var(--good) 30%,var(--line));font-size:12.5px;}
   .dev .ddeth{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
   .dev .ddeth small{color:var(--muted);}
@@ -4205,7 +4207,17 @@ function devRow(name){
       '<div class="dhint">'+T('Modus → Ansicht. Den Modus schickt Loxone per HTTP (siehe Hinweise unten).')+'</div></div></div>'+
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
     '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display)+'</div>'+
+    '<div class="ddelrow"><button type="button" class="btn ghost sm ddel" data-live="1">'+T('Gerät löschen')+'</button>'+
+      '<span class="dhint">'+T('Entfernt Einstellungen und Erkennung. Ist das Gerät verbunden, meldet es sich neu an.')+'</span></div>'+
   '</div></div>';
+}
+async function devDelete(name){
+  if(!confirm(T('Gerät „')+name+T('“ löschen? Einstellungen (Typ, Betriebsmodus, Display) gehen verloren.'))) return;
+  try{ const r=await fetch('/api/device/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name})}); const j=await r.json();
+    if(!j.ok&&j.error){ snack(j.error); return; } }catch(e){ snack('Fehler: '+e); return; }
+  delete DEV[name]; KNOWN_NAMES=KNOWN_NAMES.filter(n=>n!==name); DEV_OPEN.delete(name); DEV_NEW.delete(name);
+  if(LAST_DEVS) LAST_DEVS.devices=(LAST_DEVS.devices||[]).filter(d=>d.name!==name);
+  renderDevices(); snack(T('Gerät „')+name+T('“ gelöscht')); setTimeout(()=>pollDevices&&pollDevices(),1500);
 }
 // Auto-Erkennung: Steckbrief, den das Geraet beim Verbinden gemeldet hat
 function devDetHTML(name,model){
@@ -4293,6 +4305,7 @@ function renderDevices(){
   // Betriebsmodus-Automatik: Modus-Zeilen nur bei gesetztem Haken
   box.querySelectorAll('.dev_auto').forEach(cb=>cb.onchange=()=>{ const w=cb.closest('.dev').querySelector('.dmwrap'); if(w) w.hidden=!cb.checked; });
   // Erkannten Typ uebernehmen = Auswahl setzen wie von Hand (Aenderung -> Speicherleiste)
+  if(!box._ddel) box._ddel=1, box.addEventListener('click',e=>{ const b=e.target.closest('.ddel'); if(b) devDelete(b.closest('.dev').dataset.name); });
   if(!box._ddet) box._ddet=1, box.addEventListener('click',e=>{ const b=e.target.closest('.ddetuse'); if(!b) return; const dv=b.closest('.dev'), sel=dv&&dv.querySelector('.dev_model');
     if(!sel) return; sel.value=b.dataset.guess; sel.dispatchEvent(new Event('change',{bubbles:true})); b.remove(); });
   box.querySelectorAll('.dev_model').forEach(sel=>sel.onchange=()=>{

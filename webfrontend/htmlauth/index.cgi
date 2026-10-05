@@ -27,7 +27,9 @@ my $tok = '';
 if (open(my $tfh, '<', "REPLACELBPDATADIR/config/.cgi_token")) { local $/; $tok = <$tfh> // ''; close($tfh); }
 $tok =~ s/\s+//g;
 
-sub h { my $s = shift; $s = "" unless defined $s; $s =~ s/&/&amp;/g; $s =~ s/</&lt;/g; $s =~ s/>/&gt;/g; $s =~ s/"/&quot;/g; return $s; }
+# HTML-escapen. Texte aus decode_json sind Perl-Zeichenketten (Unicode) - als
+# UTF-8-Bytes ausgeben, sonst erscheinen Umlaute (z. B. "Küche") als Zeichensalat.
+sub h { my $s = shift; $s = "" unless defined $s; utf8::encode($s) if utf8::is_utf8($s); $s =~ s/&/&amp;/g; $s =~ s/</&lt;/g; $s =~ s/>/&gt;/g; $s =~ s/"/&quot;/g; return $s; }
 
 # Eine Steuer-Aktion nicht-blockierend im Hintergrund starten (Ausgabe -> $log,
 # das unten live angezeigt wird). Alle drei Standard-Fds umleiten, damit Apache
@@ -136,7 +138,7 @@ elsif ($action =~ /^(start|stop|restart)$/) {
     my $act = $1;   # durch Regex begrenzt -> shell-sicher
     launch_bg("Aktion \"$act\"", $ctl, $act);
     $msg = "<div class='alert alert-info'>Aktion &bdquo;$act&ldquo; l&auml;uft &hellip; "
-         . "bei einem Update wird das Image geladen (kann 1&ndash;2&nbsp;Min dauern). "
+         . "der Start kann 1&ndash;2&nbsp;Min dauern. "
          . "Der Verlauf erscheint unten unter &bdquo;Letzte Aktion&ldquo; und aktualisiert sich automatisch.</div>";
     $refresh = 1;
 }
@@ -193,6 +195,20 @@ if ($running) {
         if ($vj) { $av = $vj->{version} // $av; $ac = substr($vj->{commit} // '', 0, 7); } }
 }
 my $repo = "https://github.com/actionhero-zz/loxohnepanel";
+# Panel-Profile fuer die Auswahl "Web-App oeffnen" (id -> Titel)
+my @plist;
+if ($running) {
+    my $pr = LWP::UserAgent->new(timeout => 6)->get("$api/api/meta", 'X-LoxPanel-Token' => $tok);
+    if ($pr->is_success) { my $pj = eval { decode_json($pr->decoded_content) };
+        if ($pj && ref $pj->{panels} eq 'HASH') {
+            for my $id (sort keys %{ $pj->{panels} }) {
+                next if $id =~ /^__/;
+                my $t = (ref $pj->{panels}{$id} eq 'HASH' ? $pj->{panels}{$id}{title} : '') || $id;
+                push @plist, [$id, $t];
+            } } }
+}
+my $popts = join('', map { "<option value='" . h($_->[0]) . "'>" . h($_->[1]) . "</option>" } @plist)
+    || "<option value=''>Standard</option>";
 my $stat = !$running ? "<span style='color:#a94442'>Container l&auml;uft nicht</span>"
     : $conn ? "<span style='color:#3c763d'>l&auml;uft &middot; Miniserver verbunden</span>"
     : "<span style='color:#8a6d3b'>l&auml;uft &middot; noch kein Miniserver</span>";
@@ -282,8 +298,17 @@ print <<"HTML";
   .lpx{--lpx-g:#6dac20;--lpx-gd:#5a9419;--lpx-acc:#f3d27a;--lpx-ink:#1f2430;--lpx-mut:#6b7280;--lpx-line:#e4e7ec;
     --lpx-bg:#f6f7f9;--lpx-ok:#52b881;--lpx-warn:#e9b949;--lpx-bad:#e2695f;
     font-family:inherit;color:var(--lpx-ink);max-width:1180px;margin:0 auto;padding:4px 0 24px;}
-  .lpx *{box-sizing:border-box;}
-  .lpx h3{margin:0;font-size:16px;font-weight:700;}
+  .lpx,.lpx *{box-sizing:border-box;text-shadow:none !important;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:normal;}
+  .lpx code,.lpx pre,.lpx .lpx-mono{font-family:ui-monospace,Menlo,Consolas,monospace;}
+  .lpx b,.lpx strong{font-weight:700;} .lpx p{margin:0;}
+  .lpx-open{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.08);border-radius:999px;padding:4px 4px 4px 6px;}
+  .lpx-sel{height:32px;border:0;border-radius:999px;padding:0 28px 0 12px;font-size:13px;font-weight:600;color:#fff;cursor:pointer;
+    background:rgba(255,255,255,.12) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23fff' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 11px center;
+    -webkit-appearance:none;appearance:none;max-width:180px;}
+  .lpx-sel option{color:#1f2430;}
+  .lpx-open .lpx-btn{height:32px;}
+  .lpx h3{margin:0;font-size:16px;line-height:1.3;font-weight:700;color:var(--lpx-ink);}
   .lpx-hero{position:relative;overflow:hidden;border-radius:20px;padding:22px 24px;margin-bottom:16px;
     background:linear-gradient(135deg,#232838 0%,#2d3448 60%,#38405a 100%);color:#fff;box-shadow:0 10px 30px rgba(31,36,48,.18);}
   .lpx-hero::after{content:"";position:absolute;right:-80px;bottom:-110px;width:240px;height:240px;border-radius:60px;transform:rotate(18deg);
@@ -354,8 +379,11 @@ print <<"HTML";
     </div>
     <div class="lpx-go">
       <a class="lpx-btn lpx-acc" href="http://$lbhost:8098/config" target="_blank" rel="noopener" data-role="none">Konfiguration &ouml;ffnen</a>
-      <a class="lpx-btn lpx-ghost" href="http://$lbhost:8098/config#devices:newpanel" target="_blank" rel="noopener" data-role="none">Neues Ger&auml;t einrichten</a>
-      <a class="lpx-btn lpx-ghost" href="http://$lbhost:8098/" target="_blank" rel="noopener" data-role="none">Web-App &ouml;ffnen</a>
+      <span class="lpx-open">
+        <select id="lpx_panel" class="lpx-sel" data-role="none" aria-label="Panel">$popts</select>
+        <a class="lpx-btn lpx-ghost" href="http://$lbhost:8098/" target="_blank" rel="noopener" data-role="none"
+           onclick="var v=document.getElementById('lpx_panel').value;this.href='http://$lbhost:8098/'+(v?'?panel='+encodeURIComponent(v):'');">Web-App &ouml;ffnen</a>
+      </span>
     </div>
   </section>
 
@@ -384,10 +412,10 @@ print <<"HTML";
     </section>
 
     <section class="lpx-card">
-      <div class="lpx-h"><h3>Container &amp; Updates</h3></div>
-      <p class="lpx-note">Updates kommen automatisch aus GitHub. &bdquo;Jetzt updaten&ldquo; l&auml;dt sofort den neuesten Stand und startet neu (1&ndash;2&nbsp;Min).</p>
+      <div class="lpx-h"><h3>Container</h3></div>
+      <p class="lpx-note">Updates installierst du &uuml;ber die <b>LoxBerry-Pluginverwaltung</b> &ndash; LoxBerry f&uuml;hrt. Hier nur Start, Stopp und Neustart (z.&nbsp;B. nach einem H&auml;nger).</p>
       <div class="lpx-row">
-        <form method="post" data-ajax="false"><input type="hidden" name="action" value="restart"><button class="lpx-btn lpx-pri" data-role="none" type="submit">Jetzt updaten / Neu starten</button></form>
+        <form method="post" data-ajax="false"><input type="hidden" name="action" value="restart"><button class="lpx-btn lpx-pri" data-role="none" type="submit">Neu starten</button></form>
         <form method="post" data-ajax="false"><input type="hidden" name="action" value="start"><button class="lpx-btn lpx-sec" data-role="none" type="submit">Starten</button></form>
         <form method="post" data-ajax="false"><input type="hidden" name="action" value="stop"><button class="lpx-btn lpx-sec" data-role="none" type="submit">Stoppen</button></form>
       </div>

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.51"
+APP_VERSION = "0.19.52"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -384,10 +384,24 @@ def _server_tz() -> str:
 _SRV_TZ = _server_tz()
 
 
+def _code_build() -> str:
+    """Kennung des ausgelieferten Oberflaechen-Codes (Version + Aenderungszeit
+    der Panel-Datei). Aendert sie sich (Update), laden offene Panels neu."""
+    try:
+        mt = int((Path(__file__).resolve().parent.parent / "webfrontend" / "html" / "panel.html").stat().st_mtime)
+    except OSError:
+        mt = 0
+    return f"{APP_VERSION}-{mt}"
+
+
+_BUILD = _code_build()
+
+
 def server_clock() -> dict:
-    """Serverzeit fuer die Panels: ms seit 1970, Zeitzone, UTC-Abstand (Minuten)."""
+    """Serverzeit fuer die Panels: ms seit 1970, Zeitzone, UTC-Abstand (Minuten),
+    dazu die Code-Kennung (build) fuer das automatische Neuladen nach Updates."""
     off = datetime.now().astimezone().utcoffset()
-    return {"now": int(time.time() * 1000), "tz": _SRV_TZ,
+    return {"now": int(time.time() * 1000), "tz": _SRV_TZ, "build": _BUILD,
             "utcoff": int(off.total_seconds() // 60) if off is not None else 0}
 
 
@@ -1486,6 +1500,46 @@ class App:
             ctx.verify_mode = _ssl.CERT_NONE
         return ctx
 
+    def housekeeping(self) -> None:
+        """Datenmuell vermeiden: Reste geloeschter Bausteine und lange nicht
+        gesehener Geraete entfernen. Nur mit geladener Struktur (sonst waere
+        bei Miniserver-Ausfall alles "geloescht")."""
+        if len(self.controls) < 5:
+            return
+        try:
+            gone = [u for u in self.scene_light if u not in self.controls]
+            for u in gone:
+                del self.scene_light[u]
+            if gone:
+                _atomic_write(SCENE_LIGHT_FILE, json.dumps(self.scene_light, ensure_ascii=False))
+            ics = {u for u, c in self.controls.items() if c.get("type") == "Intercom"}
+            n = 0
+            if SOUNDS_DIR.is_dir():
+                for f in SOUNDS_DIR.iterdir():
+                    if f.is_file() and _UUID_RE.match(f.stem) and f.stem not in ics:
+                        f.unlink(missing_ok=True)
+                        n += 1
+            # Geraete: nach 90 Tagen ohne Verbindung Steckbrief vergessen; ein
+            # automatisch angelegtes Geraet ohne eigene Einstellungen (Betriebsmodus,
+            # Display-Treiber) gleich mit - eingerichtete Geraete bleiben.
+            old = time.time() - 90 * 86400
+            stale = [u for u, e in self.devinfo.items() if not isinstance(e, dict) or e.get("last", 0) < old]
+            names = {(self.devinfo[u] or {}).get("name") for u in stale if isinstance(self.devinfo.get(u), dict)}
+            for u in stale:
+                del self.devinfo[u]
+            still = {e.get("name") for e in self.devinfo.values() if isinstance(e, dict)}
+            drop = [nm for nm in names if nm and nm not in still and isinstance(self.devices.get(nm), dict)
+                    and not self.devices[nm].get("modes") and not self.devices[nm].get("display")]
+            if drop:
+                self._write_devices({k: v for k, v in self.devices.items() if k not in drop})
+            if stale:
+                self._save_devinfo()
+            if gone or n or stale or drop:
+                log.info("Aufgeraeumt: %d Szenen-Licht, %d Klingeltoene, %d Steckbriefe, %d Geraete",
+                         len(gone), n, len(stale), len(drop))
+        except Exception:
+            log.exception("Aufraeumen fehlgeschlagen")
+
     def _apply_structure(self, st: dict) -> None:
         self.controls = st.get("controls", {})
         self.rooms = st.get("rooms", {})
@@ -1581,6 +1635,7 @@ class App:
         changed = bool(self._struct_sig and sig and sig != self._struct_sig)
         self._apply_structure(st)
         self._struct_sig = sig
+        self.housekeeping()
         return changed
 
     async def _refresh_structure(self) -> bool:
@@ -3787,6 +3842,17 @@ class App:
         name = dev or e.get("name") or ""
         created = False
         if not name:
+            # Uebernahme: genau ein schon angelegtes Geraet (z. B. frueher mit
+            # ?device= benannt) ohne Steckbrief, gerade offline und vom selben Typ
+            # -> das ist dieses Geraet; Name und Einstellungen bleiben.
+            named = {v.get("name") for v in self.devinfo.values() if isinstance(v, dict)}
+            online = {i.get("dev") for i in self.conn_info.values() if i.get("dev")}
+            guess = guess_device_model(info)
+            cand = [n for n, c in self.devices.items() if isinstance(c, dict) and n not in named
+                    and n not in online and guess != "other" and c.get("model") == guess]
+            if len(cand) == 1:
+                name = cand[0]
+        if not name:
             base = device_auto_name(info)
             taken = set(self.devices) | {v.get("name") for v in self.devinfo.values() if isinstance(v, dict)}
             name, n = base, 2
@@ -3814,6 +3880,22 @@ class App:
         if changed or created:
             self._save_devinfo()
         return name, created
+
+    async def device_delete(self, name: str) -> dict:
+        """Geraet vergessen: Einstellungen und Steckbriefe. Ist es gerade
+        verbunden, vergisst es seinen Namen und meldet sich neu an."""
+        devs = {k: v for k, v in self.devices.items() if k != name}
+        had = name in self.devices
+        uids = [u for u, e in self.devinfo.items() if isinstance(e, dict) and e.get("name") == name]
+        for u in uids:
+            del self.devinfo[u]
+        if had:
+            self._write_devices(devs)
+        if uids:
+            self._save_devinfo()
+        n = await _push(self, {"t": "forget"}, "", name)
+        log.info("Geraet geloescht: '%s' (%d Steckbrief(e), %d verbunden)", name, len(uids), n)
+        return {"ok": had or bool(uids) or n > 0, "online": n}
 
     def device_summary(self, name: str) -> dict | None:
         """Erkannte Eigenschaften eines Geraets fuer die Geraeteliste."""
@@ -8446,6 +8528,16 @@ async def api_device_name(request: web.Request) -> web.Response:
                               **({} if n else {"error": "kein Geraet ohne Kennung unter dieser IP"})})
 
 
+async def api_device_delete(request: web.Request) -> web.Response:
+    """Geraet loeschen: {name}."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    name = str(d.get("name") or "").strip()[:60]
+    if not name:
+        return web.json_response({"ok": False, "error": "name fehlt"}, status=400)
+    return web.json_response(await app.device_delete(name))
+
+
 async def api_tab_layout(request: web.Request) -> web.Response:
     """Tab-Editor: wirksame Belegung eines Tabs (gespeicherte Eintraege +
     Vorbefuellung aus Loxone, auto=True) fuer das mitgeschickte, evtl. noch
@@ -8782,7 +8874,7 @@ async def manifest_handler(request: web.Request) -> web.Response:
         "background_color": bg, "theme_color": bg,
         "icons": [{"src": "/appicon/256.png", "sizes": "256x256", "type": "image/png"},
                   {"src": "/appicon/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}],
-    }, content_type="application/manifest+json")
+    }, content_type="application/manifest+json", headers=_NOCACHE)
 
 
 # ---- Android-Panel einrichten (Shelly Wall Display u.a.) ----
@@ -9633,6 +9725,7 @@ def main() -> None:
     a.router.add_get("/api/devices", api_devices_get)
     a.router.add_post("/api/device/switch", api_device_switch)
     a.router.add_post("/api/device/name", api_device_name)
+    a.router.add_post("/api/device/delete", api_device_delete)
     a.router.add_get("/api/display", api_display)
     a.router.add_post("/api/display", api_display)
     a.router.add_post("/api/kiosk/restart", api_kiosk_restart)
@@ -9672,7 +9765,9 @@ def main() -> None:
     a.on_shutdown.append(on_shutdown)
     a.on_cleanup.append(on_cleanup)
     # kurze Gnadenfrist fuer laufende Anfragen, dann beenden (Docker gibt 10 s)
-    web.run_app(a, host="0.0.0.0", port=args.port, shutdown_timeout=3)
+    # Kein Zugriffsprotokoll: jede Anfrage (Symbole, Healthcheck, Geraete-Abfrage
+    # alle 6 s) waere eine Logzeile - ueber 90 % des Logs, ohne Nutzen.
+    web.run_app(a, host="0.0.0.0", port=args.port, shutdown_timeout=3, access_log=None)
 
 
 if __name__ == "__main__":

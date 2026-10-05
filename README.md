@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Zahlen-Bubbles „ausgebissen“ (0.19.53)** — Anzahl als viereckige Pille oben rechts am Symbol; das Piktogramm
+  darunter bekommt eine Aussparung (Maske), wirkt auf jedem Hintergrund wie ausgebissen. In der Statusleiste und
+  auf Kacheln, wo es Sinn ergibt: Fensterüberwachung (offen), Zentral Licht/Audio (aktive Räume), Zentral
+  Tore/Fenster (offen). Farben aus dem Design (Glow bzw. Hinweis-Gelb), kurzes Einploppen bei „Animierte Symbole“.
 - **Sauberkeit, Geräte löschen, quadratischer Zoom (0.19.52)** — Offene Panels laden nach einem Update selbst neu
   (Code-Kennung), Manifest ungecacht. Kein Zugriffsprotokoll mehr im Log; Backups ohne Fully-APK; Docker-Build-Cache
   wird aufgeräumt; Reste gelöschter Bausteine/Türstationen und lange nicht gesehene Geräte verschwinden automatisch.

@@ -779,12 +779,23 @@
   /* Zustand nur ueber die Symbolfarbe (kein Hintergrund, kein Text); Anzahl als
      kleine Plakette oben rechts am Symbol */
   .svsti.lv-hint{color:#f0c27a;} .svsti.lv-alarm{color:#ff9d9b;} .svsti.lv-info{color:#9cc4ea;}
+  /* Zahlen-Plakette mit "ausgebissenem" Symbol: das Piktogramm bekommt um die
+     Plakette eine Aussparung (Maske), egal auf welchem Hintergrund. Plakette als
+     viereckige Pille. --cbs = Symbolgroesse; n1/n2/n3 = Stellen. */
+  .cbw{position:relative;display:inline-grid;place-items:center;--cbs:var(--ico-size,38px);}
+  .cbw>.cbi{display:inline-grid;place-items:center;-webkit-mask:var(--cbm) 0 0/100% 100% no-repeat;mask:var(--cbm) 0 0/100% 100% no-repeat;}
+  .cbw.n1{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM91 -29H110A25 25 0 0 1 135 -4V15A25 25 0 0 1 110 40H91A25 25 0 0 1 66 15V-4A25 25 0 0 1 91 -29Z'/%3E%3C/svg%3E");--cbw:55%;}
+  .cbw.n2{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM74 -29H110A25 25 0 0 1 135 -4V15A25 25 0 0 1 110 40H74A25 25 0 0 1 49 15V-4A25 25 0 0 1 74 -29Z'/%3E%3C/svg%3E");--cbw:72%;}
+  .cbw.n3{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM56 -29H110A25 25 0 0 1 135 -4V15A25 25 0 0 1 110 40H56A25 25 0 0 1 31 15V-4A25 25 0 0 1 56 -29Z'/%3E%3C/svg%3E");--cbw:90%;}
+  .cbn{position:absolute;top:-22%;right:-28%;height:55%;width:var(--cbw,55%);display:grid;place-items:center;box-sizing:border-box;
+    border-radius:calc(var(--cbs) * .17);font-size:calc(var(--cbs) * .36);font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
+    font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));background:var(--glow,var(--accent));color:var(--tile,#fff);}
+  .cbn.hint{background:var(--st-hint,#f0c27a);color:#2a2208;} .cbn.crit{background:var(--st-alarm,#ff9d9b);color:#3d0c0b;}
+  html.ianim:not([data-motion="off"]) .cbn{animation:cbIn .28s cubic-bezier(.2,.8,.3,1.3);}
+  @keyframes cbIn{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
   .svsico{position:relative;display:inline-grid;place-items:center;}
-  .svsbadge{position:absolute;top:-7px;right:-9px;min-width:17px;height:17px;padding:0 4px;box-sizing:border-box;border-radius:6px;
-    display:grid;place-items:center;font-size:10.5px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
-    background:currentColor;box-shadow:0 0 0 1px var(--tab-idle,var(--muted)),0 0 0 3px var(--bezel,var(--bg));}
-  .svsbadge{color:#2a2208;} .svsti.lv-hint .svsbadge{background:#f0c27a;} .svsti.lv-alarm .svsbadge{background:#ff9d9b;color:#3d0c0b;}
-  .svsti.lv-info .svsbadge{background:#9cc4ea;color:#0b2338;} .svsti.lv-ok .svsbadge{background:var(--tab-idle,var(--muted));}
+  .svsti .cbn{background:var(--tab-idle,var(--muted));color:#1f2430;} .svsti.lv-hint .cbn{background:#f0c27a;color:#2a2208;}
+  .svsti.lv-alarm .cbn{background:#ff9d9b;color:#3d0c0b;} .svsti.lv-info .cbn{background:#9cc4ea;color:#0b2338;}
   .sv-close{position:relative;margin-left:auto;flex:none;width:64px;height:52px;border-radius:18px;border:0;
     background:transparent;color:var(--tab-idle,var(--muted));font-size:0;cursor:pointer;}
   .sv-close:active{background:rgba(var(--bezel-ink-rgb,255,255,255),.06);}
@@ -2818,6 +2829,10 @@ function updateGrid(items){
     if(typeof it.winpos === 'number'){ const cr=n.querySelector('.windowico .cr');
       if(cr){ const p=(Math.max(0,Math.min(100,it.winpos))/100).toFixed(3);
         if(cr.style.opacity!==p) cr.style.opacity=p; } }
+    // Zahlen-Plakette: dazu/weg oder andere Stellenzahl -> neu aufbauen, sonst Zahl tauschen
+    { const cb=n.querySelector('.cbn'), want=it.count>0?(it.count>99?'99+':String(it.count)):'';
+      if(!!cb!==!!want || (cb&&cb.textContent.length!==want.length)) ok=false;
+      else if(cb&&cb.textContent!==want) cb.textContent=want; }
     // Mini-Verlauf: dazu oder weg -> neu aufbauen, sonst nur bei Aenderung neu zeichnen
     const spEl=n.querySelector('.tspark'), bdEl=n.querySelector('.tsbadge'), bd=it.spark&&it.spark.badge;
     if(!!it.spark!==!!spEl || !!bd!==!!bdEl) ok=false;
@@ -2830,6 +2845,12 @@ function updateGrid(items){
 // Wall Display), kurz genug, dass der einfache Tipp nicht haengt.
 const DBL_TAP_MS=350;
 let _dblTap=null;   // {id,timer} - wartender erster Tipp auf eine Lichtkachel
+// Symbol mit Zahlen-Plakette ("ausgebissen", s. .cbw). size: feste Symbolgroesse in px (sonst --ico-size)
+function cbHtml(icon, n, tone, size){
+  const t=n>99?'99+':String(n), cls=t.length>=3?'n3':(t.length===2?'n2':'n1');
+  return '<span class="cbw '+cls+'"'+(size?' style="--cbs:'+size+'px"':'')+'><span class="cbi">'+icon+'</span>'+
+    '<b class="cbn'+(tone?' '+esc(tone):'')+'">'+t+'</b></span>';
+}
 // Eine Kachel als HTML - gemeinsam fuer das Raster und den Screensaver.
 // extraCls: zusaetzliche Klassen (z.B. ' snap' fuers Seiten-Snapping).
 function tileHtml(it, extraCls){
@@ -2842,7 +2863,7 @@ function tileHtml(it, extraCls){
     : it.iconUrl
     ? '<span class="ico img" style="--u:url(\''+esc(it.iconUrl)+'\')"></span>'
     : '<span class="ico">'+svg(ICONS[it.icon]||ICONS.info)+'</span>';
-  const icoCell = icoHtml;
+  const icoCell = it.count>0 ? cbHtml(icoHtml, it.count, it.countTone) : icoHtml;
   // Einzelner Ein/Aus-Schnellschalter (Switch/TimedSwitch): eigener Schieber
   // oben rechts, an der Stelle des Pfeils (ersetzt ihn) - wie im Original-
   // Loxone-Plugin. Mehrere Bedienelemente (z.B. Player-Transport: zurueck/
@@ -3789,7 +3810,7 @@ function svStRender(){
   // Mail-Apps; reine Zustaende (scharf, ausgeloest ...) nur ueber die Symbolfarbe.
   const html=chips.map(c=>{ const n=+c.count||0;
     return '<button type="button" class="svsti lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+(c.text?': '+c.text:''))+'">'+
-      '<span class="svsico">'+stIco(c)+(n>0?'<b class="svsbadge">'+(n>99?'99+':n)+'</b>':'')+'</span></button>'; }).join('');
+      (n>0?cbHtml(stIco(c),n,'',20):'<span class="svsico">'+stIco(c)+'</span>')+'</button>'; }).join('');
   if(host._html!==html){ host._html=html; host.innerHTML=html;
     // 480 px: ab 5 Eintraegen kompakter; passt es dann noch nicht, nur Symbole
     // (Zustand bleibt ueber Farbe/Hintergrund sichtbar, Text steht im Info-Fenster).

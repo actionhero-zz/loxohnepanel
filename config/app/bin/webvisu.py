@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.52"
+APP_VERSION = "0.19.53"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -4768,7 +4768,7 @@ class App:
                       # Gleiches Fenster-Piktogramm wie beim einzelnen Fenster -
                       # Sammelmelder ueber mehrere Fenster, daher nur binaer
                       # (irgendeines offen -> kein Kreuz), keine Prozentangabe.
-                      winpos=(0 if op else 100),
+                      winpos=(0 if op else 100), count=op, countTone="hint",
                       sublabel=(f"{op} offen" if op else "Alle geschlossen"))
         elif t == "Alarm":
             armed = bool(self._state(c, "armed"))
@@ -4903,6 +4903,10 @@ class App:
             it.setdefault("sublabel", "Zentral")
             it.update(icon="central", on=(n > 0),
                       nav={"view": "group", "kind": "central", "id": uuid})
+            if n and t in ("CentralGate", "CentralWindow"):
+                it.update(count=n, countTone="hint")
+            elif n and t in ("CentralLightController", "CentralAudioZone"):
+                it["count"] = n
         # Status-Bausteine antippbar machen -> grosse Wertseite
         if t in STATUS_BIG and "nav" not in it and "cmd" not in it:
             it["nav"] = {"view": "control", "id": uuid}

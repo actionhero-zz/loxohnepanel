@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.62"
+APP_VERSION = "0.19.63"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -7726,6 +7726,36 @@ async def index(request: web.Request) -> web.Response:
     return _web_file(HTML, "text/html")
 
 
+# Update-Pruefung fuer die Config-Anzeige: dieselbe release.cfg, die LoxBerrys
+# Auto-Update liest (plugin.cfg -> RELEASECFG). Installiert wird weiter nur ueber
+# die LoxBerry-Pluginverwaltung - hier nur der Hinweis.
+RELEASE_CFG_URL = ("https://raw.githubusercontent.com/actionhero-zz/loxohnepanel/"
+                   "claude/festive-sagan-avv9if/release.cfg")
+_UPD_CACHE: dict = {"ts": 0.0, "latest": ""}
+
+
+def _ver_tuple(v: str) -> tuple:
+    return tuple(int(x) for x in re.findall(r"\d+", v or "")[:4])
+
+
+async def update_handler(request: web.Request) -> web.Response:
+    """{current, latest, newer}: neuere Version im Repo? Ergebnis 6 h gepuffert."""
+    now = time.time()
+    if now - _UPD_CACHE["ts"] > 6 * 3600 or request.query.get("force"):
+        try:
+            async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8)) as sess:
+                async with sess.get(RELEASE_CFG_URL, headers={"Cache-Control": "no-cache"}) as r:
+                    txt = await r.text() if r.status == 200 else ""
+            m = re.search(r"^VERSION=([0-9.]+)", txt, re.M)
+            _UPD_CACHE.update(ts=now, latest=m.group(1) if m else _UPD_CACHE["latest"])
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
+            _UPD_CACHE["ts"] = now - 5 * 3600      # Fehler: in einer Stunde erneut
+    latest = _UPD_CACHE["latest"]
+    return web.json_response({"current": APP_VERSION, "latest": latest,
+                              "newer": bool(latest) and _ver_tuple(latest) > _ver_tuple(APP_VERSION)},
+                             headers=_NOCACHE)
+
+
 async def version_handler(request: web.Request) -> web.Response:
     """Welcher Code-Stand laeuft TATSAECHLICH im Container - unabhaengig davon,
     was die LoxBerry-Pluginverwaltung als installierte Version anzeigt (die
@@ -9776,6 +9806,7 @@ def main() -> None:
     a["app"] = App(_config(), _audio_config(), _audiometa_config())
     a.router.add_get("/", index)
     a.router.add_get("/api/version", version_handler)
+    a.router.add_get("/api/update", update_handler)
     a.router.add_get("/config", config_index)
     a.router.add_get("/settings", settings_index)
     a.router.add_get("/i18n.js", i18n_js)

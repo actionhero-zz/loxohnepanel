@@ -27,6 +27,10 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Update-Hinweis, Launcher am Gerät (0.19.63)** — Die Config zeigt unten links eine Pille „Update x.y.z“, sobald
+  im Repo eine neuere Version liegt (gleiche release.cfg wie LoxBerrys Auto-Update, 6 h gepuffert); Klick öffnet
+  die LoxBerry-Pluginverwaltung. „Launcher einrichten“ (ADB) jetzt direkt in der Steuerung jedes Android-Geräts
+  (IP, Name, Ansicht automatisch), statt als Formular unter „Gerät hinzufügen“.
 - **Fix Uhrzeit, Tablet-Statussymbole unten (0.19.62)** — Panels zeigten 2 h zu wenig: die Zeitzone „Etc/UTC“
   aus dem Container-Image wird ignoriert, maßgeblich ist der echte UTC-Abstand des LoxBerry. Tablet-Dashboard:
   Leiste mit ✕ bleibt oben, nur die Status-Symbole stehen unten.

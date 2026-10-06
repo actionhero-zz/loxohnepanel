@@ -336,7 +336,7 @@ DESIGN_PRESETS = {
         "face4": "#e2d9ff", "face5": "#cff2e1", "faceN": "#f1eeff",
         "dot1": "#ffc145", "dot2": "#7db7ff", "dot3": "#ff9e7a",
         "dot4": "#a48bff", "dot5": "#5cd6a4",
-        "tile": "#ffffff", "ink": "#1f2440", "ink2": "#565c7c", "on": "#e09a00",
+        "tile": "#ffffff", "ink": "#1f2440", "ink2": "#565c7c", "on": "#b37400",
     },
     "dunkel": {
         "bezel": "#0d120e", "bezelInk": "#e7ede7", "tabIdle": "#9fb0a4",

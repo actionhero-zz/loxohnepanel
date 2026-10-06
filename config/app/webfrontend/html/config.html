@@ -378,7 +378,7 @@
   @font-face{font-family:"Sora";src:url("/fonts/Sora.woff2") format("woff2");font-weight:100 800;font-display:swap;}
   :root{
     --bg:#f3f1fb; --panel:#ffffff; --panel2:#f7f5fd; --line:#e2dcf3;
-    --fg:#1f2440; --muted:#5d6282; --accent:#c07f00; --good:#2f8a5c; --crit:#c4473d;
+    --fg:#1f2440; --muted:#5d6282; --accent:#9a6700; --good:#2b8055; --crit:#c4473d;
     --radius:20px; --pill:999px;
     --bezel:#0d0f1a; --bezel2:#171a2b; --bezel-ink:#eceaf8; --bezel-muted:#9a9fbd; --dot:#ffc145;
     --shadow:0 1px 2px rgba(31,36,64,.05),0 8px 24px rgba(31,36,64,.06);
@@ -786,8 +786,8 @@
   .snack button:hover{background:rgba(255,255,255,.08);} .snack .sx{color:var(--bezel-muted,#9ea5c4);font-weight:400;}
   /* Speicherleiste */
   .savebar{display:flex;align-items:center;gap:12px;transition:box-shadow .2s;}
-  #saveBtn{transition:background .25s,color .25s,transform .15s;}
-  #saveBtn.ok{background:var(--good,#52b881) !important;border-color:var(--good,#52b881) !important;color:#0d120e !important;animation:saveOk .4s ease;}
+  #saveBtn{transition:background .12s,color .12s,transform .1s;}
+  #saveBtn.ok{background:var(--good,#2b8055) !important;border-color:var(--good,#2b8055) !important;color:#fff !important;animation:saveOk .2s ease;}
   #saveBtn.err{background:var(--crit,#e2695f) !important;border-color:var(--crit,#e2695f) !important;color:#fff !important;}
   @keyframes saveOk{40%{transform:scale(1.06)}}
   /* Spenden-Pille unten rechts (wie "Buy me a coffee") */
@@ -3104,7 +3104,7 @@ function undoable(p, msg, fn){
 // Rueckmeldung am Speichern-Knopf selbst: gruen mit Haken bzw. rot, 2 s lang
 function saveBtnFlash(ok){ const b=$('#saveBtn'); if(!b) return; clearTimeout(b._ft);
   b.classList.remove('ok','err'); void b.offsetWidth; b.classList.add(ok?'ok':'err');
-  b.textContent=ok?'✓ '+T('Gespeichert'):T('Fehler');
+  b.textContent=ok?T('Gespeichert'):T('Fehler');
   b._ft=setTimeout(()=>{ b.classList.remove('ok','err'); b.textContent=T('Speichern'); }, 2000); }
 async function save(){
   const t=$('#toast');

@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Kontraste (0.19.71)** — Icon „an“ (Vorlage bunt), Grün und Hinweis-Gelb der Config erreichen jetzt
+  WCAG-Kontrast (3:1 Grafik bzw. 4,5:1 Text). Speichern-Knopf: „Gespeichert“ ohne Haken, schnellere Animation.
 - **Alle Loxone-Icons + Miniserver-Härtung (0.19.70)** — Icon-Auswahl „Loxone“ bietet jetzt den
   kompletten Standard-Katalog (550 Icons direkt vom Miniserver, ohne Zusatz-Plugin), lädt beim Scrollen
   nach und findet auch deutsche Begriffe (Licht, Jalousie, Tür …); eigene Icons je Baustein werden mit

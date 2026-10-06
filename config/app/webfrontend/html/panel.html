@@ -11,7 +11,9 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0d0f1a">
 <link rel="apple-touch-icon" href="/appicon/256.png">
-<script>try{ var q=new URLSearchParams(location.search).get('panel'); if(q) document.getElementById('appManifest').href='/manifest.webmanifest?panel='+encodeURIComponent(q); }catch(e){}</script>
+<script>try{ var u=new URLSearchParams(location.search), q=u.get('panel'), d=u.get('device'); try{ d=d||localStorage.getItem('lp_device'); }catch(e){}
+  var a=[]; if(q) a.push('panel='+encodeURIComponent(q)); if(d) a.push('device='+encodeURIComponent(d));
+  if(a.length) document.getElementById('appManifest').href='/manifest.webmanifest?'+a.join('&'); }catch(e){}</script>
 <!-- Das Panel setzt alle Farben selbst. Ohne diese Angabe dunkelt Androids
      WebView (Shelly/Fully Kiosk im System-Dunkelmodus) helle Designs
      eigenmaechtig ab: weisse Kacheln werden schwarz, dunkle Schrift hell. -->
@@ -1555,6 +1557,7 @@ const ICONS = {
   drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
   minus:'<path d="M6 12h12"/>',
   chart:'<path d="M3 3v18h18"/><path d="m7 15 4-5 4 3 5-7"/>',
+  link:'<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>',
   plus:'<path d="M12 6v12M6 12h12"/>',
 };
 const TABS = [
@@ -3456,7 +3459,7 @@ function connect(){
       uiScaleCfg = scaleCfg(msg.scale); requestAnimationFrame(applyScale);
       if(msg.screensaverCam!==undefined){ screensaverCam=msg.screensaverCam||null; if(saverOn()) renderFront(); }
       saverCfg = (msg.saver && Array.isArray(msg.saver.items)) ? msg.saver : null;
-      AMB.bg = msg.ambBg||''; AMB.clock = msg.ambClock||''; ambientApply();
+      AMB.bg = msg.ambBg||''; AMB.clock = msg.ambClock||''; AMB.img = msg.bgImg||''; ambientApply();
       if(saverLayoutOn()) stopScreensaverCam();
       renderSaverGrid();
       // Design-Variante ("classic"/"loxone") + Animationsgeschwindigkeit
@@ -3615,7 +3618,10 @@ function ambientColors(mode){   // -> {top,bot,fg} oder null (keine Daten)
 function ambientApply(){
   const sv=document.getElementById('saver'); if(!sv) return;
   const bg=ambientColors(AMB.bg), ck=ambientColors(AMB.clock);
-  sv.style.background = bg ? 'linear-gradient(180deg,'+ambRgb(bg.top)+','+ambRgb(bg.bot)+')' : '';
+  // Eigenes Bild: formatfuellend, leicht abgedunkelt (Uhr/Widgets bleiben lesbar)
+  sv.style.background = (AMB.bg==='image' && AMB.img)
+    ? 'linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.42)),url("'+AMB.img.replace(/"/g,'')+'") center/cover no-repeat'
+    : bg ? 'linear-gradient(180deg,'+ambRgb(bg.top)+','+ambRgb(bg.bot)+')' : '';
   sv.classList.toggle('ambclk', !!ck);
   if(ck) sv.style.setProperty('--amb-clock', ambRgb(ck.fg)); else sv.style.removeProperty('--amb-clock');
 }

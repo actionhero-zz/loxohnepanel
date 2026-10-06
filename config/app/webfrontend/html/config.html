@@ -655,6 +655,10 @@
   .dashprops .dinfo{color:var(--muted);font-weight:400;cursor:help;}
   .dashprops .dambrow{display:flex;flex-direction:column;gap:2px;margin:0 0 6px;font-size:12.5px;color:var(--muted);}
   .dashprops .dambrow select{width:100%;}
+  .dashprops .dbgimg{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:2px;}
+  .dashprops .dbgthumb{width:64px;height:36px;border-radius:8px;border:1px solid var(--line);background:var(--panel2) center/cover no-repeat;flex:none;}
+  .dashprops .dbgthumb.empty{background-image:repeating-linear-gradient(45deg,transparent 0 6px,rgba(127,127,127,.12) 6px 12px);}
+  .dashprops .dbgimg .minibtn{display:inline-flex;align-items:center;cursor:pointer;}
   .dashprops .dbarhd{all:unset;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--fg);}
   .dashprops .dbarhd small{color:var(--muted);font-weight:400;margin-left:4px;}
   .dashprops .dbarhd svg{color:var(--muted);transition:transform .22s ease;flex:none;}
@@ -2413,8 +2417,12 @@ function renderDashProps(p){
     '<div class="field damb"><label class="lbl" title="'+esc(T('Tageslicht: morgens leicht hell, mittags hell, abends dunkler, nachts ganz dunkel (Sonnenzeiten aus dem Wetter). Außentemperatur: kalt blau, mild grün, warm gelb, heiß orange bis rot. Ohne Wetterdaten bleiben die festen Farben.'))+'">'+T('Farbverlauf')+' <span class="dinfo">ⓘ</span></label>'+
       [['ambBg',T('Hintergrund')],['ambClock',T('Uhrzeit')]].map(([k,l])=>
         '<div class="dambrow"><span>'+l+'</span><select data-amb="'+k+'">'+
-        [['',T('Feste Farben (Design)')],['light',T('Nach Tageslicht')],['temp',T('Nach Außentemperatur')]].map(([v,t])=>
-          '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+'</div>'+
+        [['',T('Feste Farben (Design)')],['light',T('Nach Tageslicht')],['temp',T('Nach Außentemperatur')]].concat(k==='ambBg'?[['image',T('Eigenes Bild')]]:[]).map(([v,t])=>
+          '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+
+      ((p.ui||{}).ambBg==='image'?'<div class="dbgimg" id="dBgImg"><span class="dbgthumb" id="dBgThumb"></span>'+
+        '<label class="minibtn" data-live="1">'+T('Bild wählen…')+'<input type="file" id="dBgFile" accept="image/jpeg,image/png,image/webp" hidden data-live="1"></label>'+
+        '<button type="button" class="minibtn" id="dBgDel" data-live="1" hidden>'+T('Entfernen')+'</button></div>'+
+        '<div class="hint">'+T('JPG, PNG oder WebP, max. 12 MB – wird sofort hochgeladen. Querformat passt am besten.')+'</div>':'')+'</div>'+
     '<div class="field dbar"><label class="lbl">'+T('Statusleiste')+'</label>'+
       '<label class="chk"><input type="checkbox" id="dBarOn"'+(barOn?' checked':'')+'> <span>'+T('Statusleiste oben anzeigen')+'</span></label>'+
       (barOn?'<div class="dbarbox'+(dBarSecOpen?' open':'')+'"><button type="button" class="dbarhd" aria-expanded="'+(dBarSecOpen?'true':'false')+'"><span>'+T('Bausteine')+' <small>'+(sv.bar||[]).length+'/6</small></span>'+
@@ -2460,7 +2468,16 @@ function renderDashProps(p){
       else { dBarOpen=false; const s2=svCfg(p); if(s2.bar){ delete s2.bar; if(!s2.items.length&&!s2.exit.length) delete p.saver; markDirty(); } }
       renderDashProps(p); renderTabEditor(); }; }
   box.querySelectorAll('[data-amb]').forEach(sel=>sel.onchange=()=>{ p.ui=p.ui||{};
-    if(sel.value) p.ui[sel.dataset.amb]=sel.value; else delete p.ui[sel.dataset.amb]; markDirty(); });
+    if(sel.value) p.ui[sel.dataset.amb]=sel.value; else delete p.ui[sel.dataset.amb]; markDirty();
+    if(sel.dataset.amb==='ambBg') renderDashProps(p); });
+  // Eigenes Hintergrundbild: Vorschau, Hochladen/Entfernen wirken sofort (wie Klingelton)
+  { const th=$('#dBgThumb'), fi=$('#dBgFile'), del=$('#dBgDel');
+    const show=url=>{ if(th) th.style.backgroundImage=url?'url("'+url+'")':''; if(th) th.classList.toggle('empty',!url); if(del) del.hidden=!url; };
+    if(th){ fetch('/api/panel/bg?panel='+encodeURIComponent(cur)).then(r=>r.json()).then(j=>show(j.url||'')).catch(()=>show('')); }
+    if(fi) fi.onchange=async()=>{ const f=fi.files&&fi.files[0]; if(!f) return; const fd=new FormData(); fd.append('file',f);
+      try{ const j=await (await fetch('/api/panel/bg?panel='+encodeURIComponent(cur),{method:'POST',body:fd})).json();
+        if(j.ok){ show(j.url); snack(T('Hintergrundbild gespeichert')); } else snack(j.error||T('Fehler')); }catch(e){ snack('Fehler: '+e); } fi.value=''; };
+    if(del) del.onclick=async()=>{ try{ await fetch('/api/panel/bg?panel='+encodeURIComponent(cur)+'&delete=1',{method:'POST'}); show(''); snack(T('Hintergrundbild entfernt')); }catch(e){} }; }
   box.querySelectorAll('[data-exit]').forEach(cb=>cb.onchange=()=>{ const s2=svCfg(p);
     s2.exit=SV_EXITS.map(e=>e[0]).filter(k=>box.querySelector('[data-exit="'+k+'"]').checked);
     s2.items=s2.items||[]; if(!s2.items.length && !s2.exit.length && !(s2.bar||[]).length) delete p.saver; markDirty(); });

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.64"
+APP_VERSION = "0.19.65"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -92,6 +92,26 @@ CFG_EXAMPLE = _CFGDIR / "loxpanel.cfg.example"
 # Eigene Klingelton-Dateien (Upload je Intercom) - persistiert im selben
 # Volume wie loxpanel.cfg/panels.json, ueberlebt also Updates/Neustarts.
 SOUNDS_DIR = _CFGDIR / "sounds"
+BG_DIR = _CFGDIR / "bg"                 # eigene Dashboard-Hintergrundbilder je Panel (<id>.<ext>)
+_BG_MAX_BYTES = 12 * 1024 * 1024
+_BG_TYPES = {"jpg": "image/jpeg", "png": "image/png", "webp": "image/webp"}
+
+
+def bg_file(pid: str):
+    """Gespeichertes Hintergrundbild eines Panels (oder None)."""
+    if not pid or not re.match(r"^[a-z0-9_-]{1,40}$", pid) or not BG_DIR.is_dir():
+        return None
+    for ext in _BG_TYPES:
+        f = BG_DIR / f"{pid}.{ext}"
+        if f.is_file():
+            return f
+    return None
+
+
+def bg_url(pid: str) -> str:
+    """URL des Hintergrundbilds mit Versions-Anhang (neues Bild = neue URL)."""
+    f = bg_file(pid)
+    return f"/bg/{pid}?v={int(f.stat().st_mtime)}" if f else ""
 # Android-Panel-Launcher (android/panel-launcher, fertig gebaut) und der
 # adb-Schluessel: der Schluessel liegt im Config-Volume, damit das einmal auf
 # dem Panel bestaetigte "USB-Debugging zulassen" Container-Updates ueberlebt.
@@ -793,7 +813,8 @@ BAR_MAX = 6   # Statusleiste: hoechstens so viele Bausteine (480 px: kompakt ab 
 # eingestellt, laedt die Visu einmal je Nacht ab dieser Stunde neu, sobald ihre
 # Uhr-/Dashboard-Seite steht (aus LoxPanel #82).
 NEULADEN_STUNDE = 3
-AMBIENT_MODES = ("light", "temp")   # Dashboard-Farbverlauf: nach Tageslicht / Aussentemperatur
+AMBIENT_MODES = ("light", "temp")
+AMBIENT_BG_MODES = AMBIENT_MODES + ("image",)   # Hintergrund zusaetzlich: eigenes Bild   # Dashboard-Farbverlauf: nach Tageslicht / Aussentemperatur
 # Fully Kiosk Browser: offizielle Download-Seite, Link mit Version im Namen
 FULLY_PAGE = "https://www.fully-kiosk.com/en/"
 _FULLY_APK_RE = re.compile(r'(https://www\.fully-kiosk\.com/files/\d{4}/\d{2}/Fully-Kiosk-Browser-v(\d+(?:\.\d+){1,3})\.apk)')
@@ -1515,6 +1536,10 @@ class App:
                     if f.is_file() and _UUID_RE.match(f.stem) and f.stem not in ics:
                         f.unlink(missing_ok=True)
                         n += 1
+            if BG_DIR.is_dir():                     # Hintergrundbilder geloeschter Panels
+                for f in BG_DIR.iterdir():
+                    if f.is_file() and f.suffix[1:] in _BG_TYPES and f.stem not in self.panels:
+                        f.unlink(missing_ok=True)
             # Geraete: nach 90 Tagen ohne Verbindung Steckbrief vergessen; ein
             # automatisch angelegtes Geraet ohne eigene Einstellungen (Betriebsmodus,
             # Display-Treiber) gleich mit - eingerichtete Geraete bleiben.
@@ -2361,7 +2386,7 @@ class App:
             "grid": _grid(ui.get("grid")),      # Standardraster des Panels (2x2 / 3x3)
             "saver": _sanitize_saver(prof.get("saver"), _grid(ui.get("grid"))),
             # Dashboard-Farbverlauf: Hintergrund / Uhrzeit-Schrift ("" = feste Design-Farben)
-            "ambBg": ui.get("ambBg") if ui.get("ambBg") in AMBIENT_MODES else "",
+            "ambBg": ui.get("ambBg") if ui.get("ambBg") in AMBIENT_BG_MODES else "",
             "ambClock": ui.get("ambClock") if ui.get("ambClock") in AMBIENT_MODES else "",
         }
 
@@ -3705,9 +3730,10 @@ class App:
                 cui["sceneLight"] = ui["sceneLight"]  # Szenen-Licht NUR fuer dieses Panel (Override)
             if ui.get("iconAnim") in ("on", "off"):
                 cui["iconAnim"] = ui["iconAnim"]      # Animierte Symbole NUR fuer dieses Panel (Override)
-            for _ak in ("ambBg", "ambClock"):
-                if ui.get(_ak) in AMBIENT_MODES:
-                    cui[_ak] = ui[_ak]                  # Dashboard-Farbverlauf (Tageslicht/Temperatur)
+            if ui.get("ambBg") in AMBIENT_BG_MODES:
+                cui["ambBg"] = ui["ambBg"]              # Dashboard-Hintergrund (Verlauf oder eigenes Bild)
+            if ui.get("ambClock") in AMBIENT_MODES:
+                cui["ambClock"] = ui["ambClock"]        # Farbverlauf der Uhrzeit
             if ui.get("grid") in (2, "2"):
                 cui["grid"] = 2                         # Standardraster 2x2 (Tabs + Dashboard)
             lang = _clean_lang(ui.get("lang"))
@@ -5609,6 +5635,16 @@ class App:
                 else:
                     v["blocks"] = v["blocks"] + [{"k": "row", "act": True, "cells": [btn]}]
                     v["anchor"] = "bottom"
+        # Verknuepfte Objekte (Loxone Config): kleiner Knopf daneben, wie der
+        # Verlauf eine Ebene tiefer -> Seite mit den Objekten als Kacheln
+        if self._links_of(c) and isinstance(v.get("blocks"), list):
+            btn = {"icon": "link", "nav": {"view": "links", "id": uuid}}
+            rows = [b for b in v["blocks"] if b.get("k") == "row" and b.get("act")]
+            if rows:
+                rows[-1]["cells"] = rows[-1]["cells"] + [btn]
+            else:
+                v["blocks"] = v["blocks"] + [{"k": "row", "act": True, "cells": [btn]}]
+                v["anchor"] = "bottom"
         return self._with_head(v, c)
 
     # Bloecke, die eine Seite zum "Spezialbaustein" machen (Bedienung/Medien)
@@ -6954,7 +6990,28 @@ class App:
             return self._view_control(route.get("id"), route.get("range"), bool(route.get("chart")))
         if v == "sources":
             return self._view_sources(route.get("id"))
+        if v == "links":
+            return self._view_links(route.get("id"), prof)
         return self._view_tab(route.get("tab", "favoriten"), prof)
+
+    def _links_of(self, c: dict) -> list:
+        """In Loxone Config verknuepfte Objekte eines Bausteins (LoxAPP3 "links"),
+        nur solche, die es in der Struktur gibt."""
+        out = []
+        for u in (c.get("links") or []):
+            if isinstance(u, str) and u in self.controls and u not in out:
+                out.append(u)
+        return out
+
+    def _view_links(self, uuid: str, prof: dict | None = None) -> dict:
+        """Seite "Verknuepft": die verknuepften Objekte als normale Kacheln. Ein
+        Tipp oeffnet deren Detailseite - auch wenn sie in keinem Tab liegen (wie
+        die Status-Symbole der Statusleiste)."""
+        c = self.controls.get(uuid) or {}
+        links = self._links_of(c)
+        return {"t": "view", "title": _clean(c.get("name")), "sub": "Verknüpft",
+                "route": {"view": "links", "id": uuid},
+                "items": [self._control_item(u, prof, show_room=True) for u in links]}
 
     async def audio_events_task(self) -> None:
         """Verwaltet je Audioserver (aus /mediaServer der Struktur) einen
@@ -8636,6 +8693,56 @@ async def api_device_rename(request: web.Request) -> web.Response:
     return web.json_response(await app.device_rename(old, new))
 
 
+async def api_panel_bg(request: web.Request) -> web.Response:
+    """Dashboard-Hintergrundbild eines Panels: GET -> {url}; POST multipart (file)
+    speichert (JPG/PNG/WebP, max. 12 MB); POST ?delete=1 entfernt es."""
+    pid = str(request.query.get("panel") or "")
+    if not re.match(r"^[a-z0-9_-]{1,40}$", pid):
+        return web.json_response({"ok": False, "error": "panel fehlt"}, status=400)
+    if request.method == "GET":
+        return web.json_response({"ok": True, "url": bg_url(pid)})
+    if request.query.get("delete"):
+        for ext in _BG_TYPES:
+            (BG_DIR / f"{pid}.{ext}").unlink(missing_ok=True)
+        await _push(request.app["app"], {"t": "reload"}, pid)
+        return web.json_response({"ok": True, "url": ""})
+    try:
+        reader = await request.multipart()
+        part = None
+        async for p in reader:
+            if p.name == "file":
+                part = p
+                break
+        if part is None:
+            return web.json_response({"ok": False, "error": "keine Datei"}, status=400)
+        data = await part.read(decode=False)
+    except Exception:
+        return web.json_response({"ok": False, "error": "Upload fehlgeschlagen"}, status=400)
+    if len(data) > _BG_MAX_BYTES:
+        return web.json_response({"ok": False, "error": "Bild zu groß (max. 12 MB)"}, status=400)
+    ext = ("jpg" if data[:3] == b"\xff\xd8\xff" else "png" if data[:8] == b"\x89PNG\r\n\x1a\n"
+           else "webp" if data[:4] == b"RIFF" and data[8:12] == b"WEBP" else "")
+    if not ext:
+        return web.json_response({"ok": False, "error": "nur JPG, PNG oder WebP"}, status=400)
+    BG_DIR.mkdir(parents=True, exist_ok=True)
+    for e in _BG_TYPES:
+        (BG_DIR / f"{pid}.{e}").unlink(missing_ok=True)
+    _atomic_bytes = BG_DIR / f".{pid}.tmp"
+    _atomic_bytes.write_bytes(data)
+    _atomic_bytes.replace(BG_DIR / f"{pid}.{ext}")
+    await _push(request.app["app"], {"t": "reload"}, pid)   # Panels mit diesem Profil zeigen es sofort
+    return web.json_response({"ok": True, "url": bg_url(pid)})
+
+
+async def bg_handler(request: web.Request) -> web.Response:
+    """Hintergrundbild ausliefern (URL traegt ?v=<Zeit>, daher lange cachebar)."""
+    f = bg_file(request.match_info.get("pid", ""))
+    if not f:
+        raise web.HTTPNotFound()
+    return web.Response(body=f.read_bytes(), content_type=_BG_TYPES[f.suffix[1:]],
+                        headers={"Cache-Control": "max-age=2592000, immutable"})
+
+
 async def api_device_delete(request: web.Request) -> web.Response:
     """Geraet loeschen: {name}."""
     app: App = request.app["app"]
@@ -8972,13 +9079,17 @@ async def manifest_handler(request: web.Request) -> web.Response:
     pid = str(request.query.get("panel") or "")
     if not re.match(r"^[a-z0-9_-]{1,40}$", pid):
         pid = ""
+    dev = str(request.query.get("device") or "").strip()[:60]   # Geraetename bleibt in der Home-Bildschirm-App
     prof = app.panels.get(pid or "default") or {}
     name = _clean(prof.get("title") or "") or "LoxPanel"
     bg = "#0d0f1a"
     return web.json_response({
         "name": name, "short_name": name[:12],
-        "start_url": "/" + (f"?panel={pid}" if pid else ""), "scope": "/",
-        "display": "standalone", "orientation": "portrait",
+        "start_url": "/" + ("?" + "&".join(x for x in (f"panel={quote(pid)}" if pid else "",
+                                                        f"device={quote(dev)}" if dev else "") if x) if (pid or dev) else ""),
+        "scope": "/",
+        # "any": Wandtablets laufen quer, Handys hochkant - nicht festlegen
+        "display": "standalone", "orientation": "any",
         "background_color": bg, "theme_color": bg,
         "icons": [{"src": "/appicon/256.png", "sizes": "256x256", "type": "image/png"},
                   {"src": "/appicon/512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}],
@@ -9425,6 +9536,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "iconAnim": prof["iconAnim"],
                             "saver": prof.get("saver"),
                             "ambBg": prof.get("ambBg", ""), "ambClock": prof.get("ambClock", ""),
+                            "bgImg": bg_url(prof["id"]) if prof.get("ambBg") == "image" else "",
                             "agent": app._has_agent(dev)})
         _first = app.render(app.conn_route[ws], prof)
         await ws.send_json(_first)
@@ -9603,7 +9715,8 @@ _ADMIN_PAGES = ("/config", "/settings")
 _ADMIN_API = ("/api/settings", "/api/panels", "/api/theme", "/api/devices", "/api/device/",
               "/api/kiosk/", "/api/panel/launcher", "/api/agent/command", "/api/agents",
               "/api/tablayout", "/api/meta", "/api/types", "/api/testtone", "/api/testring",
-              "/api/loxicons", "/api/admin/password", "/api/msstatus", "/api/msio")
+              "/api/loxicons", "/api/admin/password", "/api/msstatus", "/api/msio",
+              "/api/panel/bg")
 _ADMIN_TTL = 30 * 86400                     # Anmeldung haelt 30 Tage (bis Server-Neustart)
 _ADMIN_SESSIONS: dict[str, float] = {}
 CGI_TOKEN_FILE = _CFGDIR / ".cgi_token"
@@ -9835,6 +9948,8 @@ def main() -> None:
     a.router.add_post("/api/device/switch", api_device_switch)
     a.router.add_post("/api/device/name", api_device_name)
     a.router.add_post("/api/device/delete", api_device_delete)
+    a.router.add_route("*", "/api/panel/bg", api_panel_bg)
+    a.router.add_get("/bg/{pid}", bg_handler)
     a.router.add_post("/api/device/rename", api_device_rename)
     a.router.add_get("/api/msio", api_msio)
     a.router.add_get("/api/display", api_display)

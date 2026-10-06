@@ -27,6 +27,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Verknüpfte Objekte, eigenes Hintergrundbild, iPad-App-Fix (0.19.65)** — Detailseiten zeigen neben dem
+  Verlauf eine kleine Pille „Verknüpft“ (in Loxone Config verlinkte Objekte) → Seite mit den Objekten als Kacheln,
+  antippbar auch wenn sie in keinem Tab liegen. Dashboard-Hintergrund wahlweise eigenes Bild (JPG/PNG/WebP,
+  Upload in den Dashboard-Einstellungen, leicht abgedunkelt). Home-Bildschirm-App: Ausrichtung frei (Tablets quer),
+  Gerätename bleibt erhalten.
 - **Tablet: Statusleiste in allen Tabs, harmonische Abstände (0.19.64)** — Auf Tablets/iPad stehen die
   Status-Symbole in jedem Tab unten. Platz verteilt nach festen Regeln: gleiche Ränder oben/unten, Abstände
   zwischen Tab-Leiste, Kacheln und Status-Zeile im goldenen Schnitt (1,618 × Rand), Status-Symbole bündig mit

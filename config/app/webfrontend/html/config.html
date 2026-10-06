@@ -786,6 +786,14 @@
   .snack button:hover{background:rgba(255,255,255,.08);} .snack .sx{color:var(--bezel-muted,#9ea5c4);font-weight:400;}
   /* Speicherleiste */
   .savebar{display:flex;align-items:center;gap:12px;transition:box-shadow .2s;}
+  /* Spenden-Pille unten rechts (wie "Buy me a coffee") */
+  .donate{position:fixed;right:18px;bottom:16px;z-index:40;display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 10px;
+    border-radius:999px;background:var(--dot,#f3d27a);color:#2a2208 !important;font-size:12.5px;font-weight:600;text-decoration:none;
+    box-shadow:0 4px 14px rgba(31,36,48,.14);transition:transform .15s,box-shadow .15s;}
+  .donate:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(31,36,48,.2);}
+  .donate:hover svg{animation:cupCheers .6s ease;} @keyframes cupCheers{30%{transform:rotate(-14deg)}60%{transform:rotate(8deg)}}
+  @media (max-width:760px){ .donate span{display:none;} .donate{padding:8px;bottom:76px;} }
+  @media (prefers-reduced-motion:reduce){ .donate:hover svg{animation:none;} }
   /* Karten ohne eigene Knoepfe (gespeichert wird unten): Zeile nur fuer die Rueckmeldung */
   .actions:has(> .sectsave):not(:has(> .btn:not(.sectsave))){margin-top:6px;min-height:0;}
   .actions:has(> .sectsave):not(:has(> .btn:not(.sectsave))) .toast:empty{display:none;}
@@ -1367,6 +1375,10 @@
       <span id="delSlot"></span>
       <span class="toast" id="toast"></span>
     </div>
+    <a class="donate" href="https://www.paypal.com/donate/?hosted_button_id=SABJHUAP97L5L" target="_blank" rel="noopener"
+       title="Danke! Ein Kaffee – bzw. ein paar Claude-Code-Tokens – fürs Weiterentwickeln">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v2M14 2v2M6 2v2"/><path d="M4 8h14v6a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M18 9h1.5a2.5 2.5 0 0 1 0 5H18"/></svg>
+      <span>Buy me Claude Code Tokens</span></a>
   </main>
 </div>
 <script>
@@ -1392,6 +1404,27 @@ const BICONS = {
   gate:'<path d="M3 10 12 4l9 6v11H3z"/><path d="M6 21v-7h12v7"/><path d="M6 17.5h12"/>',
   thermo:'<path d="M14 14.76V5a2 2 0 0 0-4 0v9.76a4 4 0 1 0 4 0Z"/>',
   cam:'<rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/>',
+  window:'<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M12 4v16M4 12h16"/>',
+  fan:'<path d="M10.83 16.38a6.08 6.08 0 0 1-8.62-7l5.41 1.45a6.08 6.08 0 0 1 7-8.62l-1.45 5.41a6.08 6.08 0 0 1 8.62 7l-5.41-1.45a6.08 6.08 0 0 1-7 8.62l1.45-5.41Z"/><path d="M12 12v.01"/>',
+  power:'<path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/>',
+  shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
+  drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+  mailbox:'<path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18a4 4 0 0 1 4 4z"/><path d="M15 9h3v2"/><path d="M6.5 5A4.5 4.5 0 0 1 11 9.5V19"/><path d="M6 10h1"/>',
+  person:'<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>',
+  people:'<circle cx="9" cy="7" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 3.5a3.5 3.5 0 0 1 0 7"/><path d="M18.5 20a6.5 6.5 0 0 0-3-5.5"/>',
+  home:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  door:'<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><path d="M14.5 12h.01"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>',
+  plug:'<path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+  car:'<path d="M5 17h14v-5l-2-5H7l-2 5z"/><path d="M3 12h18"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/>',
+  leaf:'<path d="M11 20A7 7 0 0 1 4 13c0-6 7-9 16-9 0 9-3 16-9 16z"/><path d="M4 21c4-4 7-7 11-10"/>',
+  bed:'<path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"/><path d="M2 17h20"/><path d="M6 10V7a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+  battery:'<rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2M6 10v4M10 10v4"/>',
+  flame:'<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4-9-1 2-2 3-3 3-1-2-1-4 0-7-4 2-7 6-7 11a7 7 0 0 0 7 9z"/>',
 };
 const FONTS = [
   {label:'Wie Standard', v:''},

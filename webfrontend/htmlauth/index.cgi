@@ -94,6 +94,22 @@ sub setup_panel {
     return "<div class='alert alert-danger'>" . h($j->{error} // 'Fehler') . "$list</div>";
 }
 
+# ---- Backup herunterladen (GET ?download=<datei>) - vor jeder anderen Ausgabe ----
+if (defined(my $dl = $cgi->param('download'))) {
+    $dl =~ s{.*[\\/]}{};
+    if ($dl =~ /^loxpanelfav-config-[\w.\-]+\.tar\.gz$/ && -f "$bdir/$dl" && open(my $fh, '<:raw', "$bdir/$dl")) {
+        binmode STDOUT;
+        print "Content-Type: application/gzip\r\nContent-Disposition: attachment; filename=\"$dl\"\r\n"
+            . "Content-Length: " . (-s "$bdir/$dl") . "\r\n\r\n";
+        local $/ = \65536;
+        while (my $chunk = <$fh>) { print $chunk; }
+        close $fh;
+    } else {
+        print "Status: 404 Not Found\r\nContent-Type: text/plain\r\n\r\nBackup nicht gefunden.\n";
+    }
+    exit 0;
+}
+
 # ---- POST verarbeiten (vor jeder Ausgabe) ----
 my $msg = "";
 my $refresh = 0;   # nach einer Aktion die Seite per GET nachladen (Live-Verlauf)
@@ -161,6 +177,32 @@ elsif ($action eq 'restore') {
         $refresh = 1;
     } else {
         $msg = "<div class='alert alert-danger'>Ung&uuml;ltiger oder unbekannter Backup-Name.</div>";
+    }
+}
+elsif ($action eq 'upload_backup') {
+    # Gesicherte Konfiguration (vom PC) wieder hochladen -> erscheint in der Liste
+    my $fh = $cgi->upload('bfile');
+    my $orig = scalar($cgi->param('bfile')) // '';
+    if (!$fh) {
+        $msg = "<div class='alert alert-danger'>Keine Datei ausgew&auml;hlt.</div>";
+    } else {
+        binmode $fh;
+        my $data = do { local $/; <$fh> } // '';
+        if (length($data) < 20 || substr($data, 0, 2) ne "\x1f\x8b") {
+            $msg = "<div class='alert alert-danger'>Keine LoxPanel-Sicherung (.tar.gz) &ndash; Datei verworfen.</div>";
+        } elsif (length($data) > 50 * 1024 * 1024) {
+            $msg = "<div class='alert alert-danger'>Datei zu gro&szlig; (max. 50 MB).</div>";
+        } else {
+            mkdir $bdir unless -d $bdir;
+            my $ts = strftime("%Y%m%d-%H%M%S", localtime);
+            my $name = "loxpanelfav-config-$ts-upload.tar.gz";
+            if (open(my $out, '>:raw', "$bdir/$name")) {
+                print $out $data; close $out;
+                $msg = "<div class='alert alert-success'>Sicherung hochgeladen: " . h($name) . " &ndash; mit &bdquo;Wiederherstellen&ldquo; einspielen.</div>";
+            } else {
+                $msg = "<div class='alert alert-danger'>Speichern fehlgeschlagen.</div>";
+            }
+        }
     }
 }
 elsif ($action eq 'delete_backup') {
@@ -269,6 +311,7 @@ for my $b (@backups) {
           . "<input type='hidden' name='action' value='restore'>"
           . "<input type='hidden' name='file' value='$hb'>"
           . "<button class='lpx-btn lpx-sec lpx-sm' data-role='none' type='submit'>Wiederherstellen</button></form> "
+          . "<a class='lpx-btn lpx-sec lpx-sm' data-role='none' data-ajax='false' href='?download=$hb' title='Herunterladen'>&#8615;</a> "
           . "<form method='post' style='display:inline;margin:0' "
           . "onsubmit=\"return confirm('Dieses Backup l&#246;schen?');\">"
           . "<input type='hidden' name='action' value='delete_backup'>"
@@ -428,8 +471,13 @@ print <<"HTML";
     <section class="lpx-card lpx-wide" style="margin-top:0">
       <div class="lpx-h"><h3>Sichern &amp; Wiederherstellen <small>&middot; die letzten 20 bleiben, auch bei Updates</small></h3>
         <form method="post" data-ajax="false" style="margin:0"><input type="hidden" name="action" value="backup"><button class="lpx-btn lpx-pri lpx-sm" data-role="none" type="submit">Backup jetzt erstellen</button></form></div>
-      <p class="lpx-note">Panels, Kacheln, Design und Miniserver-Zugang als Archiv unter <code>$bdir</code>.</p>
+      <p class="lpx-note">Panels, Kacheln, Design und Miniserver-Zugang als Archiv unter <code>$bdir</code>. Sicherungen bleiben bei Plugin-Updates erhalten; mit &#8615; auf den PC laden, unten wieder hochladen.</p>
       $backups_html
+      <form method="post" enctype="multipart/form-data" data-ajax="false" class="lpx-row" style="align-items:center">
+        <input type="hidden" name="action" value="upload_backup">
+        <input type="file" name="bfile" accept=".gz,application/gzip" data-role="none" required style="font-size:13px">
+        <button class="lpx-btn lpx-sec lpx-sm" data-role="none" type="submit">Sicherung hochladen</button>
+      </form>
     </section>
   </div>
 $log_html

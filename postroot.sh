@@ -18,6 +18,17 @@ if [ -d "$LPBK" ] && [ -n "$(ls -A "$LPBK" 2>/dev/null)" ]; then
 	echo "<OK> Panel-Konfiguration wiederhergestellt (Update-sicher)."
 fi
 
+# Sicherungen zurueck (siehe preroot.sh), Besitzer loxberry -> auf der
+# Plugin-Seite loeschbar und herunterladbar
+LPBB="/tmp/loxpanelfav-upgrade-backups"
+if [ -d "$LPBB" ] && [ -n "$(ls -A "$LPBB" 2>/dev/null)" ]; then
+	mkdir -p "$DATADIR/backups"
+	cp -a "$LPBB/." "$DATADIR/backups/" 2>/dev/null
+	chown -R loxberry:loxberry "$DATADIR/backups" 2>/dev/null
+	rm -rf "$LPBB"
+	echo "<OK> Sicherungen wiederhergestellt."
+fi
+
 # Reste eines alten Containers entfernen (Daten liegen im Volume -> verlustfrei).
 docker rm -f loxpanelfav > /dev/null 2>&1
 

@@ -425,6 +425,7 @@
   /* Listen-Layout (volle Breite): immer exakt 4 Zeilen sichtbar (fuellt die
      Grid-Hoehe, egal wie hoch die Tab-Leiste ist -> kein 3,75-Zeilen-Rest). */
   .grid.list{grid-template-columns:1fr;grid-auto-rows:calc((100% - 3*var(--gap)) / 4);}
+  .grid.list.wide{grid-template-columns:repeat(2,minmax(0,1fr));}
   .grid.list .tile{flex-direction:row;align-items:center;gap:14px;padding:0 18px;}
   .grid.list .tile .head{flex:0 0 auto;}
   .grid.list .tile .body{flex:1;min-width:0;}
@@ -1217,7 +1218,15 @@
   .grid.panel.anchorbot .pantop:has(.scenes),.grid.panel.anchorbot .pantop:has(.shade),.grid.panel.anchorbot .pantop:has(.dimcard){justify-content:flex-start;}
   /* Szenen/Beschattung/Dimmer scrollen bzw. passen sich INNEN an -> hier darf
      .pantop schrumpfen (sonst wuchs das 2x2-Szenenraster seit #81 ueber den Schirm). */
-  .grid.panel.anchorbot .pantop:has(>.scenes),.grid.panel.anchorbot .pantop:has(>.shade),.grid.panel.anchorbot .pantop:has(>.dimcard){flex:1 1 0;}
+  .grid.panel.anchorbot .pantop:has(>.scenes),.grid.panel.anchorbot .pantop:has(>.shade),.grid.panel.anchorbot .pantop:has(>.dimcard),
+  .grid.panel.anchorbot .pantop:has(>.epane-detail),.grid.panel .pantop:has(>.epane-detail),
+  .grid.panel .pantop:has(>.video){flex:1 1 0;min-height:0;}   /* Kamerabild passt in die Seite (kein Scrollen) */
+  .grid.panel .pantop>.epane-detail{overflow:hidden;}
+  /* Breite Detailseite: Worte (Status wie "Kein Alarm") kleiner als Zahlen -
+     ueber die volle Breite wirken sie sonst wie Plakatschrift */
+  .grid.panel.wide .pbig.word,.grid.panel.wide .dstate .pbig.word{font-size:clamp(44px,6.5vw,76px);}
+  /* Listen (offene Fenster, Meldungen) auf breiter Seite zweispaltig */
+  .grid.panel.wide .alist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));max-width:none;align-content:start;}
   /* Lichtszenen 2x2 (weitere Seiten per Wischen) */
   .scenes{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:calc((100% - 10px) / 2);gap:10px;
     overscroll-behavior:contain;-webkit-overflow-scrolling:touch;touch-action:pan-y;will-change:scroll-position;
@@ -1476,6 +1485,7 @@
      Kacheln - je Szene eine Rasterzelle statt halber Seitenbreite */
   .grid.panel.wide .scenes{grid-template-columns:repeat(4,minmax(0,1fr));}
   .grid.panel.wide .scene b{font-size:18px;}
+  .scenes.dense .scene{padding:10px 14px;} .scenes.dense .scene b{font-size:16px;} .scenes.dense .sico svg{width:24px;height:24px;}
   .grid.panel .scenes>.scene{scroll-snap-align:start;}
   .grid.panel .scenes.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);}
 
@@ -1561,8 +1571,24 @@ const ICONS = {
   drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
   minus:'<path d="M6 12h12"/>',
   chart:'<path d="M3 3v18h18"/><path d="m7 15 4-5 4 3 5-7"/>',
-  link:'<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>',
+  link:'<rect x="3" y="3" width="8" height="8" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect x="13" y="13" width="8" height="8" rx="2"/>',
   plus:'<path d="M12 6v12M6 12h12"/>',
+  mailbox:'<path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18a4 4 0 0 1 4 4z"/><path d="M15 9h3v2"/><path d="M6.5 5A4.5 4.5 0 0 1 11 9.5V19"/><path d="M6 10h1"/>',
+  person:'<circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>',
+  people:'<circle cx="9" cy="7" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 3.5a3.5 3.5 0 0 1 0 7"/><path d="M18.5 20a6.5 6.5 0 0 0-3-5.5"/>',
+  home:'<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>',
+  door:'<path d="M6 21V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v17"/><path d="M3 21h18"/><path d="M14.5 12h.01"/>',
+  lock:'<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
+  trash:'<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/>',
+  plug:'<path d="M9 2v6M15 2v6"/><path d="M6 8h12v3a6 6 0 0 1-12 0z"/><path d="M12 17v5"/>',
+  sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon:'<path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>',
+  car:'<path d="M5 17h14v-5l-2-5H7l-2 5z"/><path d="M3 12h18"/><circle cx="7.5" cy="17" r="1.5"/><circle cx="16.5" cy="17" r="1.5"/>',
+  leaf:'<path d="M11 20A7 7 0 0 1 4 13c0-6 7-9 16-9 0 9-3 16-9 16z"/><path d="M4 21c4-4 7-7 11-10"/>',
+  bed:'<path d="M2 20v-8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8"/><path d="M2 17h20"/><path d="M6 10V7a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+  battery:'<rect x="2" y="7" width="18" height="10" rx="2"/><path d="M22 11v2M6 10v4M10 10v4"/>',
+  flame:'<path d="M12 22a7 7 0 0 0 7-7c0-4-3-6-4-9-1 2-2 3-3 3-1-2-1-4 0-7-4 2-7 6-7 11a7 7 0 0 0 7 9z"/>',
 };
 const TABS = [
   {tab:'favoriten', label:'Favoriten', icon:'<path d="m12 3 2.9 5.9 6.1.9-4.5 4.4 1 6.1L12 17.8 6.5 20.3l1-6.1L3 9.8l6.1-.9z"/>'},
@@ -2584,8 +2610,20 @@ function renderPanel(blocks){
   renderTabs();
   panelEinpassen();
 }
+// Grosse Anzeige ohne Ziffern (Status-Wort) -> .word (auf breiten Seiten kleiner)
+function markWords(g){ g.querySelectorAll('.pbig').forEach(e=>e.classList.toggle('word', !/\d/.test(e.textContent))); }
+// Szenen/Radiotasten: so viele Reihen, dass alle Tasten ohne Scrollen passen -
+// solange eine Taste dabei mindestens 64 px hoch bleibt (sonst wird geblaettert)
+function fitScenes(g){ g.querySelectorAll('.scenes').forEach(sc=>{
+  const n=sc.children.length; if(!n) return;
+  const cols=getComputedStyle(sc).gridTemplateColumns.split(' ').filter(Boolean).length||2;
+  const need=Math.ceil(n/cols), H=sc.clientHeight, maxR=Math.max(2, Math.floor((H+10)/(64+10)));
+  const rows=Math.max(1, Math.min(need, maxR));
+  sc.style.gridAutoRows=rows>2||need<2?'calc((100% - '+(rows-1)*10+'px) / '+rows+')':'';
+  sc.classList.toggle('dense', rows>2); }); }
 function panelEinpassen(){
   const g=el('grid'); if(!g.classList.contains('panel')) return;
+  markWords(g); fitScenes(g);
   g.classList.remove('eng');
   if(g.scrollHeight>g.clientHeight+1) g.classList.add('eng');
 }
@@ -2610,6 +2648,7 @@ function updatePanel(blocks){
   const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img&&img.getAttribute('src')!==cov.src){img.style.opacity='0'; img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
   const sb=blocks.find(b=>b.k==='slider'); if(sb){const sld=g.querySelector('.sld'); if(sld&&!sldDragging){ sld.value=sb.value; sldFill(sld); const sv=g.querySelector('.sval'); if(sv)sv.textContent=sb.value; }}
   patchLive(g,blocks);
+  markWords(g);
   const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d){ paintEnergy(d, efb.e); fitEflow(d); } }   // Radial live aktualisieren (in-place)
   paintCharts(g,blocks);   // Verlauf nachgeladen oder Fenster vorgerueckt: neu zeichnen, Knoepfe bleiben
   rowBlocks.forEach((b,ri)=>{ const rowEl=rows[ri]; if(!rowEl)return;
@@ -3066,8 +3105,10 @@ function render(){
   el('grid').classList.toggle('list', view.layout==='list');
   const items = view.items || [];
   const g = el('grid');
+  // Liste auf breiter Seite (2 Flaechen): zweispaltig, 8 Zeilen je Seite
+  const _wl = view.layout==='list' && g.clientWidth>700; g.classList.toggle('wide', _wl);
   if(!items.length){ g.innerHTML='<div class="empty">nichts hier</div>'; renderTabs(); return; }
-  const _pg = (view.layout==='list'?4:gridCols*gridRows);   // Snap-Seite: Liste 4 Zeilen, sonst cols x rows
+  const _pg = (view.layout==='list'?(_wl?8:4):gridCols*gridRows);   // Snap-Seite: Liste 4 Zeilen, sonst cols x rows
   const html = items.map((it,i)=>tileHtml(it, i%_pg===0?' snap':'')).join('');
   g.innerHTML = html;
   g.classList.toggle('snapy', items.length > (view.layout==='list'?4:gridCols*gridRows));   // Snapping erst ab >1 Seite

@@ -55,6 +55,16 @@ if [ -d "$CFGDATA" ] && [ -n "$(ls -A "$CFGDATA" 2>/dev/null)" ]; then
 	fi
 fi
 
+# Konfig-Sicherungen (data/backups) ebenfalls retten - LoxBerry loescht den
+# Datenordner beim Update komplett, sonst waeren alle Backups weg.
+LPBB="/tmp/loxpanelfav-upgrade-backups"
+BKDATA="$ARGV5/data/plugins/$ARGV3/backups"
+if [ -d "$BKDATA" ] && [ -n "$(ls -A "$BKDATA" 2>/dev/null)" ]; then
+	rm -rf "$LPBB"; mkdir -p "$LPBB"
+	if cp -a "$BKDATA/." "$LPBB/" 2>/dev/null; then
+		echo "<INFO> Sicherungen gesichert ($(ls -1 "$LPBB" | wc -l) Dateien, Update-sicher)."
+	fi
+fi
 # Versionsstempel fuer die Konfiguration (Version · Commit · Installiert):
 # Das GitHub-ZIP traegt die Commit-Kennung als Archiv-Kommentar. Das Skript
 # liegt im entpackten Ordner (uploads/<ID>/<repo-branch>/), das ZIP daneben

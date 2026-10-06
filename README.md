@@ -27,6 +27,11 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Tester-Feedback, Tablet-Rundgang, Spenden-Link (0.19.67)** — Sicherungen bleiben bei Plugin-Updates erhalten;
+  auf der LoxBerry-Seite herunterladen (⤓) und wieder hochladen. 24 weitere eingebaute Symbole (u. a. Briefkasten,
+  Anwesenheit, Haus, Tür, Schloss, Müll, Sonne/Mond). Kamera-Detailseite passt ohne Scrollen; Szenen-/Radiotasten
+  füllen die Fläche automatisch (alle sichtbar, min. 64 px). Tablet: Energiefluss passt in die Seite, Status-Wörter
+  kleiner als Zahlen, Listen zweispaltig; neues Symbol „Verknüpft“. Config: „Buy me Claude Code Tokens“ unten rechts.
 - **Feinschliff Tablet & Knöpfe (0.19.66)** — „Verknüpft“-Pille so klein wie die Verlaufs-Pille. Bedienknöpfe
   (Schalter, Mini-Knöpfe, Regler-Griffe, Player, Zurück, Schließen) wieder rund; Anzeigen bleiben viereckig.
   Breite Detailseiten (Tablet, X2): Lichtszenen im 4er-Raster, 8 Szenen auf einen Blick.

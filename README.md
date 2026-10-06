@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Feinschliff Tablet & Knöpfe (0.19.66)** — „Verknüpft“-Pille so klein wie die Verlaufs-Pille. Bedienknöpfe
+  (Schalter, Mini-Knöpfe, Regler-Griffe, Player, Zurück, Schließen) wieder rund; Anzeigen bleiben viereckig.
+  Breite Detailseiten (Tablet, X2): Lichtszenen im 4er-Raster, 8 Szenen auf einen Blick.
 - **Verknüpfte Objekte, eigenes Hintergrundbild, iPad-App-Fix (0.19.65)** — Detailseiten zeigen neben dem
   Verlauf eine kleine Pille „Verknüpft“ (in Loxone Config verlinkte Objekte) → Seite mit den Objekten als Kacheln,
   antippbar auch wenn sie in keinem Tab liegen. Dashboard-Hintergrund wahlweise eigenes Bild (JPG/PNG/WebP,

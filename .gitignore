@@ -21,3 +21,4 @@ dist/
 .vscode/
 *.swp
 config/app/config/devinfo.json
+config/app/config/bg/

@@ -357,7 +357,7 @@
   .tswitch{position:relative;flex:none;width:38px;height:22px;border-radius:11px;
     background:#565b64;border:1px solid #6b707a;
     cursor:pointer;transition:background var(--anim-fast) var(--ease);}
-  .tswitch .knob{position:absolute;top:1px;left:1px;width:18px;height:18px;border-radius:var(--r-round,32%);
+  .tswitch .knob{position:absolute;top:1px;left:1px;width:18px;height:18px;border-radius:50%;
     background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
     transition:transform var(--anim-fast) var(--ease);}
   .tswitch.on{background:var(--accent);border-color:var(--accent);}
@@ -365,7 +365,7 @@
   .tswitch:active .knob{filter:brightness(.92);}
   /* Runder Taster-Button (Pushbutton) - gleicher Platz wie .tswitch, aber
      ohne Ein/Aus-Zustand: nur ein Punkt, der beim Antippen kurz aufleuchtet. */
-  .tapbtn{flex:none;width:28px;height:28px;border-radius:var(--r-round,32%);display:grid;place-items:center;
+  .tapbtn{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
     background:#565b64;color:#c4c8ce;cursor:pointer;transition:background .3s ease,color .3s ease;}
   .tapbtn svg{width:17px;height:17px;stroke-width:2.7;}
   .tapbtn:active{background:var(--accent);color:#fff;}
@@ -414,7 +414,7 @@
   .tile.crit .name{color:var(--crit-ink,var(--name-color,inherit));}
   .tile.crit .room,.tile.crit .chev{color:var(--crit-muted,var(--muted));}
   .tctrls{display:flex;gap:8px;justify-content:center;margin-top:6px;}
-  .tctrls .tb{width:34px;height:34px;border-radius:var(--r-round,32%);background:rgba(var(--wash,255,255,255),.10);
+  .tctrls .tb{width:34px;height:34px;border-radius:50%;background:rgba(var(--wash,255,255,255),.10);
     display:grid;place-items:center;color:var(--ink);flex:0 0 auto;}
   .tctrls .tb:active{transform:scale(.92);background:rgba(var(--wash,255,255,255),.18);}
   .tctrls .tb svg{width:17px;height:17px;}
@@ -552,7 +552,7 @@
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .brow.transport{justify-content:center;align-items:center;gap:18px;}
   .btn.icon{flex:0 0 auto;width:58px;height:58px;display:grid;place-items:center;padding:0;
-    border-radius:var(--r-round,32%);color:var(--ink);}
+    border-radius:50%;color:var(--ink);}
   .btn.icon svg{width:24px;height:24px;}
   .btn.icon.big{width:70px;height:70px;background:var(--glow);border-color:transparent;color:var(--on-glow,#181008);}
   .btn.icon.big svg{width:30px;height:30px;}
@@ -573,15 +573,15 @@
     outline:none;background:linear-gradient(to right,
       var(--glow) var(--p,0%),rgba(var(--wash,255,255,255),.22) var(--p,0%));}
   .sld::-webkit-slider-runnable-track{-webkit-appearance:none;height:6px;border-radius:4px;background:transparent;}
-  .sld::-webkit-slider-thumb{-webkit-appearance:none;margin-top:-6px;width:18px;height:18px;border-radius:var(--r-round,32%);
+  .sld::-webkit-slider-thumb{-webkit-appearance:none;margin-top:-6px;width:18px;height:18px;border-radius:50%;
     background:var(--glow);border:2px solid var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.5);cursor:pointer;}
   .sld::-moz-range-track{height:6px;border-radius:4px;background:rgba(var(--wash,255,255,255),.22);}
   .sld::-moz-range-progress{height:6px;border-radius:4px;background:var(--glow);}
-  .sld::-moz-range-thumb{width:16px;height:16px;border:2px solid var(--bg);border-radius:var(--r-round,32%);
+  .sld::-moz-range-thumb{width:16px;height:16px;border:2px solid var(--bg);border-radius:50%;
     background:var(--glow);cursor:pointer;}
   /* Schwebender Zurück-Pfeil (nur beim Reinnavigieren) */
   .tabback{flex:0 0 auto;align-self:center;width:50px;height:50px;margin:0 14px;
-    display:grid;place-items:center;border-radius:var(--r-round,32%);cursor:pointer;font-size:32px;line-height:1;
+    display:grid;place-items:center;border-radius:50%;cursor:pointer;font-size:32px;line-height:1;
     color:var(--muted);border:2px solid var(--line);background:rgba(var(--wash,255,255,255),.04);
     transition:color var(--anim-fast) var(--ease),border-color var(--anim-fast) var(--ease),background var(--anim-fast) var(--ease);
     animation:backIn var(--anim-fast) var(--ease) both;}
@@ -790,7 +790,7 @@
   .svw .svw-player .spt{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .svw .svw-player .sps{font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .svw .svw-player .sptr,.svw .svw-player .spv{display:flex;gap:6px;align-items:center;}
-  .svw .svw-player .btn{flex:none;width:44px;height:44px;min-height:0;min-width:0;padding:0;border-radius:var(--r-round,32%);
+  .svw .svw-player .btn{flex:none;width:44px;height:44px;min-height:0;min-width:0;padding:0;border-radius:50%;
     display:grid;place-items:center;font-size:20px;}
   .svw .svw-player .btn.big{width:54px;height:54px;}
   .svw .svw-player .btn svg{width:22px;height:22px;}
@@ -1030,7 +1030,7 @@
   .fp-mon-c.today .mdots i{background:var(--on-accent,#fff) !important;}
   .fp-allbtn{background:none;border:none;color:var(--accent);font-size:13px;cursor:pointer;padding:2px 4px;}
   .fp-ev.holi .tm{color:var(--crit,#e2695f);}
-  .moreb{position:absolute;top:6px;right:8px;z-index:6;width:34px;height:34px;border-radius:var(--r-round,32%);
+  .moreb{position:absolute;top:6px;right:8px;z-index:6;width:34px;height:34px;border-radius:50%;
     display:grid;place-items:center;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;
     background:rgba(var(--wash,255,255,255),.06);}
   .moreb:active{transform:scale(.92);}
@@ -1040,7 +1040,7 @@
     width:min(92%,380px);max-height:96%;box-shadow:0 20px 50px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;}
   .pinhd{display:flex;align-items:center;justify-content:space-between;min-height:40px;}
   .pinttl{font-weight:700;font-size:17px;padding-left:6px;}
-  .pinx{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;cursor:pointer;background:var(--tile);font-size:18px;}
+  .pinx{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:var(--tile);font-size:18px;}
   .pindisp{font-family:var(--font-num,"Sora",sans-serif);font-size:30px;text-align:center;letter-spacing:.35em;min-height:40px;line-height:40px;}
   .pinmsg{color:var(--crit-txt);font-size:14px;text-align:center;min-height:0;}
   .pinmsg:empty{display:none;}
@@ -1341,7 +1341,7 @@
   .stsbox .stsx,.wxsbox .stsx{margin-left:auto;flex:none;align-self:flex-start;}
   .stsbox.lv-ok{background:#D2EDE0;color:#0F5132;} .stsbox.lv-hint{background:#FAE6B8;color:#633806;} .stsbox.lv-alarm{background:#F5C9C9;color:#791F1F;}
   .stsbox .sthd{font-size:20px;}
-  .stsx{margin-left:auto;border:0;background:rgba(255,255,255,.6);color:inherit;width:34px;height:34px;border-radius:var(--r-round,32%);font-size:14px;cursor:pointer;}
+  .stsx{margin-left:auto;border:0;background:rgba(255,255,255,.6);color:inherit;width:34px;height:34px;border-radius:50%;font-size:14px;cursor:pointer;}
   .strow{display:flex;align-items:center;gap:10px;border:0;border-radius:14px;padding:12px 14px;font:inherit;font-size:15px;background:rgba(255,255,255,.7);color:#1f2440;cursor:pointer;text-align:left;}
   .strow .stci{width:20px;height:20px;} .strow .stn{display:flex;flex-direction:column;min-width:0;font-weight:600;}
   .stroom{font-weight:700;}
@@ -1472,6 +1472,10 @@
 
   /* Scroll-Listen in Detailansichten: Reihen rasten ein, unten weiche Blende solange mehr folgt */
   .grid.panel .scenes{scroll-snap-type:y proximity;}
+  /* Breite Detailseite (2 Flaechen, Tablet/X2): Szenen im 4er-Raster wie die
+     Kacheln - je Szene eine Rasterzelle statt halber Seitenbreite */
+  .grid.panel.wide .scenes{grid-template-columns:repeat(4,minmax(0,1fr));}
+  .grid.panel.wide .scene b{font-size:18px;}
   .grid.panel .scenes>.scene{scroll-snap-align:start;}
   .grid.panel .scenes.more{-webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);mask-image:linear-gradient(to bottom,#000 calc(100% - 44px),transparent);}
 
@@ -2187,7 +2191,7 @@ const STROKE_ICONS={power:1,minus:1,plus:1,chart:1,shield:1};
 function cellIco(n){ return STROKE_ICONS[n]?svg(ICONS[n]):svgF(ICONS[n]||ICONS.info); }
 // Aktionsreihe: Verlaufs-Knopf erkennen und Breiten-Klassen setzen
 // (n = Zahl der uebrigen Knoepfe, hasc = Verlauf dabei), siehe CSS .brow.act.
-function isChartCell(c){ return !!(c&&((c.icon==='chart'&&c.nav)||c.minor)); }   // Verlauf / "Quellen ›": Nebenaktionen, kleiner
+function isChartCell(c){ return !!(c&&(((c.icon==='chart'||c.icon==='link')&&c.nav)||c.minor)); }   // Verlauf / Verknuepft / "Quellen ›": Nebenaktionen, kleiner   // Verlauf / "Quellen ›": Nebenaktionen, kleiner
 function actCls(cells){ const n=cells.filter(c=>!isChartCell(c)).length, h=cells.some(isChartCell);
   return ' n'+Math.min(n,5)+(h?' hasc':''); }
 function cellHtml(c,i){
@@ -2454,6 +2458,7 @@ function renderPanel(blocks){
   el('grid').classList.toggle('bigpage', blocks.some(b=>b.k==='big'));
   el('grid').classList.toggle('chartpage', blocks.some(b=>b.k==='chart'));
   const g=el('grid');
+  g.classList.toggle('wide', g.clientWidth>700);   // breite Detailseite (2 Flaechen) -> Szenen im 4er-Raster
   // anchor:bottom -> Anzeige (big/status) oben zentriert, Bedienung unten
   // verankert; aufklappende Auswahl waechst dann nach oben ueber die festen Zeilen.
   const anchorBot = !!(view && view.anchor==='bottom');

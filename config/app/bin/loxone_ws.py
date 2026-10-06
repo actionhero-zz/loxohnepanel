@@ -45,6 +45,46 @@ WeatherCallback = Callable[[str, list], None]
 
 KEEPALIVE_S = 30    # Abstand der "keepalive"-Kommandos an den Miniserver
 DEAD_S = 3 * KEEPALIVE_S   # so lange ohne JEDE Nachricht -> Verbindung gilt als tot
+# Obergrenze fuer Verbindungsaufbau + Anmeldung. Ohne sie konnte ein Miniserver, der
+# TCP/WS annimmt aber nicht antwortet (halb offen, haengende Firmware), den
+# Reconnect-Loop unbegrenzt blockieren: der Keepalive-Waechter laeuft erst im Stream.
+HANDSHAKE_TIMEOUT_S = 20
+
+# Websocket-Close-Codes des Miniservers (Loxone "Communicating with the
+# Miniserver", Abschnitt "Websocket Close Codes").
+WS_CLOSE_REASONS = {
+    4003: "Anmeldung gesperrt (zu viele Fehlversuche)",
+    4004: "ein Benutzer wurde geaendert",
+    4005: "der angemeldete Benutzer wurde geaendert",
+    4006: "der Benutzer wurde deaktiviert",
+    4007: "Miniserver fuehrt gerade ein Update durch",
+    4008: "keine freien Event-Slots (max. 31 Live-Clients)",
+}
+# Codes, bei denen sofortiges Wiederholen nichts bringt bzw. schadet
+# (Sperre wuerde verlaengert, Benutzer deaktiviert).
+WS_CLOSE_NO_HAMMER = (4003, 4006)
+
+
+_cb_errors = 0   # Callback-Fehler seit Prozessstart (nur zur Log-Drosselung)
+
+
+def _log_cb_error(what: str, uuid: str) -> None:
+    """Die ersten Fehler mit Traceback, danach nur noch Debug: ein dauerhaft
+    fehlerhafter Callback wuerde sonst bei jedem Voll-Dump tausende Zeilen schreiben."""
+    global _cb_errors
+    _cb_errors += 1
+    if _cb_errors <= 3:
+        log.exception("%s-Callback fuer %s fehlgeschlagen", what, uuid)
+    else:
+        log.debug("%s-Callback fuer %s fehlgeschlagen", what, uuid, exc_info=True)
+
+
+def describe_close(code: int | None) -> str:
+    """Lesbarer Text zu einem WS-Close-Code (leer, wenn nichts Besonderes)."""
+    if code is None:
+        return ""
+    return WS_CLOSE_REASONS.get(code, "")
+
 
 # Ein Wetter-Eintrag: 5 * int32, dann 6 * double, ohne Padding.
 _WX_ENTRY = struct.Struct("<5i6d")
@@ -73,6 +113,9 @@ class LoxoneWS:
         self._session: aiohttp.ClientSession | None = None
         self._ws: aiohttp.ClientWebSocketResponse | None = None
         self._last_rx = 0.0           # monotonic: letzte Nachricht vom Miniserver
+        self.close_code: int | None = None   # WS-Close-Code der letzten Trennung
+        self.out_of_service = False          # Miniserver hat Kennung 5 (Neustart/Update) gemeldet
+        self._table_errors = 0               # uebersprungene Tabellen (nur fuer Log-Drosselung)
 
     def _ssl(self) -> ssl.SSLContext:
         ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
@@ -82,6 +125,15 @@ class LoxoneWS:
         return ctx
 
     async def connect(self) -> None:
+        """Verbindung + Anmeldung, hart begrenzt auf HANDSHAKE_TIMEOUT_S."""
+        try:
+            await asyncio.wait_for(self._connect(), timeout=HANDSHAKE_TIMEOUT_S)
+        except asyncio.TimeoutError:
+            raise ConnectionError(
+                f"Miniserver antwortet beim Verbindungsaufbau nicht ({HANDSHAKE_TIMEOUT_S}s)"
+            ) from None
+
+    async def _connect(self) -> None:
         self._session = aiohttp.ClientSession()
         scheme = "wss" if self.secure else "ws"
         url = f"{scheme}://{self.host}:{self.port}/ws/rfc6455"
@@ -113,7 +165,11 @@ class LoxoneWS:
                 return msg.data
             if msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.CLOSING,
                             aiohttp.WSMsgType.ERROR):
-                raise ConnectionError(f"WS geschlossen im Handshake ({msg.type})")
+                self.close_code = self._ws.close_code
+                why = describe_close(self.close_code)
+                raise ConnectionError(
+                    f"WS geschlossen im Handshake ({msg.type}, Code {self.close_code}"
+                    + (f": {why}" if why else "") + ")")
 
     async def _cmd_json(self, command: str) -> dict:
         assert self._ws is not None
@@ -169,16 +225,37 @@ class LoxoneWS:
                 data = msg.data
                 if len(data) == 8 and data[0] == 0x03:
                     # Kennung 6 = keepalive-Antwort: nur Header, keine Nutzdaten
+                    if data[1] == 5:
+                        # Out-of-Service: Miniserver startet neu / wird aktualisiert.
+                        # Es folgt KEIN Payload, danach schliesst er die Verbindung
+                        # (Loxone-Doku). Nur vermerken, der Reconnect laeuft ueber
+                        # das normale Verbindungsende.
+                        self.out_of_service = True
+                        log.info("Miniserver meldet Out-of-Service (Neustart/Update) "
+                                 "- Verbindung wird gleich getrennt")
+                        pending_ident = None
+                        continue
                     pending_ident = None if data[1] == 6 else data[1]
                     continue
                 ident, pending_ident = pending_ident, None
-                if ident == 2:
-                    self._parse_values(data, on_value)
-                elif ident == 3:
-                    self._parse_texts(data, on_value)
-                elif ident == 7:
-                    if on_weather is not None:
-                        self._parse_weather(data, on_weather)
+                if ident in (2, 3, 7):
+                    # Ein kaputtes/unerwartetes Paket oder ein Fehler im Callback darf
+                    # nicht die ganze Verbindung samt Voll-Dump kippen: Tabelle
+                    # verwerfen, melden, weiterlesen (vgl. PyLoxone #517).
+                    try:
+                        if ident == 2:
+                            self._parse_values(data, on_value)
+                        elif ident == 3:
+                            self._parse_texts(data, on_value)
+                        elif on_weather is not None:
+                            self._parse_weather(data, on_weather)
+                    except Exception as err:
+                        self._table_errors += 1
+                        if self._table_errors <= 3:
+                            log.warning("WS-Tabelle (Kennung %s, %d Byte) uebersprungen: %s",
+                                        ident, len(data), err, exc_info=True)
+                        else:
+                            log.debug("WS-Tabelle (Kennung %s) uebersprungen: %s", ident, err)
                 elif ident is not None and ident not in seen_unknown:
                     # Einmal pro Verbindung melden: sonst bliebe unbemerkt, dass
                     # der Miniserver eine Tabelle schickt, die hier keiner liest.
@@ -190,13 +267,20 @@ class LoxoneWS:
             elif msg.type in (aiohttp.WSMsgType.CLOSED, aiohttp.WSMsgType.ERROR):
                 log.warning("WS-Stream beendet (%s)", msg.type)
                 break
+        # aiohttp beendet die Iteration bei Close ohne weitere Nachricht: Code merken,
+        # damit der Aufrufer begruendet (und passend lange) wartet.
+        self.close_code = self._ws.close_code
 
     @staticmethod
     def _parse_values(data: bytes, on_value: ValueCallback) -> None:
         for off in range(0, len(data) - 23, 24):
             uuid = format_uuid(data[off:off + 16])
             val = struct.unpack("<d", data[off + 16:off + 24])[0]
-            on_value(uuid, val)
+            try:
+                on_value(uuid, val)
+            except Exception:
+                # Fehler fuer EINE UUID darf die restlichen Werte der Tabelle nicht kosten.
+                _log_cb_error("Wert", uuid)
 
     @staticmethod
     def _parse_weather(data: bytes, on_weather: WeatherCallback) -> None:
@@ -227,7 +311,10 @@ class LoxoneWS:
             uuid = format_uuid(data[off:off + 16])
             tlen = struct.unpack("<I", data[off + 32:off + 36])[0]
             text = data[off + 36:off + 36 + tlen].decode("utf-8", "replace")
-            on_value(uuid, text)
+            try:
+                on_value(uuid, text)
+            except Exception:
+                _log_cb_error("Text", uuid)
             off += (36 + tlen + 3) & ~3  # auf 4-Byte-Grenze aufrunden
 
     async def close(self) -> None:

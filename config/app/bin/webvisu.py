@@ -43,7 +43,7 @@ from aiohttp import WSMsgType, web
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from loxone_api import LoxoneClient  # noqa: E402
-from loxone_ws import LoxoneWS  # noqa: E402
+from loxone_ws import LoxoneWS, WS_CLOSE_NO_HAMMER, describe_close  # noqa: E402
 
 
 def _ms_https(port) -> bool:
@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.69"
+APP_VERSION = "0.19.70"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -496,7 +496,42 @@ MS_CMD_TIMEOUT = 10      # s: ein Befehl blockiert solange die Nachrichten seine
 TOKEN_RENEW_MIN = 60     # s: nicht oefter neu anmelden (401 kann auch fehlende Rechte heissen)
 MS_OFFLINE_GRACE = 10   # s: so lange darf der Miniserver weg sein, bevor die Panels es anzeigen
 MS_RETRY = (5, 10, 20, 40, 60)   # s: Wartezeiten zwischen Verbindungsversuchen zum Miniserver
-ICON_CACHE_MAX = 500     # Icons im Speicher (Loxone-SVGs, je wenige KB)
+# Wartezeiten, wenn der Miniserver die ANMELDUNG ablehnt (401/403/423, WS-Close 4003/4006).
+# Ein Minutentakt waere dauerhaftes Passwort-Raten: der Miniserver sperrt nach zu vielen
+# Fehlversuchen (Close-Code 4003) - und das trifft dann auch die Loxone-App. Neue
+# Zugangsdaten ueber /settings wecken die Schleife sofort (siehe _retry_now).
+MS_RETRY_AUTH = (300, 900, 1800)   # s
+_AUTH_REJECT_RE = re.compile(r"\b(?:status|HTTP|code=)\s*(401|403|423)\b")
+
+
+def _auth_rejected(err: BaseException | None) -> bool:
+    """True, wenn der Miniserver die Zugangsdaten/den Benutzer abgelehnt hat.
+    Bewusst nur die Fehlerklassen der loxone_api (kein WS-'authwithtoken 401':
+    das ist ein normal abgelaufenes Token, das _reauth ohnehin erneuert) und nur
+    echte Ablehnungs-Codes - 5xx/503 beim Miniserver-Neustart gehoeren NICHT dazu."""
+    if err is None or type(err).__name__ not in ("LoxoneAuthError", "LoxoneRequestError"):
+        return False
+    return bool(_AUTH_REJECT_RE.search(str(err)))
+
+
+def _ms_reason_code(rejected: bool, close_code: int | None, out_of_service: bool) -> str:
+    """Kurzer Grund-Code fuer die Anzeige (Texte stehen in config.html):
+    blocked/disabled/auth = Anmeldung abgelehnt, update = Miniserver aktualisiert/startet,
+    slots = keine Live-Slots frei, user_changed = Benutzer geaendert, net = sonstiges."""
+    if close_code == 4003:
+        return "blocked"
+    if close_code == 4006:
+        return "disabled"
+    if rejected:
+        return "auth"
+    if close_code == 4007 or out_of_service:
+        return "update"
+    if close_code == 4008:
+        return "slots"
+    if close_code in (4004, 4005):
+        return "user_changed"
+    return "net"
+ICON_CACHE_MAX = 800     # Icons im Speicher (Loxone-SVGs, je wenige KB)
 COVER_TIMEOUT = 10       # s: Albumcover vom Audioserver/aus dem Netz (sonst haengt die Anfrage offen)
 FRONT_INTERVAL = 900     # s: Kalender + Open-Meteo so oft neu holen; Wetter-Pushes dazwischen ohne Abruf
 # Reine Wert-/Analog-Anzeigen (kein an/aus) -> keine Kategorie-Ampel, neutral.
@@ -826,6 +861,26 @@ _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize",
                  "tileShadow", "font", "fontNum", "textColor", "baseColor", "design", "bold", "lang",
                  "alarmsEnabled", "motion", "contrast", "sceneLight", "dblTapOff", "iconAnim")
+
+
+# Komplettkatalog der Loxone-Standard-Icons (IconsFilled/*.svg). Der Miniserver
+# liefert JEDES davon ueber /icon aus, auch wenn es in der Struktur nicht benutzt
+# wird - so steht die ganze Auswahl ohne Zusatz-Plugin bereit. Liste: Loxone-
+# Konfigurator-Verzeichnis (via LoxBerry-Plugin LoxoneIcons), gegen einen
+# Miniserver geprueft.
+_MSICONS_FILE = Path(__file__).resolve().parent / "loxone_icons.txt"
+_MSICONS: list | None = None
+
+
+def _msicons_names() -> list:
+    global _MSICONS
+    if _MSICONS is None:
+        try:
+            _MSICONS = sorted({ln.strip() for ln in _MSICONS_FILE.read_text().splitlines()
+                               if _LOXLIB_NAME.match(ln.strip())})
+        except OSError:
+            _MSICONS = []
+    return _MSICONS
 
 
 def _loxlib_names() -> list:
@@ -1338,6 +1393,7 @@ class App:
         self.last_mode = ""             # zuletzt gesetzter Betriebsmodus (fuer Nachziehen beim Verbinden)
         self._struct_sig: str | None = None   # Signatur der Loxone-Struktur (erkennt Config-Aenderungen)
         self._pending_reload = False          # -> Panels beim naechsten Tick neu laden ({t:"reload"})
+        self._retry_now = asyncio.Event()     # weckt stream_task aus der Reconnect-Pause
         self.global_states: dict = {}   # globale States der Anlage (Name -> UUID), s. _apply_structure
         self.op_modes: dict = {}        # Betriebsarten der Anlage (Id -> Name), s. _apply_structure
         # Lichtszenen: gelernte Helligkeit/Farbe {lc-uuid: {mood-id: {"b":0-100,"c":"#rrggbb"}}}
@@ -1429,6 +1485,11 @@ class App:
         self.ms_down_since = time.time()
         self.ms_sent: bool | None = None
         self.ms_up_since = 0.0
+        # Grund der Trennung fuer die Startseite (/api/msstatus): kurzer Code statt Roh-
+        # Fehlertext (Fehlermeldungen enthalten Miniserver-Antworten; das UI soll nur
+        # feste Texte zeigen). ms_next_retry = Zeitpunkt des naechsten Versuchs (epoch).
+        self.ms_reason = ""
+        self.ms_next_retry = 0.0
         self.cmd_watch = _cmd_watch_config()
         self._msinfo: dict = {}          # Systemwerte des Miniservers (Startseite), s. ms_sysinfo
         self._msinfo_t = 0.0
@@ -1750,6 +1811,8 @@ class App:
                     await closer.close()
             except Exception:
                 pass
+        self.ms_next_retry = 0.0
+        self._retry_now.set()   # neue/korrigierte Zugangsdaten: nicht erst die Pause abwarten
         return len(self.controls)
 
     async def _connect_ws(self) -> None:
@@ -3580,14 +3643,17 @@ class App:
     def _loxone_icons(self) -> list:
         """Alle im Struktur-Baum referenzierten Loxone-Icon-Pfade (für den Picker)."""
         paths = set()
-        for c in self.controls.values():
+        def add(c):
             di = (c.get("details") or {}).get("image")
-            if isinstance(di, str):
-                paths.add(di)
-            elif isinstance(di, dict):
-                for v in (di.get("on"), di.get("off")):
-                    if isinstance(v, str):
-                        paths.add(v)
+            for v in ([di] if isinstance(di, str) else
+                      [di.get("on"), di.get("off")] if isinstance(di, dict) else []) + [c.get("defaultIcon")]:
+                if isinstance(v, str):
+                    paths.add(v)
+        for c in self.controls.values():
+            add(c)
+            for sc in (c.get("subControls") or {}).values():
+                if isinstance(sc, dict):
+                    add(sc)
         for table in (self.cats, self.rooms):
             for v in table.values():
                 im = v.get("image")
@@ -7287,8 +7353,9 @@ class App:
         # Wartezeit zwischen Versuchen waechst (MS_RETRY). Von vorn beginnt sie
         # erst, wenn eine Verbindung mindestens so lange hielt wie die laengste
         # Wartezeit - sonst liefe ein Miniserver, der sofort wieder trennt, in
-        # eine Anmeldung alle paar Sekunden.
-        retry, connected_at = 0, None
+        # eine Anmeldung alle paar Sekunden. Lehnt der Miniserver die Anmeldung
+        # ab, gelten die deutlich laengeren MS_RETRY_AUTH (Schutz vor Sperre).
+        retry, auth_retry, connected_at = 0, 0, None
         while True:
             try:
                 if not self.host:
@@ -7311,9 +7378,18 @@ class App:
                         log.exception("Struktur-Refresh beim Reconnect uebersprungen")
                     await self._connect_ws()    # WS neu (Settings-Reconnect / nach Abriss)
                 connected_at = time.monotonic()
+                auth_retry = 0                  # Anmeldung hat funktioniert
+                self._retry_now.clear()
+                self.ms_reason, self.ms_next_retry = "", 0.0
                 self.ms_up, self.ms_up_since = True, time.time()
-                await self.ws.stream(self._on_value, self._on_weather)
-                raise ConnectionError("WS-Stream regulär beendet")
+                ws = self.ws
+                await ws.stream(self._on_value, self._on_weather)
+                code = getattr(ws, "close_code", None)
+                why = describe_close(code)
+                raise ConnectionError(
+                    "WS-Stream beendet"
+                    + (f" (Close-Code {code}" + (f": {why}" if why else "") + ")" if code and code != 1000 else "")
+                    + (" - Miniserver meldete Neustart/Update" if getattr(ws, "out_of_service", False) else ""))
             except asyncio.CancelledError:
                 raise
             except Exception as err:
@@ -7322,21 +7398,41 @@ class App:
                 if connected_at is not None and time.monotonic() - connected_at >= MS_RETRY[-1]:
                     retry = 0
                 connected_at = None
-                wait = MS_RETRY[min(retry, len(MS_RETRY) - 1)]
-                retry += 1
-                log.warning("Miniserver nicht verbunden (%s) — neuer Versuch in %ss", err, wait)
+                close_code = getattr(self.ws, "close_code", None) if self.ws else None
+                oos = bool(getattr(self.ws, "out_of_service", False)) if self.ws else False
                 try:
                     if self.ws:
                         await self.ws.close()
                 except Exception:
                     pass
                 self.ws = None
+                rejected = _auth_rejected(err) or close_code in WS_CLOSE_NO_HAMMER
                 try:
                     if self.client:
                         await self._reauth()    # Token erneuern, Client behalten
-                except Exception:
+                except Exception as err2:
+                    rejected = rejected or _auth_rejected(err2)
                     await self._close_conn()    # Client kaputt -> harter Reset (start() baut neu)
-                await asyncio.sleep(wait)
+                if rejected:
+                    wait = MS_RETRY_AUTH[min(auth_retry, len(MS_RETRY_AUTH) - 1)]
+                    auth_retry += 1
+                    log.warning("Miniserver lehnt die Anmeldung ab (%s) — naechster Versuch in %d min "
+                                "(Schutz vor Konto-Sperre; Zugangsdaten unter Einstellungen pruefen, "
+                                "neue Eingaben wirken sofort)", err, wait // 60)
+                else:
+                    wait = MS_RETRY[min(retry, len(MS_RETRY) - 1)]
+                    retry += 1
+                    log.warning("Miniserver nicht verbunden (%s) — neuer Versuch in %ss", err, wait)
+                self.ms_reason = _ms_reason_code(rejected, close_code, oos)
+                self.ms_next_retry = time.time() + wait
+                # Pause, aber durch reconnect() (neue Zugangsdaten) jederzeit abbrechbar.
+                try:
+                    await asyncio.wait_for(self._retry_now.wait(), timeout=wait)
+                except asyncio.TimeoutError:
+                    pass
+                # Signal verbrauchen: sonst bliebe es gesetzt und der naechste Fehlversuch
+                # ginge ohne jede Pause im Kreis.
+                self._retry_now.clear()
 
     async def _send_or_drop(self, ws, payload) -> bool:
         """Sendet an ein Panel; bei JEDEM Fehler ODER Haenger (Timeout) wird die
@@ -7880,7 +7976,8 @@ async def api_meta(request: web.Request) -> web.Response:
         "designPresets": theme_colors.DESIGN_PRESETS,
         "deviceModels": [{"key": k, **v} for k, v in DEVICE_MODELS.items()],
         "designKeys": list(theme_colors.DESIGN_KEYS),
-        "icons": {"loxone": app._loxone_icons(), "loxlib": len(_loxlib_names())},
+        "icons": {"loxone": app._loxone_icons(), "loxlib": len(_loxlib_names()),
+                  "ms": len(_msicons_names())},
         "tabs": [{"tab": "favoriten", "label": "Favoriten"},
                  {"tab": "zentral", "label": "Zentral"},
                  {"tab": "raeume", "label": "Räume"},
@@ -8049,6 +8146,10 @@ async def api_msstatus(request: web.Request) -> web.Response:
         "configured": bool(app.host), "up": app.ms_up, "ok": app.ms_ok(),
         "since": int((app.ms_up_since if app.ms_up else app.ms_down_since) * 1000),
         "lastRx": round(time.monotonic() - rx, 1) if (app.ms_up and rx) else None,
+        # Nur bei Trennung: Grund-Code + Sekunden bis zum naechsten Versuch (None = laeuft gerade)
+        "reason": None if app.ms_up else (app.ms_reason or None),
+        "retryIn": (max(0, int(app.ms_next_retry - time.time()))
+                    if (not app.ms_up and app.ms_next_retry) else None),
         "sys": await app.ms_sysinfo(),
     }, headers=_NOCACHE)
 
@@ -9242,7 +9343,8 @@ async def icon_handler(request: web.Request) -> web.Response:
 
 async def loxicons_handler(request: web.Request) -> web.Response:
     """Namen der Loxone-Bibliothek (fuer den Kachel-Editor, lazy geladen)."""
-    return web.json_response({"icons": _loxlib_names()})
+    return web.json_response({"icons": _loxlib_names(),
+                              "ms": ["IconsFilled/" + n for n in _msicons_names()]})
 
 
 async def loxlib_handler(request: web.Request) -> web.Response:

@@ -786,6 +786,10 @@
   .snack button:hover{background:rgba(255,255,255,.08);} .snack .sx{color:var(--bezel-muted,#9ea5c4);font-weight:400;}
   /* Speicherleiste */
   .savebar{display:flex;align-items:center;gap:12px;transition:box-shadow .2s;}
+  #saveBtn{transition:background .25s,color .25s,transform .15s;}
+  #saveBtn.ok{background:var(--good,#52b881) !important;border-color:var(--good,#52b881) !important;color:#0d120e !important;animation:saveOk .4s ease;}
+  #saveBtn.err{background:var(--crit,#e2695f) !important;border-color:var(--crit,#e2695f) !important;color:#fff !important;}
+  @keyframes saveOk{40%{transform:scale(1.06)}}
   /* Spenden-Pille unten rechts (wie "Buy me a coffee") */
   .donate{position:fixed;right:18px;bottom:16px;z-index:40;display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 10px;
     border-radius:999px;background:var(--dot,#f3d27a);color:#2a2208 !important;font-size:12.5px;font-weight:600;text-decoration:none;
@@ -828,6 +832,8 @@
   .ovcard small{color:var(--muted);font-size:12.5px;}
   .ovcard small.ovlink{display:flex;align-items:center;gap:6px;margin-top:2px;font-variant-numeric:tabular-nums;}
   .ovcard small.ovlink:empty{display:none;}
+  .ovcard small.mswhy{display:block;margin-top:2px;color:var(--crit);line-height:1.35;}
+  .ovcard small.mswhy:empty{display:none;}
   .ldot{width:7px;height:7px;border-radius:var(--r-round,32%);background:#e2695f;flex:none;}
   .ldot.ok{background:#52b881;}
   .ldot.wait{background:#e0a24d;}
@@ -1557,6 +1563,7 @@ function renderOverview(){
       '<b>'+dot(ms)+(SET?(ms?T('verbunden'):T('nicht verbunden')):'…')+'</b>'+
       '<small>'+(ms?(SET.nControls+' '+T('Bausteine')):T('Adresse und Zugang prüfen'))+'</small>'+
       '<small class="ovlink" id="ovMsLink">'+msLinkText()+'</small>'+
+      '<small class="mswhy" id="ovMsWhy">'+msWhyText()+'</small>'+
       '<div class="msmon" id="ovMsMon">'+msMonHTML()+'</div></button>'+
     '<div class="ovcard ovpanels"><span class="ovk">'+T('Geräte')+'</span>'+
       '<b>'+dot(online.length>0)+online.length+' / '+devs.length+' '+T('online')+'</b>'+
@@ -1581,6 +1588,22 @@ function msLinkText(){
   if(m.ok) return '<i class="ldot wait"></i>'+T('Verbindung wird aufgebaut …');
   return '<i class="ldot"></i>'+T('Getrennt seit')+' '+hm;
 }
+// Grund der Trennung (feste Texte; der Server liefert nur einen Code, keine Roh-Fehlermeldung)
+function msWhyText(){
+  const m=MSST; if(!m||!m.configured||m.up||!m.reason) return '';
+  const why={
+    auth:'Anmeldung abgelehnt – Benutzer und Passwort unter Einstellungen prüfen.',
+    blocked:'Anmeldung am Miniserver gesperrt (zu viele Fehlversuche) – Zugangsdaten prüfen und etwas warten.',
+    disabled:'Der Benutzer ist am Miniserver deaktiviert.',
+    update:'Miniserver startet neu oder wird aktualisiert.',
+    slots:'Miniserver hat keine freien Live-Verbindungen mehr (max. 31).',
+    user_changed:'Benutzer am Miniserver wurden geändert – es wird neu angemeldet.',
+    net:'Miniserver nicht erreichbar.'
+  }[m.reason]; if(!why) return '';
+  const r=m.retryIn;
+  const rt=r==null?'':' '+T('Nächster Versuch in')+' '+(r>=90?Math.round(r/60)+' min':r+' s')+'.';
+  return esc(T(why)+rt);
+}
 // Systemwerte des Miniservers als kleine Kennzahl-Kacheln (Werte wie geliefert;
 // Prozent-/kB-Angaben bekommen einen Balken bzw. lesbare Einheit).
 function msMonHTML(){
@@ -1596,7 +1619,7 @@ function msMonHTML(){
 async function pollMsStatus(){
   if(rubric==='overview' && !document.hidden){
     try{ MSST=await (await fetch('/api/msstatus')).json(); }catch(e){ MSST=null; }
-    const n=$('#ovMsLink'); if(n) n.innerHTML=msLinkText();
+    const n=$('#ovMsLink'); if(n) n.innerHTML=msLinkText(); const w=$('#ovMsWhy'); if(w) w.innerHTML=msWhyText();
     const m=$('#ovMsMon'); if(m){ const h=msMonHTML(); if(m._h!==h){ m._h=h; m.innerHTML=h; } }
   }
   setTimeout(pollMsStatus,10000);
@@ -3078,10 +3101,15 @@ function undoable(p, msg, fn){
     tbReset(); tbTab=tab; markDirty(); if(rubric==='pconf'){ renderTabList(p); } });
 }
 
+// Rueckmeldung am Speichern-Knopf selbst: gruen mit Haken bzw. rot, 2 s lang
+function saveBtnFlash(ok){ const b=$('#saveBtn'); if(!b) return; clearTimeout(b._ft);
+  b.classList.remove('ok','err'); void b.offsetWidth; b.classList.add(ok?'ok':'err');
+  b.textContent=ok?'✓ '+T('Gespeichert'):T('Fehler');
+  b._ft=setTimeout(()=>{ b.classList.remove('ok','err'); b.textContent=T('Speichern'); }, 2000); }
 async function save(){
   const t=$('#toast');
   if(SECT_DIRTY.size){ const n=SECT_DIRTY.size, ok=await sectSaveAll(); saveInfo();
-    if(!dirty){ t.className='toast show'+(ok?'':' err'); t.textContent=ok?'✓ '+T('Gespeichert')+' ('+n+' '+T(n===1?'Bereich':'Bereiche')+')':T('Nicht alles gespeichert – Hinweis in der Karte beachten');
+    if(!dirty){ saveBtnFlash(ok); t.className='toast show'+(ok?'':' err'); t.textContent=ok?'✓ '+T('Gespeichert')+' ('+n+' '+T(n===1?'Bereich':'Bereiche')+')':T('Nicht alles gespeichert – Hinweis in der Karte beachten');
       setTimeout(()=>t.classList.remove('show'),4000); return; } }
   if(!dirty){ return; }
   try{
@@ -3096,15 +3124,15 @@ async function save(){
                             body:JSON.stringify({ui:g.ui||{}, categories:g.catColors||{}})});
       const j2=await r2.json(); okT=j2.ok; errT=j2.error||'';
     }
-    if(j.ok&&okT){ dirty=false; dirtyN=0; snapSaved(); saveInfo();
+    if(j.ok&&okT){ dirty=false; dirtyN=0; snapSaved(); saveInfo(); saveBtnFlash(true);
       // Was der Server nicht uebernommen hat (unbekannt/ungueltig), nennen statt
       // es still zu verlieren; die Warnung bleibt stehen (siehe unten). Upstream #59
       const weg=j.verworfen||[];
       t.className='toast show'+(weg.length?' warn':'');
       t.textContent='✓ Gespeichert ('+j.count+' Profile) — Panels wurden automatisch neu geladen'+
         (weg.length? ' · '+T('Nicht übernommen:')+' '+weg.join('; ') : ''); }
-    else { t.className='toast show err'; t.textContent='Fehler: '+(j.error||errT||'?'); }
-  }catch(e){ t.className='toast show err'; t.textContent='Fehler: '+e; }
+    else { saveBtnFlash(false); t.className='toast show err'; t.textContent='Fehler: '+(j.error||errT||'?'); }
+  }catch(e){ saveBtnFlash(false); t.className='toast show err'; t.textContent='Fehler: '+e; }
   // Eine Warnung ueber nicht Uebernommenes bleibt bis zur naechsten Aenderung stehen.
   setTimeout(()=>{ if(t && !t.classList.contains('warn')) t.classList.remove('show'); }, 4000);
 }
@@ -3173,7 +3201,7 @@ function renderTileEditor(hostSel){
         '<label class="lbl"></label><input type="text" id="tfontCustom" value="'+esc(customFont(ov.font)?ov.font:'')+'" placeholder="z. B. Pacifico, cursive" style="flex:1"></div>'+
       '<div class="frow"><label class="lbl">Icon</label><div class="itabs">'+
         '<span class="itab on" data-src="builtin">Eingebaut</span>'+
-        '<span class="itab" data-src="loxone">Loxone ('+(((META.icons||{}).loxone)||[]).length+')</span>'+
+        '<span class="itab" data-src="loxone">Loxone ('+Math.max((((META.icons||{}).loxone)||[]).length,(META.icons||{}).ms||0)+')</span>'+
         (((META.icons||{}).loxlib)?'<span class="itab" data-src="loxlib">'+T('Bibliothek')+' ('+META.icons.loxlib+')</span>':'')+
         '<span class="itab dis" title="folgt in Stufe 2/3">Google · Upload</span></div></div>'+
       '<div class="ipick" id="ipick"></div>'+
@@ -3239,26 +3267,56 @@ function renderIconPick(src, tgt){
       b.onclick=()=>{ tgt.set({src:'builtin',id}); renderIconPick(src,tgt); }; box.appendChild(b);
     });
   } else if(src==='loxone'){
-    ((((META.icons||{}).loxone))||[]).forEach(p=>{
-      const b=document.createElement('span'); b.className='iopt'+(cic.src==='loxone'&&cic.p===p?' sel':''); b.title=p;
-      b.innerHTML='<span class="loxi" style="--u:url(\'/icon?p='+encodeURIComponent(p)+'\')"></span>';
-      b.onclick=()=>{ tgt.set({src:'loxone',p}); renderIconPick(src,tgt); }; box.appendChild(b);
-    });
+    // Erst die in der Struktur benutzten Icons, dann der komplette Loxone-Katalog
+    // (~550, liefert der Miniserver). Suchfeld + Nachladen erst beim Sichtbarwerden.
+    const f=document.createElement('input'); f.type='search';
+    f.placeholder=T('Suchen… z. B. Licht, Jalousie, Tür'); f.value=loxFilter;
+    f.style.cssText='grid-column:1/-1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--fg);font-size:13px';
+    f.oninput=()=>{ loxFilter=f.value; paintLoxone(box,tgt); };
+    box.appendChild(f);
+    paintLoxone(box,tgt);
+    loadLoxlib(()=>{ if(document.body.contains(box)) paintLoxone(box,tgt); });
   } else if(src==='loxlib'){
     // Loxone-Bibliothek (LoxoneIcons-Plugin, ~550 SVGs): lazy laden + Suchfeld,
     // damit nicht hunderte Icons auf einmal geladen werden.
     const f=document.createElement('input'); f.type='search';
-    f.placeholder=T('Suchen… z. B. light, blind, alarm'); f.value=loxlibFilter;
+    f.placeholder=T('Suchen… z. B. Licht, Jalousie, Tür'); f.value=loxlibFilter;
     f.style.cssText='grid-column:1/-1;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:transparent;color:var(--fg);font-size:13px';
     f.oninput=()=>{ loxlibFilter=f.value; paintLoxlib(box,tgt); };
     box.appendChild(f);
     loadLoxlib(()=>{ if(document.body.contains(box)) paintLoxlib(box,tgt); });
   }
 }
-let LOXLIB=null, loxlibFilter='';
+// Deutsche Suchbegriffe zu den (englischen) Loxone-Icon-Namen, je Wortteil
+const LOXDE={"actuator":"aktor","finger":"finger","single":"einzel","aal":"notruf","add":"hinzufügen plus","afci":"lichtbogen","air":"luft","alarm":"alarm","ale":"bier","army":"militär","arrow":"pfeil","art":"kunst","attic":"dachboden","automatic":"automatik","away":"abwesend","awning":"markise","baby":"baby kinderzimmer","badge":"ausweis","badminton":"badminton","bag":"tasche","balcony":"balkon","ball":"ball","bar":"bar","barbecue":"grill","barn":"scheune","barrel":"fass","baseball":"baseball","basketball":"basketball","bath":"bad","bathtub":"badewanne bad","battery":"batterie akku","beach":"strand","bean":"bohne","bear":"bär","bed":"bett schlafzimmer","beer":"bier","bell":"klingel glocke","bench":"bank","big":"groß","bin":"mülleimer","binders":"ordner","birthday":"geburtstag","blinds":"jalousie raffstore rollo beschattung","block":"block","blocks":"bausteine","bluetooth":"bluetooth","bottle":"flasche","bowling":"bowling","box":"box","brightness":"helligkeit","bubble":"blase","bucket":"eimer","burger":"burger","burner":"brenner","bus":"bus","button":"taster knopf","cabinet":"schrank","cactus":"kaktus","cake":"kuchen","camera":"kamera","camper":"wohnmobil","cancel":"abbrechen","car":"auto","carrier":"träger","cat":"katze","cc":"überwachung","ceiling":"decke","cellar":"keller","celsius":"celsius","center":"zentrum","central":"zentral","chair":"stuhl","chairs":"stühle","chandeliers":"kronleuchter","charge":"laden","chat":"chat","check":"haken","cheers":"prost","chef":"koch küche","chip":"chip","christmas":"weihnachten","circle":"kreis","circulation":"umwälzung","cleaner":"reiniger","clip":"klammer","clock":"uhr","close":"zu schließen","closed":"geschlossen zu","cloth":"tuch","clothes":"kleidung","cloud":"wolke","cock":"hahn","cocktail":"cocktail","coconut":"kokos","code":"code","coffee":"kaffee","cog":"zahnrad einstellungen","cold":"kalt","computer":"computer pc","conditioner":"klima","control":"steuerung","controller":"spielkonsole","cooker":"herd","cover":"abdeckung","crate":"kiste","cross":"kreuz","cup":"tasse","curtain":"vorhang","cycling":"fahrrad","day":"tag","decrease":"verringern","deep":"tief","delete":"löschen","diamond":"diamant","disable":"deaktivieren","dog":"hund","dome":"kuppel","door":"tür","double":"doppel","down":"ab runter","drawer":"schublade","dress":"kleid","driller":"bohrmaschine","drop":"tropfen","drops":"tropfen","dryer":"trockner","dumbbell":"hantel fitness","eco":"eco spar","eject":"auswerfen","electric":"elektrisch","electricity":"strom elektrisch","elevator":"aufzug","email":"email","emergency":"notfall","empty":"leer","energy":"energie","enter":"eingang","equalizer":"equalizer","espresso":"espresso kaffee","exit":"ausgang","extend":"ausfahren","extended":"ausgefahren","extinguisher":"feuerlöscher","fahrenheit":"fahrenheit","fan":"lüfter ventilator lüftung","fast":"schnell","faucet":"wasserhahn","favorite":"favorit","fire":"feuer brand","fireplace":"kamin","fitness":"fitness","flame":"flamme","flash":"blitz","flood":"überschwemmung wasser","florida":"sonne","flower":"blume","folded":"gefaltet","folding":"falt","food":"essen","football":"fußball","forest":"wald","fork":"gabel","forklift":"stapler","forward":"vor","french":"flügel","front":"vorne","frost":"frost","frying":"pfanne","full":"voll","game":"spiel","gameboy":"spiel","garage":"garage","gardening":"garten","gas":"gas","gate":"tor","gauge":"anzeige","glass":"glas","globe":"welt","goldfish":"fisch aquarium","graph":"diagramm","grid":"netz","grill":"grill","group":"gruppe","hair":"haar föhn","half":"halb","hallway":"flur gang diele","hand":"hand","hang":"hängen","hanger":"kleiderbügel","hanging":"hängend","hat":"hut","heat":"wärme heizung","heater":"heizung heizlüfter","high":"hoch","home":"zuhause haus","honeycomb":"wabe","hood":"dunstabzug","hose":"schlauch","hot":"heiß","hourglass":"sanduhr","house":"haus","humidity":"luftfeuchte feuchtigkeit","hurricane":"sturm","imac":"computer","increase":"erhöhen","information":"info","iron":"bügeleisen","jar":"glas","juice":"saft","key":"schlüssel","keys":"schlüssel","kitchen":"küche","knife":"messer küche","lamp":"lampe licht","laptop":"laptop","lava":"lavalampe","left":"links","letter":"brief","level":"stufe","lightbulb":"glühbirne licht lampe","lights":"licht beleuchtung","line":"leitung","location":"ort standort","lock":"schloss verriegelt","lockers":"spind","login":"anmelden","low":"niedrig","luggage":"koffer","machine":"maschine","mailbox":"briefkasten post","martial":"kampfsport","max":"max","medium":"mittel","meeting":"besprechung","megaphone":"megafon","meter":"zähler","min":"min","mixing":"mischen","mode":"modus","modem":"modem router","monitor":"monitor","moonrise":"mond","moonset":"mond","motion":"bewegung","motorbike":"motorrad","mug":"tasse","music":"musik","mute":"stumm","navigation":"navigation","negative":"minus","next":"weiter","night":"nacht","no":"kein","none":"keine","note":"notiz","notebook":"notizbuch","off":"aus","office":"büro","ok":"ok","on":"ein an","onnoff":"ein aus","open":"offen auf öffnen","opened":"offen geöffnet","outlet":"steckdose","oven":"ofen backofen","panel":"panel","park":"park","party":"party","pause":"pause","person":"person","pet":"haustier","phone":"telefon","photocopy":"kopierer","pick":"hacke","pie":"kuchen diagramm","pin":"pin","pingpong":"tischtennis","plant":"pflanze","play":"play abspielen","playlist":"playlist","plug":"stecker steckdose","pole":"mast","pool":"pool schwimmbad","porch":"veranda","positive":"plus","power":"strom leistung","presence":"anwesenheit präsenz","present":"geschenk","presentation":"präsentation","press":"drücken","previous":"zurück","print":"drucker","problem":"problem fehler","projector":"beamer projektor","pump":"pumpe","radiator":"heizkörper heizung","rank":"rang","reception":"empfang","recharge":"aufladen","record":"aufnahme","refresh":"aktualisieren","refrigerator":"kühlschrank","remote":"fernbedienung","remove":"entfernen","report":"bericht","reset":"reset","restore":"wiederherstellen","retract":"einfahren","retracted":"eingefahren","rewind":"zurückspulen","right":"rechts","robe":"bademantel","rock":"fels","room":"raum zimmer","round":"rund","sauna":"sauna","saw":"säge","screen":"bildschirm leinwand","screwdriver":"schraubendreher","seat":"sitz","server":"server","serving":"servieren","setting":"einstellung","settings":"einstellungen","shading":"beschattung","shield":"schutz sicherheit","shirt":"hemd","shoe":"schuh","shower":"dusche bad","sign":"schild","signal":"signal","singing":"singen","sink":"spüle waschbecken","skylight":"dachfenster","sleep":"schlafen","snooze":"schlummern","snowflake":"schnee frost","soccer":"fußball","sofa":"sofa couch wohnzimmer","solar":"solar photovoltaik pv","sound":"ton","spa":"wellness","sparkling":"sekt","speakers":"lautsprecher","speech":"sprache","spray":"spray","sprinkler":"rasensprenger bewässerung","staircase":"treppe","stairwell":"treppenhaus","stand":"ständer","star":"stern favorit","state":"zustand","stop":"stopp","storage":"speicher lager","store":"laden","storm":"sturm","stove":"herd","substract":"minus","subtract":"minus","suit":"anzug","sun":"sonne","sunrise":"sonnenaufgang","sunset":"sonnenuntergang","switch":"schalter","swtich":"schalter","table":"tisch","tank":"tank","tap":"wasserhahn","tapping":"tippen","teddy":"teddy kinder","television":"fernseher","temperature":"temperatur","text":"text","thermometer":"thermometer temperatur","thunderstorm":"gewitter","tickmark":"haken","time":"zeit","timeout":"zeitlimit","timer":"timer","tissue":"taschentuch","toggle":"umschalten","toilet":"toilette wc","toolbox":"werkzeugkasten","tools":"werkzeug","top":"oben","towel":"handtuch","tower":"turm","toy":"spielzeug","trailer":"anhänger","transfer":"übertragen","transmission":"übertragung","tree":"baum","triangle":"dreieck","trigger":"auslöser","tripod":"stativ","trolley":"wagen","truck":"lkw","turbine":"windrad","turntable":"plattenspieler","tv":"fernseher tv","umbrella":"schirm regen","undershirt":"unterhemd","unknown":"unbekannt","up":"auf hoch","user":"benutzer","vacuum":"staubsauger","valve":"ventil","vapor":"dampf","very":"sehr","vespa":"roller","video":"video","vocal":"gesang","volleyball":"volleyball","volume":"lautstärke","walk":"gehen","wall":"wand","warning":"warnung","washing":"wasch waschmaschine","water":"wasser","weather":"wetter","whiskey":"whisky","wifi":"wlan","wind":"wind","windbag":"windsack","window":"fenster","wine":"wein","wood":"holz","wrench":"schraubenschlüssel"};
+function loxWords(p){ const n=p.replace(/^.*\//,'').replace(/\.(svg|png)$/,'').toLowerCase();
+  return n+' '+n.split(/[-_ ]/).map(t=>LOXDE[t]||'').join(' '); }
+let LOXLIB=null, LOXMS=[], loxlibFilter='', loxFilter='';
 function loadLoxlib(cb){
   if(LOXLIB!==null){ cb(); return; }
-  fetch('/api/loxicons').then(r=>r.json()).then(j=>{ LOXLIB=(j&&j.icons)||[]; cb(); }).catch(()=>{ LOXLIB=[]; cb(); });
+  fetch('/api/loxicons').then(r=>r.json()).then(j=>{ LOXLIB=(j&&j.icons)||[]; LOXMS=(j&&j.ms)||[]; cb(); }).catch(()=>{ LOXLIB=[]; cb(); });
+}
+// Icons erst laden, wenn sie in den sichtbaren Bereich kommen (schont den Miniserver)
+const loxIO=('IntersectionObserver' in window)?new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting) return; const n=e.target; n.style.setProperty('--u',n.dataset.u); loxIO.unobserve(n); }),{rootMargin:'120px'}):null;
+function paintLoxone(box,tgt){
+  box.querySelectorAll('.iopt:not(.clear),.lxnote').forEach(n=>n.remove());
+  const cic=tgt.get()||{};
+  const used=(META.icons||{}).loxone||[], seen=new Set(used);
+  const all=used.concat(LOXMS.filter(p=>!seen.has(p)));
+  const q=(loxFilter||'').trim().toLowerCase();
+  const list=q?all.filter(p=>q.split(/\s+/).every(w=>loxWords(p).indexOf(w)>=0)):all;
+  list.forEach(p=>{
+    const b=document.createElement('span'); b.className='iopt'+(cic.src==='loxone'&&cic.p===p?' sel':'');
+    b.title=p.replace(/^.*\//,'').replace(/\.(svg|png)$/,'');
+    const u='url(\'/icon?p='+encodeURIComponent(p)+'\')';
+    const i=document.createElement('span'); i.className='loxi'; i.dataset.u=u;
+    if(loxIO) loxIO.observe(i); else i.style.setProperty('--u',u);
+    b.appendChild(i);
+    b.onclick=()=>{ tgt.set({src:'loxone',p}); paintLoxone(box,tgt); }; box.appendChild(b);
+  });
+  if(!list.length){ const m=document.createElement('div'); m.className='lxnote';
+    m.style.cssText='grid-column:1/-1;color:var(--muted);font-size:12px;padding:2px'; m.textContent=T('Nichts gefunden.'); box.appendChild(m); }
 }
 function paintLoxlib(box,tgt){
   tgt=tgt||TILE_ICON;
@@ -3266,7 +3324,7 @@ function paintLoxlib(box,tgt){
   const cic=tgt.get()||{};
   const q=(loxlibFilter||'').trim().toLowerCase();
   const all=LOXLIB||[];
-  const list=q?all.filter(n=>n.toLowerCase().indexOf(q)>=0):all;
+  const list=q?all.filter(n=>q.split(/\s+/).every(w=>loxWords(n).indexOf(w)>=0)):all;
   list.slice(0,300).forEach(n=>{
     const b=document.createElement('span'); b.className='iopt'+(cic.src==='loxlib'&&cic.name===n?' sel':''); b.title=n;
     b.innerHTML='<span class="loxi" style="--u:url(\'/loxlib?n='+encodeURIComponent(n)+'\')"></span>';

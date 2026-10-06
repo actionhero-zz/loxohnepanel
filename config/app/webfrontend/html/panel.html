@@ -1854,12 +1854,15 @@ const _zoomRects=[];          // je Stapel-Ebene: Rechteck der Kachel, aus der s
 function zoomOn(){ return (document.documentElement.dataset.motion||'full')==='full' && getComputedStyle(document.documentElement).getPropertyValue('--anim-scale').trim()!=='0'; }
 // Flaeche ueber der Karte; tr() liefert das transform fuer ein Kachel-Rechteck.
 function zoomGhost(g){
-  const sc=g.parentNode, gb=g.getBoundingClientRect(), sb=sc.getBoundingClientRect();
+  // Rechtecke kommen in Bildschirm-Pixeln; die Flaeche liegt im gezoomten
+  // Kasten (.screen, scale k auf Tablets) -> Positionen und Groessen durch k.
+  const sc=g.parentNode, gb=g.getBoundingClientRect(), sb=sc.getBoundingClientRect(), k=uiScaleEff||1;
   const gh=document.createElement('div'); gh.className='zghost';
-  gh.style.left=(gb.left-sb.left)+'px'; gh.style.top=(gb.top-sb.top)+'px';
-  gh.style.width=gb.width+'px'; gh.style.height=gb.height+'px';
+  gh.style.gridArea='auto';   // Bezug = Kastenrand (nicht der Grid-Bereich hinter dem Innenabstand)
+  gh.style.left=((gb.left-sb.left)/k)+'px'; gh.style.top=((gb.top-sb.top)/k)+'px';
+  gh.style.width=(gb.width/k)+'px'; gh.style.height=(gb.height/k)+'px';
   sc.appendChild(gh);
-  gh.tr=r=>'translate('+(r.left-gb.left)+'px,'+(r.top-gb.top)+'px) scale('+
+  gh.tr=r=>'translate('+((r.left-gb.left)/k)+'px,'+((r.top-gb.top)/k)+'px) scale('+
     ((r.right-r.left)/gb.width)+','+((r.bottom-r.top)/gb.height)+')';
   return gh;
 }

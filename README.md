@@ -27,6 +27,12 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Alle Loxone-Icons + Miniserver-Härtung (0.19.70)** — Icon-Auswahl „Loxone“ bietet jetzt den
+  kompletten Standard-Katalog (550 Icons direkt vom Miniserver, ohne Zusatz-Plugin), lädt beim Scrollen
+  nach und findet auch deutsche Begriffe (Licht, Jalousie, Tür …); eigene Icons je Baustein werden mit
+  gelistet. Miniserver-Verbindung: Timeout beim Aufbau, lange Pause bei abgelehnter Anmeldung (Schutz
+  vor Konto-Sperre), robustes Parsen, Trennungsgrund auf der Startseite. Speichern-Knopf wird grün
+  bei Erfolg; Zoom-Effekt auf Tablets korrigiert.
 - **Update-Hinweis aktuell (0.19.69)** — Die Config fragt den Update-Stand bei jedem Seitenwechsel neu ab
   (Server puffert 5 min statt 6 h); nach dem Update verschwindet die Pille und die Versionsnummer springt mit.
 - **Symbol „Verknüpft“ (0.19.68)** — Neues Symbol (verbundene Punkte), als Linie gezeichnet wie der Verlauf

@@ -1691,6 +1691,7 @@ function closePalette(){ const ov=$('#pal'); if(ov) ov.classList.remove('show');
 // ---- Rubriken / Reiter-Steuerung ----
 function setRubric(r){
   rubric=r;
+  if(typeof checkUpdate==='function') checkUpdate();   // Update-Hinweis bei jedem Seitenwechsel auffrischen
   document.querySelectorAll('.rub').forEach(b=>b.classList.toggle('active',b.dataset.rub===(r==='global'?'settings':r)));   // Darstellung global liegt unter System
   const ov=r==='overview', pc=r==='pconf'||r==='global';   // global = Darstellung aller Panels
   const oh=$('#overviewHost'); if(oh) oh.style.display = ov?'':'none';
@@ -3453,18 +3454,26 @@ async function loadSettings(){
   // die LoxBerry anzeigt (die kennt nur plugin.cfg, nicht den Docker-Build).
   // Einziger Weg, ein haengendes Build-Cache-Problem direkt sichtbar zu machen.
   // Version · Commit · Installiert (Commit/Zeit stempelt preroot.sh bei der Installation)
-fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion');
+window.SHOWN_VER=window.SHOWN_VER||'';
+function loadVersion(){ fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion'); window.SHOWN_VER=v.version||'';
   const bt=v.built?new Date(v.built):null, bts=bt&&!isNaN(bt)?bt.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
   if(e){ e.innerHTML='<b>'+esc(v.version)+'</b>'+(v.commit?'<span>'+esc(v.commit.slice(0,7))+'</span>':'')+(bts?'<span>'+esc(bts)+'</span>':'');
     e.title='LoxPanel '+v.version+(v.commit?'\nCommit '+v.commit:'')+(bts?'\nInstalliert '+bts:'')+'\n'+T('GitHub öffnen'); }
-  const b=$('#brand'); if(b) b.title='Version '+v.version; }).catch(()=>{});
+  const b=$('#brand'); if(b) b.title='Version '+v.version; }).catch(()=>{}); }
+loadVersion();
 // Neuere Version im Repo? -> Hinweis ueber der Versionsnummer, fuehrt zur
 // LoxBerry-Pluginverwaltung (LoxBerry installiert; gleiche Adresse wie diese Config, Port 80)
-fetch('/api/update').then(r=>r.json()).then(u=>{ const a=$('#appUpdate'); if(!a||!u||!u.newer) return;
+// Bei jedem Laden und jedem Seitenwechsel neu fragen (Server puffert 5 min);
+// nach dem Update verschwindet die Pille wieder.
+function checkUpdate(){ fetch('/api/update').then(r=>r.json()).then(u=>{ const a=$('#appUpdate'); if(!a||!u) return;
+  if(u.current && window.SHOWN_VER && u.current!==window.SHOWN_VER) loadVersion();   // inzwischen aktualisiert -> Versionsstand neu anzeigen
+  if(!u.newer){ a.hidden=true; return; }
   a.href=location.protocol+'//'+location.hostname+'/admin/system/plugininstall.cgi';
   a.innerHTML='<i></i>'+esc(T('Update'))+' '+esc(u.latest);
   a.title=T('Neue Version')+' '+u.latest+' '+T('verfügbar – in der LoxBerry-Pluginverwaltung installieren');
-  a.hidden=false; }).catch(()=>{});
+  a.hidden=false; }).catch(()=>{}); }
+window.checkUpdate=checkUpdate; window.loadVersion=loadVersion;   // global: setRubric ruft es bei jedem Seitenwechsel
+checkUpdate();
   CAMS=(SET.cameras||[]).map(c=>Object.assign({},c)); renderCams();
   const box=$('#ic_list');
   if(box){

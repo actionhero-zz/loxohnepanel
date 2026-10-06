@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Update-Hinweis aktuell (0.19.69)** — Die Config fragt den Update-Stand bei jedem Seitenwechsel neu ab
+  (Server puffert 5 min statt 6 h); nach dem Update verschwindet die Pille und die Versionsnummer springt mit.
 - **Symbol „Verknüpft“ (0.19.68)** — Neues Symbol (verbundene Punkte), als Linie gezeichnet wie der Verlauf
   statt gefüllt.
 - **Tester-Feedback, Tablet-Rundgang, Spenden-Link (0.19.67)** — Sicherungen bleiben bei Plugin-Updates erhalten;

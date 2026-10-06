@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.68"
+APP_VERSION = "0.19.69"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -7796,9 +7796,10 @@ def _ver_tuple(v: str) -> tuple:
 
 
 async def update_handler(request: web.Request) -> web.Response:
-    """{current, latest, newer}: neuere Version im Repo? Ergebnis 6 h gepuffert."""
+    """{current, latest, newer}: neuere Version im Repo? Ergebnis 5 min gepuffert
+    (die Config fragt bei jedem Seitenwechsel - GitHub nicht bei jedem Klick)."""
     now = time.time()
-    if now - _UPD_CACHE["ts"] > 6 * 3600 or request.query.get("force"):
+    if now - _UPD_CACHE["ts"] > 300 or request.query.get("force"):
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8)) as sess:
                 async with sess.get(RELEASE_CFG_URL, headers={"Cache-Control": "no-cache"}) as r:
@@ -7806,7 +7807,7 @@ async def update_handler(request: web.Request) -> web.Response:
             m = re.search(r"^VERSION=([0-9.]+)", txt, re.M)
             _UPD_CACHE.update(ts=now, latest=m.group(1) if m else _UPD_CACHE["latest"])
         except (aiohttp.ClientError, asyncio.TimeoutError, OSError):
-            _UPD_CACHE["ts"] = now - 5 * 3600      # Fehler: in einer Stunde erneut
+            _UPD_CACHE["ts"] = now - 240           # Fehler: in einer Minute erneut
     latest = _UPD_CACHE["latest"]
     return web.json_response({"current": APP_VERSION, "latest": latest,
                               "newer": bool(latest) and _ver_tuple(latest) > _ver_tuple(APP_VERSION)},

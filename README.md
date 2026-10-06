@@ -27,6 +27,9 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Einheitliches Design-Raster (0.19.72)** — Rundungen nach goldenem Schnitt und konzentrisch (Karte 36,
+  Kachel 22, Innenbox 14, Detail 8), Pillen in drei Höhen (56/44/30) mit halbrunden Enden, Mini-Buttons als
+  Kreise, Schrift- und Symbolgrößen auf eine feste Skala ohne Zwischenwerte gebracht – in Panel und Config.
 - **Kontraste (0.19.71)** — Icon „an“ (Vorlage bunt), Grün und Hinweis-Gelb der Config erreichen jetzt
   WCAG-Kontrast (3:1 Grafik bzw. 4,5:1 Text). Speichern-Knopf: „Gespeichert“ ohne Haken, schnellere Animation.
 - **Alle Loxone-Icons + Miniserver-Härtung (0.19.70)** — Icon-Auswahl „Loxone“ bietet jetzt den

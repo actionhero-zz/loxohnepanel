@@ -27,6 +27,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Symbol „Verknüpft“ (0.19.68)** — Neues Symbol (verbundene Punkte), als Linie gezeichnet wie der Verlauf
+  statt gefüllt.
 - **Tester-Feedback, Tablet-Rundgang, Spenden-Link (0.19.67)** — Sicherungen bleiben bei Plugin-Updates erhalten;
   auf der LoxBerry-Seite herunterladen (⤓) und wieder hochladen. 24 weitere eingebaute Symbole (u. a. Briefkasten,
   Anwesenheit, Haus, Tür, Schloss, Müll, Sonne/Mond). Kamera-Detailseite passt ohne Scrollen; Szenen-/Radiotasten

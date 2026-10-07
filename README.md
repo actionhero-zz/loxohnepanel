@@ -27,6 +27,7 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Saubere Anordnung der Pillen (0.19.76)** — Feste Regeln: Fuge 10 px, Gruppe mittig; eine Hauptaktion 61,8 % breit, zwei teilen die Reihe, ab drei Reihen zu max. 3 mit mittiger letzter Reihe. Verlauf, Verknüpft und Quellen sind immer zweitrangig: rechts am Ende, 44 px statt 56 px, nur Umriss; die Hauptaktion behält mindestens die halbe Reihe.
 - **Loxone-Symbole statt eigener (0.19.75)** — 36 eingebaute Symbole (Licht, Jalousie, Fenster, Tor, Klima, Kamera, Alarm, Tür, Schloss, Player-Tasten …) kommen jetzt als Loxone-IconsFilled vom eigenen Miniserver – zur Laufzeit geladen, bereinigt, im Browser gespeichert, nicht mitgeliefert. Eigene Symbole bleiben nur, wo Loxone keins hat (Pfeile auf/ab, Plus/Minus, Ein/Aus, Verlauf, Verknüpft, Liste, Ordner) oder der Miniserver fehlt.
 - **Farben aus dem Theme (0.19.74)** — Rot, Grün und Gelb, die noch fest im Code standen (Statuspunkte, Löschen-Knöpfe, Fortschritt, Markierungen), kommen jetzt aus den Theme-Farben; Text auf Grün ist weiß.
 - **Config-Bausteine vereinheitlicht (0.19.73)** — Popover und Dialoge mit einem Schatten ohne Rahmen, Segmentschalter als Spur mit Pillen, ein Badge-Stil (11 px statt 8 px Versalien), Schalter statt Checkboxen wie im Panel.

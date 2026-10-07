@@ -1507,6 +1507,27 @@
   /* Detailansicht: Kachel-Listen (Szenen, Mitglieder) nicht auf Handyhoehe strecken */
   html.phone .grid.panel .scenes{grid-auto-rows:minmax(76px,112px);align-content:start;}
   html.phone .saver.layout .sv-grid{inset:calc(env(safe-area-inset-top,0px) + 70px) 10px calc(env(safe-area-inset-bottom,0px) + 10px);padding:10px;border-radius:30px;}
+
+  /* ==== Anordnung von Pillen (Designsystem 0.19.76) ====
+     1. Fuge immer 10 px (space-gap), waagrecht wie senkrecht; Gruppe mittig.
+     2. Hauptaktionen (Pille L, 56 px) gleich breit: eine = 61,8 % (goldener Schnitt),
+        zwei = volle Breite je Haelfte, ab drei gleichmaessig, Umbruch in Reihen zu max. 3,
+        letzte Reihe mittig.
+     3. Nebenaktionen (Verlauf, Verknuepft, Quellen) sind zweitrangig: immer am Ende
+        (rechts), Pille M (44 px), nur Umriss, nie "aktiv" gefuellt; Breite 1 : phi zur
+        Hauptaktion. Ohne Hauptaktion rechtsbuendig, 38,2 % breit. */
+  .brow.act{gap:10px;justify-content:center;align-items:center;}
+  .brow.act.n1:not(.hasc) .btn{flex:0 0 61.8%;}
+  .brow.act.n2:not(.hasc) .btn{flex:1 1 0;}
+  .brow.wraprow{row-gap:10px;justify-content:center;}
+  .brow.wraprow .btn{flex:0 1 calc((100% - 20px) / 3);}
+  .brow.act .btn.cht{order:99;flex:1 1 0;height:var(--pill-m);background:transparent;color:var(--muted);
+    box-shadow:inset 0 0 0 1.5px rgba(var(--wash,255,255,255),.3);font-size:13px;font-weight:600;}
+  .brow.act .btn.cht.on{background:transparent;color:var(--ink);}
+  .brow.act .btn.cht svg{width:20px;height:20px;}
+  .brow.act.n0.hasc{justify-content:flex-end;}
+  .brow.act.n0.hasc .btn.cht{flex:0 0 38.2%;}
+  .brow.act.n1.hasc .btn:not(.cht){flex:0 0 50%;}   /* Hauptaktion behaelt mindestens die halbe Reihe */
 </style>
 </head>
 <body>

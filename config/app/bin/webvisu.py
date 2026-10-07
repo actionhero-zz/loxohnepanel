@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.77"
+APP_VERSION = "0.19.78"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -1223,7 +1223,8 @@ def _intercom_config() -> dict:
 
 def _clean_crop(v) -> dict | None:
     """Bildausschnitt einer Kamera: Fokuspunkt x/y (0..100 %), Zoom z (1..3),
-    fit "cover" (fuellen, Standard) oder "contain" (ganzes Bild). None = Standard."""
+    fit "cover" (fuellen, Standard) oder "contain" (ganzes Bild), bei "contain" bg
+    "card"/"blur" fuer die freien Raender. None = Standard."""
     if not isinstance(v, dict):
         return None
     try:
@@ -1235,7 +1236,10 @@ def _clean_crop(v) -> dict | None:
     fit = "contain" if v.get("fit") == "contain" else "cover"
     if fit == "cover" and abs(x - 50) < 0.5 and abs(y - 50) < 0.5 and z < 1.01:
         return None
-    return {"x": round(x, 1), "y": round(y, 1), "z": round(z, 2), "fit": fit}
+    out = {"x": round(x, 1), "y": round(y, 1), "z": round(z, 2), "fit": fit}
+    if fit == "contain":   # freie Raender: Kartenfarbe (Standard) oder Bild verwischt fortgesetzt
+        out["bg"] = "blur" if v.get("bg") == "blur" else "card"
+    return out
 
 
 def _cmd_watch_config() -> bool:
@@ -5644,7 +5648,7 @@ class App:
             mid["vol"] = {"value": vol.get("value", 0), "min": vol.get("min", 0), "max": vol.get("max", 100),
                           "cmd": vol.get("cmd")}
         if rows and more:
-            rows[-1]["cells"] = rows[-1]["cells"] + [{"label": "Quellen ›", "nav": more, "minor": True}]
+            rows[-1]["cells"] = rows[-1]["cells"] + [{"label": "Quellen", "icon": "list", "nav": more, "minor": True}]
         v["blocks"] = rest + [mid] + rows
         v["anchor"] = "bottom"
         return v
@@ -6940,7 +6944,7 @@ class App:
                 blocks.append({"k": "scenes", "items": items})
             blocks.append({"k": "row", "act": True, "cells": [
                 {"label": "Start", "on": act, "cmd": {"uuid": ua, "cmd": "start"}},
-                {"label": "Erzwingen", "cmd": {"uuid": ua, "cmd": "startForce"}},
+                {"label": "Erzwingen", "icon": "bolt", "minor": True, "cmd": {"uuid": ua, "cmd": "startForce"}},
                 {"label": "Stopp", "cmd": {"uuid": ua, "cmd": "stop"}},
             ]})
             return {"t": "view", "title": _clean(c.get("name")), "route": route,

@@ -1538,6 +1538,35 @@
   /* Handy und 2x2-Raster: Kachelname zweizeilig statt nach einer Zeile abgeschnitten */
   .grid.cells.g2 .svw[data-sz="1x1"] .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
     -webkit-box-orient:vertical;overflow:hidden;}
+
+  /* Kamera "ganzes Bild": freie Raender fuellen (Config -> Kameras -> Bildausschnitt) */
+  .camfill-card{background:var(--face,var(--tile)) linear-gradient(rgba(31,36,64,.07),rgba(31,36,64,.07)) !important;}
+  .camfill-card .campill:not(.on){background:rgba(31,36,64,.38);border-color:transparent;}
+  .camfill-blur{background:#2a2e3a !important;isolation:isolate;}
+  .camfill-blur>canvas.camblur{position:absolute;inset:-6%;width:112%;height:112%;z-index:-1;pointer-events:none;
+    filter:brightness(.82) saturate(1.1);image-rendering:auto;}
+
+  /* ==== Nebenaktionen nur als Symbol (0.19.78) ====
+     Verlauf, Verknuepft, Erzwingen, Quellen: Kreis 32 px mit Umriss, Tippflaeche 44 px,
+     immer rechts am Ende; die Hauptaktionen teilen sich den Rest. */
+  .brow.act .btn.cht,.brow.act.n0.hasc .btn.cht{order:99;flex:0 0 32px;width:32px;height:32px;min-width:32px;padding:0;
+    border-radius:50%;position:relative;display:grid;place-items:center;}
+  .brow.act .btn.cht::after{content:"";position:absolute;inset:-6px;}
+  .brow.act .btn.cht svg{width:18px;height:18px;}
+  .brow.act.hasc .btn:not(.cht){flex:1 1 0;}
+  .brow.act.n1.hasc .btn:not(.cht){flex:0 1 61.8%;margin-right:auto;margin-left:auto;}
+  /* ==== Einträge in Detailansichten als Listenzeilen (Zonen, Wecker, Stimmungen …) ====
+     Schmal eine Spalte, breit (2 Panels/Tablet) zwei gleich breite Spalten ueber die
+     ganze Breite; nie seitwaerts scrollen, nur senkrecht. */
+  .pantop>.pbig ~ .scenes{grid-template-columns:minmax(0,1fr);grid-auto-rows:46px;align-content:start;
+    overflow-x:hidden;overflow-y:auto;gap:8px;}
+  .grid.panel.wide .pantop>.pbig ~ .scenes{grid-template-columns:repeat(2,minmax(0,1fr));}
+  html.sqbig .pantop>.pbig ~ .scenes{grid-auto-rows:52px;}
+  .pantop>.pbig ~ .scenes .scene{min-width:0;height:auto;padding:0 14px;gap:10px;border-radius:var(--r-m);}
+  .pantop>.pbig ~ .scenes .scene .stx{min-width:0;flex:1 1 auto;}
+  .pantop>.pbig ~ .scenes .scene b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pantop>.pbig ~ .scenes .scene .ssub{font-size:12px;}
+  .pantop>.pbig ~ .scenes .sico svg{width:22px;height:22px;}
 </style>
 </head>
 <body>
@@ -2251,7 +2280,8 @@ window.addEventListener('pointercancel', endHold);
 function bindCell(btn,c){ btn._cmd=c.cmd||null; btn._release=c.release||null; btn._hold=!!c.hold; btn._menu=c.menu||null; }
 // Strich-Icons der Aktionsreihe (power/minus/plus) als Linie zeichnen, die
 // uebrigen Knopf-Icons (play/pause ...) wie bisher gefuellt.
-const STROKE_ICONS={power:1,minus:1,plus:1,chart:1,shield:1,link:1};   // als Linie zeichnen (nicht gefuellt)
+const STROKE_ICONS={power:1,minus:1,plus:1,chart:1,shield:1,link:1,bolt:1,list:1};   // als Linie zeichnen (nicht gefuellt)
+ICONS.bolt=ICONS.bolt||'<path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/>';   // Erzwingen (Rueckfall ohne Miniserver)
 // Loxone-Symbole statt eigener: der Miniserver liefert seine IconsFilled-SVGs
 // (Linien-Icons wie unsere). Sie werden zur Laufzeit geholt - nicht mitgeliefert -,
 // streng bereinigt (nur Formen, keine Skripte/Links), eingefaerbt und im Browser
@@ -2261,7 +2291,8 @@ const LOX_ICONS={bulb:'lightbulb-2',central:'central',blind:'blinds-half-closed'
   mailbox:'mailbox-1',person:'person-1',people:'presence',home:'home-3',door:'door-open',lock:'lock-close-1',bell:'bell',
   trash:'bin-1',plug:'electricity-outlet-1',sun:'sun',moon:'night-mode',car:'car',leaf:'plant',bed:'bed-double',
   battery:'battery-high',flame:'flame',mood:'party-mode',info:'information-circle',switch:'button-switch-on-off',
-  play:'control-play',pause:'control-pause',stop:'control-stop',prev:'control-previous',next:'control-next'};
+  play:'control-play',pause:'control-pause',stop:'control-stop',prev:'control-previous',next:'control-next',
+  chart:'graph-line-3',bolt:'flash-1',list:'playlist-3'};
 const LOXSVG_TAGS={path:1,circle:1,rect:1,line:1,polyline:1,polygon:1,ellipse:1,g:1};
 const LOXSVG_ATTR={d:1,cx:1,cy:1,r:1,rx:1,ry:1,x:1,y:1,x1:1,y1:1,x2:1,y2:1,width:1,height:1,points:1,transform:1,
   'fill-rule':1,'clip-rule':1,'stroke-width':1,'stroke-linecap':1,'stroke-linejoin':1,'stroke-miterlimit':1,opacity:1};
@@ -2295,9 +2326,11 @@ function isChartCell(c){ return !!(c&&(((c.icon==='chart'||c.icon==='link')&&c.n
 function actCls(cells){ const n=cells.filter(c=>!isChartCell(c)).length, h=cells.some(isChartCell);
   return ' n'+Math.min(n,5)+(h?' hasc':''); }
 function cellHtml(c,i){
-  const inner=c.icon?cellIco(c.icon):esc(c.label);
+  const minor=isChartCell(c);
+  const inner=minor?cellIco(c.icon||'info'):(c.icon?cellIco(c.icon):esc(c.label));
+  const tip=minor&&c.label?' title="'+esc(c.label)+'" aria-label="'+esc(c.label)+'"':'';
   const cls='btn'+(c.icon?' icon':'')+(c.big?' big':'')+(isChartCell(c)?' cht':'')+(c.menu?' toggler':'')+(c.on?' on':'');
-  return '<div class="'+cls+'" data-c="'+i+'">'+inner+'</div>';
+  return '<div class="'+cls+'" data-c="'+i+'"'+tip+'>'+inner+'</div>';
 }
 function closeMenu(){ const m=document.querySelector('.menuov'); if(m)m.remove(); }
 // Auswahl-Popup ueber einem Button (Klima Modus/Fan): oeffnet nach oben, Tipp
@@ -4314,7 +4347,7 @@ function camSwStart(cell){
   const show=i=>{ const c=cams[i]; if(!c) return; camSel[cell.dataset.k]=c.id;
     if(!preload && cur>=0 && cur!==i) camStop(imgs[cur]);
     cur=i; start(i);
-    imgs.forEach((im,j)=>im.classList.toggle('on',j===i));
+    imgs.forEach((im,j)=>im.classList.toggle('on',j===i)); if(imgs[i]) camCrop(imgs[i]);   // Randfuellung der neuen Kamera
     if(stat) stat.textContent=err[i]?'Kamera nicht erreichbar …':''; if(lbl) lbl.textContent=c.name||'';
     cell.querySelectorAll('.campill').forEach((b,j)=>b.classList.toggle('on',j===i)); };
   cell.querySelectorAll('.campill').forEach(b=>{
@@ -4379,6 +4412,27 @@ function camCrop(img){
   st.objectPosition=c?(c.x+'% '+c.y+'%'):'';
   st.transformOrigin=c?(c.x+'% '+c.y+'%'):'';
   st.transform=(c&&c.fit!=='contain'&&c.z>1)?'scale('+c.z+')':'';
+  camFill(img, c&&c.fit==='contain' ? (c.bg==='blur'?'blur':'card') : '');
+}
+// Freie Raender bei "ganzes Bild": Kartenfarbe (nur CSS) oder das Bild selbst
+// verwischt dahinter. Fuer "verwischt" wird das laufende Kamerabild ~1x/s in
+// ein 32x18-Canvas gezeichnet und weich hochskaliert - das wirkt wie Unschaerfe,
+// kostet fast nichts und braucht keinen zweiten Stream.
+function camFill(img, mode){
+  const host=img.parentElement; if(!host) return;
+  // Mehrere Kameras in einem Rahmen (Pillen): nur die gerade sichtbare bestimmt die Fuellung
+  if(img.classList.contains('camimg')&&!img.classList.contains('on')&&host.querySelector(':scope>img.camimg.on')) return;
+  host.classList.toggle('camfill-card', mode==='card');
+  host.classList.toggle('camfill-blur', mode==='blur');
+  let cv=host.querySelector(':scope>canvas.camblur');
+  if(mode!=='blur'){ if(cv){ clearInterval(cv._t); cv.remove(); } return; }
+  if(!cv){ cv=document.createElement('canvas'); cv.className='camblur'; cv.width=32; cv.height=18; host.insertBefore(cv, host.firstChild); }
+  clearInterval(cv._t);
+  const draw=()=>{ if(!cv.isConnected||!img.isConnected){ clearInterval(cv._t); return; }
+    const src=host.querySelector(':scope>img.camimg.on')||img;
+    if(document.hidden||!src.naturalWidth) return;
+    try{ cv.getContext('2d').drawImage(src,0,0,32,18); }catch(e){ clearInterval(cv._t); } };
+  draw(); cv._t=setInterval(draw,1000);
 }
 function camCropAll(){ document.querySelectorAll('img[data-camid]').forEach(camCrop); }
 function camStream(img, src, reconnectH, onErr, onOk){

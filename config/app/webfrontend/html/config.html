@@ -1090,6 +1090,19 @@
   .chk input[type=checkbox]:checked{background:radial-gradient(circle at 27px 50%,#fff 8px,transparent 8.5px),var(--prim);}
   .chk input[type=checkbox]:focus-visible{outline:2px solid var(--prim);outline-offset:2px;}
   .chk input[type=checkbox]:disabled{opacity:.4;cursor:default;}
+
+  /* Kamera "ganzes Bild": Wahl der Randfuellung mit Mini-Vorschau */
+  .crpbg{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+  .crpopt{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center;padding:10px;border-radius:var(--r-m);
+    background:var(--panel2);cursor:pointer;border:2px solid transparent;}
+  .crpopt:has(input:checked){border-color:var(--prim);}
+  .crpopt input{position:absolute;opacity:0;pointer-events:none;}
+  .crpopt .crpmini{grid-row:1/3;}
+  .crpopt b{font-size:13px;} .crpopt small{font-size:12px;color:var(--muted);line-height:1.35;}
+  .crpmini{position:relative;display:block;width:72px;height:40px;border-radius:8px;overflow:hidden;}
+  .crpmini i{position:absolute;left:14px;top:0;width:44px;height:40px;background:linear-gradient(#cfd6dc 0 38%,#9aa3a8 38% 60%,#7d6f63 60%);}
+  .crpmini.mcard{background:#f5c7b4;}
+  .crpmini.mblur em{position:absolute;inset:-8px;background:linear-gradient(#cfd6dc 0 38%,#9aa3a8 38% 60%,#7d6f63 60%);filter:blur(6px);}
 </style>
 </head>
 <body>
@@ -3744,6 +3757,12 @@ function crpHTML(ic){
     '<span class="crpzv"></span>'+
     '<label class="chk" style="margin:0"><input type="checkbox" class="crpfit"><span>'+T('Ganzes Bild zeigen (nicht beschneiden)')+'</span></label>'+
     '<button type="button" class="minibtn crprst">'+T('Zurücksetzen')+'</button></div>'+
+    '<div class="crpbgw"><div class="lbl" style="margin:8px 0 6px">'+T('Freie Ränder füllen')+'</div><div class="crpbg">'+
+      '<label class="crpopt"><input type="radio" name="crpbg_'+(ic.uuid||'x')+'" value="card"><span class="crpmini mcard"><i></i></span>'+
+        '<b>'+T('Kartenfarbe')+'</b><small>'+T('Ruhig, passt zum Tab. Keine Zusatzlast.')+'</small></label>'+
+      '<label class="crpopt"><input type="radio" name="crpbg_'+(ic.uuid||'x')+'" value="blur"><span class="crpmini mblur"><em></em><i></i></span>'+
+        '<b>'+T('Bild verwischt')+'</b><small>'+T('Das Bild setzt sich unscharf fort – passt immer zum Motiv.')+'</small></label>'+
+    '</div><p class="hint" style="margin-top:6px">'+T('Leistung: „Bild verwischt“ liest das Kamerabild etwa jede Sekunde in ein winziges Vorschaubild (32 × 18 Pixel) und vergrößert es weich. Das kostet kaum Rechenzeit und keine zweite Verbindung zur Kamera; auf sehr schwachen Panels (z. B. Shelly) im Zweifel „Kartenfarbe“ wählen.')+'</p></div>'+
     '<p class="hint" style="margin-top:4px">'+T('Wirksam mit Speichern – gilt für Popup, Dashboard-Widget und Kamera-Ansicht.')+'</p></div></div>';
 }
 function crpBind(row, ic){
@@ -3755,6 +3774,8 @@ function crpBind(row, ic){
   const paint=()=>{
     box.style.aspectRatio=String(A()); zr.value=c.z; zv.textContent=(+c.z).toFixed(2).replace(/\.?0+$/,'')+'×';
     fit.checked=c.fit==='contain'; zr.disabled=fit.checked; box.classList.toggle('whole',fit.checked);
+    const bgw=row.querySelector('.crpbgw'); if(bgw){ bgw.hidden=!fit.checked;
+      bgw.querySelectorAll('input[type=radio]').forEach(r=>{ r.checked=r.value===(c.bg==='blur'?'blur':'card'); }); }
     dot.style.left=c.x+'%'; dot.style.top=c.y+'%';
     CRP_FRAMES.forEach(f=>{ const fr=box.querySelector('.crpfr.f'+f.k), a=A(), x=c.x/100, y=c.y/100;
       let fw=1, fh=1;
@@ -3785,6 +3806,7 @@ function crpBind(row, ic){
   box.addEventListener('pointerup',()=>{ drag=false; });
   zr.oninput=()=>{ c.z=+zr.value; paint(); };
   fit.onchange=()=>{ c.fit=fit.checked?'contain':'cover'; paint(); };
+  row.querySelectorAll('.crpbg input[type=radio]').forEach(r=>{ r.onchange=()=>{ if(r.checked){ c.bg=r.value; paint(); } }; });
   row.querySelector('.crprst').onclick=()=>{ c={x:50,y:50,z:1,fit:'cover'}; paint(); };
   paint();
 }

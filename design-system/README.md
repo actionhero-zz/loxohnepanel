@@ -3,7 +3,7 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 ## Ebenen
 - **Ebene 0 – Dashboard und Screensaver:** das Dashboard-Tab mit Infoleiste. Der Screensaver ist dieselbe Ebene.
 - **Ebene −1 – Popups:** Alarme und Infos aus der Infoleiste. Sie legen sich bei Bedarf über Ebene 0, 1 und 2.
-- **Ebene 1 – Tabseite:** die Karte `face-*` mit dem Raster. **2×2 ist Standard** für neue Panels, 3×3 ist möglich (bestehende Profile ohne Angabe bleiben 3×3). Die Zellen füllen die Karte bis auf den Innenabstand, ohne Seitenrand, und sind immer quadratisch. Hier wird gewählt und überblickt, nicht eingestellt.
+- **Ebene 1 – Tabseite:** die Karte `face-*` mit dem Raster. **2×2 ist Standard** für neue Panels, 3×3 ist möglich (bestehende Profile ohne Angabe bleiben 3×3). Die Zellen füllen die Karte bis auf den Innenabstand, ohne Seitenrand, und haben je Gerät ein einheitliches Seitenverhältnis (Panel ca. 1,2 : 1, Handy 1 : 1). Hier wird gewählt und überblickt, nicht eingestellt.
 - **Ebene 2 – Baustein**, in zwei Formen:
   - **2a Kachel:** der Baustein im Raster mit Symbol, Raum, Name und einem Zustand. Tippen öffnet 2b. Direkt auf der Kachel schalten nur ihre **Schnellbedienungen**: Mini-Schalter (Ein/Aus), Mini-Buttons ‹ › (Stimmung/Helligkeit) und ˄ ˅ (Jalousie, Fenster). Bausteine ohne eigene Detailansicht (z. B. reiner Taster) lösen beim Tippen ihren Loxone-Befehl direkt aus.
   - **2b Detail:** derselbe Baustein geöffnet. Aufbau: Kopf, großer Wert, Einträge, Aktionen. Hier wird eingestellt.
@@ -11,7 +11,7 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 
 ## Grundsätze
 
-- **Ebene 1 immer quadratisch:** Kacheln sitzen in quadratischen Rasterzellen (1×1 = 1:1, 2×1 = 2:1, 2×2 = 1:1, jeweils inkl. Fuge) – auf jedem Gerät; auf dem Handy richtet sich die Zeilenhöhe nach der Spaltenbreite, mehr Inhalt wird senkrecht gescrollt.
+- **Einheitliches Seitenverhältnis je Gerät:** Alle Rasterzellen eines Bildschirms haben dieselbe Form (2×1 = doppelt so breit, 2×2 = vier Zellen inkl. Fuge). Auf Panels ergibt sich das Verhältnis aus der Karte (480×480: etwa 1,2 : 1, die Zellen füllen die Karte ohne Seitenrand), auf dem Handy sind die Zellen quadratisch und es wird senkrecht gescrollt.
 - **480 × 480 muss immer funktionieren.** Das Grundraster ist 3 × 3 Zellen à `cell` (160 px). Tablets (iPad mini, 7″) bekommen Anpassungen nur im gezoomten Modus (`sqfit`/`sqbig`), nie auf Kosten von 480 × 480.
 - **Hardwareunabhängig.** Keine Gerätegesten, kein Hover als einzige Bedienung, keine Schatten im Panel.
 - **Farben kommen aus dem Theme.** Nie Literalfarben in Komponenten: immer `tile`, `ink`, `ink-2`, `face-*`, `dot-*`, `on`, `good`, `crit`. Ein Nutzer kann jede Farbe in Config → Aussehen → Design umstellen; neue Elemente müssen das mitmachen.

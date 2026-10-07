@@ -108,7 +108,7 @@
   .tbico svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
   .tbico .loxi{width:22px;height:22px;display:block;background:currentColor;-webkit-mask:var(--u) center/contain no-repeat;mask:var(--u) center/contain no-repeat;}
   .tbprops{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end;padding:12px;border:1px solid var(--line);border-radius:var(--r-m);}
-  .tbprops .field{max-width:none;} .tbprops .minibtn.on{background:var(--good);color:#fff;border-color:var(--good);}
+  .tbprops .field{max-width:none;} .tbprops .minibtn.on{background:var(--good);color:var(--prim-ink,#fff);border-color:var(--good);}
   .tbicobtn{display:flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-s);background:var(--bg);color:var(--fg);font:inherit;cursor:pointer;}
   .tbicopick{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:var(--r-m);}
   .sved.h{flex-direction:column;align-items:stretch;flex-wrap:nowrap;min-width:0;}
@@ -156,7 +156,7 @@
   .sved .box .lbl2{color:var(--muted);font-size:12px;margin:10px 0 5px;}
   .sved .seg{display:flex;gap:4px;flex-wrap:wrap;}
   .sved .seg button{flex:1;min-width:44px;background:var(--bg);border:1px solid var(--line);color:var(--muted);border-radius:6px;padding:6px 4px;font:inherit;font-size:12px;cursor:pointer;}
-  .sved .seg button.on{background:var(--good);border-color:var(--good);color:#fff;font-weight:700;}
+  .sved .seg button.on{background:var(--good);border-color:var(--good);color:var(--prim-ink,#fff);font-weight:700;}
   .sved .seg button:disabled{opacity:.35;cursor:not-allowed;}
   .sved .box select,.sved .box input[type=text]{width:100%;max-width:none;}
 
@@ -383,7 +383,7 @@
     --bezel:#0d0f1a; --bezel2:#171a2b; --bezel-ink:#eceaf8; --bezel-muted:#9a9fbd; --dot:#ffc145;
     --shadow:0 1px 2px rgba(31,36,64,.05),0 8px 24px rgba(31,36,64,.06);
     --field:#ffffff; --prim:#1f2440; --prim-ink:#ffffff; --prim-hover:#2d3358;
-    --active:#ffedb8; --active-ink:#1f2440; --active-sub:#6b6f8c;
+    --active:#ffedb8; --active-ink:#1f2440; --active-sub:#5d6282;
     --bezel-strong:#ffffff; --bezel-tint:rgba(255,255,255,.05); --bezel-hover:rgba(255,255,255,.09); --bezel-line:rgba(255,255,255,.08);
     --grid-bg:#ece8fb; --cell-bg:rgba(255,255,255,.45); --cell-line:rgba(31,36,64,.14); --hover-tint:rgba(31,36,64,.05);
     --font:"Manrope","Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
@@ -491,9 +491,9 @@
 
   /* Theme "Hell": heller Rahmen, gruen-graue Flaechen wie das Panel-Design "Hell" */
   :root[data-theme="hell"]{
-    --bezel:#e4eae6; --bezel2:#ffffff; --bezel-ink:#1d2a22; --bezel-muted:#56665b; --bezel-strong:#0d120e;
-    --bezel-tint:rgba(13,18,14,.05); --bezel-hover:rgba(13,18,14,.08); --bezel-line:rgba(13,18,14,.1); --dot:#b86a00;
-    --bg:#f4f7f5; --panel:#ffffff; --panel2:#f6f9f7; --line:#dbe3dd; --fg:#0d120e; --muted:#4f5f54;
+    --bezel:#d5ded8; --bezel2:#ffffff; --bezel-ink:#1d2a22; --bezel-muted:#4f5f54; --bezel-strong:#0d120e;
+    --bezel-tint:rgba(13,18,14,.05); --bezel-hover:rgba(13,18,14,.08); --bezel-line:rgba(13,18,14,.1); --dot:#2b8055;
+    --bg:#ecf1ed; --panel:#ffffff; --panel2:#f4f7f5; --line:#d5ded8; --fg:#0d120e; --muted:#4f5f54;
     --accent:#a35e00; --field:#ffffff; --prim:#0d120e; --prim-ink:#ffffff; --prim-hover:#26302a;
     --active:#ffffff; --active-ink:#0d120e; --active-sub:#56665b;
     --grid-bg:#e6ede8; --cell-bg:rgba(255,255,255,.6); --cell-line:rgba(13,18,14,.14); --hover-tint:rgba(13,18,14,.05);
@@ -502,11 +502,11 @@
   :root[data-theme="hell"] .pitem.active{box-shadow:0 1px 3px rgba(13,18,14,.12);}
   /* Theme "Dunkel": alles dunkel wie das Panel-Design "Dunkel" */
   :root[data-theme="dunkel"]{
-    --bezel:#0b0f0c; --bezel2:#1b231d; --bezel-ink:#e7ede7; --bezel-muted:#8fa094; --bezel-strong:#ffffff;
-    --bg:#131a15; --panel:#1b231d; --panel2:#212a23; --line:#2d3830; --fg:#e7ede7; --muted:#9fb0a4;
-    --accent:#e0a24d; --good:#52b881; --crit:#e2695f; --field:#161d18;
+    --bezel:#0b0f0c; --bezel2:#243027; --bezel-ink:#e7ede7; --bezel-muted:#8fa094; --bezel-strong:#ffffff;
+    --bg:#18211a; --panel:#243027; --panel2:#2a372d; --line:#36443a; --fg:#e7ede7; --muted:#9fb0a4;
+    --accent:#e0a24d; --good:#52b881; --crit:#e2695f; --field:#1d271f;
     --prim:#e7ede7; --prim-ink:#0d120e; --prim-hover:#ffffff;
-    --active:#2a352d; --active-ink:#e7ede7; --active-sub:#9fb0a4; --dot:#e0a24d;
+    --active:#2f3d33; --active-ink:#e7ede7; --active-sub:#9fb0a4; --dot:#52b881;
     --grid-bg:#0f1511; --cell-bg:rgba(255,255,255,.03); --cell-line:rgba(255,255,255,.13); --hover-tint:rgba(255,255,255,.06);
     --shadow:0 1px 2px rgba(0,0,0,.25);
     color-scheme:dark;
@@ -787,8 +787,8 @@
   /* Speicherleiste */
   .savebar{display:flex;align-items:center;gap:12px;transition:box-shadow .2s;}
   #saveBtn{transition:background .12s,color .12s,transform .1s;}
-  #saveBtn.ok{background:var(--good,#2b8055) !important;border-color:var(--good,#2b8055) !important;color:#fff !important;animation:saveOk .2s ease;}
-  #saveBtn.err{background:var(--crit,#e2695f) !important;border-color:var(--crit,#e2695f) !important;color:#fff !important;}
+  #saveBtn.ok{background:var(--good,#2b8055) !important;border-color:var(--good,#2b8055) !important;color:var(--prim-ink,#fff) !important;animation:saveOk .2s ease;}
+  #saveBtn.err{background:var(--crit,#e2695f) !important;border-color:var(--crit,#e2695f) !important;color:var(--prim-ink,#fff) !important;}
   @keyframes saveOk{40%{transform:scale(1.06)}}
   /* Spenden-Pille unten rechts (wie "Buy me a coffee") */
   .donate{position:fixed;right:18px;bottom:16px;z-index:40;display:inline-flex;align-items:center;gap:8px;padding:7px 14px 7px 10px;

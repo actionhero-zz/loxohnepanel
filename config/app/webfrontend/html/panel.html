@@ -619,7 +619,9 @@
     background:rgba(224,162,77,.96);color:#10140f;font-size:14px;font-weight:600;text-align:center;
     pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.4);}
   html.stale .grid{filter:saturate(.35);opacity:.7;}
-  .conn.vis{display:block;}
+  /* Online-Punkt ausgeblendet: Verbindungsausfaelle meldet der Hinweisbalken (#linkbar).
+     Das Element bleibt als Statusmerker (Klasse ok) fuer die Logik bestehen. */
+  .conn,.conn.vis{display:none !important;}
   .saver{position:absolute;inset:0;z-index:30;background:var(--bg);
     display:flex;flex-direction:column;align-items:center;justify-content:center;
     cursor:pointer;user-select:none;-webkit-user-select:none;
@@ -830,7 +832,7 @@
   .cbw.n3{--cbm:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpath fill-rule='evenodd' d='M-50 -50H150V150H-50ZM66 -35H116A25 25 0 0 1 141 -10V24A25 25 0 0 1 116 49H66A25 25 0 0 1 41 24V-10A25 25 0 0 1 66 -35Z'/%3E%3C/svg%3E");--cbw:86%;--cbf:0.32;}
   .cbn{position:absolute;top:-28%;right:-34%;height:70%;width:var(--cbw,70%);display:grid;place-items:center;box-sizing:border-box;
     border-radius:calc(var(--cbs) * .21);font-size:max(11px,calc(var(--cbs) * var(--cbf,.47)));letter-spacing:-.02em;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;
-    font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));background:var(--glow,var(--accent));color:var(--tile,#fff);}
+    font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));background:var(--glow,var(--accent));color:var(--on-glow,var(--tile,#fff));}
   .cbn.hint{background:var(--st-hint,#f0c27a);color:#2a2208;} .cbn.crit{background:var(--st-alarm,#ff9d9b);color:#3d0c0b;}
   html.ianim:not([data-motion="off"]) .cbn{animation:cbIn .28s cubic-bezier(.2,.8,.3,1.3);}
   @keyframes cbIn{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
@@ -1619,6 +1621,25 @@
   .grid.panel.wide .brow.act{width:100%;max-width:640px;margin-left:auto;margin-right:auto;}
   /* Zustandsflaeche: Statuswoerter (Alarm, Keine Eintraege ...) ruhiger als Messwerte */
   .dstate .pbig{font-size:clamp(28px,8vw,44px);letter-spacing:-.02em;}
+
+  /* Wetter-Info: gewaehlter Chip wie jede aktive Bedienung (ink gefuellt); reine Info-Chips als Anzeige */
+  .wxc.on{box-shadow:none;background:var(--ink);color:var(--tile);}
+  .wxc.on span{color:var(--tile);opacity:.75;}
+  .wxc:not(.wxsel){background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--wash,31,36,64),.16);}
+
+  /* Wetter-Info: Tag wechseln (Pfeile = Nebenaktionen, Punkte = Indikatoren) */
+  .wxnav{display:flex;align-items:center;gap:10px;}
+  .wxar{position:relative;width:32px;height:32px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink);
+    background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--tile) 55%,transparent);}
+  .wxar::after{content:"";position:absolute;inset:-6px;}
+  .wxar svg{width:16px;height:16px;} .wxar:disabled{opacity:.3;cursor:default;}
+  .wxdots{display:flex;gap:6px;margin:0 auto;}
+  .wxdots i{width:7px;height:7px;border-radius:var(--r-round,32%);background:rgba(var(--wash,31,36,64),.25);}
+  .wxdots i.on{background:var(--ink);}
+
+  /* Kleine Kacheln im 3x3-Raster (z. B. Shelly X2i): Auf/Ab nebeneinander wie Zurueck/Vor,
+     sonst wird der Kopf so hoch, dass die Zustandszeile ("52 % zu") abgeschnitten wird. */
+  .grid.cells.g3 .svw[data-sz="1x1"] .updown,.grid.cells.g3 .svw[data-sz="2x1"] .updown{flex-direction:row;gap:6px;}
 </style>
 </head>
 <body>
@@ -3612,12 +3633,25 @@ let LANG='de-DE';   // Panel-Sprache (aus dem Profil, Server sendet sie im theme
 let wsRx=0, srvOk=true, srvDownT=null, msOk=true, msSince=0;
 function wsLost(){ el('conn').classList.remove('ok');
   if(!srvDownT && srvOk) srvDownT=setTimeout(()=>{ srvOk=false; linkBanner(); },5000); }
-setInterval(()=>{
-  if(!ws || ws.readyState!==1) return;
-  if(Date.now()-wsRx>25000){ const w=ws; ws=null; w.onclose=null; w.onmessage=null;
-    try{ w.close(); }catch(e){} wsLost(); connect(); return; }
+// Verbindung verwerfen und sofort neu aufbauen (ohne auf onclose zu warten)
+function wsRestart(){ const w=ws; ws=null;
+  if(w){ w.onclose=null; w.onmessage=null; w.onopen=null; try{ w.close(); }catch(e){} }
+  wsLost(); connect(); }
+// Pruefung, auch ausserhalb des Takts aufrufbar: haengt der Aufbau (> 15 s CONNECTING),
+// ist die Verbindung zu/geschlossen ohne onclose, oder kam 25 s nichts -> neu verbinden.
+function wsCheck(){
+  if(!ws){ connect(); return; }
+  const age=Date.now()-wsRx;
+  if(ws.readyState===0){ if(age>15000) wsRestart(); return; }
+  if(ws.readyState!==1 || age>25000){ wsRestart(); return; }
   send({t:'ping', at:Date.now()});
-},10000);
+}
+setInterval(wsCheck,10000);
+// Display wieder an / App wieder sichtbar / Netz zurueck: Timer werden auf schwacher
+// Hardware (Shelly, Android-WebView) im Hintergrund stark gedrosselt - deshalb sofort
+// pruefen statt auf den naechsten Takt zu warten (sonst laufen Werte unbemerkt alt).
+['visibilitychange','pageshow','focus','online'].forEach(ev=>(ev==='visibilitychange'?document:window).addEventListener(ev,()=>{
+  if(document.hidden) return; if(!ws || ws.readyState!==1 || Date.now()-wsRx>12000) wsRestart(); else send({t:'ping', at:Date.now()}); }));
 function linkBanner(){
   const txt = !srvOk ? 'Keine Verbindung zum LoxPanel-Server'
     : !msOk ? 'Miniserver nicht erreichbar'+(msSince?' seit '+new Date(msSince).toLocaleTimeString(LANG||undefined,{hour:'2-digit',minute:'2-digit'}):'')+' – Werte evtl. veraltet'
@@ -3629,6 +3663,7 @@ function linkBanner(){
   b.textContent=txt;
 }
 function connect(){
+  if(ws && (ws.readyState===0 || ws.readyState===1)) return;   // schon (im Aufbau) verbunden: keine Doppelverbindung
   const q=[];
   if(PANEL_ID) q.push('panel='+encodeURIComponent(PANEL_ID));
   if(DEVICE_ID) q.push('device='+encodeURIComponent(DEVICE_ID));
@@ -4125,7 +4160,31 @@ function renderSaverGrid(){
   const its = ph ? saverCfg.items.map(it=>(it.x<gs&&it.x+it.w>gs)?Object.assign({},it,{w:gs-it.x}):it)
                  : saverCfg.items.filter(it=>it.x+it.w<=cols);
   const place = ph ? (it=>it.x>=gs ? {c:it.x-gs, r:it.y+gs} : {c:it.x, r:it.y}) : null;
-  renderLayout(g, its, saverData, place, saverOn());
+  const pl=phoneLandscape()&&!place, rows=saverRows(), lay=pl ? fillGaps(its, cols, rows) : its;
+  // Handy quer: Reihen nach Inhalt gewichten - eine reine Uhr-Reihe braucht wenig Hoehe
+  // (0,618 : 1, goldener Schnitt), Wetter/Kamera bekommen den Rest statt gequetscht zu werden.
+  g.style.gridTemplateRows = pl ? Array.from({length:rows},(_,r)=>{
+      const inRow=lay.filter(it=>it.y<=r&&r<it.y+it.h);
+      return (inRow.length&&inRow.every(it=>it.type==='clock'&&it.h===1)) ? 'minmax(0,.618fr)' : 'minmax(0,1fr)'; }).join(' ') : '';
+  renderLayout(g, lay, saverData, place, saverOn());
+}
+// Handy quer (flach, Touch): Widgets wachsen in leere Nachbarzellen ihrer Zeile,
+// damit ein nicht voll belegtes Dashboard keine Loecher zeigt. Nur Darstellung -
+// gespeichert wird nichts. Panels (Shelly 960x480) sind hoeher und bleiben unberuehrt.
+// Testweise NUR auf Handys: Handy-Profil oder Handy-Browser (iPhone / Android Mobile) - nie Panels oder Tablets.
+function phoneLandscape(){ return window.innerHeight<450 && window.innerWidth>window.innerHeight &&
+  (themePhone || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent)); }
+function fillGaps(items, cols, rows){
+  const occ=[...Array(rows)].map(()=>Array(cols).fill(false));
+  const out=items.map(it=>Object.assign({},it));
+  out.forEach(it=>{ for(let r=it.y;r<it.y+it.h&&r<rows;r++) for(let c=it.x;c<it.x+it.w&&c<cols;c++) occ[r][c]=true; });
+  const free=(c,it)=>{ if(c<0||c>=cols) return false; for(let r=it.y;r<it.y+it.h&&r<rows;r++) if(occ[r][c]) return false; return true; };
+  const take=(c,it)=>{ for(let r=it.y;r<it.y+it.h&&r<rows;r++) occ[r][c]=true; };
+  [...out].sort((a,b)=>a.y-b.y||a.x-b.x).forEach(it=>{
+    let grew=true; while(grew){ grew=false;
+      if(free(it.x+it.w,it)){ take(it.x+it.w,it); it.w++; grew=true; }
+      if(free(it.x-1,it)){ take(it.x-1,it); it.x--; it.w++; grew=true; } } });
+  return out;
 }
 // Raster-Eintraege in ein Grid zeichnen bzw. abgleichen (Screensaver und Tabs).
 // place(it) -> {c,r} (0-basiert) fuer abweichende Anordnung (breite Tabs: Seiten
@@ -4229,7 +4288,7 @@ const wxTcTxt=t=>ambRgb(ambMix(ambStops(WX_TC,t),wxInk(),.38));
 // Kennzahlen, die der Graph zeigen kann (Antippen eines Chips schaltet um):
 // Linie (lc: nach Temperatur gefaerbt, sonst feste Pastellfarbe) oder Balken.
 const WXM={
-  temp:{k:'temp',u:'°'},
+  temp:{k:'temp',u:'°',t:'Temperaturverlauf'},
   feels:{k:'feels',u:'°',t:'Gefühlte Temperatur'},
   rain:{k:'rain',u:' mm',bar:1,t:'Regen je Stunde',d:1},
   pop:{k:'pop',u:' %',bar:1,t:'Regenrisiko je Stunde'},
@@ -4269,10 +4328,13 @@ function wxSunHTML(hrs, dt, today){
 }
 function wxChartHTML(hrs, m, dt, today){
   if(m==='sun') return wxSunHTML(hrs, dt||{}, today);
-  const M=WXM[m]||WXM.temp, W=400,H=170,pL=8,pR=8,pT=26,pB=24, ch=H-pT-pB, r=v=>Math.round(v*10)/10;
+  // pT: Platz unter dem Titel - Werte (auch die Beschriftung des Hoechstwerts) stehen immer darunter
+  const M=WXM[m]||WXM.temp, W=400,H=170,pL=8,pR=8,pT=M.t?42:26,pB=24, ch=H-pT-pB, r=v=>Math.round(v*10)/10;
   const X=i=>pL+i*(W-pL-pR)/(hrs.length-1);
   const fmt=v=>(M.d?String(Math.round(v*10)/10).replace('.',','):Math.round(v))+M.u;
-  const ticks=hrs.map((h,i)=>{ if(h.h%6) return ''; const x=X(i), an=x<34?'start':(x>W-34?'end':'middle');
+  // Zeitachse: Abstand nach Laenge (abends zeigt "Heute" nur noch wenige Stunden), erste Stunde immer
+  const tstep=hrs.length>12?6:(hrs.length>6?3:1);
+  const ticks=hrs.map((h,i)=>{ if(i&&h.h%tstep) return ''; if(i&&i<2&&h.h%tstep===0&&hrs[0].h%tstep) return ''; const x=X(i), an=x<34?'start':(x>W-34?'end':'middle');
     return '<text class="wxax" text-anchor="'+an+'" x="'+r(x)+'" y="'+(H-6)+'">'+h.h+' Uhr</text>'; }).join('');
   const title=M.t?'<text class="wxttl" x="'+(pL+4)+'" y="16">'+M.t+'</text>':'';
   const bw=Math.max(2,(W-pL-pR)/hrs.length-2);
@@ -4295,37 +4357,48 @@ function wxChartHTML(hrs, m, dt, today){
   const lab=(i,v,up)=>'<text class="wxlab" x="'+r(Math.min(W-26,Math.max(26,X(i))))+'" y="'+r(Y(v)+(up?-9:17))+'">'+fmt(v)+'</text><circle class="wxpt" style="stroke:'+(tc?wxTc(v):M.col)+'" cx="'+r(X(i))+'" cy="'+r(Y(v))+'" r="3.5"/>';
   const yH=r(Y(hi)), yL=r(Y(lo)), st=[];
   for(let k=0;k<=4;k++){ const v=hi-(hi-lo)*k/4; st.push('<stop offset="'+(k/4)+'" stop-color="'+(tc?wxTc(v):M.col)+'"/>'); }
-  // Standardansicht: Temperatur mit Regen je Stunde (bzw. Regenrisiko) als zarte Balken
-  let bars='';
-  if(m==='temp'){ const useMm=hrs.some(h=>h.rain!=null); bars=barsOf(hrs.map(h=>useMm?(h.rain||0):(h.pop||0)/100*2),0.38); }
+  // Eine Kurve je Ansicht: Niederschlag hat seine eigene Ansicht (keine Balken unter der Temperatur)
+  const bars='';
   return '<svg class="wxchart" viewBox="0 0 '+W+' '+H+'">'+
     '<defs><linearGradient id="wxl" gradientUnits="userSpaceOnUse" x1="0" y1="'+yH+'" x2="0" y2="'+(yL===yH?yH+1:yL)+'">'+st.join('')+'</linearGradient>'+
     '<linearGradient id="wxg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+cHi+'" stop-opacity=".5"/><stop offset="1" stop-color="'+cLo+'" stop-opacity="0"/></linearGradient></defs>'+
     title+bars+'<path class="wxarea" d="'+area+'" fill="url(#wxg)"/><path class="wxline" stroke="url(#wxl)" d="'+line+'" pathLength="1"/>'+
     lab(iHi,hi,true)+(iLo!==iHi?lab(iLo,lo,false):'')+ticks+'</svg>';
 }
-function wxSheet(fi){
+function wxSheet(fi, swap){
   const w=(frontData||{}).weather||{}, f=(w.forecast||[])[fi]; if(!f||!f.det) return;
   const dt=f.det, hrs=(dt.hours||[]).filter(h=>h&&h.temp!=null);
   let ov=el('wxSheet'); if(!ov){ ov=document.createElement('div'); ov.id='wxSheet'; ov.className='stsheet wxs'; document.querySelector('.screen').appendChild(ov); }
   const has=k=>hrs.filter(h=>h[k]!=null).length>1;
   // [Titel, Wert, Kennzahl fuer den Graphen (nur wenn Stundenwerte da sind)]
   const chips=[];
-  if(f.hi!=null&&f.lo!=null) chips.push(['Temperatur', tdeg(f.lo)+' – '+tdeg(f.hi), hrs.length>1?'temp':'']);   // Start-Chip
-  if(dt.rain!=null) chips.push(['Regen', (String(dt.rain).replace('.',','))+' mm', has('rain')?'rain':'']);
+  // Start-Chip: heute der aktuelle Wert (Hoch/Tief stehen schon im Kopf), sonst die Spanne
+  if(fi===0&&w.temp!=null) chips.push(['Temperatur jetzt', String(Math.round(w.temp*10)/10).replace('.',',')+'°', hrs.length>1?'temp':'']);
+  else if(f.hi!=null&&f.lo!=null) chips.push(['Temperatur', tdeg(f.lo)+' – '+tdeg(f.hi), hrs.length>1?'temp':'']);
+  if(dt.rain!=null) chips.push(['Regen gesamt', (String(dt.rain).replace('.',','))+' mm', has('rain')?'rain':'']);
   if(f.pop!=null) chips.push(['Regenrisiko', f.pop+' %', has('pop')?'pop':'']);
   if(dt.wind!=null) chips.push(['Wind max.', dt.wind+' '+(dt.wind_unit||'km/h'), has('wind')?'wind':'']);
-  if(dt.uv!=null) chips.push(['UV-Index', String(dt.uv), '']);
-  if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlt', dt.feels_lo+'° – '+dt.feels_hi+'°', has('feels')?'feels':'']);
+  if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlte Temperatur', dt.feels_lo+'° – '+dt.feels_hi+'°', has('feels')?'feels':'']);
   if(dt.humidity!=null) chips.push(['Luftfeuchte Ø', dt.humidity+' %', has('hum')?'hum':'']);
-  if(dt.sunrise&&dt.sunset) chips.push(['Sonne', dt.sunrise+' – '+dt.sunset, 'sun']);
+  if(dt.sunrise&&dt.sunset) chips.push(['Sonnenschein', dt.sunrise+' – '+dt.sunset, 'sun']);
   ov.innerHTML='<div class="wxsbox"><div class="wxhd"><span class="wxico ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
     '<span class="wxtt"><b>'+esc(f.day||'')+'</b><small>'+esc(dt.cond||'')+'</small></span>'+
     '<span class="wxhl"><b'+(f.hi!=null?' style="color:'+wxTcTxt(f.hi)+'"':'')+'>'+tdeg(f.hi)+'</b><small'+(f.lo!=null?' style="color:'+wxTcTxt(f.lo)+'"':'')+'>'+tdeg(f.lo)+'</small></span>'+
     '<button type="button" class="stsx" aria-label="Schließen">✕</button></div>'+
     '<div class="wxch">'+(hrs.length>1?wxChartHTML(hrs,'temp'):'')+'</div>'+
     (chips.length?'<div class="wxchips">'+chips.map(([k,v,m],i)=>'<div class="wxc'+(m?' wxsel':'')+(m==='temp'?' on':'')+'"'+(m?' data-m="'+m+'"':'')+' style="animation-delay:'+(250+i*60)+'ms"><span>'+k+'</span><b>'+esc(v)+'</b></div>').join('')+'</div>':'')+'</div>';
-  ov.hidden=false; popZoomIn(ov.querySelector('.wxsbox'));
+  // Tag wechseln: Pfeile (Nebenaktionen) und Punkte, dazu Wischen
+  const nf=(w.forecast||[]).filter(x=>x&&x.det).length;
+  if(nf>1){ ov.querySelector('.wxsbox').insertAdjacentHTML('beforeend','<div class="wxnav">'+
+    '<button type="button" class="wxar" data-d="-1" aria-label="Vorheriger Tag"'+(fi>0?'':' disabled')+'>'+svg('<path d="M15 5l-7 7 7 7"/>')+'</button>'+
+    '<span class="wxdots">'+Array.from({length:nf},(_,i)=>'<i'+(i===fi?' class="on"':'')+'></i>').join('')+'</span>'+
+    '<button type="button" class="wxar" data-d="1" aria-label="Nächster Tag"'+(fi<nf-1?'':' disabled')+'>'+svg('<path d="M9 5l7 7-7 7"/>')+'</button></div>');
+    const go=d=>{ const n=fi+d; if(n>=0&&n<nf) wxSheet(n,true); };
+    ov.querySelectorAll('.wxar').forEach(b=>b.onclick=e=>{ e.stopPropagation(); go(+b.dataset.d); });
+    const bx=ov.querySelector('.wxsbox'); let x0=null;
+    bx.onpointerdown=e=>{ x0=e.clientX; }; bx.onpointerup=e=>{ if(x0==null) return; const dx=e.clientX-x0; x0=null; if(Math.abs(dx)>50) go(dx<0?1:-1); };
+  }
+  ov.hidden=false; if(!swap) popZoomIn(ov.querySelector('.wxsbox'));
   // Chip antippen: Graph zeigt diese Kennzahl; nochmal (oder Kopf) -> zurueck zur Temperatur
   let cur='temp';
   const show=m=>{ cur=m; const host=ov.querySelector('.wxch'); if(host&&hrs.length>1) host.innerHTML=wxChartHTML(hrs,m,dt,fi===0);

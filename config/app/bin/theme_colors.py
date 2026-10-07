@@ -339,22 +339,22 @@ DESIGN_PRESETS = {
         "tile": "#ffffff", "ink": "#1f2440", "ink2": "#565c7c", "on": "#b37400",
     },
     "dunkel": {
-        "bezel": "#0d120e", "bezelInk": "#e7ede7", "tabIdle": "#9fb0a4",
-        "tabActive": "#1f2a23", "tabActiveInk": "#52b881",
-        "face1": "#131a15", "face2": "#131a15", "face3": "#131a15",
-        "face4": "#131a15", "face5": "#131a15", "faceN": "#131a15",
+        "bezel": "#0b0f0c", "bezelInk": "#e7ede7", "tabIdle": "#9fb0a4",
+        "tabActive": "#243027", "tabActiveInk": "#52b881",
+        "face1": "#18211a", "face2": "#18211a", "face3": "#18211a",
+        "face4": "#18211a", "face5": "#18211a", "faceN": "#18211a",
         "dot1": "#52b881", "dot2": "#52b881", "dot3": "#52b881",
         "dot4": "#52b881", "dot5": "#52b881",
-        "tile": "#1b231d", "ink": "#e7ede7", "ink2": "#9fb0a4", "on": "#e0a24d",
+        "tile": "#243027", "ink": "#e7ede7", "ink2": "#9fb0a4", "on": "#e0a24d",
     },
     "hell": {
-        "bezel": "#eef2ef", "bezelInk": "#0d120e", "tabIdle": "#55655a",
-        "tabActive": "#dce6df", "tabActiveInk": "#2f8a5c",
-        "face1": "#e3eae5", "face2": "#e3eae5", "face3": "#e3eae5",
-        "face4": "#e3eae5", "face5": "#e3eae5", "faceN": "#e3eae5",
-        "dot1": "#2f8a5c", "dot2": "#2f8a5c", "dot3": "#2f8a5c",
-        "dot4": "#2f8a5c", "dot5": "#2f8a5c",
-        "tile": "#ffffff", "ink": "#0d120e", "ink2": "#4f5f54", "on": "#b86a00",
+        "bezel": "#d5ded8", "bezelInk": "#0d120e", "tabIdle": "#4f5f54",
+        "tabActive": "#ffffff", "tabActiveInk": "#2b8055",
+        "face1": "#ecf1ed", "face2": "#ecf1ed", "face3": "#ecf1ed",
+        "face4": "#ecf1ed", "face5": "#ecf1ed", "faceN": "#ecf1ed",
+        "dot1": "#2b8055", "dot2": "#2b8055", "dot3": "#2b8055",
+        "dot4": "#2b8055", "dot5": "#2b8055",
+        "tile": "#ffffff", "ink": "#0d120e", "ink2": "#4f5f54", "on": "#a35e00",
     },
 }
 DESIGN_DEFAULT = "bunt"
@@ -393,6 +393,7 @@ def design_vars(d: dict | None) -> dict:
          "--screen": c["faceN"], "--face-n": c["faceN"],
          "--tile": c["tile"], "--ink": c["ink"], "--muted": c["ink2"],
          "--glow": c["on"], "--on-rgb": tripel(c["on"]),
+         "--on-glow": _gegenfarbe(c["on"]),      # Schrift auf Bernstein (Zahl im Badge)
          # Auflagen (Linien, Tönungen) in Schriftfarbe: dunkel auf hellen,
          # hell auf dunklen Kacheln.
          "--wash": tripel(c["ink"]),

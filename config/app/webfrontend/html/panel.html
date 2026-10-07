@@ -4600,9 +4600,14 @@ function camStream(img, src, reconnectH, onErr, onOk){
     if(reconnectH>0) img._camCycle=setTimeout(()=>{ if(img.isConnected) load(); }, reconnectH*3600*1000);
   };
   img._camLoad=load;
+  // Fehler: neuer Versuch nach 8 s, bei Dauerausfall wachsend bis 60 s; bei
+  // ausgeblendeter Seite gar nicht (die Rueckkehr ans Panel baut ohnehin neu auf).
   img.onerror=()=>{ if(onErr) onErr(); clearTimeout(img._camRetry);
-    img._camRetry=setTimeout(()=>{ if(img.isConnected) load(); }, CAM_RETRY_MS); };
-  img.onload=()=>{ if(onOk) onOk(); };
+    img._camFails=(img._camFails||0)+1;
+    const wait=Math.min(60000, CAM_RETRY_MS*Math.pow(2, img._camFails-1));
+    img._camRetry=setTimeout(function again(){ if(!img.isConnected) return;
+      if(document.hidden){ img._camRetry=setTimeout(again, 5000); return; } load(); }, wait); };
+  img.onload=()=>{ img._camFails=0; if(onOk) onOk(); };
   camImgs.add(img);
   load();
 }

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.85"
+APP_VERSION = "0.19.86"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -9661,6 +9661,7 @@ class CamHub:
                 q.put_nowait(frame)
 
     async def _run(self) -> None:
+        fails = 0                                # Fehlversuche in Folge -> wachsende Pause
         while self.subs or self._idle:
             sess = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=None, sock_connect=10, sock_read=30))
             try:
@@ -9672,7 +9673,10 @@ class CamHub:
                     mark = (b"--" + m.group(1).lstrip("-").encode()) if m else None
                     buf = b""
                     async for chunk in up.content.iter_any():
+                        if not self.ok and fails:
+                            log.info("Kamera %s liefert wieder", self.uuid[:8])
                         self.ok = True
+                        fails = 0
                         buf += chunk
                         buf = self._frames(buf, mark)
                         if len(buf) > 8 * 1024 * 1024:   # Unsinn vom Geraet nicht unbegrenzt puffern
@@ -9683,13 +9687,20 @@ class CamHub:
                 await sess.close()
                 raise
             except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, OSError) as e:
-                log.info("Kamera %s: %s - neuer Versuch in %.0f s", self.uuid[:8], e, self.RETRY_S)
+                fails += 1
+                # Einmal sichtbar, danach leise (Kamera offline -> sonst alle 3 s eine Zeile)
+                (log.info if fails == 1 else log.debug)("Kamera %s: %s - neuer Versuch in %.0f s",
+                                                        self.uuid[:8], e, self._wait(fails))
             finally:
                 self.ok = False
                 if not sess.closed:
                     await sess.close()
             if self.subs or self._idle:
-                await asyncio.sleep(self.RETRY_S)
+                await asyncio.sleep(self._wait(fails))
+
+    def _wait(self, fails: int) -> float:
+        """Pause vor dem naechsten Versuch: 3 s, dann wachsend bis 30 s bei Dauerausfall."""
+        return min(30.0, self.RETRY_S * 2 ** max(0, fails - 1))
 
     def _frames(self, buf: bytes, mark: bytes | None) -> bytes:
         """Vollstaendige JPEG-Bilder aus dem Puffer an die Betrachter, Rest zurueck."""
@@ -9864,6 +9875,29 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
         for _au in app.sec_alarms_active():
             if app.sec_alarm_wanted(prof, _au):
                 await app._send_or_drop(ws, {**app.sec_alarm_msg(_au, True), "sound": bool(prof.get("alarmTone"))})
+        cmd_q: asyncio.Queue = asyncio.Queue()
+        cmd_task = None
+
+        async def _cmd_worker() -> None:
+            """Fuehrt die Befehle dieses Panels nacheinander aus und quittiert sie."""
+            while True:
+                data = await cmd_q.get()
+                if data is None:                 # Panel getrennt: Rest abgearbeitet, Ende
+                    return
+                pin = data.get("pin")
+                code = await app.command(str(data.get("uuid") or ""), str(data.get("cmd") or ""),
+                                         None if pin is None else str(pin))
+                if data.get("id") is not None:
+                    # Quittung fuer das Befehls-Monitoring des Panels
+                    await app._send_or_drop(ws, {"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
+                if pin is not None:
+                    await app._send_or_drop(ws, {"t": "cmdresult", "ok": code == "200"})
+                elif code != "200" and data.get("uuid") and data.get("cmd"):
+                    # Sichtbar machen statt still verschlucken (Details im Log)
+                    await app._send_or_drop(ws, {"t": "notify", "level": "warn", "secs": 4, "text":
+                                        "Befehl nicht ausgeführt – Miniserver antwortet nicht" if code is None
+                                        else f"Befehl nicht ausgeführt (Miniserver meldet {code})"})
+
         async for msg in ws:
             if msg.type != WSMsgType.TEXT:
                 continue
@@ -9913,19 +9947,12 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 if dev:
                     app._spawn(app.display_drivers(False, dev))
             elif data.get("t") == "cmd":
-                pin = data.get("pin")
-                code = await app.command(str(data.get("uuid") or ""), str(data.get("cmd") or ""),
-                                         None if pin is None else str(pin))
-                if data.get("id") is not None:
-                    # Quittung fuer das Befehls-Monitoring des Panels
-                    await app._send_or_drop(ws, {"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
-                if pin is not None:
-                    await app._send_or_drop(ws, {"t": "cmdresult", "ok": code == "200"})
-                elif code != "200" and data.get("uuid") and data.get("cmd"):
-                    # Sichtbar machen statt still verschlucken (Details im Log)
-                    await app._send_or_drop(ws, {"t": "notify", "level": "warn", "secs": 4, "text":
-                                        "Befehl nicht ausgeführt – Miniserver antwortet nicht" if code is None
-                                        else f"Befehl nicht ausgeführt (Miniserver meldet {code})"})
+                # In die Befehls-Warteschlange dieses Panels: Befehle laufen der Reihe
+                # nach (schnelle +/- Tipps bleiben in Ordnung), aber die Verbindung
+                # bleibt waehrenddessen ansprechbar (Ping, Navigation).
+                if cmd_task is None or cmd_task.done():
+                    cmd_task = asyncio.create_task(_cmd_worker())
+                cmd_q.put_nowait(data)
             elif data.get("t") == "setplayer":
                 # Client meldet die AudioZone der aktiven Player-Pane (oder "" = keine).
                 zone = str(data.get("zone") or "").strip()
@@ -9991,6 +10018,9 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 else:
                     app.conn_camera.pop(ws, None)
     finally:
+        # Schon angetippte Befehle noch ausfuehren, dann endet die Warteschlange
+        if locals().get("cmd_task") is not None:
+            cmd_q.put_nowait(None)
         if app.diag:
             log.info("Panel '%s' Verbindung beendet (Close-Code %s)", dev or request.remote or "?", ws.close_code)
         app.drop_conn(ws)

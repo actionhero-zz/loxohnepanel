@@ -4638,7 +4638,7 @@ load().catch(e=>{ $('#pconfHost').innerHTML='<div class="empty">Konnte Daten nic
 loadSettings().catch(e=>console.warn('Einstellungen nicht geladen:',e));
 sectBind();
 { const mh=$('#mode_host'); if(mh) mh.textContent=location.host; }
-loadPanelIds().then(()=>{ fillNewPanel(); fillAudioPanels(); renderDevices(); pollDevices(); setInterval(pollDevices,6000); });
+loadPanelIds().then(()=>{ fillNewPanel(); fillAudioPanels(); renderDevices(); pollDevices(); setInterval(()=>{ if(!document.hidden) pollDevices(); },6000); });   // im Hintergrund-Tab nicht abfragen
 
 if(window.I18N) I18N.autoChrome('h2, h3, label.lbl, .btn, .minibtn, .addbtn, .brand small, .itab, .cclbl, .ccmut, .empty, .muted, .note, .lead, .hint, .rub, .stab, .sectlbl, option, [data-i18n]');
 </script>

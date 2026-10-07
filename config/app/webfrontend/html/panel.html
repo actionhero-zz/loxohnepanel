@@ -2221,6 +2221,42 @@ function bindCell(btn,c){ btn._cmd=c.cmd||null; btn._release=c.release||null; bt
 // Strich-Icons der Aktionsreihe (power/minus/plus) als Linie zeichnen, die
 // uebrigen Knopf-Icons (play/pause ...) wie bisher gefuellt.
 const STROKE_ICONS={power:1,minus:1,plus:1,chart:1,shield:1,link:1};   // als Linie zeichnen (nicht gefuellt)
+// Loxone-Symbole statt eigener: der Miniserver liefert seine IconsFilled-SVGs
+// (Linien-Icons wie unsere). Sie werden zur Laufzeit geholt - nicht mitgeliefert -,
+// streng bereinigt (nur Formen, keine Skripte/Links), eingefaerbt und im Browser
+// zwischengespeichert. Ohne Miniserver bleibt das eigene Symbol stehen.
+const LOX_ICONS={bulb:'lightbulb-2',central:'central',blind:'blinds-half-closed',window:'window-1',music:'music-note',
+  alarm:'alarm-1',gate:'gate-closed-1',thermo:'thermometer',fan:'fan-1',cam:'cc-camera',shield:'shield-2',drop:'water-drop',
+  mailbox:'mailbox-1',person:'person-1',people:'presence',home:'home-3',door:'door-open',lock:'lock-close-1',bell:'bell',
+  trash:'bin-1',plug:'electricity-outlet-1',sun:'sun',moon:'night-mode',car:'car',leaf:'plant',bed:'bed-double',
+  battery:'battery-high',flame:'flame',mood:'party-mode',info:'information-circle',switch:'button-switch-on-off',
+  play:'control-play',pause:'control-pause',stop:'control-stop',prev:'control-previous',next:'control-next'};
+const LOXSVG_TAGS={path:1,circle:1,rect:1,line:1,polyline:1,polygon:1,ellipse:1,g:1};
+const LOXSVG_ATTR={d:1,cx:1,cy:1,r:1,rx:1,ry:1,x:1,y:1,x1:1,y1:1,x2:1,y2:1,width:1,height:1,points:1,transform:1,
+  'fill-rule':1,'clip-rule':1,'stroke-width':1,'stroke-linecap':1,'stroke-linejoin':1,'stroke-miterlimit':1,opacity:1};
+function loxSvgClean(txt){
+  const doc=new DOMParser().parseFromString(txt,'image/svg+xml'), root=doc.documentElement;
+  if(!root||root.nodeName!=='svg') return null;
+  // fill/stroke erben wie in SVG (Wurzel: fill schwarz, stroke keiner), dann einfaerben
+  const walk=(el,pf,ps)=>{ let out=''; for(const c of el.children){ const t=c.nodeName; if(!LOXSVG_TAGS[t]) continue;
+      let a=''; for(const at of c.attributes){ if(LOXSVG_ATTR[at.name]&&!/[<>"]|url\(/i.test(at.value)) a+=' '+at.name+'="'+at.value+'"'; }
+      const f=c.getAttribute('fill')||pf, st=c.getAttribute('stroke')||ps;
+      a+=' fill="'+(f!=='none'?'currentColor':'none')+'" stroke="'+(st!=='none'?'currentColor':'none')+'"';
+      out+='<'+t+a+'>'+walk(c,f,st)+'</'+t+'>'; } return out; };
+  const inner=walk(root,root.getAttribute('fill')||'black',root.getAttribute('stroke')||'none'); return inner.length>20&&inner.length<20000?inner:null;
+}
+async function loadLoxIcons(){
+  let changed=false;
+  await Promise.all(Object.entries(LOX_ICONS).map(async([k,n])=>{
+    const key='loxi1:'+n; let inner=null;
+    try{ inner=localStorage.getItem(key); }catch(e){}
+    if(!inner){ try{ const r=await fetch('/icon?p=IconsFilled/'+n+'.svg'); if(r.ok){ inner=loxSvgClean(await r.text());
+        if(inner){ try{ localStorage.setItem(key,inner); }catch(e){} } } }catch(e){} }
+    if(inner){ ICONS[k]=inner; STROKE_ICONS[k]=1; changed=true; }
+  }));
+  if(changed&&typeof render==='function'){ try{ render(); }catch(e){} }
+}
+setTimeout(loadLoxIcons,0);
 function cellIco(n){ return STROKE_ICONS[n]?svg(ICONS[n]):svgF(ICONS[n]||ICONS.info); }
 // Aktionsreihe: Verlaufs-Knopf erkennen und Breiten-Klassen setzen
 // (n = Zahl der uebrigen Knoepfe, hasc = Verlauf dabei), siehe CSS .brow.act.

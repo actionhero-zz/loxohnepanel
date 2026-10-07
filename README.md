@@ -27,6 +27,7 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
   bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
   (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
   Belegung bleibt der klassische Screensaver.
+- **Farben aus dem Theme (0.19.74)** — Rot, Grün und Gelb, die noch fest im Code standen (Statuspunkte, Löschen-Knöpfe, Fortschritt, Markierungen), kommen jetzt aus den Theme-Farben; Text auf Grün ist weiß.
 - **Config-Bausteine vereinheitlicht (0.19.73)** — Popover und Dialoge mit einem Schatten ohne Rahmen, Segmentschalter als Spur mit Pillen, ein Badge-Stil (11 px statt 8 px Versalien), Schalter statt Checkboxen wie im Panel.
 - **Einheitliches Design-Raster (0.19.72)** — Rundungen nach goldenem Schnitt und konzentrisch (Karte 36,
   Kachel 22, Innenbox 14, Detail 8), Pillen in drei Höhen (56/44/30) mit halbrunden Enden, Mini-Buttons als

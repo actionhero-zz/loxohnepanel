@@ -1538,7 +1538,8 @@
   .updown .ub::after,.prevnext .ub::after,.campill::after{content:"";position:absolute;inset:-7px;}
   .tswitch::after{content:"";position:absolute;inset:-11px -4px;}
   /* Handy und 2x2-Raster: Kachelname zweizeilig statt nach einer Zeile abgeschnitten */
-  .grid.cells.g2 .svw[data-sz="1x1"] .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
+  .grid.cells.g2 .svw[data-sz="1x1"] .tile .name,
+  html.phone .screen>.grid:not(.panel):not(.list):not(.scheme) .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
     -webkit-box-orient:vertical;overflow:hidden;}
 
   /* Kamera "ganzes Bild": freie Raender fuellen (Config -> Kameras -> Bildausschnitt) */
@@ -1600,7 +1601,8 @@
      bisher aus der Bildschirmhoehe (4 Zeilen je Bild) und die Kacheln wurden je nach
      Geraet hoch oder flach. Jetzt: Zeilenhoehe = Spaltenbreite (Rand 10 + Innenabstand 10
      je Seite), gescrollt wird senkrecht. 2x1 = 2:1, 2x2 = 1:1 inkl. Fuge. */
-  html.phone .grid.cells{grid-auto-rows:calc((100vw - 40px - (var(--cc,2) - 1) * var(--gap,10px)) / var(--cc,2));}
+  html.phone .grid.cells,
+  html.phone .screen>.grid:not(.panel):not(.list):not(.scheme){grid-auto-rows:calc((100vw - 40px - (var(--cc,2) - 1) * var(--gap,10px)) / var(--cc,2));}
 
   /* ==== 2b einheitlich (0.19.82) ====
      Alle Eintraege einer Detailansicht (Stimmungen, Zonen, Wecker ...) sind Listenzeilen:

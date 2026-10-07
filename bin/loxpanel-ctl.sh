@@ -30,7 +30,7 @@ BACKUPDIR="REPLACELBPDATADIR/backups"
 KEEP=20                 # so viele Backups behalten, aeltere werden entfernt
 # Nicht ins Backup: heruntergeladene Fully-APKs (bis 80 MB, jederzeit neu ladbar)
 # und die Ein-Generationen-Sicherung panels.json.bak - sonst waechst jedes Backup.
-TAREX="--exclude=./adb/fully --exclude=./panels.json.bak"
+TAREX="--exclude=./adb/fully --exclude=./panels.json.bak --exclude=./diag.log*"
 
 # Image aus der Compose-Datei lesen (Fallback fest: lokal gebautes Tag).
 _img() {

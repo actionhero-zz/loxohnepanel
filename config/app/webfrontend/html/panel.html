@@ -3633,8 +3633,18 @@ let LANG='de-DE';   // Panel-Sprache (aus dem Profil, Server sendet sie im theme
 let wsRx=0, srvOk=true, srvDownT=null, msOk=true, msSince=0;
 function wsLost(){ el('conn').classList.remove('ok');
   if(!srvDownT && srvOk) srvDownT=setTimeout(()=>{ srvOk=false; linkBanner(); },5000); }
+// Diagnose (Config -> System -> Diagnose-Log): Ereignisse dieses Panels an den
+// Server melden. Offline gesammelt (max. 40) und beim Wiederverbinden nachgereicht.
+let DIAG=false; const _clogQ=[];
+function clog(m){ if(!DIAG) return; const t=new Date().toTimeString().slice(0,8)+' '+String(m).slice(0,400);
+  if(ws&&ws.readyState===1){ try{ ws.send(JSON.stringify({t:'clog',msg:t})); return; }catch(e){} }
+  _clogQ.push(t); if(_clogQ.length>40) _clogQ.shift(); }
+function clogFlush(){ while(DIAG&&_clogQ.length&&ws&&ws.readyState===1){ try{ ws.send(JSON.stringify({t:'clog',msg:'(nachgereicht) '+_clogQ.shift()})); }catch(e){ break; } } }
+window.addEventListener('error',e=>clog('JS-Fehler: '+(e.message||e)+' @'+String(e.filename||'').split('/').pop()+':'+(e.lineno||'')));
+window.addEventListener('unhandledrejection',e=>clog('Promise-Fehler: '+((e.reason&&e.reason.message)||e.reason)));
 // Verbindung verwerfen und sofort neu aufbauen (ohne auf onclose zu warten)
-function wsRestart(){ const w=ws; ws=null;
+function wsRestart(why){ clog('Verbindung neu aufgebaut: '+(why||'?')+' (letzte Nachricht vor '+Math.round((Date.now()-wsRx)/1000)+' s)');
+  const w=ws; ws=null;
   if(w){ w.onclose=null; w.onmessage=null; w.onopen=null; try{ w.close(); }catch(e){} }
   wsLost(); connect(); }
 // Pruefung, auch ausserhalb des Takts aufrufbar: haengt der Aufbau (> 15 s CONNECTING),
@@ -3642,8 +3652,8 @@ function wsRestart(){ const w=ws; ws=null;
 function wsCheck(){
   if(!ws){ connect(); return; }
   const age=Date.now()-wsRx;
-  if(ws.readyState===0){ if(age>15000) wsRestart(); return; }
-  if(ws.readyState!==1 || age>25000){ wsRestart(); return; }
+  if(ws.readyState===0){ if(age>15000) wsRestart('Aufbau haengt'); return; }
+  if(ws.readyState!==1 || age>25000){ wsRestart(ws.readyState!==1?'Verbindung zu':'keine Antwort'); return; }
   send({t:'ping', at:Date.now()});
 }
 setInterval(wsCheck,10000);
@@ -3651,7 +3661,8 @@ setInterval(wsCheck,10000);
 // Hardware (Shelly, Android-WebView) im Hintergrund stark gedrosselt - deshalb sofort
 // pruefen statt auf den naechsten Takt zu warten (sonst laufen Werte unbemerkt alt).
 ['visibilitychange','pageshow','focus','online'].forEach(ev=>(ev==='visibilitychange'?document:window).addEventListener(ev,()=>{
-  if(document.hidden) return; if(!ws || ws.readyState!==1 || Date.now()-wsRx>12000) wsRestart(); else send({t:'ping', at:Date.now()}); }));
+  if(document.hidden){ clog('Seite verborgen ('+ev+')'); return; }
+  if(!ws || ws.readyState!==1 || Date.now()-wsRx>12000) wsRestart('wieder sichtbar ('+ev+')'); else send({t:'ping', at:Date.now()}); }));
 function linkBanner(){
   const txt = !srvOk ? 'Keine Verbindung zum LoxPanel-Server'
     : !msOk ? 'Miniserver nicht erreichbar'+(msSince?' seit '+new Date(msSince).toLocaleTimeString(LANG||undefined,{hour:'2-digit',minute:'2-digit'}):'')+' – Werte evtl. veraltet'
@@ -3681,7 +3692,7 @@ function connect(){
     // waehrend der Trennung verpasst wurde, beenden. Klingelt es noch, schickt
     // der Server das Klingeln beim Verbinden erneut.
     [..._toneSources].filter(x=>String(x).indexOf('ring')===0).forEach(x=>toneOff(x)); stopRingAudio(); };
-  ws.onclose=()=>{ wsLost(); setTimeout(connect,1500); };
+  ws.onclose=e=>{ clog('Verbindung geschlossen (Code '+(e&&e.code)+')'); wsLost(); setTimeout(connect,1500); };
   ws.onmessage=e=>{
     wsRx=Date.now();
     let msg;
@@ -3755,6 +3766,7 @@ function connect(){
       if(msg.build){ if(CODE_BUILD && msg.build!==CODE_BUILD){ location.reload(); return; } CODE_BUILD=msg.build; }
       return; }
     if(msg.t==='cmdack'){ cmdAck(msg); return; }
+    if(msg.t==='diag'){ DIAG=!!msg.on; if(DIAG){ clog('Diagnose an · '+innerWidth+'x'+innerHeight+' · '+navigator.userAgent.slice(0,120)); clogFlush(); } return; }
     if(msg.t==='cmdwatch'){ cmdWatch=!!msg.on; if(!cmdWatch){ cmdPend.forEach(e=>clearTimeout(e.t)); cmdPend.clear(); } return; }
     if(msg.t==='ms'){ msOk=!!msg.ok; msSince=msg.since||0; linkBanner(); return; }
     if(msg.t==='notify'){ wake(); showNotify(msg.text, msg.level, msg.secs); return; }  // Nachricht einblenden
@@ -4480,8 +4492,14 @@ function camSwStart(cell){
   cell.querySelectorAll('.campill').forEach(b=>{
     // Tipp auf eine Pille schaltet nur um - nicht das Dashboard schliessen oder wischen
     ['pointerdown','pointerup','touchstart','touchend','mousedown'].forEach(ev=>b.addEventListener(ev,e=>e.stopPropagation()));
-    b.addEventListener('click',e=>{ e.stopPropagation(); show(+b.dataset.ci); }); });
-  show(Math.max(0, cams.findIndex(c=>c.id===(camSel[cell.dataset.k]||it.cam))));
+    b.addEventListener('click',e=>{ e.stopPropagation(); show(+b.dataset.ci); idle(); }); });
+  // Ohne Bedienung nach n Minuten (Widget-Einstellung, Standard 3, 0 = aus) zurueck zur ersten Kamera
+  const back=(it.back==null?3:+it.back), first=Math.max(0, cams.findIndex(c=>c.id===it.cam));
+  const idle=()=>{ clearTimeout(cell._camBack); if(back>0 && cams.length>1 && cur!==first)
+    cell._camBack=setTimeout(()=>{ if(cell.isConnected) show(first); }, back*60000); };
+  cell._camIdle=idle;   // bei erneutem Start nur die aktuelle Funktion nutzen, Listener einmal
+  if(!cell._camIdleOn){ cell._camIdleOn=true; cell.addEventListener('pointerdown', ()=>cell._camIdle&&cell._camIdle(), true); }
+  show(Math.max(0, cams.findIndex(c=>c.id===(camSel[cell.dataset.k]||it.cam)))); idle();
   if(preload) setTimeout(()=>cams.forEach((c,i)=>start(i)), 400);   // uebrige Kameras im Hintergrund vorladen
   camPillsDodge(cell);
 }

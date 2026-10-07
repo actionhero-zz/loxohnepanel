@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.83"
+APP_VERSION = "0.19.84"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -707,6 +707,9 @@ def _widget_entry(it: dict, x: int, y: int, w: int, h: int) -> dict | None:
                     ids.append(c)
             if ids:
                 e["cams"] = ids
+        back = it.get("back")                     # Ruecksprung zur ersten Kamera nach n Minuten (0 = aus, Standard 3)
+        if isinstance(back, (int, float)) and not isinstance(back, bool) and 0 <= back <= 240 and int(back) != 3:
+            e["back"] = int(back)
     if it["type"] == "status":
         ids = []
         for u in (it.get("ctls") or [])[:32]:
@@ -1242,6 +1245,61 @@ def _clean_crop(v) -> dict | None:
     return out
 
 
+# ---- Diagnose-Log (System -> Diagnose) ----
+# Ausfuehrliches Protokoll zum Fehlersuchen: Server-Meldungen ab DEBUG, Panel-
+# Ereignisse (Verbindungsabbrueche, JS-Fehler) und eine Statistik je Minute.
+# Begrenzt auf DIAG_MAX * (DIAG_KEEP + 1) Byte, liegt im Konfig-Ordner (bleibt
+# beim Update erhalten, wird nicht ins Backup aufgenommen).
+DIAG_FILE = _CFGDIR / "diag.log"
+DIAG_MAX = 5 * 1024 * 1024
+DIAG_KEEP = 2
+_diag_handler: logging.Handler | None = None
+
+
+def _diag_config() -> bool:
+    try:
+        d = _load_cfg().get("diag")
+    except Exception:
+        return False
+    return bool(d.get("on")) if isinstance(d, dict) else False
+
+
+def _diag_files() -> list:
+    """Vorhandene Log-Dateien, aelteste zuerst (diag.log.2, .1, diag.log)."""
+    fs = [DIAG_FILE.with_name(f"diag.log.{i}") for i in range(DIAG_KEEP, 0, -1)] + [DIAG_FILE]
+    return [f for f in fs if f.is_file()]
+
+
+def _diag_apply(on: bool) -> None:
+    """Datei-Protokoll an-/abschalten (wirkt sofort, ohne Neustart)."""
+    global _diag_handler
+    import logging.handlers
+    lp = logging.getLogger("loxpanel")
+    if on and _diag_handler is None:
+        try:
+            h = logging.handlers.RotatingFileHandler(DIAG_FILE, maxBytes=DIAG_MAX,
+                                                     backupCount=DIAG_KEEP, encoding="utf-8")
+        except OSError as err:
+            log.warning("Diagnose-Log nicht moeglich: %s", err)
+            return
+        h.setLevel(logging.DEBUG)
+        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s"))
+        root = logging.getLogger()
+        for other in root.handlers:              # Konsole (LoxBerry-Log) bleibt bei INFO
+            if other.level == logging.NOTSET:
+                other.setLevel(logging.INFO)
+        root.addHandler(h)
+        lp.setLevel(logging.DEBUG)
+        _diag_handler = h
+        log.info("Diagnose-Log an (%s, Version %s)", DIAG_FILE.name, APP_VERSION)
+    elif not on and _diag_handler is not None:
+        log.info("Diagnose-Log aus")
+        logging.getLogger().removeHandler(_diag_handler)
+        _diag_handler.close()
+        _diag_handler = None
+        lp.setLevel(logging.NOTSET)
+
+
 def _cmd_watch_config() -> bool:
     """Befehls-Monitoring (loxpanel.cfg `cmdwatch.on`, Standard an): das Panel
     wartet auf die Quittung jedes Befehls und meldet, wenn keine kommt."""
@@ -1418,6 +1476,9 @@ class App:
         # NACH erfolgreichem Senden - ein abgebrochener Versuch darf nie als
         # zugestellt gelten.
         self._last_sent: dict = {}
+        # Sendesperre je Panel-Verbindung: Navigation (ws_handler) und Live-Updates
+        # (broadcaster) schreiben sonst gleichzeitig in dieselbe Verbindung.
+        self._ws_locks: dict = {}
         self.jwt: str | None = None
         self.alg: str = "SHA1"
         self._auth_gen = 0               # zaehlt jede Anmeldung (-> _renew_token)
@@ -1495,6 +1556,9 @@ class App:
         self.ms_reason = ""
         self.ms_next_retry = 0.0
         self.cmd_watch = _cmd_watch_config()
+        self.diag = _diag_config()               # Diagnose-Log (System -> Diagnose)
+        self._diag_vals = 0                      # empfangene Werte seit der letzten Statistik
+        self._diag_next = 0.0
         self._msinfo: dict = {}          # Systemwerte des Miniservers (Startseite), s. ms_sysinfo
         self._msinfo_t = 0.0
         # Wecker (AlarmClock): isAlarmActive-State-UUID -> Control-UUID. Flanke
@@ -1522,7 +1586,7 @@ class App:
         Sende-Cache (_last_sent) wurde beim normalen Trennen nie geleert."""
         for d in (self.conn_route, self.conn_prof, self.conn_dev, self.conn_info,
                   self.conn_player, self.conn_energy, self.conn_chart, self.conn_camera,
-                  self._last_sent):
+                  self._last_sent, self._ws_locks):
             d.pop(ws, None)
 
     def _spawn(self, coro) -> None:
@@ -7282,6 +7346,7 @@ class App:
 
     def _on_value(self, uuid: str, value: object) -> None:
         self.states[uuid] = value
+        self._diag_vals += 1
         self._dirty = True
         if uuid in self.bell_map:
             now = bool(value)
@@ -7464,16 +7529,38 @@ class App:
         sterbenden Sockets auch RuntimeError, oder send blockiert bei half-open).
         Das ws wird zusaetzlich geschlossen, damit das Panel den Abbruch bemerkt
         und sich neu verbindet (statt still ohne Live-Updates weiterzulaufen)."""
+        lock = self._ws_locks.get(ws)
+        if lock is None:
+            lock = self._ws_locks[ws] = asyncio.Lock()
+
+        async def _do():
+            async with lock:
+                await ws.send_json(payload)
         try:
-            await asyncio.wait_for(ws.send_json(payload), timeout=5)
+            # Zeitlimit gilt fuer Warten auf die Sperre UND das Senden
+            await asyncio.wait_for(_do(), timeout=5)
             return True
-        except Exception:
+        except Exception as err:
+            if ws in self.conn_route:
+                log.info("Panel '%s' getrennt: Senden fehlgeschlagen (%s)",
+                         self.conn_dev.get(ws) or (self.conn_info.get(ws) or {}).get("ip") or "?",
+                         type(err).__name__ + (f": {err}" if str(err) else ""))
             self.drop_conn(ws)
             try:
                 await ws.close()
             except Exception:
                 pass
             return False
+
+    async def _send_all(self, targets, payload) -> int:
+        """An mehrere Panels GLEICHZEITIG senden: ein haengendes Panel (z. B.
+        schlafendes WLAN) darf die anderen nicht ausbremsen - nacheinander mit je
+        5 s Zeitlimit stauten sich sonst die Live-Werte im ganzen Haus."""
+        targets = list(targets)
+        if not targets:
+            return 0
+        res = await asyncio.gather(*(self._send_or_drop(ws, payload) for ws in targets))
+        return sum(1 for r in res if r)
 
     async def ms_sysinfo(self) -> dict:
         """Systemwerte des Miniservers fuer die Startseite, hoechstens alle 30 s
@@ -7508,13 +7595,14 @@ class App:
 
     async def _broadcast_tick(self) -> None:
         now = time.time()
+        if self.diag and now >= self._diag_next:
+            self._diag_stats(now)
         ok = self.ms_ok(now)
         if ok != self.ms_sent:
             self.ms_sent = ok
             if not ok:
                 log.warning("Miniserver seit %ds nicht erreichbar -> Panels melden", int(now - self.ms_down_since))
-            for ws in list(self.conn_route):
-                await self._send_or_drop(ws, {"t": "ms", "ok": ok, "since": int(self.ms_down_since * 1000)})
+            await self._send_all(self.conn_route, {"t": "ms", "ok": ok, "since": int(self.ms_down_since * 1000)})
         if now >= self._sl_next:
             self._sl_next = now + 3
             self._scene_light_learn(now)
@@ -7525,17 +7613,15 @@ class App:
                      else (" (Standardton)" if ev.get("sound") else ""))
             if ev["on"]:
                 self._spawn(self.display_drivers(True))   # Kiosk-Apps ueber HTTP wecken
-            for ws in list(self.conn_route):
-                await self._send_or_drop(ws, {"t": "ring", "id": ev["id"],
-                                              "on": ev["on"], "sound": ev.get("sound", False),
-                                              "soundUrl": ev.get("soundUrl")})
+            await self._send_all(self.conn_route, {"t": "ring", "id": ev["id"],
+                                                   "on": ev["on"], "sound": ev.get("sound", False),
+                                                   "soundUrl": ev.get("soundUrl")})
         while self._pending_alarm:
             ev = self._pending_alarm.pop(0)
             log.info("Wecker %s → %s", "an" if ev["on"] else "aus", ev["id"])
             if ev["on"]:
                 self._spawn(self.display_drivers(True))
-            for ws in list(self.conn_route):
-                await self._send_or_drop(ws, {"t": "alarm", "id": ev["id"], "on": ev["on"]})
+            await self._send_all(self.conn_route, {"t": "alarm", "id": ev["id"], "on": ev["on"]})
         while self._pending_sec:
             ev = self._pending_sec.pop(0)
             msg = self.sec_alarm_msg(ev["id"], ev["on"])
@@ -7543,116 +7629,138 @@ class App:
             log.info("Sicherheits-Alarm %s → %s (%d Panels)", "an" if ev["on"] else "aus", ev["id"], len(targets))
             if ev["on"] and targets:
                 self._spawn(self.display_drivers(True))
-            for ws in targets:
-                # Ton je Panel (Profil -> Alarm-Vollbild -> "Ton am Panel")
-                await self._send_or_drop(ws, {**msg, "sound": bool((self.conn_prof.get(ws) or {}).get("alarmTone"))})
+            # Ton je Panel (Profil -> Alarm-Vollbild -> "Ton am Panel"), alle gleichzeitig
+            await asyncio.gather(*(self._send_or_drop(ws, {**msg, "sound": bool((self.conn_prof.get(ws) or {}).get("alarmTone"))})
+                                   for ws in targets))
         if self._front_dirty:
             # Front (Kalender/Wetter) an alle Panels. Neu verbundene bekommen den
             # aktuellen Stand ausserdem direkt beim Verbinden (ws_handler).
             self._front_dirty = False
             if self._front is not None:
-                for ws in list(self.conn_route):
-                    await self._send_or_drop(ws, self._front)
+                await self._send_all(self.conn_route, self._front)
         if self._pending_reload:
             # Loxone-Struktur hat sich geaendert (Config) -> Panels neu laden, damit
             # neue/umbenannte Controls erscheinen. Nur bei echter Aenderung gesetzt.
             self._pending_reload = False
-            for ws in list(self.conn_route):
-                await self._send_or_drop(ws, {"t": "reload"})
+            await self._send_all(self.conn_route, {"t": "reload"})
         night = self._night_now()
         if night != self._night_on:
             # Nur beim Wechsel senden — die Panels halten den Zustand selbst.
             self._night_on = night
             log.info("Nachtmodus %s", "an" if night else "aus")
-            for ws in list(self.conn_route):
-                await self._send_or_drop(ws, {"t": "night", "on": night})
+            await self._send_all(self.conn_route, {"t": "night", "on": night})
         if self._dirty and self.conn_route:
             self._dirty = False
-            for ws, route in list(self.conn_route.items()):
-                prof = self.conn_prof.get(ws)
-                try:
-                    msg = self.render(route, prof)
-                except Exception:
-                    # EINE fehlerhafte Kachel/Route darf NIEMALS die Live-Update-
-                    # Schleife killen. Fehler loggen, diese Verbindung ueberspringen.
-                    log.exception("render() fehlgeschlagen (route=%s) — uebersprungen", route)
-                    continue
-                # Split-Layout: Player-Pane des aktiven Tabs mitrendern (Zone kommt
-                # vom Client via setplayer -> conn_player). Fehler isolieren.
-                player_msg = None
-                _zone = self.conn_player.get(ws)
-                if _zone:
-                    try:
-                        pb = self.player_blocks(_zone)
-                        player_msg = {"t": "player", "blocks": pb} if pb is not None else None
-                    except Exception:
-                        log.exception("player_blocks fehlgeschlagen (%s)", _zone)
-                # Split-Layout: Energiefluss-Pane des aktiven Tabs mitrendern (Kachel
-                # kommt vom Client via setenergy -> conn_energy). Fehler isolieren.
-                energy_msg = None
-                _euid = self.conn_energy.get(ws)
-                if _euid:
-                    try:
-                        eb = self.energy_blocks(_euid)
-                        energy_msg = {"t": "energy", **eb} if eb is not None else None
-                    except Exception:
-                        log.exception("energy_blocks fehlgeschlagen (%s)", _euid)
-                # Split-Layout: Verlaufs-Pane (chart:<uuid>) des aktiven Tabs
-                # mitrendern (kommt vom Client via setchart -> conn_chart).
-                chart_msg = None
-                _chart = self.conn_chart.get(ws)
-                if _chart:
-                    try:
-                        cb = self.chart_blocks(*_chart)
-                        chart_msg = {"t": "chart", **cb} if cb is not None else None
-                    except Exception:
-                        log.exception("chart_blocks fehlgeschlagen (%s)", _chart)
-                # Split-Layout: Kamera-Pane (Intercom-Vollansicht) des aktiven Tabs
-                # mitrendern (kommt vom Client via setcamera -> conn_camera).
-                camera_msg = None
-                _cuid = self.conn_camera.get(ws)
-                if _cuid:
-                    try:
-                        ib = self.intercom_blocks(_cuid)
-                        camera_msg = {"t": "camera", "blocks": ib} if ib is not None else None
-                    except Exception:
-                        log.exception("intercom_blocks fehlgeschlagen (%s)", _cuid)
-                saver_msg = None
-                try:
-                    saver_msg = self.saver_data(self.conn_prof.get(ws) or {})
-                except Exception:
-                    log.exception("saver_data fehlgeschlagen")
-                # Nur senden, was sich seit der letzten Zustellung an DIESE
-                # Verbindung geaendert hat. Der Tick laeuft, sobald sich
-                # irgendein Wert im Haus bewegt — meist betrifft das die
-                # Ansicht dieses Panels gar nicht, und das Panel wuerde
-                # dieselbe Ansicht erneut bekommen und komplett neu zeichnen.
-                last = self._last_sent.setdefault(ws, {})
-                if msg != last.get("view"):
-                    if not await self._send_or_drop(ws, msg):
-                        continue
-                    last["view"] = msg
-                if player_msg is not None and player_msg != last.get("player"):
-                    if not await self._send_or_drop(ws, player_msg):
-                        continue
-                    last["player"] = player_msg
-                if energy_msg is not None and energy_msg != last.get("energy"):
-                    if not await self._send_or_drop(ws, energy_msg):
-                        continue
-                    last["energy"] = energy_msg
-                if saver_msg is not None and saver_msg != last.get("saver"):
-                    if not await self._send_or_drop(ws, saver_msg):
-                        continue
-                    last["saver"] = saver_msg
-                if chart_msg is not None and chart_msg != last.get("chart"):
-                    if await self._send_or_drop(ws, chart_msg):
-                        last["chart"] = chart_msg
-                    else:
-                        self._last_sent.pop(ws, None)
-                        continue
-                if camera_msg is not None and camera_msg != last.get("camera"):
-                    if await self._send_or_drop(ws, camera_msg):
-                        last["camera"] = camera_msg
+            # Jedes Panel einzeln und GLEICHZEITIG beliefern (siehe _send_all):
+            # ein haengendes Panel verzoegert nur sich selbst, nicht das ganze Haus.
+            await asyncio.gather(*(self._push_conn(ws, route) for ws, route in list(self.conn_route.items())))
+
+    async def _push_conn(self, ws, route) -> None:
+        """Aktuelle Ansicht (plus Panes, Dashboard) an EIN Panel - nur was sich
+        seit der letzten Zustellung an dieses Panel geaendert hat."""
+        if ws not in self.conn_route:             # inzwischen getrennt
+            return
+        prof = self.conn_prof.get(ws)
+        try:
+            msg = self.render(route, prof)
+        except Exception:
+            # EINE fehlerhafte Kachel/Route darf NIEMALS die Live-Update-
+            # Schleife killen. Fehler loggen, diese Verbindung ueberspringen.
+            log.exception("render() fehlgeschlagen (route=%s) — uebersprungen", route)
+            return
+        # Split-Layout: Player-Pane des aktiven Tabs mitrendern (Zone kommt
+        # vom Client via setplayer -> conn_player). Fehler isolieren.
+        player_msg = None
+        _zone = self.conn_player.get(ws)
+        if _zone:
+            try:
+                pb = self.player_blocks(_zone)
+                player_msg = {"t": "player", "blocks": pb} if pb is not None else None
+            except Exception:
+                log.exception("player_blocks fehlgeschlagen (%s)", _zone)
+        # Split-Layout: Energiefluss-Pane des aktiven Tabs mitrendern (Kachel
+        # kommt vom Client via setenergy -> conn_energy). Fehler isolieren.
+        energy_msg = None
+        _euid = self.conn_energy.get(ws)
+        if _euid:
+            try:
+                eb = self.energy_blocks(_euid)
+                energy_msg = {"t": "energy", **eb} if eb is not None else None
+            except Exception:
+                log.exception("energy_blocks fehlgeschlagen (%s)", _euid)
+        # Split-Layout: Verlaufs-Pane (chart:<uuid>) des aktiven Tabs
+        # mitrendern (kommt vom Client via setchart -> conn_chart).
+        chart_msg = None
+        _chart = self.conn_chart.get(ws)
+        if _chart:
+            try:
+                cb = self.chart_blocks(*_chart)
+                chart_msg = {"t": "chart", **cb} if cb is not None else None
+            except Exception:
+                log.exception("chart_blocks fehlgeschlagen (%s)", _chart)
+        # Split-Layout: Kamera-Pane (Intercom-Vollansicht) des aktiven Tabs
+        # mitrendern (kommt vom Client via setcamera -> conn_camera).
+        camera_msg = None
+        _cuid = self.conn_camera.get(ws)
+        if _cuid:
+            try:
+                ib = self.intercom_blocks(_cuid)
+                camera_msg = {"t": "camera", "blocks": ib} if ib is not None else None
+            except Exception:
+                log.exception("intercom_blocks fehlgeschlagen (%s)", _cuid)
+        saver_msg = None
+        try:
+            saver_msg = self.saver_data(self.conn_prof.get(ws) or {})
+        except Exception:
+            log.exception("saver_data fehlgeschlagen")
+        # Nur senden, was sich seit der letzten Zustellung an DIESE
+        # Verbindung geaendert hat. Der Tick laeuft, sobald sich
+        # irgendein Wert im Haus bewegt — meist betrifft das die
+        # Ansicht dieses Panels gar nicht, und das Panel wuerde
+        # dieselbe Ansicht erneut bekommen und komplett neu zeichnen.
+        if self.conn_route.get(ws) is not route:
+            return       # Panel hat inzwischen navigiert - die neue Ansicht kam schon per nav
+        last = self._last_sent.setdefault(ws, {})
+        if msg != last.get("view"):
+            if not await self._send_or_drop(ws, msg):
+                return
+            last["view"] = msg
+        if player_msg is not None and player_msg != last.get("player"):
+            if not await self._send_or_drop(ws, player_msg):
+                return
+            last["player"] = player_msg
+        if energy_msg is not None and energy_msg != last.get("energy"):
+            if not await self._send_or_drop(ws, energy_msg):
+                return
+            last["energy"] = energy_msg
+        if saver_msg is not None and saver_msg != last.get("saver"):
+            if not await self._send_or_drop(ws, saver_msg):
+                return
+            last["saver"] = saver_msg
+        if chart_msg is not None and chart_msg != last.get("chart"):
+            if await self._send_or_drop(ws, chart_msg):
+                last["chart"] = chart_msg
+            else:
+                self._last_sent.pop(ws, None)
+                return
+        if camera_msg is not None and camera_msg != last.get("camera"):
+            if await self._send_or_drop(ws, camera_msg):
+                last["camera"] = camera_msg
+
+    def _diag_stats(self, now: float) -> None:
+        """Diagnose: eine Zeile je Minute - Miniserver-Zustand, Werte/Minute,
+        Alter der letzten Miniserver-Nachricht und die verbundenen Panels."""
+        first = not self._diag_next
+        self._diag_next = now + 60
+        rx = getattr(self.ws, "_last_rx", 0) if self.ws else 0
+        age = f"{time.monotonic() - rx:.0f}s" if rx else "-"
+        panels = ", ".join(f"{self.conn_dev.get(w) or (self.conn_info.get(w) or {}).get('ip') or '?'}"
+                           f"[{(r or {}).get('view')}:{(r or {}).get('tab') or (r or {}).get('id') or ''}]"
+                           for w, r in list(self.conn_route.items())) or "keine"
+        log.info("Diagnose: Miniserver %s, letzte Nachricht vor %s, %s Werte/min, %d States, Panels: %s",
+                 "verbunden" if self.ms_up else "GETRENNT", age,
+                 "?" if first else self._diag_vals, len(self.states), panels)
+        self._diag_vals = 0
 
     async def broadcaster(self) -> None:
         # Diese Schleife darf NIEMALS sterben — sonst bekommen ALLE Panels keine
@@ -8272,6 +8380,60 @@ async def api_settings_cmdwatch(request: web.Request) -> web.Response:
     return web.json_response({"ok": True})
 
 
+def _diag_info(app: "App") -> dict:
+    files = _diag_files()
+    return {"ok": True, "on": app.diag, "size": sum(f.stat().st_size for f in files),
+            "max": DIAG_MAX * (DIAG_KEEP + 1)}
+
+
+async def api_settings_diag(request: web.Request) -> web.Response:
+    """Diagnose-Log: GET Zustand + Groesse, POST {on} an/aus (wirkt sofort, auch an den Panels)."""
+    app: App = request.app["app"]
+    if request.method == "POST":
+        try:
+            data = await request.json()
+        except (ValueError, aiohttp.ContentTypeError):
+            return web.json_response({"ok": False, "error": "kein gültiges JSON"}, status=400)
+        on = bool(data.get("on"))
+        cfg = _load_cfg()
+        cfg["diag"] = {"on": on}
+        try:
+            _write_cfg(cfg)
+        except OSError as err:
+            return web.json_response({"ok": False, "error": str(err)}, status=500)
+        app.diag = on
+        app._diag_next = 0.0
+        _diag_apply(on)
+        await app._send_all(app.conn_route, {"t": "diag", "on": on})
+    return web.json_response(_diag_info(app))
+
+
+async def api_settings_diag_download(request: web.Request) -> web.StreamResponse:
+    """Alle Log-Dateien (aelteste zuerst) als eine Textdatei."""
+    files = _diag_files()
+    head = (f"LoxPanel Diagnose-Log · Version {APP_VERSION} · erstellt "
+            f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n").encode()
+    body = head + b"".join(f.read_bytes() for f in files) if files else head + "(leer)\n".encode()
+    name = f"loxpanel-diagnose-{datetime.now().strftime('%Y%m%d-%H%M')}.log"
+    return web.Response(body=body, content_type="text/plain", charset="utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"', **_NOCACHE})
+
+
+async def api_settings_diag_clear(request: web.Request) -> web.Response:
+    """Log-Dateien loeschen; laeuft das Log, beginnt es leer weiter."""
+    app: App = request.app["app"]
+    was = app.diag
+    _diag_apply(False)
+    for f in _diag_files():
+        try:
+            f.unlink()
+        except OSError as err:
+            log.warning("Diagnose-Log nicht geloescht (%s): %s", f.name, err)
+    if was:
+        _diag_apply(True)
+    return web.json_response(_diag_info(app))
+
+
 async def api_settings_night(request: web.Request) -> web.Response:
     """Nacht-Ausloeser: Baustein, dessen `active`-State den Nachtmodus schaltet.
     Leer = keiner, dann entscheiden die Sonnenzeiten."""
@@ -8777,11 +8939,8 @@ async def api_device_name(request: web.Request) -> web.Response:
     for ws, info in list(app.conn_info.items()):
         if info.get("ip") != ip or info.get("dev"):
             continue
-        try:
-            await ws.send_json({"t": "setdevice", "name": name})
+        if await app._send_or_drop(ws, {"t": "setdevice", "name": name}):
             n += 1
-        except (ConnectionError, RuntimeError):
-            pass
     return web.json_response({"ok": n > 0, "sent": n,
                               **({} if n else {"error": "kein Geraet ohne Kennung unter dieser IP"})})
 
@@ -9031,15 +9190,10 @@ async def _push(app: "App", msg: dict, panel: str = "", device: str = "") -> int
     Gibt die Anzahl erreichter Panels zurueck."""
     panel = (panel or "").strip()
     device = (device or "").strip()
-    n = 0
-    for ws in list(app.conn_prof):
-        if panel and (app.conn_prof.get(ws) or {}).get("id") != panel:
-            continue
-        if device and app.conn_dev.get(ws) != device:
-            continue
-        if await app._send_or_drop(ws, msg):
-            n += 1
-    return n
+    targets = [ws for ws in list(app.conn_prof)
+               if (not panel or (app.conn_prof.get(ws) or {}).get("id") == panel)
+               and (not device or app.conn_dev.get(ws) == device)]
+    return await app._send_all(targets, msg)
 
 
 def _push_filter(request: web.Request, d: dict) -> tuple:
@@ -9163,13 +9317,9 @@ async def api_testring(request: web.Request) -> web.Response:
         for ws, prof in list(app.conn_prof.items()):
             if target and (prof or {}).get("id") != target:
                 continue
-            try:
-                await ws.send_json({"t": "ring", "id": uuid, "on": on,
-                                    "sound": snd, "soundUrl": sound_url})
+            if await app._send_or_drop(ws, {"t": "ring", "id": uuid, "on": on,
+                                            "sound": snd, "soundUrl": sound_url}):
                 n += 1
-            except Exception as err:
-                log.debug("testring-Push an Panel fehlgeschlagen: %s", err)
-                app.drop_conn(ws)
         return n
 
     n = await _send(True)
@@ -9644,7 +9794,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     # Ab hier alles im try: bricht die Verbindung schon waehrend der ersten
     # Sendungen ab, raeumt finally die eben angelegten Eintraege trotzdem weg.
     try:
-        await ws.send_json({"t": "theme", "vars": prof["vars"], "tabs": prof["tabs"],
+        await app._send_or_drop(ws, {"t": "theme", "vars": prof["vars"], "tabs": prof["tabs"],
                             "tabMeta": app._tab_meta(prof["tabs"], prof), "title": prof["title"],
                             "lang": prof["lang"], "fill": prof["fill"], "split": prof["split"],
                             "phone": prof.get("phone", False),
@@ -9666,20 +9816,21 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "bgImg": bg_url(prof["id"]) if prof.get("ambBg") == "image" else "",
                             "agent": app._has_agent(dev)})
         _first = app.render(app.conn_route[ws], prof)
-        await ws.send_json(_first)
+        await app._send_or_drop(ws, _first)
         app._last_sent.setdefault(ws, {})["view"] = _first
         # Player-Pane fordert der Client selbst an (setplayer), sobald ein Tab mit
         # Player-Pane aktiv ist — je Tab eine eigene Zone moeglich.
         # Kalender/Wetter fuer die Uhr-Startseite sofort mitschicken (falls schon geladen)
         if app._front is not None:
-            await ws.send_json(app._front)
+            await app._send_or_drop(ws, app._front)
         _sv = app.saver_data(prof)
         if _sv is not None:
-            await ws.send_json(_sv)
+            await app._send_or_drop(ws, _sv)
             app._last_sent.setdefault(ws, {})["saver"] = _sv
-        await ws.send_json({"t": "ms", "ok": app.ms_ok(), "since": int(app.ms_down_since * 1000)})
-        await ws.send_json({"t": "cmdwatch", "on": app.cmd_watch})
-        await ws.send_json({"t": "clock", **server_clock()})
+        await app._send_or_drop(ws, {"t": "ms", "ok": app.ms_ok(), "since": int(app.ms_down_since * 1000)})
+        await app._send_or_drop(ws, {"t": "cmdwatch", "on": app.cmd_watch})
+        await app._send_or_drop(ws, {"t": "diag", "on": app.diag})
+        await app._send_or_drop(ws, {"t": "clock", **server_clock()})
         # Klingelt es gerade noch (bell-Impuls steht an), bekommt auch ein neu
         # bzw. wieder verbundenes Panel das Klingeln. Ein Panel, das waehrend des
         # Klingelns schlief, hat sonst das Ende verpasst und klingelt ewig weiter
@@ -9689,12 +9840,12 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 _ent = app.intercom_cfg.get(_cid)
                 _snd = bool(_ent.get("sound")) if isinstance(_ent, dict) else False
                 _sf = _sound_file_for(_cid) if _snd else None
-                await ws.send_json({"t": "ring", "id": _cid, "on": True, "sound": _snd,
+                await app._send_or_drop(ws, {"t": "ring", "id": _cid, "on": True, "sound": _snd,
                                     "soundUrl": (f"/api/sound?id={_cid}" if _sf else None)})
         # Laeuft gerade ein Alarm, zeigt auch ein neu verbundenes Panel das Vollbild
         for _au in app.sec_alarms_active():
             if app.sec_alarm_wanted(prof, _au):
-                await ws.send_json({**app.sec_alarm_msg(_au, True), "sound": bool(prof.get("alarmTone"))})
+                await app._send_or_drop(ws, {**app.sec_alarm_msg(_au, True), "sound": bool(prof.get("alarmTone"))})
         async for msg in ws:
             if msg.type != WSMsgType.TEXT:
                 continue
@@ -9715,7 +9866,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                     log.exception("render() (nav) fehlgeschlagen fuer route %s", route)
                     view_msg = {"t": "view", "title": "Fehler", "route": route,
                                 "blocks": [{"k": "status", "text": "Diese Ansicht konnte nicht geladen werden."}]}
-                await ws.send_json(view_msg)
+                await app._send_or_drop(ws, view_msg)
                 # Auch die Navigation sendet am Tick vorbei — eintragen, sonst
                 # schickt der naechste Tick dieselbe Ansicht ein zweites Mal.
                 app._last_sent.setdefault(ws, {})["view"] = view_msg
@@ -9727,14 +9878,18 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
             elif data.get("t") == "ping":
                 # Lebenszeichen des Panels: es erkennt so eine tote Verbindung.
                 # Dazu die Serverzeit, damit falsch gestellte Geraete richtig anzeigen.
-                await ws.send_json({"t": "pong", "at": data.get("at"), **server_clock()})
+                await app._send_or_drop(ws, {"t": "pong", "at": data.get("at"), **server_clock()})
             elif data.get("t") == "devinfo" and uid:
                 # Steckbrief -> Geraet erkennen/anlegen. Neu benannt: Name an die
                 # Visu, die verbindet sich damit neu (Zoom/Wach-Sperre greifen).
                 info = _clean_devinfo(data.get("info"))
                 name, _new = app.device_detect(uid, dev, info, request.remote or "")
                 if name != dev:
-                    await ws.send_json({"t": "setdevice", "name": name})
+                    await app._send_or_drop(ws, {"t": "setdevice", "name": name})
+            elif data.get("t") == "clog":
+                # Diagnose: Ereignis vom Panel (Verbindungsabbruch, JS-Fehler ...)
+                if app.diag:
+                    log.info("Panel '%s': %s", dev or request.remote or "?", str(data.get("msg") or "")[:500])
             elif data.get("t") == "idle":
                 # Visu ohne Kiosk-JS meldet Leerlauf -> Display ueber Treiber aus
                 if dev:
@@ -9745,12 +9900,12 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                                          None if pin is None else str(pin))
                 if data.get("id") is not None:
                     # Quittung fuer das Befehls-Monitoring des Panels
-                    await ws.send_json({"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
+                    await app._send_or_drop(ws, {"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
                 if pin is not None:
-                    await ws.send_json({"t": "cmdresult", "ok": code == "200"})
+                    await app._send_or_drop(ws, {"t": "cmdresult", "ok": code == "200"})
                 elif code != "200" and data.get("uuid") and data.get("cmd"):
                     # Sichtbar machen statt still verschlucken (Details im Log)
-                    await ws.send_json({"t": "notify", "level": "warn", "secs": 4, "text":
+                    await app._send_or_drop(ws, {"t": "notify", "level": "warn", "secs": 4, "text":
                                         "Befehl nicht ausgeführt – Miniserver antwortet nicht" if code is None
                                         else f"Befehl nicht ausgeführt (Miniserver meldet {code})"})
             elif data.get("t") == "setplayer":
@@ -9762,7 +9917,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                         pb = app.player_blocks(zone)
                         if pb is not None:
                             _pm = {"t": "player", "blocks": pb}
-                            await ws.send_json(_pm)
+                            await app._send_or_drop(ws, _pm)
                             app._last_sent.setdefault(ws, {})["player"] = _pm
                     except Exception:
                         log.exception("player_blocks (setplayer) fehlgeschlagen (%s)", zone)
@@ -9778,7 +9933,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                         eb = app.energy_blocks(euid)
                         if eb is not None:
                             _em = {"t": "energy", **eb}
-                            await ws.send_json(_em)
+                            await app._send_or_drop(ws, _em)
                             app._last_sent.setdefault(ws, {})["energy"] = _em
                     except Exception:
                         log.exception("energy_blocks (setenergy) fehlgeschlagen (%s)", euid)
@@ -9795,7 +9950,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                         cb = app.chart_blocks(cuid, rng)
                         if cb is not None:
                             _cm = {"t": "chart", **cb}
-                            await ws.send_json(_cm)
+                            await app._send_or_drop(ws, _cm)
                             app._last_sent.setdefault(ws, {})["chart"] = _cm
                     except Exception:
                         log.exception("chart_blocks (setchart) fehlgeschlagen (%s)", cuid)
@@ -9811,13 +9966,15 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                         ib = app.intercom_blocks(cuid)
                         if ib is not None:
                             _cm = {"t": "camera", "blocks": ib}
-                            await ws.send_json(_cm)
+                            await app._send_or_drop(ws, _cm)
                             app._last_sent.setdefault(ws, {})["camera"] = _cm   # wie player/energy: Tick nicht doppelt senden
                     except Exception:
                         log.exception("intercom_blocks (setcamera) fehlgeschlagen (%s)", cuid)
                 else:
                     app.conn_camera.pop(ws, None)
     finally:
+        if app.diag:
+            log.info("Panel '%s' Verbindung beendet (Close-Code %s)", dev or request.remote or "?", ws.close_code)
         app.drop_conn(ws)
     return ws
 
@@ -9827,6 +9984,7 @@ async def on_startup(a: web.Application) -> None:
     # Hintergrund auf (mit Retry) — so ist /settings auch ohne/mit falschen
     # Zugangsdaten erreichbar.
     app: App = a["app"]
+    _diag_apply(app.diag)
     a["tasks"] = [asyncio.create_task(app.stream_task()),
                   asyncio.create_task(app.broadcaster()),
                   asyncio.create_task(app.audio_events_task()),
@@ -10059,6 +10217,10 @@ def main() -> None:
     a.router.add_get("/api/types", api_types)
     a.router.add_post("/api/settings/miniserver", api_settings_ms)
     a.router.add_post("/api/settings/cmdwatch", api_settings_cmdwatch)
+    a.router.add_get("/api/settings/diag", api_settings_diag)
+    a.router.add_post("/api/settings/diag", api_settings_diag)
+    a.router.add_get("/api/settings/diag/download", api_settings_diag_download)
+    a.router.add_post("/api/settings/diag/clear", api_settings_diag_clear)
     a.router.add_post("/api/settings/intercom", api_settings_intercom)
     a.router.add_post("/api/settings/intercom/sound", api_settings_intercom_sound)
     a.router.add_post("/api/settings/intercom/sound/delete", api_settings_intercom_sound_delete)

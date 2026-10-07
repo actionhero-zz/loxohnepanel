@@ -1187,6 +1187,15 @@
             <p class="note" data-i18n>Bei jedem Tastendruck prüft das Panel im Hintergrund, ob der Befehl beim Miniserver angekommen ist und angenommen wurde. Bleibt diese Rückmeldung länger als 12 Sekunden aus (z. B. WLAN-Aussetzer), erscheint am Panel „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel immer – auch ohne Monitoring.</p>
             <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
           </div>
+          <div class="card">
+            <h3 data-i18n>Diagnose-Log</h3>
+            <label class="chk"><input type="checkbox" id="dg_on"><span data-i18n>Ausführliches Diagnose-Log schreiben</span></label>
+            <p class="note" data-i18n>Zum Fehlersuchen: Der Server protokolliert ausführlich – Verbindung zum Miniserver, empfangene Werte pro Minute, verbundene Panels, Verbindungsabbrüche und Fehler der Panels (mit Gerätename). Nur bei Bedarf einschalten. Größe begrenzt, ältere Einträge werden überschrieben.</p>
+            <p class="note" id="dg_size"></p>
+            <div class="actions"><button class="btn" id="dg_save" data-i18n>Speichern</button>
+              <button class="btn ghost" id="dg_dl" data-i18n>Herunterladen</button>
+              <button class="btn del" id="dg_clear" data-i18n>Löschen</button><span class="toast" id="dg_toast"></span></div>
+          </div>
         </section>
 
         <!-- Intercom / Kameras -->
@@ -2856,7 +2865,10 @@ function tbSideHTML(p){
         '<span class="grip" aria-hidden="true">⋮⋮</span>'+
         '<label><input type="checkbox"'+(sel.indexOf(c.id)>=0?' checked':'')+'> <span>'+esc(c.name)+'</span></label>'+
         '<span class="cnum">'+(sel.indexOf(c.id)>=0?sel.indexOf(c.id)+1:'')+'</span></div>').join('')+'</div>'+
-      '<div class="hintp">'+T('Haken = anzeigen · ziehen = Reihenfolge. Die erste ist die Startkamera, die Zahlen sind die Pillen am Panel.')+'</div>'
+      '<div class="hintp">'+T('Haken = anzeigen · ziehen = Reihenfolge. Die erste ist die Startkamera, die Zahlen sind die Pillen am Panel.')+'</div>'+
+      (sel.length>1?'<div class="lbl2">'+T('Zurück zur ersten Kamera nach')+'</div>'+
+        '<label class="row" style="gap:8px;align-items:center"><input type="number" id="tbCamBack" min="0" max="240" step="1" inputmode="numeric" style="width:80px" value="'+(it.back==null?3:it.back)+'"> '+T('Minuten')+'</label>'+
+        '<div class="hintp">'+T('Ohne Bedienung springt das Widget wieder auf Kamera 1. 0 = aus.')+'</div>':'')
       :'<div class="hintp">'+T('Noch keine Kamera mit Video-URL – System → Intercom / Kameras.')+'</div>');
   }
   const blk=tbBlocks(it), look=(it.type==='tile'||it.type==='room'||it.type==='cat')&&it.uuid;
@@ -2909,6 +2921,8 @@ function tbBindSide(p){
       items.splice(tbSel,1); tbSel=-1; tbCommit(p); renderTabList(p); }); }
   const host=$('#tbEd'), redo=()=>{ tbCommit(p); renderTabEditor(); };
   { const wd=host.querySelector('#tbWxDet'); if(wd) wd.onchange=()=>{ if(wd.checked) it.detail=true; else delete it.detail; redo(); }; }
+  { const cb=$('#tbCamBack'); if(cb) cb.onchange=()=>{ let n=Math.round(+cb.value); if(!(n>=0)) n=3; n=Math.min(240,n);   // Standard 3 min
+      if(n===3) delete it.back; else it.back=n; redo(); }; }
   host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===3) delete it.days; else it.days=n; redo(); });   // Standard 3 Tage
   stPickBind($('#tbStCh'), ids=>{ it.ctls=ids; redo(); }, renderTabEditor);
   { const tr=$('#tbStTrk'); if(tr) tr.onchange=()=>{ if(tr.value) it.trk=tr.value; else delete it.trk; redo(); }; }
@@ -3968,6 +3982,19 @@ if($('#cal_add')) $('#cal_add').onclick=()=>{
 
 // Wetterquelle (System -> Miniserver)
 $('#wx_ms').onchange=()=>{ $('#wx_alt').hidden=$('#wx_ms').checked; };
+// Diagnose-Log (System): an/aus, Groesse, Herunterladen, Loeschen
+const dgFmt=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1).replace('.',',')+' MB';
+const dgShow=j=>{ if(!j||!j.ok) return; $('#dg_on').checked=!!j.on;
+  $('#dg_size').textContent=T('Speicher')+': '+dgFmt(j.size||0)+' '+T('von max.')+' '+dgFmt(j.max||0)+(j.on?' · '+T('läuft'):''); };
+async function dgLoad(){ try{ dgShow(await (await fetch('/api/settings/diag')).json()); }catch(e){} }
+$('#dg_save').onclick=async()=>{
+  try{ const r=await fetch('/api/settings/diag',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({on:$('#dg_on').checked})});
+    const j=await r.json(); if(j.ok){ dgShow(j); flash($('#dg_toast'),T('✓ Gespeichert'),true); } else flash($('#dg_toast'),j.error||T('Fehler'),false);
+  }catch(e){ flash($('#dg_toast'),'Fehler: '+e,false); } };
+$('#dg_dl').onclick=()=>{ location.href='/api/settings/diag/download'; setTimeout(dgLoad,1500); };
+$('#dg_clear').onclick=async()=>{ if(!confirm(T('Diagnose-Log löschen?'))) return;
+  try{ const j=await (await fetch('/api/settings/diag/clear',{method:'POST'})).json(); dgShow(j); flash($('#dg_toast'),T('Gelöscht'),true); }catch(e){ flash($('#dg_toast'),'Fehler: '+e,false); } };
+dgLoad();
 $('#cw_save').onclick=async()=>{
   try{ const r=await fetch('/api/settings/cmdwatch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({on:$('#cw_on').checked})});
     const j=await r.json(); if(j.ok){ flash($('#cw_toast'),T('✓ Gespeichert'),true); SET.cmdWatch=$('#cw_on').checked; } else flash($('#cw_toast'),j.error||T('Fehler'),false);

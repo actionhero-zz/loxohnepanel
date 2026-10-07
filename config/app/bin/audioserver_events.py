@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import socket
 
 import aiohttp
 
@@ -54,6 +55,7 @@ class AudioEventClient:
         # JWT) erlauben die Anmeldung am gekoppelten Audioserver wie die Loxone-App.
         self.user = user
         self._token_provider = token_provider
+        self.last_err: str | None = None   # letzter Verbindungsfehler (Anzeige in der Config)
         self.now: dict[int, dict] = {}
         self.favs: dict[int, list] = {}
         # None = noch nicht geprueft; True = gekoppelter Loxone-Audioserver, der
@@ -259,6 +261,8 @@ class AudioEventClient:
         """Verbindungs-/Lese-Schleife mit Auto-Reconnect. `on_change` wird bei
         jeder Zustandsaenderung aufgerufen (setzt im Server _dirty)."""
         self._on_change = on_change
+        fails = 0                    # aufeinanderfolgende Fehlversuche (fuer die Wartezeit)
+        self._dns_failed = False
         while not self._stop:
             try:
                 if self._session is None or self._session.closed:
@@ -273,6 +277,8 @@ class AudioEventClient:
                         self.url, timeout=8, heartbeat=30,
                         protocols=("remotecontrol",)) as ws:
                     self._ws = ws
+                    fails = 0
+                    self.last_err = None
                     log.info("Audioserver-Events verbunden (remotecontrol): %s", self.url)
                     # Gekoppelter Audioserver: erst anmelden, dann sind
                     # getroomfavs/roomfav-play auf dieser Verbindung moeglich.
@@ -288,12 +294,24 @@ class AudioEventClient:
                                         aiohttp.WSMsgType.ERROR):
                             break
             except Exception as err:
-                log.debug("Audioserver-Events (%s): %s", self.url, err)
+                fails += 1
+                self.last_err = str(err) or type(err).__name__
+                self._dns_failed = isinstance(getattr(err, "os_error", None), socket.gaierror) \
+                    or type(err).__name__ == "ClientConnectorDNSError" or isinstance(err, socket.gaierror)
+                # Einmal sichtbar melden, danach still (sonst alle paar Sekunden eine Zeile)
+                (log.info if fails == 1 else log.debug)("Audioserver-Events (%s): %s", self.url, err)
             self._ws = None
             self.authed = False
             if self._stop:
                 break
-            await asyncio.sleep(5)
+            # Wartezeit waechst bei Dauerausfall (5, 10, 20, 40, 60 s), nach Erfolg wieder 5 s.
+            # Name nicht aufloesbar (Server existiert nicht mehr): nur alle 10 min versuchen.
+            if fails and self._dns_failed:
+                wait = 600
+            else:
+                wait = min(60, 5 * 2 ** max(0, fails - 1)) if fails else 5
+            self._dns_failed = False
+            await asyncio.sleep(wait)
 
     async def close(self) -> None:
         self._stop = True

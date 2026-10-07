@@ -3651,6 +3651,10 @@ function wsRestart(why){ clog('Verbindung neu aufgebaut: '+(why||'?')+' (letzte 
 // ist die Verbindung zu/geschlossen ohne onclose, oder kam 25 s nichts -> neu verbinden.
 function wsCheck(){
   if(!ws){ connect(); return; }
+  // Ausgeblendet (Tab im Hintergrund, Display dunkel): der Browser drosselt die Timer
+  // auf ~1x/Minute - Pings gehen dann selten raus und "lange nichts gehoert" waere ein
+  // Fehlalarm. Nur anstupsen; geprueft wird beim Sichtbarwerden (wsWake).
+  if(document.hidden){ if(ws.readyState===1) send({t:'ping', at:Date.now()}); return; }
   const age=Date.now()-wsRx;
   if(ws.readyState===0){ if(age>15000) wsRestart('Aufbau haengt'); return; }
   if(ws.readyState!==1 || age>25000){ wsRestart(ws.readyState!==1?'Verbindung zu':'keine Antwort'); return; }
@@ -3662,7 +3666,14 @@ setInterval(wsCheck,10000);
 // pruefen statt auf den naechsten Takt zu warten (sonst laufen Werte unbemerkt alt).
 ['visibilitychange','pageshow','focus','online'].forEach(ev=>(ev==='visibilitychange'?document:window).addEventListener(ev,()=>{
   if(document.hidden){ clog('Seite verborgen ('+ev+')'); return; }
-  if(!ws || ws.readyState!==1 || Date.now()-wsRx>12000) wsRestart('wieder sichtbar ('+ev+')'); else send({t:'ping', at:Date.now()}); }));
+  wsWake(ev); }));
+// Wieder sichtbar: Verbindung offen? -> Ping und kurz auf Antwort warten (4 s); erst
+// wenn keine kommt, neu verbinden. Ohne offene Verbindung sofort neu.
+function wsWake(ev){
+  if(!ws || ws.readyState!==1){ wsRestart('wieder sichtbar ('+ev+'), Verbindung zu'); return; }
+  const t0=Date.now(); send({t:'ping', at:t0});
+  setTimeout(()=>{ if(!document.hidden && ws && ws.readyState===1 && wsRx<t0) wsRestart('wieder sichtbar ('+ev+'), keine Antwort'); }, 4000);
+}
 function linkBanner(){
   const txt = !srvOk ? 'Keine Verbindung zum LoxPanel-Server'
     : !msOk ? 'Miniserver nicht erreichbar'+(msSince?' seit '+new Date(msSince).toLocaleTimeString(LANG||undefined,{hour:'2-digit',minute:'2-digit'}):'')+' – Werte evtl. veraltet'

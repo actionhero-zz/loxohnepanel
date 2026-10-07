@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.84"
+APP_VERSION = "0.19.85"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -7175,11 +7175,12 @@ class App:
         keine IP-Eingabe noetig."""
         while True:
             enabled = (self.audiometa_cfg or {}).get("enabled", True)
+            off = set((self.audiometa_cfg or {}).get("off") or [])   # je Audioserver abgeschaltet
             want = set()
             if enabled:
                 for hp in self.mediaservers.values():
                     host = (hp or "").split(":")[0].strip()
-                    if host:
+                    if host and host not in off:
                         want.add(host)
             for host in want:
                 if host not in self.audio_clients:
@@ -7204,6 +7205,21 @@ class App:
         finally:
             if self.audio_clients.get(host) is cl:
                 self.audio_clients.pop(host, None)
+
+    def _audio_server_info(self, hp: str) -> dict:
+        """Ein erkannter Audioserver fuer die Config: Adresse, abgeschaltet?, Zustand."""
+        host = (hp or "").split(":")[0].strip()
+        off = host in set((self.audiometa_cfg or {}).get("off") or [])
+        cl = self.audio_clients.get(host)
+        if off or not (self.audiometa_cfg or {}).get("enabled", True):
+            state = "aus"
+        elif cl is None:
+            state = "startet"
+        elif getattr(cl, "_ws", None) is not None:
+            state = "verbunden"
+        else:
+            state = "nicht erreichbar" + (f" ({cl.last_err})" if getattr(cl, "last_err", None) else "")
+        return {"host": host, "addr": hp, "off": off, "state": state[:160]}
 
     def _mark_dirty(self) -> None:
         self._dirty = True
@@ -8234,7 +8250,7 @@ async def api_settings(request: web.Request) -> web.Response:
         "intercoms": intercoms,
         "cameras": cameras,
         "audiometa": {"enabled": bool(am.get("enabled", True)),
-                      "servers": sorted(app.mediaservers.values())},
+                      "servers": [app._audio_server_info(hp) for hp in sorted(set(app.mediaservers.values()))]},
         "calendar": {
             # Quellen normalisiert (inkl. Migration einer alten einzelnen
             # ical_url), damit die Einstellungsseite genau das sieht, womit der
@@ -8469,6 +8485,8 @@ async def api_settings_audiometa(request: web.Request) -> web.Response:
     cfg = _load_cfg()
     am = dict(cfg.get("audiometa", {}) if isinstance(cfg.get("audiometa"), dict) else {})
     am["enabled"] = bool(data.get("enabled"))
+    if isinstance(data.get("off"), list):        # je Audioserver abschalten (Hostnamen)
+        am["off"] = sorted({str(h).strip()[:120] for h in data["off"] if str(h).strip()})
     cfg["audiometa"] = am
     try:
         _write_cfg(cfg)
@@ -8477,8 +8495,8 @@ async def api_settings_audiometa(request: web.Request) -> web.Response:
     app.audiometa_cfg = _audiometa_config()
     # Bei Deaktivierung laufende Clients sofort schliessen; beim Aktivieren
     # startet der audio_events_task sie beim naechsten Durchlauf automatisch.
-    if not am["enabled"]:
-        for cl in list(app.audio_clients.values()):
+    for host, cl in list(app.audio_clients.items()):
+        if not am["enabled"] or host in set(am.get("off") or []):
             await cl.close()
         app.audio_clients.clear()
     app._dirty = True

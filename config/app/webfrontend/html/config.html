@@ -3669,8 +3669,12 @@ checkUpdate();
   const ae=$('#am_enabled'); if(ae) ae.checked=am.enabled!==false;
   const srv=$('#am_servers');
   if(srv){ const list=am.servers||[];
+    // Je erkanntem Audioserver ein Schalter + Zustand (verbunden / nicht erreichbar)
     srv.innerHTML = list.length
-      ? T('Erkannte Audioserver:')+' '+list.map(esc).join(', ')
+      ? '<div class="lbl" style="margin-bottom:4px">'+T('Erkannte Audioserver')+'</div>'+list.map(s=>
+          '<label class="chk"><input type="checkbox" class="am_srv" data-host="'+esc(s.host)+'"'+(s.off?'':' checked')+'><span><b>'+esc(s.addr||s.host)+'</b> · '+
+          '<span style="color:'+(s.state==='verbunden'?'var(--good)':(s.state==='aus'?'var(--muted)':'var(--crit)'))+'">'+esc(T(s.state))+'</span></span></label>').join('')+
+        '<p class="hint" style="margin-top:4px">'+T('Haken entfernen = für diesen Audioserver keine Live-Daten (z. B. wenn er nicht mehr existiert). Bedienung der Zonen läuft weiter über den Miniserver.')+'</p>'
       : T('Kein Audioserver in der Loxone-Struktur gefunden.'); }
   // Nachtmodus-Ausloeser
   const nt=SET.night||{}, ntSel=$('#nt_control');
@@ -3887,7 +3891,8 @@ $('#nt_save').onclick=async()=>{
   $('#nt_save').disabled=false;
 };
 $('#am_save').onclick=async()=>{
-  const body={enabled:$('#am_enabled').checked};
+  const body={enabled:$('#am_enabled').checked,
+    off:[...document.querySelectorAll('#am_servers .am_srv')].filter(c=>!c.checked).map(c=>c.dataset.host)};
   $('#am_save').disabled=true;
   try{
     const r=await fetch('/api/settings/audiometa',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});

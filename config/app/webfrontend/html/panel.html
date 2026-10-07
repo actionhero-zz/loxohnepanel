@@ -1592,6 +1592,13 @@
   .brow.act .btn.cht,.chrng .chip{box-shadow:none;border-color:transparent;color:var(--ink);
     background:rgba(var(--wash,255,255,255),.12);background:color-mix(in srgb,var(--tile) 55%,transparent);}
   .chrng .chip.on{background:var(--ink);color:var(--tile);}
+
+  /* ==== Ebene 1: Rasterzellen immer quadratisch (0.19.81) ====
+     Panels/Tablet sind es durch das 160er-Raster; auf dem Handy kam die Zeilenhoehe
+     bisher aus der Bildschirmhoehe (4 Zeilen je Bild) und die Kacheln wurden je nach
+     Geraet hoch oder flach. Jetzt: Zeilenhoehe = Spaltenbreite (Rand 10 + Innenabstand 10
+     je Seite), gescrollt wird senkrecht. 2x1 = 2:1, 2x2 = 1:1 inkl. Fuge. */
+  html.phone .grid.cells{grid-auto-rows:calc((100vw - 40px - (var(--cc,2) - 1) * var(--gap,10px)) / var(--cc,2));}
 </style>
 </head>
 <body>

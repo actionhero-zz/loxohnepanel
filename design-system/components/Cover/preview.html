@@ -1,0 +1,33 @@
+<!-- @dsCard height=288 -->
+<style>
+  html,body{margin:0;background:var(--face-n);}
+  .cv{position:relative;width:960px;height:288px;overflow:hidden;background:var(--face-n);}
+  .cv svg{position:absolute;inset:0;}
+  .bz{fill:var(--bezel);} .f1{fill:var(--face-1);} .f2{fill:var(--face-2);} .f3{fill:var(--face-3);}
+  .tl{fill:var(--tile);} .ink{fill:var(--ink);} .d1{fill:var(--dot-1);} .ta{fill:var(--tab-active);}
+  .rc{rx:36px;} .rt{rx:18px;} .rb{rx:18px;} .rr{rx:4px;}
+  .nm{position:absolute;left:40px;bottom:40px;max-width:440px;}
+  .nm h1{margin:0;font-family:var(--font-num);font-weight:600;font-size:88px;line-height:.95;letter-spacing:-.03em;color:var(--ink);}
+  .nm p{margin:12px 0 0;font-family:var(--font-text);font-size:14px;color:var(--ink-2);}
+</style>
+<div class="cv">
+  <!-- blocks: bezel (Rahmen) 440×288+, face-1 Karte 268×212, face-2 / face-3 je 120×100, dot-1 Akzent
+       arrangement: ein hoher Panel-Rahmen, oben und unten angeschnitten, mit Satelliten-Karten rechts
+       pattern: Kacheln aus r-l, eine davon zwei Zellen breit – „geometrisch, modular“: das 3×3-Raster IST die Marke
+       steps/radii: space-gap 10, space-card 14, r-xl 36, r-l 22 (skaliert 18), radius-round für den Badge -->
+  <svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
+    <rect class="bz rc" x="500" y="-40" width="440" height="368"/>
+    <rect class="ta rt" x="520" y="14" width="44" height="34"/>
+    <rect class="f1 rc" x="516" y="58" width="272" height="216"/>
+    <rect class="tl rt" x="530" y="72" width="78" height="90"/>
+    <rect class="tl rt" x="618" y="72" width="78" height="90"/>
+    <rect class="ink rt" x="706" y="72" width="68" height="90"/>
+    <rect class="tl rt" x="530" y="172" width="166" height="88"/>
+    <rect class="tl rt" x="706" y="172" width="68" height="88"/>
+    <rect class="d1 rr" x="580" y="80" width="20" height="20"/>
+    <rect class="f2 rc" x="800" y="58" width="128" height="104"/>
+    <rect class="f3 rc" x="800" y="172" width="128" height="102"/>
+  </svg>
+  <div class="nm"><h1>LoxPanel</h1><p>Loxone für die Wand: Kacheln auf Pastell, ab 480 × 480.</p></div>
+</div>
+<script></script>

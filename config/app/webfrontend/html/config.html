@@ -1063,6 +1063,33 @@
   @media (min-width:761px){ .subtabs{flex-wrap:wrap;overflow-x:visible;row-gap:6px;} }
   .sizepick .spv.phone i{width:20px;height:36px;border-radius:5px;}
   .pfgrid .sizepick{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));}
+
+  /* ==== Einheitliche Bausteine (Designsystem 0.19.73) ==== */
+  /* Popover/Dialog: keine Rahmen, ein Schatten; Dialoge r-l, kleine Popover r-m */
+  :root{--pop-shadow:0 2px 6px rgba(31,36,64,.08),0 18px 44px rgba(31,36,64,.20);}
+  .palbox,.wzbox{border:0;border-radius:var(--r-l);box-shadow:var(--pop-shadow);}
+  .chgpop,.icbox{border:0;border-radius:var(--r-m);box-shadow:var(--pop-shadow);}
+  .qpop{border-radius:var(--r-m);}
+  /* Segmentschalter: Spur in panel2, Pillen darin, aktiv = prim */
+  .sved .seg,.g2ed .libtabs{display:flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--panel2);border-radius:var(--r-pill);}
+  .sved .seg button,.g2ed .libtabs button{flex:1;min-height:32px;min-width:44px;border:0;border-radius:var(--r-pill);background:transparent;
+    color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:4px 10px;cursor:pointer;}
+  .sved .seg button:hover,.g2ed .libtabs button:hover{color:var(--fg);}
+  .sved .seg button.on,.g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
+  .themesw button{min-height:30px;border-radius:var(--r-pill);}
+  /* Badge: kleine Pille ohne Tippfunktion, 11 px/600, keine Versalien-Mono */
+  #phead .badge,.ag .tag,.ovw .devcat .badge,.ovw figcaption .badge,.ovsec .secst{display:inline-flex;align-items:center;height:22px;
+    padding:0 9px;border:0;border-radius:var(--r-pill);background:var(--panel2);color:var(--muted);
+    font-family:var(--font);font-size:11px;font-weight:600;letter-spacing:0;text-transform:none;white-space:nowrap;box-sizing:border-box;}
+  .ovw .devcat .badge.ref,.ovsec .secst.on{background:rgba(43,128,85,.14);color:var(--good);}
+  #phead .badge{background:var(--bezel-tint);color:var(--bezel-muted);}
+  /* Schalter statt Checkbox (wie im Panel): Bahn 38x22, Knopf weiss, an = prim */
+  .chk input[type=checkbox]{-webkit-appearance:none;appearance:none;flex:none;width:38px;height:22px;margin:0;cursor:pointer;
+    border-radius:var(--r-pill);background:radial-gradient(circle at 11px 50%,#fff 8px,transparent 8.5px),var(--muted);
+    transition:background-color .12s;}
+  .chk input[type=checkbox]:checked{background:radial-gradient(circle at 27px 50%,#fff 8px,transparent 8.5px),var(--prim);}
+  .chk input[type=checkbox]:focus-visible{outline:2px solid var(--prim);outline-offset:2px;}
+  .chk input[type=checkbox]:disabled{opacity:.4;cursor:default;}
 </style>
 </head>
 <body>

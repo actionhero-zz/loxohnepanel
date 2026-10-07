@@ -1,5 +1,14 @@
 LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig, freundlich, pastellig: ein dunkler Rahmen, darauf je Tab eine farbige Karte, darauf weiße Kacheln. Alles ist zum Antippen gemacht – mit dem Finger, aus einem Meter Abstand.
 
+## Ebenen
+- **Ebene 0 – Dashboard und Screensaver:** das Dashboard-Tab mit Infoleiste. Der Screensaver ist dieselbe Ebene.
+- **Ebene −1 – Popups:** Alarme und Infos aus der Infoleiste. Sie legen sich bei Bedarf über Ebene 0, 1 und 2.
+- **Ebene 1 – Tabseite:** die Karte `face-*` mit dem Raster. **2×2 ist Standard** für neue Panels, 3×3 ist möglich (bestehende Profile ohne Angabe bleiben 3×3). Die Zellen füllen die Karte bis auf den Innenabstand, ohne Seitenrand, und sind immer quadratisch. Hier wird gewählt und überblickt, nicht eingestellt.
+- **Ebene 2 – Baustein**, in zwei Formen:
+  - **2a Kachel:** der Baustein im Raster mit Symbol, Raum, Name und einem Zustand. Tippen öffnet 2b. Direkt auf der Kachel schalten nur ihre **Schnellbedienungen**: Mini-Schalter (Ein/Aus), Mini-Buttons ‹ › (Stimmung/Helligkeit) und ˄ ˅ (Jalousie, Fenster). Bausteine ohne eigene Detailansicht (z. B. reiner Taster) lösen beim Tippen ihren Loxone-Befehl direkt aus.
+  - **2b Detail:** derselbe Baustein geöffnet. Aufbau: Kopf, großer Wert, Einträge, Aktionen. Hier wird eingestellt.
+  - **2b-Unterseite:** Was eine eigene Seite braucht (Farbe, Verlauf, verknüpfte Bausteine), öffnet über einen Icon-Knopf am Ende der Aktionsreihe. Ebenso öffnen **Einträge mit Pfeil ›** eine Unterseite (z. B. Wecker → Eintrag bearbeiten, Raum → Baustein). Unterseiten haben denselben Kopf wie 2b, Zurück geht genau eine Ebene zurück, Änderungen gelten sofort. Die Verschachtelung folgt der Struktur des Loxone-Bausteins; eigene zusätzliche Ebenen werden nicht erfunden.
+
 ## Grundsätze
 
 - **Ebene 1 immer quadratisch:** Kacheln sitzen in quadratischen Rasterzellen (1×1 = 1:1, 2×1 = 2:1, 2×2 = 1:1, jeweils inkl. Fuge) – auf jedem Gerät; auf dem Handy richtet sich die Zeilenhöhe nach der Spaltenbreite, mehr Inhalt wird senkrecht gescrollt.

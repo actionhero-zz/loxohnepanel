@@ -1527,7 +1527,7 @@ const DEV_TABS=[
 async function load(){
   const r = await fetch('/api/meta'); META = await r.json();
   PANELS = JSON.parse(JSON.stringify(META.panels||{}));
-  if(!PANELS.default) PANELS.default = {title:'LoxPanel', tabs:defaultTabs(), rooms:[], cats:[], ui:{}, states:{}};
+  if(!PANELS.default) PANELS.default = {title:'LoxPanel', tabs:defaultTabs(), rooms:[], cats:[], ui:{grid:2}, states:{}};   // frische Installation: 2x2 als Standard
   PANELS.__global__ = {title:'Global (alle Panels)', ui: JSON.parse(JSON.stringify((META.theme||{}).ui||{})),
                        catColors: JSON.parse(JSON.stringify((META.theme||{}).categories||{})), __global:true};
   // Frueher separate Textfarbe fuer Kachelnamen - jetzt Design-Farbe "Schrift"

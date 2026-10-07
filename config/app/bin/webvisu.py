@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.81"
+APP_VERSION = "0.19.82"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -6119,8 +6119,18 @@ class App:
                 items.append(ent)
             # Offene zuerst, dann gekippte, dann der Rest (sonst Loxone-Reihenfolge)
             items.sort(key=lambda x: x.pop("_r"))
-            return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "layout": "list", "items": items}
+            # Detail-Schema: grosser Wert, Zeile darunter, Fenster als reine Anzeige-Zeilen
+            n_open = sum(1 for x in items if "offen" in x["sublabel"])
+            n_tilt = sum(1 for x in items if "gekippt" in x["sublabel"])
+            big = f"{n_open} offen" if n_open else ("Alle zu" if not n_tilt else f"{n_tilt} gekippt")
+            sub = " · ".join(x for x in (f"{n_tilt} gekippt" if n_open and n_tilt else "",
+                                          f"{len(items)} Fenster") if x)
+            rows = [{"id": x["id"], "label": x["label"], "icon": "window", "on": x["on"],
+                     "sub": " · ".join(y for y in (x.get("room", ""), x["sublabel"]) if y)} for x in items]
+            blocks = [{"k": "big", "text": big}, {"k": "status", "text": sub}]
+            if rows:
+                blocks.append({"k": "scenes", "items": rows})
+            return {"t": "view", "title": _clean(c.get("name")), "route": route, "blocks": blocks}
         if t == "Jalousie":
             ua = c.get("uuidAction")
             cu = self._with_uuid(uuid)
@@ -6545,8 +6555,9 @@ class App:
             items = [{"id": f"{uuid}:{e['id']}", "label": e["hm"], "sub": f"{e['name']} · {e['repeat']}",
                       "on": e["active"], "icon": "alarm",
                       "nav": {"view": "control", "id": uuid, "entry": e["id"]}} for e in entries]
-            blocks = [{"k": "status", "text": "Nächster Wecker"},
-                      {"k": "big", "text": nxt or "Kein Wecker aktiv"}]
+            # Schema: grosser Wert, die erklaerende Zeile darunter (wie bei allen Bausteinen)
+            blocks = [{"k": "big", "text": nxt or "Kein Wecker aktiv"},
+                      {"k": "status", "text": "Nächster Wecker"}]
             if items:
                 blocks.append({"k": "scenes", "items": items})
             return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": blocks}

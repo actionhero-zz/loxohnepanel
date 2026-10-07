@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.78"
+APP_VERSION = "0.19.79"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -6925,18 +6925,27 @@ class App:
             zone = self._irrigation_zone_name(c)
             # Aktive Zone gross, Zonen als Kacheln (laufende dunkel), Steuerung
             # unten. Befehle aus der Loxone-Structure-File-Doku: start, startForce
-            # (Regen ignorieren), stop. Einzelne Zonen (select/<n>) sind noch
-            # nicht belegt (Nummerierung an der Anlage zu pruefen) - die Kacheln
-            # sind deshalb reine Anzeige.
+            # (Regen ignorieren), stop, select/<Zone> (startet eine einzelne Zone).
             big = (zone or "Bewässert") if act else ("Regenpause" if rain else "Bereit")
             bits = []
             ep = self._state(c, "expectedPrecipitation")
             if ep is not None:
                 bits.append(f"{self._fmt_num(ep, '%.1f mm')} Regen erwartet")
             zones = self._named_items(self._json_state(c, "zones"))
-            items = [{"id": f"{uuid}:{i}", "label": label, "on": bool(act and label == zone),
-                      "sub": "läuft" if (act and label == zone) else "", "icon": "drop"}
-                     for i, (label, _z) in enumerate(zones)]
+            cur = self._state(c, "currentZone")
+            items = []
+            for i, (label, z) in enumerate(zones):
+                # Zonennummer laut Structure File: "id" im zones-JSON, sonst Position
+                try:
+                    zid = int(z.get("id", i)) if isinstance(z, dict) else i
+                except (TypeError, ValueError):
+                    zid = i
+                running = bool(act and ((cur is not None and int(cur) == zid) or label == zone))
+                dur = z.get("duration") if isinstance(z, dict) else None
+                sub = "läuft" if running else (f"{round(float(dur) / 60)} min" if isinstance(dur, (int, float)) and dur > 0 else "")
+                # Tippen startet genau diese Zone (select/<n>), auf der laufenden stoppt es
+                items.append({"id": f"{uuid}:{i}", "label": label, "on": running, "sub": sub, "icon": "drop",
+                              "cmd": {"uuid": ua, "cmd": "stop" if running else f"select/{zid}"}})
             blocks = [{"k": "big", "text": big, **({"tone": "good"} if act else {})}]
             if bits:
                 blocks.append({"k": "status", "text": " · ".join(bits)})

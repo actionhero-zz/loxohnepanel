@@ -1567,6 +1567,31 @@
   .pantop>.pbig ~ .scenes .scene b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pantop>.pbig ~ .scenes .scene .ssub{font-size:12px;}
   .pantop>.pbig ~ .scenes .sico svg{width:22px;height:22px;}
+
+  /* ==== Anzeige statt Bedienung (0.19.80) ====
+     Eintraege ohne Befehl (.ro) sehen nicht tippbar aus: keine Flaeche, nur eine
+     Haarlinie; der Zustand "laeuft/aktiv" wird mit einem Indikator (abgerundetes
+     Quadrat in dot-Farbe) und fetter Zeile gezeigt - nie mit der gefuellten
+     ink-Flaeche, die Bedienelementen vorbehalten ist. */
+  .pantop>.pbig ~ .scenes .scene.ro{background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--wash,255,255,255),.14);
+    color:var(--ink);cursor:default;}
+  .pantop>.pbig ~ .scenes .scene.ro:active{transform:none;opacity:1;}
+  .pantop>.pbig ~ .scenes .scene.ro .sico{color:var(--muted);}
+  .pantop>.pbig ~ .scenes .scene.ro.on{background:rgba(var(--wash,255,255,255),.06);color:var(--ink);}
+  .pantop>.pbig ~ .scenes .scene.ro.on .sico{color:var(--dot,var(--accent));}
+  .pantop>.pbig ~ .scenes .scene.ro.on b::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;
+    vertical-align:2px;border-radius:var(--r-round,32%);background:var(--dot,var(--accent));}
+  .pantop>.pbig ~ .scenes .scene.ro.on .ssub{opacity:1;color:var(--muted);}
+  /* Eintrag oeffnet eine Ansicht: Pfeil rechts wie bei Kacheln */
+  .pantop>.pbig ~ .scenes .scene.nav::after{content:"\203A";margin-left:auto;padding-left:8px;font-size:22px;line-height:1;opacity:.55;}
+
+  /* ==== Flaeche heisst tippbar (0.19.80) ====
+     Alles Tippbare hat eine Flaeche; Rang ueber Groesse und Deckkraft:
+     Haupt = tile deckend, Neben (Kreis 32 px) und Chips = tile 55 %, ohne Umriss.
+     Nur reine Anzeigen sind durchsichtig mit Haarlinie (.scene.ro). */
+  .brow.act .btn.cht,.chrng .chip{box-shadow:none;border-color:transparent;color:var(--ink);
+    background:rgba(var(--wash,255,255,255),.12);background:color-mix(in srgb,var(--tile) 55%,transparent);}
+  .chrng .chip.on{background:var(--ink);color:var(--tile);}
 </style>
 </head>
 <body>
@@ -2623,7 +2648,7 @@ function renderPanel(blocks){
     if(b.k==='big') return '<div class="pbig'+(b.tone==='good'?' good':(b.tone==='crit'?' crit':''))+'">'+fmtBig(b.text)+'</div>';
     if(b.k==='astat') return '<div class="astat'+(b.tone==='crit'?' crit':'')+'">'+esc(b.text||'')+(b.sub?'<div class="astatsub">'+esc(b.sub)+'</div>':'')+'</div>';
     if(b.k==='slider') return '<div class="srow"><span class="sico">'+svg(ICONS[b.icon]||ICONS.vol)+'</span><button type="button" class="sbtn" data-sd="dn">−</button><input type="range" class="sld" min="'+b.min+'" max="'+b.max+'"'+(b.step?' step="'+b.step+'"':'')+' value="'+b.value+'"><button type="button" class="sbtn" data-sd="up">+</button><span class="sval">'+b.value+'</span></div>';
-    if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+'" data-s="'+i+'">'+
+    if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
       '<span class="sico">'+sceneIco(it)+'</span><span class="stx"><b>'+esc(it.label)+'</b>'+(sceneSub(it)?'<span class="ssub">'+esc(sceneSub(it))+'</span>':'<span class="ssub"></span>')+'</span></div>').join('')+'</div>';
     if(b.k==='shade') return '<div class="shade'+(b.dir==='open'?' open':'')+'"><div class="sbar'+(b.up&&b.up.on?' on':'')+'" data-dir="up">'+svg(ICONS.up)+'</div>'+
       '<div class="sbar pos"><i style="height:'+(b.pct==null?0:b.pct)+'%"></i><b class="pbig">'+fmtBig(shadeTxt(b))+'</b></div>'+

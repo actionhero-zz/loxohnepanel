@@ -632,7 +632,7 @@
   .wrap.slim .pini{display:block;font-family:var(--font-head);font-weight:700;font-size:15px;letter-spacing:.02em;}
   .wrap.slim .addbtn{width:48px;height:48px;padding:0;border-radius:var(--r-m);}
   .wrap.slim .sidefoot{flex-direction:column;}
-  .wrap.slim .themesw{flex-direction:column;}
+  .wrap.slim .side .themesw{flex-direction:column;}
   /* Sprache rechts oben im Hauptmenue */
   .rubrics{align-items:center;}
   .rubrics .langrow{margin-left:auto;}
@@ -843,6 +843,13 @@
   .topbar.compact #phead{padding-top:4px;padding-bottom:0;}
   .topbar.compact #phead h2{font-size:15px;}
   .topbar.compact #phead .phlead,.topbar.compact #phead .kurl{display:none;}
+  /* ganzes Kopfmenue schrumpft mit: niedrigere Menuepunkte ohne Punkt, Suche nur Symbol, kleinere Umschalter */
+  .rub,.palbtn,.rubrics .langsel,.rubrics .themesw button{transition:padding .2s ease,height .2s ease,min-height .2s ease;}
+  .topbar.compact .rub{padding:5px 14px;font-size:13px;}
+  .topbar.compact .rub::after{display:none;}
+  .topbar.compact .palbtn{padding:5px 9px;} .topbar.compact .palbtn span,.topbar.compact .palbtn kbd{display:none;}
+  .topbar.compact .rubrics .langsel{padding:4px 10px;font-size:12px;}
+  .topbar.compact .rubrics .themesw{padding:2px;} .topbar.compact .rubrics .themesw button{height:26px;width:28px;}
   /* ?-Hilfe */
   .cardhead{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
   .cardhead h3{margin:0;}

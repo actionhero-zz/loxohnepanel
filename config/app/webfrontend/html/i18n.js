@@ -79,7 +79,7 @@
       'Sendet 3 kurze Pieptöne an das/die gewählte(n) Panel(s). Es müssen dafür geöffnet sein (Kiosk läuft und zeigt die Visu).':
         'Sends 3 short beeps to the selected panel(s). They must be open (kiosk running and showing the visu).',
       'Ziel-Panel': 'Target panel',
-      '🔊 Test-Ton senden': '🔊 Send test tone',
+      'Test-Ton senden': 'Send test tone',
       'Alle Panels': 'All panels',
       // Kalender & Wetter (Front / Screensaver)
       'Kalender & Wetter': 'Calendar & weather',
@@ -313,6 +313,18 @@
       '“ entfernt – wirksam mit Speichern': '” removed – takes effect on save',
       'Hintergrundbild entfernen?': 'Remove background image?',
       'Eigenen Klingelton entfernen? Danach gilt wieder der Standardton.': 'Remove custom ring tone? The default tone applies again.',
+      'Wirkt sofort – nicht über „Speichern“': 'Takes effect immediately – not saved via “Save”',
+      'Gerät offline – Steuerung nicht verfügbar': 'Device offline – controls not available',
+      'Gerät verbindet – Steuerung gleich verfügbar': 'Device connecting – controls available shortly',
+      'Weiteres': 'More',
+      'Richtet Modus → Ansicht für mehrere Geräte auf einmal ein.': 'Sets up mode → view for several devices at once.',
+      'Seite': 'Page',
+      'Fläche links': 'Left half',
+      'Fläche rechts': 'Right half',
+      'So geht’s': 'How it works',
+      'Passwortschutz entfernen? Danach kann jeder im Heimnetz diese Konfiguration öffnen.': 'Remove password protection? Anyone on the home network can then open this configuration.',
+      'Eigene Farben dieser Vorlage zurücksetzen?': 'Reset custom colours of this template?',
+      'Kachel auf Standard zurücksetzen?': 'Reset tile to default?',
       'Cover, Titel und Favoriten vom Loxone-Audioserver. Einen Test-Ton, um die Lautsprecher der Panels zu prüfen, findest du unter System → Diagnose.': 'Cover, title and favourites from the Loxone audio server. A test tone for checking the panel speakers is under System → Diagnostics.',
     }
   };

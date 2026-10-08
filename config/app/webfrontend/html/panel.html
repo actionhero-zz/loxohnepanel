@@ -201,6 +201,7 @@
   .epane .enval{fill:var(--ink);font-size:15px;font-weight:600;text-anchor:middle;}
   .epane .enval.idle{fill:var(--muted);}
   .epane .enlab{fill:var(--muted);font-size:12px;text-anchor:middle;}
+  .epane svg.px .enval,.epane svg.px .enlab{text-anchor:middle;}
   .epane .edot{opacity:0;}
   .epane .edot.prod{fill:var(--accent);} .epane .edot.cons{fill:var(--glow);} .epane .edot.grid{fill:var(--crit);}
   /* Fluss-Punkte laufen dauerhaft (Bewegung = Flussrichtung, also Info, kein
@@ -310,7 +311,7 @@
   /* Mini-Verlauf (it.spark): fuellt die freie Mitte zwischen Icon und Text */
   .tile .tspark{flex:1 1 auto;min-height:0;margin:6px 0 4px;overflow:hidden;}
   .tile .tspark svg{display:block;}
-  .tile .tspark .mm{font-size:10px;fill:var(--muted);font-variant-numeric:tabular-nums;}
+  .tile .tspark .mm{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums;}
   /* Enge Kachel (kleines Panel, viele Zeilen): die Mitte ist zu niedrig -> der
      Verlauf rueckt in die Kopfzeile neben das Icon, die Angabe ersetzt die Raumzeile.
      Schmale Kachel (sparkbadge): die Angabe passt nicht in den Kopf -> ebenfalls
@@ -516,7 +517,7 @@
   .grid.panel.chartpage .chart,#frontpane .fp-page.solo.cpage .chart{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
   .grid.panel.chartpage .chbody,#frontpane .fp-page.solo.cpage .chbody{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
   .grid.panel.chartpage .chsvg,#frontpane .fp-page.solo.cpage .chsvg{flex:1 1 0;min-height:0;}
-  .chbody .chax{fill:var(--muted);font-size:10px;font-family:var(--font-num,inherit);font-variant-numeric:tabular-nums;}
+  .chbody .chax{fill:var(--muted);font-size:11px;font-family:var(--font-num,inherit);font-variant-numeric:tabular-nums;}
   .chbody .chgrid{stroke:var(--muted,#565c7c);stroke-opacity:.35;stroke-width:1;stroke-dasharray:3 3;}   /* wie .wxhz */
   .chbody .chvgrid{stroke:var(--muted,#565c7c);stroke-opacity:.18;stroke-width:1;}
   .chbody .chlab{font-size:12px;font-weight:700;fill:var(--ink);font-family:var(--font-num,inherit);text-anchor:middle;}   /* wie .wxlab */
@@ -781,7 +782,8 @@
   .svw .svw-wx .now .cond{font-size:14px;} .svw .svw-wx .now .hl{font-size:12px;}
   /* Vorschau-Kacheln fuellen die restliche Hoehe der Karte; das Piktogramm
      waechst mit (max. 64 px), Schrift folgt "Vorhersage-Kacheln" (--sv-fc-size). */
-  .svw .svw-wx .fore{gap:8px;flex:1;min-height:0;}
+  .svw .svw-wx .fore{gap:8px;flex:1;min-height:0;min-width:0;grid-template-columns:repeat(var(--fc,3),minmax(0,1fr));}   /* gleich breite Spalten, nie seitwaerts */
+  .svw .svw-wx .fc{min-width:0;overflow:hidden;}
   .svw .svw-wx .fc{padding:6px 4px;gap:4px;border-radius:var(--r-m);justify-content:center;min-height:0;}
   /* Schrift waechst mit der Einstellung, aber nie ueber die Kachel hinaus (Containerhoehe) */
   .svw.svw-weather-cell{container-type:size;}
@@ -919,7 +921,7 @@
   .sv-wx .now .meta{display:flex;flex-direction:column;gap:2px;min-width:0;}
   .sv-wx .now .cond{font-size:15px;font-weight:500;}
   .sv-wx .now .hl{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;}
-  .sv-wx .fore{display:grid;grid-template-columns:repeat(var(--fc,4),1fr);gap:8px;}
+  .sv-wx .fore{display:grid;grid-template-columns:repeat(var(--fc,4),minmax(0,1fr));gap:8px;}
   .sv-wx .fc{background:var(--tile);border:1px solid var(--line);border-radius:var(--r-m);
     padding:6px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;}
   .sv-wx .fc .d{font-size:calc(var(--sv-fc-size,12.5) * 0.88 * 1px);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);}
@@ -1047,7 +1049,7 @@
   .fp-det{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .fp-det>div{background:var(--tile);border:1px solid var(--line);border-radius:var(--r-s);
     padding:8px 11px;display:flex;flex-direction:column;gap:2px;}
-  .fp-det>div span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+  .fp-det>div span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
   .fp-det>div b{font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink);}
   /* Monatsraster im Kalender-Pane — als eigene Karte */
   .fp-mon{display:flex;flex-direction:column;background:var(--tile);
@@ -1061,7 +1063,7 @@
     width:34px;height:34px;display:grid;place-items:center;border-radius:50%;}
   .fp-mnav:active{background:rgba(var(--wash,255,255,255),.08);}
   .fp-mon-g{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-  .fp-mon-wd{font-size:10px;font-weight:600;color:var(--muted);text-align:center;
+  .fp-mon-wd{font-size:11px;font-weight:600;color:var(--muted);text-align:center;
     text-transform:uppercase;letter-spacing:.06em;padding-bottom:5px;}
   .fp-mon-wd.sun{color:var(--crit,#e2695f);}
   .fp-mon-c{min-height:34px;padding:5px 0;display:grid;place-items:center;font-size:13px;
@@ -1239,7 +1241,7 @@
   .pantop>.pbig ~ .scenes .sico svg{width:24px;height:24px;}
   .scene .ssub{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .scene .ssub:empty{display:none;}
-  .scene .sico svg.sli{width:44px;height:44px;margin:-6px 0 0 -6px;}
+  .scene .sico svg.sli{margin:0;}
   .scene.on .ssub{color:inherit;opacity:.75;}
   /* Protokoll: Zeilen mit Zeit links, neueste oben */
   .dlog{flex:1 1 auto;min-height:0;align-self:stretch;overflow-y:auto;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain;}
@@ -1251,7 +1253,8 @@
   /* Titel und Summenzeile stehen schon im Kopf bzw. in den Kennzahlen */
   .grid.panel .pantop>.epane-detail .ettl,.grid.panel .pantop>.epane-detail .ebot{display:none;}
   /* Beschriftung im Radial: SVG wird verkleinert gezeichnet -> groesser setzen (real ~13 px) */
-  .grid.panel .pantop>.epane-detail .enval{font-size:26px;} .grid.panel .pantop>.epane-detail .enlab{font-size:22px;}
+  /* Detail: Radial wird in echten Pixeln gezeichnet (1 Einheit = 1 px) -> Schrift 13/17 px */
+  .epane svg.px .enval{font-size:17px;} .epane svg.px .enlab{font-size:13px;}
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:8px;align-self:stretch;flex-shrink:0;}
   .kpis>div{background:var(--tile);border-radius:var(--r-m);padding:8px 12px;display:flex;flex-direction:column;gap:2px;}
   .kpis span{font-size:13px;color:var(--muted);} .kpis b{font-family:var(--font-num,"Sora",sans-serif);font-size:18px;font-weight:600;}
@@ -1296,7 +1299,7 @@
   .grid.panel .status{font-size:18px;}
   .grid.panel .ptitle{font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));font-size:22px;font-weight:600;}
   .grid.panel .ptitle .psub{font-family:var(--font,"Manrope",sans-serif);font-size:18px;font-weight:400;}
-  .grid.panel.anchorbot .pantop>.scenes,.grid.panel.anchorbot .pantop>.shade,.grid.panel.anchorbot .pantop>.dimcard{flex:1 1 auto;min-height:0;align-self:stretch;}
+  .grid.panel.anchorbot .pantop>.scenes,.grid.panel.anchorbot .pantop>.dimcard{flex:1 1 auto;min-height:0;align-self:stretch;}
   .grid.panel.anchorbot .pantop:has(.scenes),.grid.panel.anchorbot .pantop:has(.shade),.grid.panel.anchorbot .pantop:has(.dimcard){justify-content:flex-start;}
   /* Szenen/Beschattung/Dimmer scrollen bzw. passen sich INNEN an -> hier darf
      .pantop schrumpfen (sonst wuchs das 2x2-Szenenraster seit #81 ueber den Schirm). */
@@ -1319,13 +1322,13 @@
   .scene b{font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));font-weight:600;font-size:20px;line-height:1.15;}
   .scene.on{background:var(--ink);color:var(--tile);}
   /* Beschattung: hoch / Stellung / runter */
-  .shade{display:flex;flex-direction:column;gap:8px;}
-  .sbar{flex:1;min-height:0;background:var(--tile);border-radius:var(--r-l);display:grid;place-items:center;color:var(--ink);cursor:pointer;}
-  .sbar svg{width:36px;height:36px;}
+  .shade{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:14px;flex-shrink:0;min-width:0;}
+  .sbar{flex:none;width:var(--pill-m,44px);height:var(--pill-m,44px);min-height:0;background:var(--tile);border-radius:var(--radius-control,50%);display:grid;place-items:center;color:var(--ink);cursor:pointer;}
+  .sbar svg{width:24px;height:24px;}
   .sbar.on{background:var(--ink);color:var(--tile);}
-  .sbar.pos{flex:1.6;position:relative;overflow:hidden;cursor:default;background:rgba(var(--wash,255,255,255),.05);}
-  .sbar.pos i{position:absolute;left:0;right:0;top:0;background:var(--dot,var(--accent));opacity:.45;transition:height .3s var(--ease);}
-  .sbar.pos .pbig{position:relative;font-size:clamp(48px,14vw,76px);}
+  .sbar.pos{flex:0 1 auto;width:auto;height:auto;border-radius:0;background:none;cursor:default;min-width:0;}
+  .sbar.pos i{display:none;}   /* Stellung steht als Zahl; keine Fuellflaeche mehr */
+  .pantop>.shade + .status{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   /* Dimmen: Flaeche = Regler */
   .dimcard{position:relative;border-radius:var(--r-l);overflow:hidden;display:grid;place-items:center;touch-action:none;cursor:ns-resize;
     background:rgba(var(--wash,255,255,255),.05);}
@@ -1455,7 +1458,7 @@
   @keyframes wxgrow{to{transform:scaleY(1)}}
   .wxpt{fill:var(--tile,#fff);stroke-width:2.4;opacity:0;animation:wxfade .3s ease 1s forwards;}
   .wxlab{font-size:12px;font-weight:700;fill:var(--ink,#1f2440);text-anchor:middle;opacity:0;animation:wxfade .3s ease 1s forwards;}
-  .wxax{font-size:10px;fill:var(--muted,#565c7c);}
+  .wxax{font-size:11px;fill:var(--muted,#565c7c);}
   .wxnight{fill:var(--ink,#1f2440);opacity:.06;}
   .wxrad{fill:#f6d27a;opacity:.55;}
   .wxhz{stroke:var(--muted,#565c7c);stroke-opacity:.35;stroke-width:1;stroke-dasharray:3 3;}
@@ -1729,14 +1732,14 @@
      z.B. Lichtszenen wie Bewaesserungszonen); passt es nicht, scrollt die Liste.
      Ausnahme nur Handy quer (zu wenig Hoehe), Handy hoch einspaltig. */
   /* 480er (nicht Handy): schon ab 3 Eintraegen zwei Spalten, sonst scrollt die Liste in ihren ~125 px (z.B. 3 Bewaesserungszonen) */
-  html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:not(.lsub):has(>:nth-child(3)){grid-template-columns:repeat(2,minmax(0,1fr));}
+  html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:has(>:nth-child(3)){grid-template-columns:repeat(2,minmax(0,1fr));}
   html.phone .grid.panel .pantop>.scenes{grid-auto-rows:46px;align-content:start;grid-template-columns:minmax(0,1fr);}   /* Handy: Hoehe reicht, eine Spalte */
   .grid.panel .pantop>.scenes>.scene{flex-direction:row;align-items:center;justify-content:flex-start;min-width:0;height:auto;
     padding:0 14px;gap:10px;border-radius:var(--r-m);}
   .grid.panel .pantop>.scenes>.scene .stx{min-width:0;flex:1 1 auto;}
   .grid.panel .pantop>.scenes>.scene b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  /* Untertitel (z.B. Wochentage beim Wecker) bis zu 2 Zeilen statt mit "..." abgeschnitten */
-  .grid.panel .pantop>.scenes>.scene .ssub{font-size:11.5px;line-height:1.1;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  /* Listenzeilen haben feste Hoehe: Unterzeile (z.B. Wochentage beim Wecker) einzeilig mit "..." */
+  .grid.panel .pantop>.scenes>.scene .ssub{font-size:12px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;}
   .grid.panel .pantop>.scenes>.scene b{line-height:1.15;}
   .grid.panel .pantop>.scenes .sico{flex:none;display:grid;place-items:center;}
   .grid.panel .pantop>.scenes .sico svg{width:22px;height:22px;margin:0;}
@@ -2481,19 +2484,21 @@ function bindLive(g,blocks){
     card.addEventListener('pointerup',end); card.addEventListener('pointercancel',end); }
 }
 // ---- Lichtszenen: Piktogramm zeigt das Licht der Szene (Option "sceneLight") ----
-// Kern = Lichtfarbe, Ringe = Helligkeit (ab 30 % einer, ab 60 % zwei, ab 90 %
-// drei), "Aus" = leerer Kern. Werte liefert der Server: live, gelernt oder
-// aus dem Namen geschaetzt (dann ohne %-Angabe, um nichts vorzutaeuschen).
+// Kern = Lichtfarbe, Bogen um den Kern = Helligkeit (Anteil des Rings). Alle
+// Szenen haben dieselbe Grundform und Groesse (24er Raster, ein Ring + Kern);
+// "Aus"/unbekannt = leerer gestrichelter Kern ohne Bogen. Werte liefert der
+// Server: live, gelernt oder aus dem Namen geschaetzt (dann ohne %-Angabe).
 let SCENE_LIGHT = false;
 function sceneLightIco(l){
-  const b=+l.b||0, rings=b>=90?3:b>=60?2:b>=30?1:0;
-  let h='<svg class="sli" viewBox="0 0 44 44" aria-hidden="true">';
-  for(let i=rings;i>=1;i--) h+='<circle cx="22" cy="22" r="'+(9.5+i*4)+'" style="fill:none;stroke:currentColor;stroke-width:1.8;opacity:'+(1.05-i*.22)+'"/>';
-  h+=b>0 ? '<circle cx="22" cy="22" r="9" style="fill:'+esc(l.c||'#ffe2b0')+';stroke:currentColor;stroke-width:1.8"/>'
-         : '<circle cx="22" cy="22" r="9" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-dasharray:3 3;opacity:.6"/>';
-  return h+'</svg>';
+  l=l||{}; const b=Math.max(0,Math.min(100,+l.b||0)), C=2*Math.PI*10, on=b>0;
+  return '<svg class="sli" viewBox="0 0 24 24" aria-hidden="true">'+
+    '<circle cx="12" cy="12" r="10" style="fill:none;stroke:currentColor;stroke-width:2;opacity:.22"/>'+
+    (on?'<circle cx="12" cy="12" r="10" transform="rotate(-90 12 12)" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-dasharray:'+(C*b/100).toFixed(1)+' '+C.toFixed(1)+'"/>':'')+
+    (on?'<circle cx="12" cy="12" r="5" style="fill:'+esc(l.c||'#ffe2b0')+';stroke:currentColor;stroke-width:1.6"/>'
+       :'<circle cx="12" cy="12" r="5" style="fill:none;stroke:currentColor;stroke-width:1.6;stroke-dasharray:2.4 2.4;opacity:.6"/>')+
+    '</svg>';
 }
-function sceneIco(it){ return (SCENE_LIGHT&&it.light) ? sceneLightIco(it.light) : svg(ICONS[it.icon]||ICONS.mood); }
+function sceneIco(it){ return (SCENE_LIGHT&&it.icon==='mood') ? sceneLightIco(it.light) : svg(ICONS[it.icon]||ICONS.mood); }
 // Unterzeile einer Szene: nur ein Text vom Server (keine Helligkeit in %,
 // die zeigt bei "Lichtszenen" schon das Symbol)
 function sceneSub(it){ return it.sub||''; }
@@ -3016,7 +3021,7 @@ function renderPanel(blocks){
     if(b.k==='big') return '<div class="pbig'+bigTone(b.tone)+(b.small?' sm':'')+'">'+fmtBig(b.text)+'</div>';
     if(b.k==='astat') return '<div class="astat'+(b.tone==='crit'?' crit':'')+'">'+esc(b.text||'')+(b.sub?'<div class="astatsub">'+esc(b.sub)+'</div>':'')+'</div>';
     if(b.k==='slider') return '<div class="srow"><span class="sico">'+svg(ICONS[b.icon]||ICONS.vol)+'</span><button type="button" class="sbtn" data-sd="dn">−</button><input type="range" class="sld" min="'+b.min+'" max="'+b.max+'"'+(b.step?' step="'+b.step+'"':'')+' value="'+b.value+'"><button type="button" class="sbtn" data-sd="up">+</button><span class="sval">'+b.value+'</span></div>';
-    if(b.k==='scenes') return '<div class="scenes'+((b.items||[]).some(it=>sceneSub(it).length>22)?' lsub':'')+'">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
+    if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
       '<span class="sico">'+sceneIco(it)+'</span><span class="stx"><b>'+esc(it.label)+'</b>'+(sceneSub(it)?'<span class="ssub">'+esc(sceneSub(it))+'</span>':'<span class="ssub"></span>')+'</span></div>').join('')+'</div>';
     if(b.k==='shade') return '<div class="shade'+(b.dir==='open'?' open':'')+'"><div class="sbar'+(b.up&&b.up.on?' on':'')+'" data-dir="up">'+svg(ICONS.up)+'</div>'+
       '<div class="sbar pos"><i style="height:'+(b.pct==null?0:b.pct)+'%"></i><b class="pbig">'+fmtBig(shadeTxt(b))+'</b></div>'+
@@ -3070,7 +3075,7 @@ function renderPanel(blocks){
   fitDbg();
   if(bi&&window.ResizeObserver){ if(g._dbgRo) g._dbgRo.disconnect(); g._dbgRo=new ResizeObserver(fitDbg); g._dbgRo.observe(g); }
   else if(g._dbgRo){ g._dbgRo.disconnect(); g._dbgRo=null; }
-  const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d){ paintEnergy(d, efb.e); fitEflow(d); } }   // Radial in der Detailansicht zeichnen
+  const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d){ paintEnergy(d, efb.e, true); } }   // Radial in der Detailansicht zeichnen (echte Pixel)
   const hc=g.querySelector('.hero .circle'); if(hc){
     const cc=(view&&view.catColor)||''; hc.style.color=cc; hc.style.borderColor=cc; }
   paintCharts(g,blocks);
@@ -3158,7 +3163,7 @@ function updatePanel(blocks){
   const sb=blocks.find(b=>b.k==='slider'); if(sb){const sld=g.querySelector('.sld'); if(sld&&!sldDragging){ sld.value=sb.value; sldFill(sld); const sv=g.querySelector('.sval'); if(sv)sv.textContent=sb.value; }}
   patchLive(g,blocks);
   markWords(g);
-  const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d){ paintEnergy(d, efb.e); fitEflow(d); } }   // Radial live aktualisieren (in-place)
+  const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d){ paintEnergy(d, efb.e, true); } }   // Radial live aktualisieren (in-place)
   paintCharts(g,blocks);   // Verlauf nachgeladen oder Fenster vorgerueckt: neu zeichnen, Knoepfe bleiben
   rowBlocks.forEach((b,ri)=>{ const rowEl=rows[ri]; if(!rowEl)return;
     b.cells.forEach((c,ci)=>{ const btn=rowEl.querySelector('[data-c="'+ci+'"]'); if(!btn)return;
@@ -3843,6 +3848,7 @@ function applyScale(){
 }
 window.addEventListener('resize',()=>{
   applyScale();
+  clearTimeout(window._efT); window._efT=setTimeout(()=>{ const d=document.querySelector('[data-eflow]'); if(d&&d._ed) paintEnergy(d,d._ed,true); },250);   // Energie-Radial an neue Groesse
   if(el('grid').classList.contains('scheme')&&schemeFit) schemeFit();
   // Screensaver-Spaltigkeit nachziehen, wenn das Fenster (Kiosk-Start, Rotation,
   // Auto-Reload) erst spaet die echte Groesse meldet -> kein Haengenbleiben in 2-spaltig.
@@ -4123,6 +4129,7 @@ function connect(){
       document.documentElement.dataset.contrast = msg.contrast ? '1' : '0';   // Mehr Kontrast: Schatten an Kacheln/Knoepfen
       SCENE_LIGHT = !!msg.sceneLight;   // Lichtszenen: Piktogramm zeigt Lichtfarbe + Helligkeit
       if(saverOn()) applySaverSplit();      // Split-Erlaubnis kann sich geaendert haben -> Screensaver-Spaltigkeit nachziehen
+      if(msg.missing) lpToast('noprof', 'Profil „'+msg.missing+'“ nicht gefunden – Standard wird angezeigt', 'warn', 15);   // ?panel=<unbekannt>
       if(msg.lang){ LANG=msg.lang; document.documentElement.lang=LANG.split('-')[0]; tickClock(); }   // lang: Silbentrennung   // Panel-Sprache -> Datum/Uhr sofort aktualisieren
       if(msg.title) document.title=msg.title;
       if(msg.tabMeta) tabMeta=msg.tabMeta;
@@ -4727,7 +4734,7 @@ const WX_TC=[[-10,'#7f9cf0'],[0,'#8ab8f2'],[8,'#93d3e6'],[14,'#f0d07e'],[22,'#f2
 const wxTc=t=>ambRgb(ambStops(WX_TC,t));
 function wxInk(){ const v=getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();
   return /^#[0-9a-f]{6}$/i.test(v)?ambHex(v):[31,36,64]; }
-const wxTcTxt=t=>ambRgb(ambMix(ambStops(WX_TC,t),wxInk(),.38));
+const wxTcTxt=t=>ambRgb(ambMix(ambStops(WX_TC,t),wxInk(),.78));   // stark Richtung Schriftfarbe: Kontrast >= 4,5:1 auf der Blattfarbe
 // Kennzahlen, die der Graph zeigen kann (Antippen eines Chips schaltet um):
 // Linie (lc: nach Temperatur gefaerbt, sonst feste Pastellfarbe) oder Balken.
 const WXM={
@@ -5209,7 +5216,7 @@ function renderFrontRich(elc){ if(!elc) return; const d=frontData||{}; elc.inner
 // Split-Panes: je eine eigene Pane.
 // Energiefluss-Pane (Radial, Loxone-Standard): Daten vom Server ({t:'energy'});
 // das Panel zeichnet Knoten + animierte Fluss-Punkte. Zahlen deutsch, W/kW auto.
-function fmtPower(w){ if(w==null) return '–'; const a=Math.abs(w);
+function fmtPower(w){ if(w==null||!isFinite(w)||isSentinel(w)) return '–'; const a=Math.abs(w);   // Sentinel/Int-Ueberlauf aus Loxone (>= 2,1 MW) = Fehlwert
   return a<1000 ? Math.round(w)+' W' : (w/1000).toFixed(1).replace('.',',')+' kW'; }
 const EICONS={
   pv:'<circle cx="12" cy="8" r="3.2"/><path d="M12 1.6v1.6M6.7 3.3l1 1M17.3 3.3l-1 1M4.5 8h1.4M18.1 8h1.4"/><path d="M6 14l1.6 6.4h8.8L18 14z"/><path d="M7.4 17.2h9.2M11 14v6.4"/>',
@@ -5227,25 +5234,29 @@ const EICONS={
 // Masken-IDs sind dokumentweit eindeutig (Pane, Detailansicht und
 // Screensaver koennen das Radial gleichzeitig zeigen).
 let eMaskSeq=0;
-function eIconMarkup(n,cls,i){
-  const tag='data-ic="'+i+'"';
+function eIconMarkup(n,cls,i,sz){
+  const tag='data-ic="'+i+'"', z=sz||26, h=z/2;
   if(n && n.iconUrl){
     const u=esc(String(n.iconUrl)), id='emk'+(++eMaskSeq);
     return '<mask id="'+id+'" maskUnits="userSpaceOnUse" maskContentUnits="userSpaceOnUse" '+
-      'x="-13" y="-13" width="26" height="26" style="mask-type:alpha">'+
-      '<image href="'+u+'" xlink:href="'+u+'" x="-13" y="-13" width="26" height="26" preserveAspectRatio="xMidYMid meet"/></mask>'+
-      '<rect '+tag+' class="emask '+cls+'" x="-13" y="-13" width="26" height="26" mask="url(#'+id+')"/>';
+      'x="-'+h+'" y="-'+h+'" width="'+z+'" height="'+z+'" style="mask-type:alpha">'+
+      '<image href="'+u+'" xlink:href="'+u+'" x="-'+h+'" y="-'+h+'" width="'+z+'" height="'+z+'" preserveAspectRatio="xMidYMid meet"/></mask>'+
+      '<rect '+tag+' class="emask '+cls+'" x="-'+h+'" y="-'+h+'" width="'+z+'" height="'+z+'" mask="url(#'+id+')"/>';
   }
   const icon=EICONS[n&&n.icon]||EICONS.load;
-  return '<g '+tag+' class="eic '+cls+'" transform="translate(-12,-12)">'+icon+'</g>';
+  return '<g '+tag+' class="eic '+cls+'" transform="scale('+(z/26).toFixed(3)+') translate(-12,-12)">'+icon+'</g>';
 }
 // Farbe nach ROLLE (kind vom Server): prod=Quelle gruen, grid=Netzbezug ROT,
 // load=Verbraucher orange, idle=0 W grau. (Fallback aus flow, falls kein kind.)
-function eColorCls(n){ const k=n.kind||(n.flow==='out'?'load':(n.flow==='in'?'prod':'idle'));
+function isSentinel(v){ const a=Math.abs(v); return Math.abs(a-2147483.647)<0.01||Math.abs(a-2147483647)<1; }   // Loxone-Fehlwert (INT32_MAX bzw. /1000)
+function eBad(n){ return n.w==null || !isFinite(n.w) || isSentinel(n.w); }   // Fehlwert/Sentinel -> "–", Knoten grau
+function eVal(n){ return eBad(n) ? '–' : (n.flow?fmtPower(n.w):'0 W'); }
+function fitTxt(t,mc){ t=String(t==null?'':t); return (mc&&t.length>mc)?t.slice(0,Math.max(1,mc-1)).trimEnd()+'…':t; }
+function eColorCls(n){ if(eBad(n)) return 'idle'; const k=n.kind||(n.flow==='out'?'load':(n.flow==='in'?'prod':'idle'));
   return k==='grid'?'grid':(k==='load'?'cons':(k==='prod'?'prod':'idle')); }
 // Animationsrichtung nach ECHTEM Fluss (flow), entkoppelt von der Farbe:
 // in = zur Mitte, out = nach aussen (in den Knoten, z.B. Einspeisung).
-function eDirCls(n){ return n.flow==='in'?' fin':(n.flow==='out'?' fout':''); }
+function eDirCls(n){ if(eBad(n)) return ''; return n.flow==='in'?' fin':(n.flow==='out'?' fout':''); }
 function nodeLabel(n){ return (n.name||'')+(n.soc!=null?' · '+Math.round(n.soc)+' %':''); }
 // Nur Werte, die der Server kennt: unbekannter Verbrauch (null) fehlt, statt "0 W".
 function efooter(tt){ const t=[];
@@ -5255,20 +5266,58 @@ function efooter(tt){ const t=[];
 // Baut das Radial als HTML-String (fuer Pane UND Detailansicht). Knoten tragen
 // data-Attribute, damit updateEnergyPane() nur Werte/Farben aendert und die
 // Fluss-Punkte NICHT neu erzeugt werden (Animation laeuft sonst nie durch).
-function energyInner(d){
+// Detailansicht: Zeichnung in echten Pixeln (viewBox = Hostgroesse), Knoten auf
+// einer Ellipse, die die Flaeche fuellt. Breit: Name + Wert NEBEN dem Knoten
+// (zwei Zeilen), schmal/hoch: unter dem Knoten. Nichts ueberlappt, Schrift 13/17 px.
+function energyPx(d,dm){
+  const nodes=(d.nodes||[]).slice(0,9), N=nodes.length, W=dm.w, H=dm.h, fs=13, fv=17, cwid=.6;
+  const rn=Math.max(22,Math.min(36,Math.round(Math.min(W,H)*.15))), side=W/H>=1.6;
+  const labs=nodes.map(nodeLabel), vals=nodes.map(eVal);
+  let lw=Math.max(60,...labs.map(t=>t.length*fs*cwid),...vals.map(t=>t.length*fv*cwid));
+  lw=Math.min(lw,side?W*.3:W*.4);
+  const mc=Math.max(6,Math.floor(lw/(fs*cwid)));
+  const cx=W/2; let cy,rx,ry;
+  if(side){ rx=W/2-rn-12-lw; ry=H/2-rn-6; cy=H/2; }
+  else { const top=rn+4, bot=H-rn-(fs+fv+14); ry=(bot-top)/2; cy=(top+bot)/2; rx=W/2-Math.max(rn,lw/2)-6; }
+  rx=Math.max(24,rx); ry=Math.max(24,ry);
+  const spokes=[],dots=[],ng=[],txts=[];
+  nodes.forEach((n,i)=>{
+    const ang=-Math.PI/2+i*2*Math.PI/N, nx=cx+rx*Math.cos(ang), ny=cy+ry*Math.sin(ang);
+    const col=eColorCls(n), dir=eDirCls(n), tx=nx.toFixed(1), ty=ny.toFixed(1);
+    spokes.push('<line class="spoke" x1="'+cx+'" y1="'+cy+'" x2="'+tx+'" y2="'+ty+'"/>');
+    const dx=((nx-cx)*.72).toFixed(1), dy=((ny-cy)*.72).toFixed(1), live=n.flow&&!eBad(n);
+    for(let k=0;k<2;k++) dots.push('<circle data-nd="'+i+'-'+k+'" class="edot '+col+dir+'" cx="'+cx+'" cy="'+cy+'" r="4" style="--dx:'+dx+'px;--dy:'+dy+'px;animation-delay:'+(k*1.3)+'s'+(live?'':';display:none')+'"/>');
+    ng.push('<g transform="translate('+tx+','+ty+')"><circle class="ering '+col+'" data-ri="'+i+'" r="'+rn+'"/>'+eIconMarkup(n,col,i,Math.round(rn*1.1))+'</g>');
+    const vcls='enval'+(col==='idle'?' idle':''), nm=esc(fitTxt(labs[i],mc)), val=esc(vals[i]);
+    if(side){
+      const right=nx>=cx-4, ax=right?nx+rn+10:nx-rn-10, st='text-anchor:'+(right?'start':'end');
+      txts.push('<text class="enlab" data-vl="'+i+'" data-mc="'+mc+'" style="'+st+'" x="'+ax.toFixed(1)+'" y="'+(ny-3).toFixed(1)+'">'+nm+'</text>'+
+        '<text class="'+vcls+'" data-vv="'+i+'" style="'+st+'" x="'+ax.toFixed(1)+'" y="'+(ny+fv).toFixed(1)+'">'+val+'</text>');
+    } else {
+      txts.push('<text class="enlab" data-vl="'+i+'" data-mc="'+mc+'" x="'+tx+'" y="'+(ny+rn+fs+4).toFixed(1)+'">'+nm+'</text>'+
+        '<text class="'+vcls+'" data-vv="'+i+'" x="'+tx+'" y="'+(ny+rn+fs+fv+8).toFixed(1)+'">'+val+'</text>');
+    }
+  });
+  return '<div class="epane"><div class="etop"><span class="ettl">'+esc(d.name||'Energiefluss')+'</span></div>'+
+    '<div class="ewrap"><svg class="px" viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet">'+
+    spokes.join('')+dots.join('')+'<circle class="ehub" cx="'+cx+'" cy="'+cy+'" r="8"/>'+ng.join('')+txts.join('')+
+    '</svg></div><div class="ebot">'+efooter(d.totals||{})+'</div></div>';
+}
+function energyInner(d,dm){
   d=d||{};
   const nodes=(d.nodes||[]).slice(0,9), N=nodes.length;
   if(!N) return '<div class="epane"><div class="ebot">Energiefluss lädt …</div></div>';
+  if(dm && dm.w>=120 && dm.h>=80) return energyPx(d,dm);
   const C=240,R=140,rn=(N>6?34:40), spokes=[],dots=[],ng=[],txts=[];   // C=240 in 480er-viewBox -> Rand fuer Beschriftung ausserhalb der Ringe
   nodes.forEach((n,i)=>{
     const ang=-Math.PI/2 + i*2*Math.PI/N, nx=C+R*Math.cos(ang), ny=C+R*Math.sin(ang);
     const col=eColorCls(n), dir=eDirCls(n), tx=nx.toFixed(1), ty=ny.toFixed(1);
     spokes.push('<line class="spoke" x1="'+C+'" y1="'+C+'" x2="'+tx+'" y2="'+ty+'"/>');
     const dx=((nx-C)*0.72).toFixed(1), dy=((ny-C)*0.72).toFixed(1);
-    for(let k=0;k<2;k++) dots.push('<circle data-nd="'+i+'-'+k+'" class="edot '+col+dir+'" cx="'+C+'" cy="'+C+'" r="4.5" style="--dx:'+dx+'px;--dy:'+dy+'px;animation-delay:'+(k*1.3)+'s'+(n.flow?'':';display:none')+'"/>');
+    for(let k=0;k<2;k++) dots.push('<circle data-nd="'+i+'-'+k+'" class="edot '+col+dir+'" cx="'+C+'" cy="'+C+'" r="4.5" style="--dx:'+dx+'px;--dy:'+dy+'px;animation-delay:'+(k*1.3)+'s'+((n.flow&&!eBad(n))?'':';display:none')+'"/>');
     ng.push('<g transform="translate('+tx+','+ty+')"><circle class="ering '+col+'" data-ri="'+i+'" r="'+rn+'"/>'+eIconMarkup(n,col,i)+'</g>');
     const above=ny<C-4, nm=esc(nodeLabel(n));
-    const val=esc(n.flow?fmtPower(n.w):'0 W'), vcls='enval'+(col==='idle'?' idle':'');
+    const val=esc(eVal(n)), vcls='enval'+(col==='idle'?' idle':'');
     txts.push(above
       ? '<text class="'+vcls+'" data-vv="'+i+'" x="'+tx+'" y="'+(ny-74).toFixed(1)+'">'+val+'</text><text class="enlab" data-vl="'+i+'" x="'+tx+'" y="'+(ny-56).toFixed(1)+'">'+nm+'</text>'
       : '<text class="enlab" data-vl="'+i+'" x="'+tx+'" y="'+(ny+56).toFixed(1)+'">'+nm+'</text><text class="'+vcls+'" data-vv="'+i+'" x="'+tx+'" y="'+(ny+76).toFixed(1)+'">'+val+'</text>');
@@ -5279,30 +5328,27 @@ function energyInner(d){
     '</svg></div><div class="ebot">'+efooter(d.totals||{})+'</div></div>';
 }
 // Struktur-Signatur: nur bei Aenderung (Knotensatz/Icons) neu zeichnen.
-function energySig(d){ return ((d.nodes||[]).map(n=>(n.name||'')+'§'+(n.icon||'')+'§'+(n.iconUrl||'')).join('¦'))+'#'+((d.nodes||[]).length); }
+function energySig(d,dm){ return (dm?dm.w+'x'+dm.h+'@':'')+((d.nodes||[]).map(n=>(n.name||'')+'§'+(n.icon||'')+'§'+(n.iconUrl||'')).join('¦'))+'#'+((d.nodes||[]).length); }
 function updateEnergyPane(elc,d){
   (d.nodes||[]).slice(0,9).forEach((n,i)=>{
     const col=eColorCls(n), dir=eDirCls(n);
     const ring=elc.querySelector('.ering[data-ri="'+i+'"]'); if(ring){ const w='ering '+col; if(ring.getAttribute('class')!==w) ring.setAttribute('class',w); }
     const ic=elc.querySelector('[data-ic="'+i+'"]'); if(ic){ const base=ic.classList.contains('emask')?'emask':'eic'; const w=base+' '+col; if(ic.getAttribute('class')!==w) ic.setAttribute('class',w); }
-    const vv=elc.querySelector('[data-vv="'+i+'"]'); if(vv){ const t=n.flow?fmtPower(n.w):'0 W'; if(vv.textContent!==t) vv.textContent=t; const w='enval'+(col==='idle'?' idle':''); if(vv.getAttribute('class')!==w) vv.setAttribute('class',w); }
-    const vl=elc.querySelector('[data-vl="'+i+'"]'); if(vl){ const t=nodeLabel(n); if(vl.textContent!==t) vl.textContent=t; }
-    for(let k=0;k<2;k++){ const dot=elc.querySelector('.edot[data-nd="'+i+'-'+k+'"]'); if(dot){ const w='edot '+col+dir; if(dot.getAttribute('class')!==w) dot.setAttribute('class',w); const disp=n.flow?'':'none'; if(dot.style.display!==disp) dot.style.display=disp; } }
+    const vv=elc.querySelector('[data-vv="'+i+'"]'); if(vv){ const t=eVal(n); if(vv.textContent!==t) vv.textContent=t; const w='enval'+(col==='idle'?' idle':''); if(vv.getAttribute('class')!==w) vv.setAttribute('class',w); }
+    const vl=elc.querySelector('[data-vl="'+i+'"]'); if(vl){ const t=fitTxt(nodeLabel(n),+vl.dataset.mc||0); if(vl.textContent!==t) vl.textContent=t; }
+    for(let k=0;k<2;k++){ const dot=elc.querySelector('.edot[data-nd="'+i+'-'+k+'"]'); if(dot){ const w='edot '+col+dir; if(dot.getAttribute('class')!==w) dot.setAttribute('class',w); const disp=(n.flow&&!eBad(n))?'':'none'; if(dot.style.display!==disp) dot.style.display=disp; } }
   });
   const bot=elc.querySelector('.ebot'); if(bot){ const h=efooter(d.totals||{}); if(bot.innerHTML!==h) bot.innerHTML=h; }
 }
 // Zeichnet in elc: nur bei Strukturaenderung Neuaufbau, sonst in-place -> Punkte laufen weiter.
-// Detailseite: Ausschnitt auf die Zeichnung zuschneiden, damit der Radial die
-// Flaeche fuellt (die 480er-Vorlage ist fuer die Screensaver-Kachel gedacht).
-function fitEflow(host){ const sv=host.querySelector('.ewrap svg'); if(!sv||sv.dataset.fit) return; sv.dataset.fit='1';   // einmal je Zeichnung (kein Springen durch laufende Punkte)
-  try{ const b=sv.getBBox(); if(!b.width) return; const m=10;
-    sv.setAttribute('viewBox',(b.x-m)+' '+(b.y-m)+' '+(b.width+2*m)+' '+(b.height+2*m)); }catch(e){} }
-function paintEnergy(elc,d){
+function paintEnergy(elc,d,px){
   d=d||{};
-  const sig=energySig(d);
+  const dm=px?{w:Math.round(elc.clientWidth),h:Math.round(elc.clientHeight)}:null;
+  const sig=energySig(d,dm);
   if(elc._esig===sig && elc.querySelector('.ewrap svg')){ updateEnergyPane(elc,d); return; }
   elc._esig=sig;
-  elc.innerHTML=energyInner(d);
+  if(px) elc._ed=d;
+  elc.innerHTML=energyInner(d,dm);
 }
 function renderEnergyPane(elc){ if(!elc) return;
   // Energiefluss in denselben gerahmten .fp-page-Block wie Wetter/Kalender (eine Seite).

@@ -99,3 +99,7 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - Zwei Ebenen: dunkle Seitenleiste (`cfg-bezel`) und heller Inhalt (`cfg-bg`) mit Karten (`cfg-panel`, `r-l`, `shadow-cfg`) in Masonry-Spalten.
 - Eine gemeinsame Speicherleiste unten. Der Speichern-Knopf ist `cfg-prim`; bei Erfolg wird er 2 s grün mit „✓ Gespeichert“, bei Fehler rot.
 - Lange Einstellungsblöcke sind zusammenklappbar; selten Genutztes eingeklappt.
+- Die Config ist für PC/Monitor optimiert (kein Touch-Zwang für Tippflächen).
+- **Speichermodell:** Primär (`cfg-prim` gefüllt, Schrift `prim-ink`) ist nur „Speichern“ in der Speicherleiste – und „Weiter“ in Assistenten. Alles andere ist Nebenaktion: Fläche `field`, Rand `line`, Schrift `fg`. Sofort wirkende Aktionen (Test-Ton, Passwort, Log, Geräteaktionen …) tragen ein kleines Blitz-Symbol (11 px) mit Hinweis „Wirkt sofort“. Gefährliches (Löschen, Entfernen, Zurücksetzen): Schrift `crit`, rote Kontur, keine Füllung, rechts abgesetzt bzw. in eigener Zeile mit Trennlinie, immer mit Rückfrage.
+- **Auswahl:** Ausgewählt = 2 px Ring in `prim` (ohne Layoutsprung) plus Häkchen-Quadrat 18 px (`radius-round`) oben rechts in `prim`, Häkchen in `prim-ink`; an Pillen als 16-px-Marke an der Ecke. Kleine Wahlfelder (< 44 px) und Tab-Chips nur Ring. Akzent-/Orangetöne sind für „ausgewählt“ nicht erlaubt.
+- **Karten:** Eine einzelne Karte füllt die Breite; Text steht immer in Karten; jeder Aufklapper trägt denselben Pfeil ›. Hilfe „?“ öffnet ein schwebendes Popover (`r-m`) statt Inhalt zu verschieben.

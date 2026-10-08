@@ -1186,15 +1186,7 @@
   /* Entfernen: ein Stil (rot umrandet, Beschriftung "Entfernen") */
   .minibtn.del{background:transparent;color:var(--crit);border-color:rgba(196,71,61,.35);}
   .minibtn.del:hover{background:rgba(196,71,61,.07);border-color:var(--crit);}
-  /* Meine Geräte: Gruppen Status · Anzeige · Steuerung · Wartung */
-  .dev .dgp{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--fg);background:var(--panel2);border-radius:var(--r-s);padding:6px 10px;margin:16px 0 2px;}
-  .dev .devbody>.dgp:first-child{margin-top:2px;}
-  .dev .dgp+.dsec,.dev .dgp+.devlive .dsec,.dev .dgp+.devmaint .dsec{border-top:0;}
-  .dev .devctl:empty,.dev .devmaint:empty{display:none;}
-  .dev .devctl .dgp{margin-top:16px;}
-  .dev .dctl.off .drow>*,.dev .dctl.off .devx{opacity:.45;}
-  .dev .doff{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:8px;}
-  .dev .doff small{font-weight:400;}
+  /* Meine Geräte: Gruppen Status · Anzeige · Steuerung · Wartung (einklappbar, siehe unten) */
   .dev .btn.disabled,.dev a.btn[aria-disabled=true]{opacity:.45;pointer-events:none;}
   /* Auswahlfelder in der Gerätekachel: volle Breite, nichts abgeschnitten */
   .dev select{max-width:100%;min-width:0;}
@@ -1212,6 +1204,120 @@
   .npbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
   .npcard{margin:0;}
   .spane>.card.npchoice{column-span:all;}
+  /* ==== Designsystem 0.19.8x: Speichermodell, Auswahl, Karten, Geräte-Gruppen, Ruhe ==== */
+  :root{
+    --bolt:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 2 4.5 13.5H11L10 22l8.5-11.5H12z'/%3E%3C/svg%3E");
+    --chk:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12.5 4.5 4.5L19 7.5'/%3E%3C/svg%3E");
+  }
+  /* 1) EIN Speichermodell: primär (dunkel gefüllt) ist nur „Speichern“ in der Speicherleiste (und der Weiter-Knopf eines Assistenten).
+     Sofort wirkende Aktionen = Nebenaktion (Kontur) + kleiner Blitz „wirkt sofort“ (.now, per Skript + title).
+     Gefährliches = rote Kontur, rechts abgesetzt (order/margin-left:auto) bzw. eigene Zeile, immer mit Rückfrage. */
+  .btn{background:var(--field);color:var(--fg);border-color:var(--line);}
+  .btn:hover{background:var(--panel2);border-color:var(--muted);filter:none;}
+  .btn.save,#saveBtn,.wzbox .btn:not(.ghost):not(.del){background:var(--prim);color:var(--prim-ink);border-color:transparent;}
+  .btn.save:hover,#saveBtn:hover,.wzbox .btn:not(.ghost):not(.del):hover{background:var(--prim-hover);border-color:transparent;}
+  .btn.del,.minibtn.del{background:transparent;color:var(--crit);border-color:rgba(196,71,61,.35);border-color:color-mix(in srgb,var(--crit) 45%,transparent);}
+  .btn.del:hover,.minibtn.del:hover{background:rgba(196,71,61,.08);background:color-mix(in srgb,var(--crit) 10%,transparent);border-color:var(--crit);}
+  .actions .btn.del,.actions .minibtn.del{order:90;margin-left:auto;}
+  .actions .toast{flex:1 1 0;min-width:0;}
+  .now::after{content:"";display:inline-block;width:11px;height:11px;margin-left:8px;vertical-align:-1px;background:currentColor;opacity:.5;
+    -webkit-mask:var(--bolt) center/contain no-repeat;mask:var(--bolt) center/contain no-repeat;}
+  .btn.sm.now::after,.minibtn.now::after{width:10px;height:10px;margin-left:6px;}
+  /* 2) EIN Auswahl-Stil für Kartenwahlen: 2 px Ring in --prim (Rand 1 px + inset 1 px, kein Layoutsprung)
+     + kleines gefülltes Häkchen-Quadrat (r-round 32 %) oben rechts in --prim. Klasse .pick bzw. Liste unten. */
+  .pick,.sizepick button,.mzopt,.mzchip,.crpopt{position:relative;}
+  .pick.on,.sizepick button.on,.mzopt.on,.mzchip.on,.crpopt:has(input:checked),.tbchip.on{border-color:var(--prim);box-shadow:inset 0 0 0 1px var(--prim);color:var(--fg);}
+  .mzopt.on,.mzchip.on{background:var(--field);}
+  .crpopt{border:1px solid var(--line);}
+  .pick.on::before,.sizepick button.on::before,.mzopt.on::before,.mzchip.on::before,.crpopt:has(input:checked)::before,
+  .pick.on::after,.sizepick button.on::after,.mzopt.on::after,.mzchip.on::after,.crpopt:has(input:checked)::after{
+    content:"";position:absolute;top:8px;right:8px;width:18px;height:18px;pointer-events:none;}
+  .pick.on::before,.sizepick button.on::before,.mzopt.on::before,.mzchip.on::before,.crpopt:has(input:checked)::before{border-radius:var(--r-round,32%);background:var(--prim);}
+  .pick.on::after,.sizepick button.on::after,.mzopt.on::after,.mzchip.on::after,.crpopt:has(input:checked)::after{background:var(--prim-ink);
+    -webkit-mask:var(--chk) center/12px no-repeat;mask:var(--chk) center/12px no-repeat;}
+  /* Pillen-Wahl (Gerät im Assistenten, Design-Vorlage): Häkchen als Marke an der Ecke */
+  .mzchip.on::before,.mzchip.on::after,.minibtn.pick.on::before,.minibtn.pick.on::after{top:-7px;right:-7px;width:16px;height:16px;}
+  .minibtn.pick.on{background:var(--field);}
+  .minibtn.pick.on::after,.mzchip.on::after{-webkit-mask-size:11px;mask-size:11px;}
+  /* Kleine Wahlfelder (Symbol, Reiter, Schalter): gleicher Ring, ohne Häkchen; keine Orange-/Akzentfarbe mehr */
+  .itab.on,.iopt.sel,.tgl.on,.camopt.on{background:var(--field);color:var(--fg);border-color:var(--prim);box-shadow:inset 0 0 0 1px var(--prim);}
+  .iopt:hover{border-color:var(--muted);}
+  .dbic.on{outline-color:var(--prim);}
+  /* gewählte Kachel im Raster: Ring in --prim mit Halo in Kartenfarbe (auf jeder Kartenfarbe sichtbar) */
+  .g2ed .ew.sel,.sved .ew.sel{outline:2px solid var(--prim);outline-offset:2px;box-shadow:0 0 0 2px var(--panel);}
+  /* 3) Karten: eine Einzelkarte füllt die Breite wie in den anderen Unterreitern; Intercoms als Karte */
+  .spane:not(:has(.card ~ .card))>.card,.spane:not(:has(.card ~ .card))>#sysBehavior>.card{column-span:all;}
+  .spane>.card.icwrap{column-span:all;}
+  .icwrap .icbox{border:1px solid var(--line);box-shadow:none;background:var(--panel2);}
+  .icwrap .muted{padding:0;}
+  /* Aufklapper: überall derselbe Pfeil › rechts (dreht beim Öffnen) */
+  .sved .tbsech svg,.dphd svg,.dashprops .dbarhd svg{display:none;}
+  .sved .tbsech::after,.dphd::after,.dashprops .dbarhd::after{content:'›';margin-left:auto;font-size:18px;line-height:1;opacity:.55;transition:transform .2s ease;flex:none;color:var(--fg);}
+  .sved .tbsec.open .tbsech::after,.dpwrap.open .dphd::after,.dashprops .dbarbox.open .dbarhd::after{transform:rotate(90deg);}
+  /* 4) Geräte-Karte: Gruppen einklappbar, Titel wie Kartenüberschriften */
+  .dev .dgrp{border-top:1px solid var(--line);}
+  .dev .dgrp:first-child{border-top:0;}
+  .dev .dgh{all:unset;box-sizing:border-box;display:flex;align-items:center;gap:8px;width:100%;padding:12px 0;cursor:pointer;
+    font-family:var(--font-head);font-size:15px;font-weight:600;letter-spacing:-.01em;color:var(--fg);}
+  .dev .dgh:focus-visible{outline:2px solid var(--prim);outline-offset:2px;border-radius:var(--r-s);}
+  .dev .dgh .chev{margin-left:auto;}
+  .dev .dgrp.open>.dgh .chev{transform:rotate(90deg);}
+  .dev .dgb{display:none;padding:0 0 12px;}
+  .dev .dgrp.open>.dgb{display:block;}
+  .dev .dgb .dsec{border-top:1px solid var(--line);}
+  .dev .dgb>.dsec:first-child,.dev .dgb>.ag:first-child>.dsec:first-child,.dev .dgb>.devlive>.ag>.dsec:first-child,.dev .dgb>.devctl>.ag>.dsec:first-child,.dev .dgb>.devmaint>.ag>.dsec:first-child{border-top:0;padding-top:2px;}
+  .dev .dsh{font-size:13px;font-weight:650;letter-spacing:0;text-transform:none;color:var(--fg);}
+  .dev .devctl:empty,.dev .devmaint:empty{display:none;}
+  .dev .devmaint:empty+.dsec{border-top:0;padding-top:2px;}
+  .dev .doff{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  .dev .doff::before{content:"";width:8px;height:8px;border-radius:var(--r-round,32%);background:var(--crit);flex:none;}
+  .dev select,.dev input[type=text],.dev input[type=password],.dev input[type=number]{max-width:360px;}
+  .dev .devhead .dev_model,.dev .dev_scale,.dev .dd_drv{width:100%;max-width:360px;flex:1 1 100%;}
+  .dev .drow .agsel{flex:1 1 220px;max-width:360px;}
+  .dev .ddelrow{margin-top:6px;padding-top:14px;border-top:1px solid var(--line);}
+  .dev .ddelrow .ddel{margin-left:auto;order:2;}
+  .devtools{margin:0 0 14px;}
+  .devtools .dhint,.morehd small{font-size:12px;color:var(--muted);}
+  /* Weiteres: Fully-Quelle und Hinweise als abgesetzte Gruppe */
+  .devmore{margin-top:26px;padding-top:18px;border-top:1px solid var(--line);}
+  .devmore .morehd{font-family:var(--font-head);font-size:15px;font-weight:600;letter-spacing:-.01em;margin:0 0 12px;}
+  .devmore>details.card{margin:0 0 12px;}
+  /* 5) Raster-Editor: Bausteinliste bleibt bis ca. 900 px Fensterbreite NEBEN dem Raster (sticky) */
+  @container (max-width:1060px){
+    .sved.g2ed{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"lib stage" "lib side";gap:14px;}
+    .sved.g2ed>.lib{grid-area:lib;position:sticky;top:0;max-height:calc(100vh - 230px);min-height:320px;}
+    .sved.g2ed>.stage{grid-area:stage;min-width:0;}
+    .sved.g2ed>.side{grid-area:side;width:auto;position:static;max-height:none;overflow:visible;}
+  }
+  @container (max-width:560px){
+    .sved.g2ed{grid-template-columns:minmax(0,1fr);grid-template-areas:"lib" "stage" "side";}
+    .sved.g2ed>.lib{position:static;max-height:280px;min-height:0;}
+  }
+  @supports not (container-type:inline-size){
+    @media (max-width:1360px){
+      .sved.g2ed{grid-template-columns:200px minmax(0,1fr);grid-template-areas:"lib stage" "lib side";}
+      .sved.g2ed>.lib{grid-area:lib;position:sticky;top:0;max-height:calc(100vh - 230px);min-height:320px;}
+      .sved.g2ed>.side{grid-area:side;width:auto;position:static;max-height:none;overflow:visible;}
+    }
+    @media (max-width:860px){
+      .sved.g2ed{grid-template-columns:minmax(0,1fr);grid-template-areas:"lib" "stage" "side";}
+      .sved.g2ed>.lib{position:static;max-height:280px;min-height:0;}
+    }
+  }
+  /* 6) Ruhe: Hilfe als schwebendes Popover am ?-Knopf (schiebt nichts), Suche mit fester Höhe/Oberkante */
+  .qpop{position:fixed;z-index:2100;width:min(380px,calc(100vw - 16px));max-height:min(60vh,420px);overflow-y:auto;margin:0;padding:12px 16px;
+    background:var(--panel2);color:var(--fg);border:0;border-radius:var(--r-m);box-shadow:var(--pop-shadow),0 0 0 1px var(--line);}
+  .qpop[hidden]{display:none;}
+  .palov{align-items:flex-start;padding-top:12vh;}
+  .palbox{flex:none;}
+  .pallist{height:min(50vh,360px);max-height:none;scrollbar-gutter:stable;}
+  /* Schalter: an = gefüllt --prim, aus = Kontur (in allen Themes gut unterscheidbar) */
+  .chk input[type=checkbox]{background:radial-gradient(circle at 11px 50%,var(--muted) 6.5px,transparent 7px);box-shadow:inset 0 0 0 2px var(--muted);}
+  .chk input[type=checkbox]:checked{background:radial-gradient(circle at 27px 50%,var(--prim-ink) 8px,transparent 8.5px),var(--prim);box-shadow:none;}
+  /* Dunkel: Seitenleiste/Kopf deutlicher vom Inhalt abgesetzt */
+  :root[data-theme="dunkel"]{--bezel:#050705;--bezel-line:rgba(255,255,255,.12);}
+  :root[data-theme="dunkel"] aside.side{box-shadow:inset -1px 0 0 rgba(255,255,255,.1);}
+  :root[data-theme="dunkel"] .main{box-shadow:inset 1px 1px 0 rgba(255,255,255,.1);}
 </style>
 </head>
 <body>
@@ -1301,8 +1407,8 @@
         <!-- Intercom / Kameras -->
         <section class="spane" data-sub="intercom">
           <p class="lead" data-i18n>Video-Streams (MJPEG) der Türstationen aus Loxone und eigener Überwachungskameras. Alle erscheinen im Widget „Kamera“ und lassen sich dort durchschalten.</p>
-          <div class="icwrap">
-            <h3 class="sech" data-i18n>Intercoms aus Loxone</h3>
+          <div class="card icwrap">
+            <h3 data-i18n>Intercoms aus Loxone</h3>
             <div id="ic_list"><div class="muted">…</div></div>
           </div>
           <div class="card camcard">
@@ -1318,10 +1424,12 @@
         <section class="spane" data-sub="panels">
           <p class="lead" data-i18n>Alle Anzeigegeräte auf einen Blick: Status, Knöpfe und Einstellungen je Gerät in einem Abschnitt.</p>
           <div class="devcards">
+            <div class="actions devtools" id="devTools"><button class="btn ghost" id="mzOpenBtn" type="button">Betriebsmodus-Assistent</button><span class="dhint" data-i18n>Richtet Modus → Ansicht für mehrere Geräte auf einmal ein.</span></div>
             <div id="ag_list"></div>
             <div id="dev_list"><div class="muted" data-i18n>Suche Panels…</div></div>
-            <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><button class="btn ghost" id="mzOpenBtn" type="button">Betriebsmodus-Assistent</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
+            <div class="actions"><button class="btn" id="dev_save" data-i18n>Speichern</button><span class="toast" id="dev_toast"></span><span class="toast" id="ag_toast"></span></div>
           </div>
+          <div class="devmore"><div class="morehd" data-i18n>Weiteres</div>
           <details class="card devhelp" id="fullySrc" hidden>
             <summary><h3 data-i18n>Fully-Kiosk-Quelle</h3></summary>
             <p class="note" data-i18n>Woher „Fully installieren“ die App holt: eigene Datei → eigene Adresse → offizielle Seite.</p>
@@ -1340,6 +1448,7 @@
             <p class="note" data-i18n><b>Betriebsmodus-Automatik:</b> In Loxone Config einen virtuellen HTTP-Ausgang anlegen, der pro Betriebsart einen Modusnamen schickt. Je Gerät festlegen, welche Ansicht bei welchem Modus erscheint; ohne Eintrag bleibt das Panel unverändert.</p>
             <pre class="cmdout" id="mode_hint">GET http://<span id="mode_host">…</span>/api/mode/&lt;modus&gt;</pre>
           </details>
+          </div>
         </section>
 
         <!-- Audio -->
@@ -1419,7 +1528,7 @@
             <div class="row2">
               <div class="field" style="max-width:280px"><label class="lbl" data-i18n>Ziel-Panel</label><select id="at_panel"></select></div>
             </div>
-            <div class="actions"><button class="btn" id="at_send" data-i18n>🔊 Test-Ton senden</button><span class="toast" id="at_toast"></span></div>
+            <div class="actions"><button class="btn" id="at_send" data-i18n>Test-Ton senden</button><span class="toast" id="at_toast"></span></div>
           </div>
         </section>
 
@@ -1729,6 +1838,18 @@ function deletePanel(id){
 }
 
 // ---- ?-Hilfe: Hinweistexte einer Karte hinter einem ?-Knopf neben der Ueberschrift ----
+// Schwebend am ?-Knopf verankert (position:fixed): schiebt keinen Inhalt; schliesst bei Klick daneben, Esc, Seitenwechsel
+let qOpen=null;
+function qClose(){ if(!qOpen) return; qOpen.pop.hidden=true; qOpen.b.classList.remove('on'); qOpen.b.setAttribute('aria-expanded','false'); qOpen=null; }
+function qPlace(){ if(!qOpen) return; const {b,pop}=qOpen; if(!b.isConnected){ qClose(); return; }
+  const r=b.getBoundingClientRect(), w=pop.offsetWidth, h=pop.offsetHeight, sc=$('#scroll').getBoundingClientRect();
+  if(r.bottom<sc.top||r.top>sc.bottom){ qClose(); return; }   // Knopf weggescrollt: Popover schliessen
+  let x=Math.min(Math.max(8,r.left-8), innerWidth-w-8), y=r.bottom+8;
+  if(y+h>innerHeight-8 && r.top-8-h>8) y=r.top-8-h;   // unten kein Platz: oberhalb
+  pop.style.left=x+'px'; pop.style.top=Math.max(8,y)+'px'; }
+document.addEventListener('click',e=>{ if(qOpen&&!qOpen.pop.contains(e.target)&&!qOpen.b.contains(e.target)) qClose(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'&&qOpen){ const b=qOpen.b; qClose(); b.focus(); } });
+window.addEventListener('resize',qPlace); document.addEventListener('scroll',qPlace,true);
 function helpify(root){
   (root||document).querySelectorAll('.card').forEach(card=>{
     if(card.dataset.help) return;
@@ -1741,11 +1862,16 @@ function helpify(root){
     card.dataset.help='1';
     if(!row){ row=document.createElement('div'); row.className='cardhead'; card.insertBefore(row,h); row.appendChild(h); }
     const b=document.createElement('button'); b.type='button'; b.className='qhelp'; b.textContent='?'; b.title=T('Hilfe'); b.setAttribute('aria-label',T('Hilfe')); row.appendChild(b);
-    const pop=document.createElement('div'); pop.className='qpop'; pop.hidden=true; notes.forEach(n=>pop.appendChild(n)); row.after(pop);
-    b.onclick=()=>{ pop.hidden=!pop.hidden; b.classList.toggle('on',!pop.hidden); b.setAttribute('aria-expanded',String(!pop.hidden)); };
+    const pop=document.createElement('div'); pop.className='qpop'; pop.hidden=true; pop.setAttribute('role','dialog'); notes.forEach(n=>pop.appendChild(n)); row.after(pop);
+    b.onclick=e=>{ e.stopPropagation(); if(qOpen&&qOpen.b===b){ qClose(); return; } qClose(); qOpen={b,pop}; pop.hidden=false; b.classList.add('on'); b.setAttribute('aria-expanded','true'); qPlace(); };
   });
 }
-{ let t=null; const mo=new MutationObserver(()=>{ clearTimeout(t); t=setTimeout(()=>helpify($('#scroll')),30); });
+// Sofort wirkende Aktionen (nicht ueber "Speichern" unten): Nebenaktion mit kleinem Blitz (CSS .now) + title
+const NOW_SEL='#at_send,#dg_dl,#ad_go,#secSet,#secOff,#secOut,#fs_del,label.btn:has(#fs_file),.dren_go,[data-dglog],[data-act],.dbri_get,.ddel,.ic_soundrm,#dBgDel,.ddetuse';
+function markNow(root){ (root||document).querySelectorAll(NOW_SEL).forEach(el=>{ if(el.classList.contains('now')) return;
+  el.classList.add('now'); const t=T('Wirkt sofort – nicht über „Speichern“'); el.title=el.title?el.title+' · '+t:t; }); }
+setTimeout(()=>markNow(),400);
+{ let t=null; const mo=new MutationObserver(()=>{ clearTimeout(t); t=setTimeout(()=>{ helpify($('#scroll')); markNow($('#scroll')); },30); });
   mo.observe(document.querySelector('#scroll'),{childList:true,subtree:true}); }
 
 // ---- Startseite: Status-Karten + Einrichtungs-Checkliste ----
@@ -1863,6 +1989,7 @@ async function renderAdminCard(){
     const j=await post('/api/admin/password',{current:on?$('#secCur').value:'',new:n});
     if(j.ok){ snack(T('Passwort gespeichert – die Konfiguration ist jetzt geschützt.')); renderAdminCard(); } else flash($('#secToast'),j.error||T('Fehler'),false); };
   const off=$('#secOff'); if(off) off.onclick=async()=>{
+    if(!confirm(T('Passwortschutz entfernen? Danach kann jeder im Heimnetz diese Konfiguration öffnen.'))) return;
     const j=await post('/api/admin/password',{current:$('#secCur').value,new:''});
     if(j.ok){ snack(T('Zugriffsschutz entfernt.')); renderAdminCard(); } else flash($('#secToast'),j.error||T('Fehler'),false); };
   const out=$('#secOut'); if(out) out.onclick=async()=>{ await post('/api/admin/logout'); location.reload(); };
@@ -2097,8 +2224,7 @@ function designField(ui){
   return '<div class="field" style="max-width:none;flex:1 1 100%"><label class="lbl">'+T('Design')+'</label>'+
     '<p class="note" style="margin:0 0 8px">'+T('Vorlage wählen, danach jede Farbe einzeln anpassen.')+'</p>'+
     '<div id="fDesignPreset" style="display:flex;gap:10px;flex-wrap:wrap">'+Object.keys(DESIGN_NAMES).map(k=>{ const p=(META.designPresets||{})[k]||{};
-      return '<button type="button" class="minibtn" data-preset="'+k+'" style="display:flex;align-items:center;gap:8px;padding:6px 12px;'+
-        (d.preset===k?'border-color:var(--accent);color:var(--accent)':'')+'"><span style="display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid var(--line)">'+
+      return '<button type="button" class="minibtn pick'+(d.preset===k?' on':'')+'" data-preset="'+k+'" aria-pressed="'+(d.preset===k)+'" style="display:flex;align-items:center;gap:8px;padding:6px 12px"><span style="display:inline-flex;border-radius:6px;overflow:hidden;border:1px solid var(--line)">'+
         ['bezel','face1','face2','tile'].map(c=>'<i style="width:12px;height:22px;background:'+esc(p[c]||'#000')+'"></i>').join('')+'</span>'+
         T(DESIGN_NAMES[k])+'</button>'; }).join('')+'</div>'+
     // Einzelfarben nach Bereichen gruppiert und eingeklappt (Vorlage reicht meist)
@@ -2122,7 +2248,7 @@ function bindDesign(host, getUi, redraw){
   document.querySelectorAll('#fDesignPreset [data-preset]').forEach(b=>b.onclick=()=>{
     set(d=>{ merke(d); d.preset=b.dataset.preset; d.colors=Object.assign({},d.colorsByPreset[d.preset]||{}); }); redraw(); });
   document.querySelectorAll('[data-dcol]').forEach(inp=>inp.oninput=()=>set(d=>{ d.colors[inp.dataset.dcol]=inp.value; merke(d); }));
-  const r=$('#fDesignReset'); if(r) r.onclick=()=>{ set(d=>{ d.colors={}; merke(d); }); redraw(); };
+  const r=$('#fDesignReset'); if(r) r.onclick=()=>{ if(!confirm(T('Eigene Farben dieser Vorlage zurücksetzen?'))) return; set(d=>{ d.colors={}; merke(d); }); redraw(); };
 }
 // Schriftauswahl (Liste + eigene Angabe) - fuer Grundschrift und Zahlen/Titel.
 function fontField(label,key,ui,id){
@@ -2876,8 +3002,11 @@ function renderTabEditor(){
     const dbar=k===DK?((p.saver||{}).bar||[]):[], dx=k===DK&&((p.saver||{}).exit||[]).indexOf('x')>=0;
     const barHtml=(k===DK&&pg===0&&dbar.length)?'<span class="pgbar" title="'+esc(T('Statusleiste'))+'">'+dbar.map(u=>{ const ct=tbCtl(u); return tbIcoHtml(ct&&ct.iconUrl); }).join('')+'</span>':'';
     const xHtml=(dx&&pg===pages-1)?'<span class="pgx" title="'+esc(T('Schließen'))+'">✕</span>':'';
-    cells+='<div class="pgl'+(barHtml||xHtml?' haspgbar':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+cr.lr+'">'+barHtml+'<span>'+(k===DK?T('Dashboard'):T('Seite')+' '+(pg+1))+'</span>'+
-      (two?'<small>'+((p.ui||{}).phone?(k===DK?(pg%2?T('unten'):T('oben')):''):(k===DK?'':T('Bildschirm')+' '+(Math.floor(pg/2)+1)+' · ')+(pg%2?T('rechts'):T('links')))+'</small>':'')+xHtml+'</div>'+
+    // 2 Panels: "Seite N" (Rasterseite = ein Wisch) + "Fläche links/rechts" (Bildschirmhälfte); Handy: oben/unten
+    const phn=(p.ui||{}).phone, sideT=phn?(k===DK?(pg%2?T('unten'):T('oben')):''):(pg%2?T('Fläche rechts'):T('Fläche links'));
+    cells+='<div class="pgl'+(barHtml||xHtml?' haspgbar':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+cr.lr+'">'+barHtml+
+      '<span>'+(k===DK?T('Dashboard'):T('Seite')+' '+((two&&!phn)?Math.floor(pg/2)+1:pg+1))+'</span>'+
+      (two&&sideT?'<small>'+sideT+'</small>':'')+xHtml+'</div>'+
       '<div class="pgbg'+(empty?' empty':'')+'" style="grid-column:'+cr.c+' / span '+g+';grid-row:'+(cr.r)+' / span '+g+'">'+
         (empty?'<span>'+T('＋ Hierher ziehen für eine neue Seite')+'</span>':'')+'</div>';
     for(let y=0;y<g;y++) for(let x=0;x<g;x++){ const c=tbCR(p,pg,x,y,g);
@@ -2987,11 +3116,11 @@ function tbUndo(p){ const k=tbTab, h=tbHist[k]||[]; if(!h.length) return;
   tbStore(p,k); markDirty(); renderTabEditor(); }
 function tbSideHTML(p){
   const it=(tbEff[tbTab]||[])[tbSel];
-  if(!it) return '<div class="box tips"><b>'+T('So geht’s')+'</b><ol>'+
+  if(!it) return tbSec('tips',T('So geht’s'),'<div class="tips"><ol>'+
     '<li>'+T('Baustein oder Widget links suchen und <b>ins Raster ziehen</b>.')+'</li>'+
     '<li>'+T('Kachel <b>antippen</b> – hier erscheinen Größe, Inhalt und Aussehen.')+'</li>'+
     '<li>'+T('<b>Ecke</b> ziehen = Größe · auf andere Kachel ziehen = <b>tauschen</b>.')+'</li>'+
-    '<li>'+T('<b>✕</b> oder <b>Entf</b> entfernt, <b>Strg+Z</b> macht rückgängig.')+'</li></ol></div>';
+    '<li>'+T('<b>✕</b> oder <b>Entf</b> entfernt, <b>Strg+Z</b> macht rückgängig.')+'</li></ol></div>');
   const g=tbGrid(p,tbTab), items=tbEff[tbTab], rows=tbRows(items,g), d=SV_W[it.type]||{};
   const head='<div class="box tbhead"><b>'+esc(it.type==='tile'?T('Baustein-Kachel'):(d.label||T({room:'Raum-Kachel',cat:'Kategorie-Kachel'}[it.type]||'')))+'</b><button class="minibtn del" id="tbDel">'+T('Entfernen')+'</button></div>';
   const size='<div class="seg">'+
@@ -3076,16 +3205,17 @@ function tbBlocks(it){
   return null;
 }
 // Einklappbarer Bereich der Seitenleiste; offen/zu merkt sich je Bereich (ueber Neuzeichnen hinweg)
-const tbSecOpen={};
+const tbSecOpen={tips:true};   // "So geht's" anfangs offen
 function tbSec(k,title,body,force){ const o=tbSecOpen[k]||force;
   return '<div class="box tbsec'+(o?' open':'')+'" data-sec="'+k+'"><button type="button" class="tbsech" aria-expanded="'+(o?'true':'false')+'"><span>'+title+'</span>'+
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>'+
     '<div class="tbsecb"><div>'+body+'</div></div></div>';
 }
 function tbBindSide(p){
-  const items=tbEff[tbTab]||[], it=items[tbSel]; if(!it) return;
+  const items=tbEff[tbTab]||[], it=items[tbSel];
   document.querySelectorAll('#tbEd .tbsech').forEach(b=>b.onclick=()=>{ const s=b.parentNode, o=!s.classList.contains('open');
     s.classList.toggle('open',o); b.setAttribute('aria-expanded',o?'true':'false'); tbSecOpen[s.dataset.sec]=o; });
+  if(!it) return;
   { const bl=$('#tbBlk'); if(bl){
     const upd=()=>{ const hid=new Set(p.hide||[]);
       bl.querySelectorAll('[data-blk]').forEach(cb=>{ if(cb.checked) hid.delete(cb.dataset.blk); else hid.add(cb.dataset.blk); });
@@ -3455,7 +3585,7 @@ function renderTileEditor(hostSel){
     host.querySelectorAll('.itab').forEach(x=>x.classList.remove('on')); t.classList.add('on'); renderIconPick(t.dataset.src); });
   { const ts=$('#tChartStyle'); if(ts) ts.onchange=()=>setChartStyle(ts.value); }
   { const tr=$('#tChartRange'); if(tr) tr.onchange=()=>setTile('chart', tr.value); }
-  $('#tileReset').onclick=()=>{ if(PANELS[cur].tiles) delete PANELS[cur].tiles[tileSel]; renderTileEditor(); markDirty(); };
+  $('#tileReset').onclick=()=>{ if(!confirm(T('Kachel auf Standard zurücksetzen?'))) return; if(PANELS[cur].tiles) delete PANELS[cur].tiles[tileSel]; renderTileEditor(); markDirty(); };
   renderIconPick('builtin'); drawPrev();
 }
 function colorRow(label,key,ov){
@@ -4303,10 +4433,12 @@ function deviceRow(d, sel){
   if(has('kioskrestart')) ctl+=btn('kioskrestart',T('Fully neu starten'),T('Fully beenden und neu öffnen (per adb)'),0,1);
   if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'),0,1);
   const extra=devExtraHTML(d,caps,off), adb=has('reboot')||has('brightness');
-  const ctlH=(ctl||extra)?wrap('<div class="dgp">'+T('Steuerung')+'</div><div class="dsec dctl'+(off?' off':'')+'">'+
-      (off?'<div class="doff">'+(rc?T('Gerät verbindet …'):T('Gerät offline'))+' <small>'+T('– die Knöpfe gehen wieder, sobald es erreichbar ist.')+'</small></div>':'')+
-      (ctl?'<div class="drow">'+ctl+'</div>':'')+extra+
-      (adb?'<div class="dhint">'+T('Per adb: ADB über WLAN muss am Gerät aktiv und für diesen Server freigegeben sein.')+'</div>':'')+'</div>'):'';
+  // offline: Steuerung ausblenden, nur eine Zeile (wie online wieder da)
+  const ctlH=(ctl||extra)?wrap('<div class="dsec dctl'+(off?' off':'')+'">'+
+      (off?'<div class="doff">'+(rc?T('Gerät verbindet – Steuerung gleich verfügbar'):T('Gerät offline – Steuerung nicht verfügbar'))+'</div>'
+          :((ctl?'<div class="drow">'+ctl+'</div>':'')+extra+
+            (adb?'<div class="dhint">'+T('Per adb: ADB über WLAN muss am Gerät aktiv und für diesen Server freigegeben sein.')+'</div>':'')))+'</div>'):
+    '';
   // Wartung: Einrichtung per adb (geht auch, solange Fully noch fehlt oder nicht laeuft)
   let mt='';
   if(has('fullyinstall')) mt+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'))+
@@ -4365,6 +4497,7 @@ function anonRow(a, typed){
 function renderDeviceList(j){
   { const devs=(j&&j.devices)||[], any=devs.length>0||Object.keys(DEV).length>0;
     const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=any?'':'none';   // nichts zu speichern ohne Geraete
+    const dtl=$('#devTools'); if(dtl) dtl.style.display=any?'':'none';
     const fs=$('#fullySrc'); if(fs) fs.hidden=!devs.some(d=>(d.caps||[]).indexOf('fullyinstall')>=0); }
   const box=$('#ag_list'), list=$('#dev_list'); if(!box||!list) return;
   list.querySelectorAll('.dev').forEach(dv=>{ const tp=dv.querySelector('.dtips'), ms=dv.querySelector('.dev_model'); if(!tp||!ms) return;
@@ -4381,6 +4514,7 @@ function renderDeviceList(j){
   list.querySelectorAll('.dev').forEach(n=>{ const d=live[n.dataset.name], slot=n.querySelector('.devlive');
     const parts=d?deviceRow(d,prevSel[d.name]):{view:'',ctl:'',maint:''};
     slot.innerHTML=parts.view; n.querySelector('.devctl').innerHTML=parts.ctl; n.querySelector('.devmaint').innerHTML=parts.maint;
+    { const cg=n.querySelector('.dgrp[data-g="steuerung"]'); if(cg) cg.hidden=!parts.ctl; }   // Gerätetyp ohne Steuerung: Gruppe weglassen
     n.classList.toggle('online',!!d); n.classList.toggle('off',!(d&&d.online));
     const dot=n.querySelector('.devtg .sdot'), st=n.querySelector('.devtg .devst');
     const up=!!(d&&d.online), rc=devReconnecting(d);
@@ -4635,11 +4769,11 @@ function devRow(name){
     '</div>').join('');
   const models=META.deviceModels||[], mo=models.find(m=>m.key===d.model);
   const isNew=DEV_NEW.has(name), open=DEV_OPEN.has(name);
-  return '<div class="dev'+(open?' open':'')+(isNew?' isnew':'')+'" data-name="'+esc(name)+'">'+
-    '<button type="button" class="devtg"><i class="sdot"></i><b>'+esc(name)+'</b><small class="devst">'+T('offline')+'</small>'+
-      (isNew?'<span class="newb">'+T('neu')+'</span>':'')+'<span class="chev">›</span></button>'+
-    '<div class="devbody">'+
-    '<div class="dgp">'+T('Status')+'</div>'+
+  // Gruppen einzeln einklappbar (Status + Anzeige offen, Rest zu); Zustand je Sitzung merken
+  const grp=(g,title,inner)=>'<div class="dgrp'+(devGOpen(name,g)?' open':'')+'" data-g="'+g+'">'+
+    '<button type="button" class="dgh" aria-expanded="'+(devGOpen(name,g)?'true':'false')+'"><span>'+title+'</span><span class="chev" aria-hidden="true">›</span></button>'+
+    '<div class="dgb">'+inner+'</div></div>';
+  const gStatus=
     '<div class="dsec dsetup">'+dsh('setup',T('Gerätetyp'))+
       '<div class="drow devhead">'+
         '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
@@ -4649,8 +4783,8 @@ function devRow(name){
         '<label class="chk dev_nrl" title="'+T('Per adb um 3:05 Uhr – gibt den Speicher der Kiosk-App frei, den das nächtliche Neuladen der Seite nicht erreicht.')+'"'+(mo&&mo.os==='android'&&d.fully?'':' style="display:none"')+'><input type="checkbox" class="dev_nr"'+((d.nrestart===undefined?!!(mo&&mo.shelly):d.nrestart)?' checked':'')+'> '+T('Fully nachts neu starten')+'</label>'+
       '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div>'+
       '<div class="ddet">'+devDetHTML(name,d.model)+'</div>'+
-      '<div class="dtips">'+devTipsHTML(name,mo)+'</div></div>'+
-    '<div class="dgp">'+T('Anzeige')+'</div>'+
+      '<div class="dtips">'+devTipsHTML(name,mo)+'</div></div>';
+  const gAnzeige=
     '<div class="devlive"></div>'+
     '<div class="dsec">'+dsh('zoom',T('Zoom'))+
       '<select class="dev_scale">'+devScaleOpts(d.scale,mo)+'</select>'+
@@ -4659,19 +4793,27 @@ function devRow(name){
       '<label class="chk"><input type="checkbox" class="dev_auto"'+(d.auto?' checked':'')+'> '+T('Ansicht automatisch nach Betriebsmodus wechseln')+'</label>'+
       '<div class="dmwrap"'+(d.auto?'':' hidden')+'><div class="dmrows">'+rows+'</div>'+
       '<button class="btn sm ghost dm_add" type="button" style="margin-top:4px">'+T('+ Modus')+'</button>'+
-      '<div class="dhint">'+T('Modus → Ansicht. Den Modus schickt Loxone per HTTP (siehe Hinweise unten).')+'</div></div></div>'+
-    '<div class="devctl"></div>'+
-    '<div class="dgp">'+T('Wartung')+'</div>'+
+      '<div class="dhint">'+T('Modus → Ansicht. Den Modus schickt Loxone per HTTP (siehe Hinweise unten).')+'</div></div></div>';
+  const gWartung=
     '<div class="devmaint"></div>'+
     '<div class="dsec">'+dsh('setup',T('Name'))+
       '<div class="drow dren"><input type="text" class="dren_in" data-live="1" maxlength="60" value="'+esc(name)+'" aria-label="'+T('Gerätename')+'">'+
         '<button type="button" class="btn ghost sm dren_go" data-live="1">'+T('Umbenennen')+'</button></div>'+'</div>'+
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
-    '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display, name)+'</div>'+
-    '<div class="ddelrow"><button type="button" class="btn del sm ddel" data-live="1">'+T('Gerät löschen')+'</button>'+
-      '<span class="dhint">'+T('Entfernt Einstellungen und Erkennung. Ist das Gerät verbunden, meldet es sich neu an.')+'</span></div>'+
+    '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display, name)+'</div>';
+  return '<div class="dev'+(open?' open':'')+(isNew?' isnew':'')+'" data-name="'+esc(name)+'">'+
+    '<button type="button" class="devtg"><i class="sdot"></i><b>'+esc(name)+'</b><small class="devst">'+T('offline')+'</small>'+
+      (isNew?'<span class="newb">'+T('neu')+'</span>':'')+'<span class="chev">›</span></button>'+
+    '<div class="devbody">'+
+    grp('status',T('Status'),gStatus)+grp('anzeige',T('Anzeige'),gAnzeige)+
+    grp('steuerung',T('Steuerung'),'<div class="devctl"></div>')+grp('wartung',T('Wartung'),gWartung)+
+    // Gefaehrliches ganz unten, abgesetzt (Rueckfrage in devDelete)
+    '<div class="ddelrow"><span class="dhint">'+T('Entfernt Einstellungen und Erkennung. Ist das Gerät verbunden, meldet es sich neu an.')+'</span>'+
+      '<button type="button" class="btn del sm ddel" data-live="1">'+T('Gerät löschen')+'</button></div>'+
   '</div></div>';
 }
+const DEV_G={};   // 'Gerät|Gruppe' -> offen? (Standard: Status + Anzeige offen, Rest zu)
+function devGOpen(n,g){ const k=n+'|'+g; return k in DEV_G ? DEV_G[k] : (g==='status'||g==='anzeige'); }
 async function devRename(old, nw){
   nw=(nw||'').trim(); if(!nw||nw===old) return;
   try{ const r=await fetch('/api/device/rename',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({old,new:nw})}); const j=await r.json();
@@ -4775,10 +4917,15 @@ function renderDevices(){
   const nw=n=>DEV_NEW.has(n)?0:1;
   const ia=n=>devInactiveDays(n)?1:0;   // lange nicht gesehen -> ans Ende
   const names=Array.from(new Set(KNOWN_NAMES.concat(Object.keys(DEV)))).sort((a,b)=>nw(a)-nw(b)||ia(a)-ia(b)||on(a)-on(b)||a.localeCompare(b));
-  { const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=names.length?'':'none'; }
+  { const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=names.length?'':'none';
+    const dtl=$('#devTools'); if(dtl) dtl.style.display=names.length?'':'none'; }
   if(!names.length){ box.innerHTML='<div class="muted">'+T('Noch kein Panel bekannt. Sobald ein Panel die Visu mit Kennung öffnet oder ein Agent läuft, erscheint es hier.')+'</div>'; return; }
   box.innerHTML=names.map(devRow).join('');
   if(LAST_DEVS) renderDeviceList(LAST_DEVS);
+  if(!box._dgh) box._dgh=1, box.addEventListener('click',e=>{ const h=e.target.closest('.dgh'); if(!h) return;
+    const g=h.parentNode, n=g.closest('.dev').dataset.name, o=!g.classList.contains('open');
+    g.classList.toggle('open',o); h.setAttribute('aria-expanded',o?'true':'false'); DEV_G[n+'|'+g.dataset.g]=o;
+    if(o&&g.dataset.g==='steuerung'){ const bx=g.querySelector('.devx'); if(bx&&!g.closest('.dev.off')&&!DEV_BRI_TRY.has(n)&&bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); } } });
   box.querySelectorAll('.devtg').forEach(b=>b.onclick=()=>{ const dv=b.closest('.dev'), n=dv.dataset.name;
     const op=dv.classList.toggle('open'); if(op) DEV_OPEN.add(n); else DEV_OPEN.delete(n);
     const bx=op&&!dv.classList.contains('off')&&dv.querySelector('.devx'); if(bx && !DEV_BRI_TRY.has(n) && bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); }

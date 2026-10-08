@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.101"
+APP_VERSION = "0.19.102"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -942,6 +942,12 @@ def _clean_icon(ic):
 # Zustandstexte generischer Fensterkontakte (InfoOnlyDigital), ganze Woerter.
 _WIN_CLOSED = {"geschlossen", "zu", "dicht", "verschlossen", "closed", "shut"}
 _WIN_OPEN = {"offen", "auf", "geöffnet", "geoeffnet", "gekippt", "open", "opened", "tilted"}
+
+def _is_sentinel(v) -> bool:
+    """Loxone-Fehlwert: INT32_MAX bzw. INT32_MAX/1000 (2147483,647) - echte Zaehlerstaende bleiben."""
+    a = abs(v)
+    return abs(a - 2147483.647) < 0.01 or abs(a - 2147483647) < 1
+
 _NUMFMT = re.compile(r"^(%[-+ 0-9.]*[dfeg])(.*)$")
 _PREFIX = ["k", "M", "G", "T"]
 
@@ -2113,8 +2119,11 @@ class App:
             v = float(value)
         except (TypeError, ValueError):
             return ""
+        num = self._fmt_num(abs(v), fmt)
+        if not num:   # Fehlwert (Sentinel) -> kein Text
+            return ""
         text = zero if (zero and v == 0) else (pos if v >= 0 else neg)
-        return f"{text} {self._fmt_num(abs(v), fmt)}"
+        return f"{text} {num}"
 
     def _tracker_lines(self, control: dict) -> list[str]:
         """Ereignis-Zeilen eines Tracker-Bausteins (State 'entries'). Loxone
@@ -2427,6 +2436,8 @@ class App:
         try:
             value = float(value)
         except (TypeError, ValueError):
+            return ""
+        if _is_sentinel(value):   # Int-Ueberlauf/Sentinel aus Loxone (2147483,647) = kein Messwert
             return ""
         m = _NUMFMT.match(fmt or "%.1f")
         numfmt, unit = (m.group(1), m.group(2)) if m else ("%.1f", "")
@@ -3163,9 +3174,12 @@ class App:
         def watt(key):
             v = self._state(c, key)
             try:
-                return float(v) * to_w
+                v = float(v)
             except (TypeError, ValueError):
                 return None
+            if _is_sentinel(v):   # Sentinel/Int-Ueberlauf aus Loxone -> Fehlwert (Panel zeigt "–")
+                return None
+            return v * to_w
 
         def classify(nt, v):
             """Richtung (flow: in/out/None) UND Farbe/Rolle (kind) je Knoten aus
@@ -3201,7 +3215,7 @@ class App:
             EnergyManager2 und als Rueckfall, wenn ein EFM keine eigenen Knoten hat."""
             def mk(name, icon, val, nt, extra=None):
                 fl, kd = classify(nt, val)
-                n = {"name": name, "icon": icon, "w": abs(val) if val else 0.0,
+                n = {"name": name, "icon": icon, "w": (abs(val) if val else 0.0) if val is not None else None,
                      "flow": fl, "kind": kd}
                 if extra:
                     n.update(extra)
@@ -3243,14 +3257,17 @@ class App:
         if c.get("type") == "EFM":
             for i, (label, nd) in enumerate(self._named_items(det.get("nodes"))[:max_cons]):
                 v = watt(f"actual{i}")
-                if v is None:
+                if v is None and self._state(c, f"actual{i}") is None:
                     continue
                 nt = nd.get("nodeType") if isinstance(nd, dict) else None
                 flow, kind = classify(nt, v)
                 ntl = (nt or "").lower()
                 cons.append({"name": label or f"Knoten {i + 1}", "icon": "load",
                              "iconUrl": self._node_icon_url(nd),
-                             "w": abs(v), "flow": flow, "kind": kind})
+                             "w": abs(v) if v is not None else None, "flow": flow, "kind": kind})
+                if v is None:   # Fehlwert: Knoten bleibt, Wert "–"
+                    rang[id(cons[-1])] = {"grid": 0, "storage": 1, "battery": 1, "production": 2}.get(ntl, 3)
+                    continue
                 rang[id(cons[-1])] = {"grid": 0, "storage": 1, "battery": 1,
                                       "production": 2}.get(ntl, 3)
                 if ntl == "production":
@@ -3260,7 +3277,7 @@ class App:
                     if v > 0:
                         cons_sum += abs(v)
         if cons:
-            cons.sort(key=lambda n: (n["flow"] is None, -n["w"]))   # aktiv zuerst, 0 W ans Ende
+            cons.sort(key=lambda n: (n["flow"] is None, -(n["w"] or 0)))   # aktiv zuerst, 0 W ans Ende
             # Anordnung wie die Loxone-App: das Panel setzt Knoten i im Uhrzeigersinn
             # ab oben -> Netz oben, dann Speicher, Erzeuger (rechts), danach Haus und
             # die uebrigen Verbraucher (links). Stabil: Rest bleibt wie oben sortiert.
@@ -5340,9 +5357,9 @@ class App:
             # Spwr Speicher (+Entladen/-Laden), actual0..5 = Knoten aus details.nodes
             fmt = (c.get("details") or {}).get("actualFormat") or "%.2f kW"
             bits = []
-            p = self._state(c, "Ppwr")
-            if p is not None:
-                bits.append("PV " + self._fmt_num(p, fmt))
+            p = self._fmt_num(self._state(c, "Ppwr"), fmt) if self._state(c, "Ppwr") is not None else ""
+            if p:
+                bits.append("PV " + p)
             g = self._flow_text(self._state(c, "Gpwr"), fmt, "Bezug", "Einspeisung")
             if g:
                 bits.append(g)
@@ -5350,9 +5367,9 @@ class App:
                       sublabel=" · ".join(bits) or "Energiefluss")
         elif t == "EnergyManager2":
             bits = []
-            p = self._state(c, "Ppwr")
-            if p is not None:
-                bits.append("PV " + self._fmt_num(p, "%.2f kW"))
+            p = self._fmt_num(self._state(c, "Ppwr"), "%.2f kW") if self._state(c, "Ppwr") is not None else ""
+            if p:
+                bits.append("PV " + p)
             soc = self._state(c, "Ssoc")
             if soc is not None and (c.get("details") or {}).get("HasSsoc", True):
                 bits.append("Speicher " + self._fmt_num(soc, "%.0f") + " %")
@@ -6447,9 +6464,16 @@ class App:
                                                and i["cmd"]["cmd"] == cells[0]["cmd"]["cmd"])]
             # Detail-Schema: grosser Zustand, kleine Zeile "Szene: <aktive Szene>",
             # Szenen als Eintraege, Aktionsreihe unten (Kopf setzt _with_head)
-            blocks = [{"k": "big", "text": "An" if r["on"] else "Aus", "tone": "good" if r["on"] else ""}]
+            blocks = [{"k": "big", "text": "An" if r["on"] else "Aus", "tone": ""}]   # an/aus = ink (Farbe nur heizt/kühlt)
             if r["on"] and r["label"]:
                 blocks.append({"k": "status", "text": "Szene: " + r["label"]})
+            elif not r["on"]:
+                # Aus + aktive Stimmung ist die Aus-Stimmung (z.B. "Bereich verlassen"): Name nennen,
+                # damit die gefüllte Zeile in der Liste zum "Aus" passt
+                _an = next((str(m.get("name") or "") for m in LIGHT.moods(cu, self.states)
+                            if m.get("id") in active and m.get("id") in _off), "")
+                if _an and _an.strip().lower() != "aus":
+                    blocks.append({"k": "status", "text": "Szene: " + _an})
             blocks.append({"k": "scenes", "items": scenes})
             if cells:
                 blocks.append({"k": "row", "act": True, "cells": cells})
@@ -6483,7 +6507,7 @@ class App:
             # Gleiches Detail-Schema wie LightControllerV2: Zustand gross, aktive
             # Szene klein, Szenen als Eintraege (Befehle unveraendert)
             cur = next((i["label"] for i in items if i["on"]), "")
-            blocks = [{"k": "big", "text": "Aus" if asc == 0 else "An", "tone": "" if asc == 0 else "good"}]
+            blocks = [{"k": "big", "text": "Aus" if asc == 0 else "An", "tone": ""}]
             if asc != 0 and cur:
                 blocks.append({"k": "status", "text": "Szene: " + cur})
             blocks.append({"k": "scenes", "items": items})
@@ -6555,11 +6579,11 @@ class App:
             # Fahrt sendet Stop (haelt an); im Stand startet er die Fahrt.
             auf = {"label": "Auf", "on": up_move, "cmd": {"uuid": ua, "cmd": "Stop" if moving else "Up"}}
             ab = {"label": "Ab", "on": down_move, "cmd": {"uuid": ua, "cmd": "Stop" if moving else "Down"}}
-            # Drei gestapelte Flaechen wie im Mockup: oben fahren, Mitte Stellung
-            # (Fuellstand von oben, grosse Zahl), unten fahren.
+            # Detail-Schema: grosse Stellung (Auf/Ab als runde Knoepfe daneben),
+            # Loxone-Text darunter, Aktionspillen unten.
             blocks = [
-                {"k": "status", "text": " · ".join(x for x in (self._jal_status(cu), val) if x)},
                 {"k": "shade", "pct": pct, "up": auf, "down": ab},
+                {"k": "status", "text": " · ".join(x for x in (self._jal_status(cu), val) if x)},
                 {"k": "row", "act": True, "cells": [
                     {"label": "Ganz auf", "cmd": {"uuid": ua, "cmd": "FullUp"}},
                     {"label": "Beschatten", "cmd": {"uuid": ua, "cmd": "shade"}},
@@ -6684,7 +6708,7 @@ class App:
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
                 {"k": "hero", "icon": "switch"},
-                {"k": "big", "text": "Ein" if on else "Aus", "tone": "good" if on else ""},
+                {"k": "big", "text": "Ein" if on else "Aus"},
                 {"k": "row", "act": True, "cells": [
                     {"label": "Ein", "on": on, "cmd": {"uuid": ua, "cmd": "on"}},
                     {"label": "Aus", "on": not on, "cmd": {"uuid": ua, "cmd": "off"}},
@@ -6708,7 +6732,7 @@ class App:
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
                     "anchor": "bottom", "blocks": [
                 {"k": "hero", "icon": "bulb"},
-                {"k": "big", "text": "Ein" if on else "Aus", "tone": "good" if on else ""},
+                {"k": "big", "text": "Ein" if on else "Aus"},
                 *([{"k": "status", "text": sub}] if sub else []),
                 {"k": "row", "act": True, "cells": [
                     {"label": "Ein", "on": on, "cmd": {"uuid": ua, "cmd": "pulse"}},
@@ -6727,8 +6751,8 @@ class App:
             status = "öffnet …" if active > 0 else ("schließt …" if active < 0 else
                                                    ("Offen" if pct >= 100 else ("Geschlossen" if pct <= 0 else "Teilweise offen")))
             return {"t": "view", "title": _clean(c.get("name")), "route": route, "anchor": "bottom", "blocks": [
-                {"k": "status", "text": status},
                 {"k": "shade", "pct": pct, "dir": "open", "up": up, "down": dn},
+                {"k": "status", "text": status},
                 {"k": "row", "act": True, "cells": [{"label": "Stopp", "cmd": {"uuid": ua, "cmd": "stop"}}]},
             ]}
         if t == "IRoomControllerV2":
@@ -7380,7 +7404,7 @@ class App:
                 # Reine Anzeige (wie in der Loxone-App): Name, Dauer und laufende Zone kommen
                 # aus dem Baustein; gesteuert wird nur ueber Start / Erzwingen / Stopp.
                 items.append({"id": f"{uuid}:{i}", "label": label, "on": running, "sub": sub, "icon": "drop"})
-            blocks = [{"k": "big", "text": big, **({"tone": "good"} if act else {})}]
+            blocks = [{"k": "big", "text": big}]
             if bits:
                 blocks.append({"k": "status", "text": " · ".join(bits)})
             if items:
@@ -10471,7 +10495,9 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "saver": prof.get("saver"),
                             "ambBg": prof.get("ambBg", ""), "ambClock": prof.get("ambClock", ""),
                             "bgImg": bg_url(prof["id"]) if prof.get("ambBg") == "image" else "",
-                            "agent": app._has_agent(dev)})
+                            "agent": app._has_agent(dev),
+                            # ?panel=<unbekannt>: Standard wird gezeigt, Panel meldet das sichtbar
+                            "missing": pid if (pid and pid not in app.panels) else ""})
         _first = app.render(app.conn_route[ws], prof)
         await app._send_or_drop(ws, _first)
         app._last_sent.setdefault(ws, {})["view"] = _first

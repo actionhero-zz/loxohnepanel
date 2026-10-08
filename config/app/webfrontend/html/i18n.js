@@ -31,6 +31,7 @@
       'Benutzer': 'User',
       'Passwort': 'Password',
       'unverändert lassen': 'leave unchanged',
+      'Display-Kennwort nicht übernommen, weil Host oder Treiber geändert:': 'Display password not kept because host or driver changed:',
       'Zertifikat prüfen (Gen2 mit selbstsigniertem Zertifikat: aus)':
         'Verify certificate (Gen2 with self-signed cert: off)',
       'Verbinden & Speichern': 'Connect & save',

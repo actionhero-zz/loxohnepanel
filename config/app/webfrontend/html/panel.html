@@ -165,7 +165,7 @@
   .screen.split #playerpane .fp-page.solo{flex:1 1 0;min-height:0;max-height:100%;overflow:hidden;}
   /* Verlaufs-Pane: die Diagramme teilen sich die Pane-Hoehe (fit statt scrollen) */
   .screen.split #frontpane .fp-page.solo.cpage{overflow:hidden;gap:8px;display:flex;flex-direction:column;}
-  .fp-page.solo.cpage .chart{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+  #frontpane .fp-page.solo.cpage .chart{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
 
   #frontpane .cphead{display:flex;align-items:baseline;justify-content:space-between;gap:10px;}
   #frontpane .cpname{font-weight:650;font-size:15px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -267,6 +267,10 @@
     opacity:0;transition:opacity var(--anim-fast) var(--ease);pointer-events:none;
     z-index:6;position:relative;}
   .scrollind.show{opacity:1;}
+  .scrollind.dots{background:transparent;width:8px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;}
+  .scrollind.dots .thumb{display:none;}
+  .scrollind.dots i{width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.22;transition:opacity var(--anim-fast) var(--ease);}
+  .scrollind.dots i.on{opacity:.75;}
   .scrollind .thumb{position:absolute;left:0;width:100%;border-radius:2px;
     top:0;background:rgba(var(--wash,255,255,255),.34);will-change:transform;}
   /* Seiten-Snapping: Kachelraster rastet hart in Vierer-Seiten ein (4 oben/4
@@ -487,9 +491,9 @@
   /* Verlauf passt immer auf die Seite: Detailseite und Verlaufs-Pane geben die Hoehe vor,
      mehrere Diagramme teilen sie sich (kein Scrollen, nichts abgeschnitten). */
   .grid.panel.chartpage{overflow:hidden;}
-  .grid.panel.chartpage .chart,.fp-page.solo.cpage .chart{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
-  .grid.panel.chartpage .chbody,.fp-page.solo.cpage .chbody{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
-  .grid.panel.chartpage .chsvg,.fp-page.solo.cpage .chsvg{flex:1 1 0;min-height:0;}
+  .grid.panel.chartpage .chart,#frontpane .fp-page.solo.cpage .chart{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+  .grid.panel.chartpage .chbody,#frontpane .fp-page.solo.cpage .chbody{flex:1 1 0;min-height:0;display:flex;flex-direction:column;}
+  .grid.panel.chartpage .chsvg,#frontpane .fp-page.solo.cpage .chsvg{flex:1 1 0;min-height:0;}
   .chbody .chax{fill:var(--muted);font-size:10px;font-family:var(--font-num,inherit);font-variant-numeric:tabular-nums;}
   .chbody .chgrid{stroke:var(--muted,#565c7c);stroke-opacity:.35;stroke-width:1;stroke-dasharray:3 3;}   /* wie .wxhz */
   .chbody .chvgrid{stroke:var(--muted,#565c7c);stroke-opacity:.18;stroke-width:1;}
@@ -1087,6 +1091,8 @@
   /* Pfad-Symbole neben dem Zurueck-Knopf */
   /* pointer-events:auto: .tabspacer ist sonst nicht antippbar (Platzhalter) */
   .screen>.tabs .crumbs{min-width:0;display:flex;align-items:center;padding-left:4px;overflow:hidden;pointer-events:auto;}
+  .screen>.tabs .crtitle{min-width:0;flex:0 1 auto;margin-left:8px;font-family:var(--font-num,inherit);font-size:15px;font-weight:600;
+    color:rgba(var(--bezel-ink-rgb,255,255,255),.88);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .crumb{flex:0 1 44px;min-width:36px;height:52px;border-radius:var(--r-m);display:grid;place-items:center;cursor:pointer;
     color:var(--dot);animation:crumbIn calc(160ms * var(--anim-scale)) var(--ease) both;}
   .crumb.cur{background:rgba(var(--bezel-ink-rgb,255,255,255),.06);}
@@ -1624,6 +1630,11 @@
     overflow-x:hidden;overflow-y:auto;gap:8px;}
   .grid.panel .pantop>.scenes:has(>:nth-child(5)),.grid.panel.wide .pantop>.scenes{grid-template-columns:repeat(2,minmax(0,1fr));}
   html.sqbig .grid.panel .pantop>.scenes{grid-auto-rows:52px;}
+  /* Viele Eintraege (ab 7): auf breiten Panels drei Spalten, sonst etwas niedrigere Zeilen -
+     die Liste soll auf ein Panel passen statt in sich zu scrollen. Handy bleibt einspaltig. */
+  .grid.panel.wide .pantop>.scenes:has(>:nth-child(7)){grid-template-columns:repeat(3,minmax(0,1fr));}
+  html:not(.phone) .grid.panel .pantop>.scenes:has(>:nth-child(7)){grid-auto-rows:40px;gap:6px;}
+  html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:has(>:nth-child(9)){grid-auto-rows:38px;gap:5px;}   /* 480er: 5 Reihen passen */
   html.phone .grid.panel .pantop>.scenes{grid-auto-rows:46px;align-content:start;grid-template-columns:minmax(0,1fr);}   /* Handy: Hoehe reicht, eine Spalte */
   .grid.panel .pantop>.scenes>.scene{flex-direction:row;align-items:center;justify-content:flex-start;min-width:0;height:auto;
     padding:0 14px;gap:10px;border-radius:var(--r-m);}
@@ -1633,6 +1644,8 @@
   .grid.panel .pantop>.scenes .sico{flex:none;display:grid;place-items:center;}
   .grid.panel .pantop>.scenes .sico svg{width:22px;height:22px;margin:0;}
   .grid.panel.wide .brow.act{width:100%;max-width:640px;margin-left:auto;margin-right:auto;}
+  /* Nur Nebenaktionen (Verlauf/Verknuepft): ganz rechts, auch in der 2-Flaechen-Ansicht */
+  .grid.panel.wide .brow.act.n0.hasc{max-width:none;}
   /* Zustandsflaeche: Statuswoerter (Alarm, Keine Eintraege ...) ruhiger als Messwerte */
   .dstate .pbig{font-size:clamp(28px,8vw,44px);letter-spacing:-.02em;}
 
@@ -1668,6 +1681,65 @@
   .grid.panel.chartpage>.pantop{flex:0 0 auto;}
   .grid.panel.chartpage>.panbot{flex:1 1 0;min-height:0;display:flex;flex-direction:column;gap:10px;padding-top:8px;}
   .chrng .chip.on{border-color:transparent;}   /* aktiv = Tinte gefuellt, ohne zweite Farbe am Rand */
+  /* Tippflaechen >= 44 px ohne groessere Optik: unsichtbarer Rand um kleine Knoepfe */
+  .stsx,.chrng .chip{position:relative;}
+  .stsx::after{content:"";position:absolute;inset:-5px;}
+  .chrng .chip::after{content:"";position:absolute;inset:-7px -2px;}
+  /* ==== Kachel-Bedienelemente gross (0.19.94): Pfeile 44 px (Pille M), Schalter 52x32 ====
+     Rueckweg auf die alte Groesse: --tile-ub:30px; --tile-ub-ico:16px; --tile-sw-w:38px; --tile-sw-h:22px
+     (3x3-Raster behaelt die alten Masse, dort ist die Kachel zu klein) */
+  :root{--tile-ub:44px;--tile-ub-ico:20px;--tile-sw-w:52px;--tile-sw-h:32px;}
+  .grid.cells.g3{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;}
+  .updown .ub,.prevnext .ub{width:var(--tile-ub);height:var(--tile-ub);}
+  .updown .ub svg,.prevnext .ub svg{width:var(--tile-ub-ico);height:var(--tile-ub-ico);}
+  .tswitch{width:var(--tile-sw-w);height:var(--tile-sw-h);}
+  .tswitch .knob{width:calc(var(--tile-sw-h) - 4px);height:calc(var(--tile-sw-h) - 4px);}
+  .tswitch.on .knob{transform:translateX(calc(var(--tile-sw-w) - var(--tile-sw-h)));}
+  /* ===== Handy quer (html.pls): nur flache Handy-Fenster, Panels/Tablets unberuehrt ===== */
+  /* Wetter-Karte einzeilig: aktuelles Wetter links, Tage rechts daneben */
+  @container (min-aspect-ratio:2/1) and (min-width:300px){
+    html.pls .svw .svw-wx{flex-direction:row;align-items:stretch;gap:10px;}
+    html.pls .svw .svw-wx .now{flex:none;align-self:center;flex-direction:column;gap:2px;}
+    html.pls .svw .svw-wx .now .meta{display:none;}
+    html.pls .svw .svw-wx .now .ico{width:min(40px,26cqh);height:min(40px,26cqh);}
+    html.pls .svw .svw-wx .now .t{font-size:min(32px,26cqh);}
+    html.pls .svw .svw-wx .fore{flex:1;min-width:0;grid-template-columns:repeat(var(--fc,3),minmax(0,1fr));}
+    html.pls .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 12cqh);}
+    html.pls .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 14cqh);}
+  }
+  /* Detailseiten flacher: Wert, Pillen (M statt L) und Symbole niedriger, damit nichts abgeschnitten wird */
+  html.pls .grid.panel .pbig,html.pls .grid.panel.wide .pbig.word,html.pls .grid.panel .dstate .pbig{font-size:clamp(30px,11vh,42px);}
+  html.pls .grid.panel .status{font-size:14px;}
+  html.pls .grid.panel .brow.act{min-height:var(--pill-m,44px);}
+  html.pls .grid.panel .brow.act .btn{height:var(--pill-m,44px);}
+  html.pls .grid.panel .brow.act .btn svg{width:24px;height:24px;}
+  html.pls .dimcard .dimtxt{gap:0;}
+  html.pls .dimcard .dcap,html.pls .dimcard .dsub{font-size:13px;}
+  html.pls .sbar svg{width:22px;height:22px;}
+  /* Wetter-Blatt zweispaltig: Kopf + Diagramm links, Kennzahlen + Tagwechsel rechts (alles in ~375 px Hoehe) */
+  html.pls .stsheet.wxs{padding:8px;}
+  html.pls .wxsbox{width:min(760px,100%);overflow:hidden;padding:10px 12px;gap:6px 14px;display:grid;
+    grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+    grid-template-areas:"hd chips" "ch chips" "ch nav";align-content:stretch;}
+  html.pls .wxsbox .wxhd{grid-area:hd;}
+  html.pls .wxsbox .wxch{grid-area:ch;min-height:0;display:flex;align-items:center;}
+  html.pls .wxsbox .wxchips{grid-area:chips;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;align-content:center;}
+  html.pls .wxsbox .wxnav{grid-area:nav;}
+  html.pls .wxsbox .wxc{padding:5px 10px;}
+  html.pls .wxsbox .wxch .wxchart{max-height:100%;}
+  /* Kacheln flacher: weniger Rand, Auf/Ab nebeneinander (Kopf nur eine Zeile hoch), Name max. 2 Zeilen mit Ellipse */
+  html.pls .grid:not(.panel) .tile{padding:9px 12px;}
+  html.pls .grid:not(.panel) .tile .updown{flex-direction:row;gap:6px;}
+  html.pls .grid:not(.panel) .tile .room{margin-bottom:0;}
+  html.pls .grid:not(.panel) .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+    font-size:min(var(--name-size,18px),16px);}
+  html.pls .grid:not(.panel) .tile .sub{margin-top:2px;font-size:min(var(--sub-size,15px),14px);}
+  @media (max-height:380px){
+    html.pls .grid:not(.panel) .tile{padding:6px 11px;}
+    html.pls .grid:not(.panel) .tile .name{font-size:min(var(--name-size,18px),15px);}
+    html.pls .grid:not(.panel) .tile .sub{font-size:min(var(--sub-size,15px),13px);margin-top:1px;}
+    html.pls .grid:not(.panel) .tile .room{font-size:min(var(--room-size,12px),11px);}
+  }
 </style>
 </head>
 <body>
@@ -1787,7 +1859,9 @@ let themePhone = false;  // Handy-Profil (Profil -> Panel-Groesse "Handy")
 // Handy-Modus: Handy-Profil ODER schmales Hochformat-Display (jedes Panel auf
 // dem Handy): Flaechen untereinander, Tabs unten, volle Hoehe.
 function isPhone(){ return themePhone || (window.innerWidth < 600 && window.innerHeight > window.innerWidth); }
-function applyPhone(){ const on=isPhone(); document.documentElement.classList.toggle('phone', on); return on; }
+function applyPhone(){ const on=isPhone(); document.documentElement.classList.toggle('phone', on);
+  // Handy quer (flach): eigene Klasse 'pls' - nur Handys, nie Wandpanels/Tablets (siehe phoneLandscape)
+  document.documentElement.classList.toggle('pls', phoneLandscape()); return on; }
 let themeSplit = true;   // Split-Screen an/aus (aus = 4"-Panel: nur die Visu, keine Pane 2)
 
 // Dashboard-Symbol oben links: zeichnet die Kachel-Anordnung des eigenen
@@ -2000,7 +2074,9 @@ function cmdAck(m){
     if(m.ok && e.el){ clearTimeout(e.el._sentT); e.el.classList.remove('sent'); }
     break; }
 }
+function closeSheets(){ ['wxSheet','stSheet'].forEach(id=>{ const o=el(id); if(o) o.hidden=true; }); }
 function nav(route){
+  closeSheets();   // Wetter-/Status-Blatt nicht ueber der neuen Seite stehen lassen
   stack.push(route);
   const c=_crumbNext; _crumbNext=null;
   _crumbs.length=stack.length-1; _crumbs[stack.length-1]=(c&&c.lvl===stack.length-1)?c.html:'';
@@ -2058,7 +2134,7 @@ function zoomBack(){
   gh.classList.add('shrink'); gh.style.transform=gh.tr(r);
   setTimeout(()=>{ gh.classList.add('fade'); setTimeout(()=>gh.remove(),200); }, 260);
 }
-function goTab(tab){ stack=[{view:'tab',tab}]; _crumbs.length=0; send({t:'nav',route:stack[0]}); }
+function goTab(tab){ closeSheets(); stack=[{view:'tab',tab}]; _crumbs.length=0; send({t:'nav',route:stack[0]}); }
 // ---- Pfad-Symbole ("Breadcrumbs") in der Leiste ----
 // Rechts neben dem Zurueck-Knopf die Piktogramme der Kacheln, ueber die man
 // in die aktuelle Ansicht gekommen ist (z.B. Bad > Licht), in der Punktfarbe
@@ -2514,7 +2590,7 @@ function paintChart(box,b){
         H=fit?Math.round(cv.clientHeight):Math.round(W*150/440);
   if(!fit){ cv.dataset.fixed='1'; cv.style.height=H+'px'; }
   const ck=JSON.stringify(b)+'|'+W+'x'+H; if(box._ck===ck) return; box._ck=ck;   // gleiche Daten + Groesse: nicht neu bauen
-  const pL=40,pR=12,pT=12,pB=24, t0=b.t0, t1=b.t1, span=Math.max(1,t1-t0);
+  const pL=40,pR=12,pT=20,pB=24, t0=b.t0, t1=b.t1, span=Math.max(1,t1-t0);
   const unit=b.unit?(' '+b.unit):'', dec=Math.max(0,...b.series.map(s=>s.dec||0));
   const vals=b.series.flatMap(s=>s.pts.map(p=>p[1]));
   let lo=vals.length?Math.min(...vals):0, hi=vals.length?Math.max(...vals):1, mn, mx;
@@ -2556,7 +2632,7 @@ function paintChart(box,b){
       if(si===0) s+='<polygon points="'+f(X(p[0][0]))+','+f(Y(mn))+' '+line+' '+f(X(p[p.length-1][0]))+','+f(Y(mn))+'" fill="url(#'+id+')"/>';
       s+='<polyline points="'+line+'" style="fill:none;stroke:'+col+';stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round"/>';
       const vs=p.map(q=>q[1]);
-      if(si===0 && b.series.length===1){   // Hoechst- und Tiefstwert direkt am Verlauf (wie im Wetter-Diagramm)
+      if(si===0 && b.series.length===1 && p.length>=3){   // Hoechst- und Tiefstwert direkt am Verlauf (wie im Wetter-Diagramm)
         const iH=vs.indexOf(Math.max(...vs)), iL=vs.indexOf(Math.min(...vs));
         const lab=(i,up)=>{ const x=Math.min(W-pR-22,Math.max(pL+22,X(p[i][0]))), y=Y(p[i][1]);
           return '<text class="chlab" x="'+f(x)+'" y="'+f(up?Math.max(pT+10,y-8):Math.min(H-pB-4,y+16))+'">'+esc(chNum(p[i][1],se.dec))+'</text>'; };
@@ -2924,7 +3000,10 @@ function renderTabs(){
   const backHtml = stack.length>1
     ? '<div class="tabback on" id="tabback" title="Zurück">'+svg('<path d="m15 6-6 6 6 6"/>')+'</div>'
     : '<div class="tabback dash" id="tabback" title="Dashboard">'+svg(dashIconInner())+'</div>';
-  const bar = t => [backHtml,'<div class="tabspacer crumbs">'+crumbsHtml(Math.min(4,t.length))+'</div>'].concat(t.slice(0,4).reverse());
+  // Kopf: Brotkrumen und dahinter der Name der aktuellen Seite (Tab, Raum, Verknuepft …).
+  // Detailseiten nicht - dort steht der Name gross in der Karte.
+  const ptl = (view && !view.blocks && view.title) ? '<span class="crtitle">'+esc(view.title)+'</span>' : '';
+  const bar = t => [backHtml,'<div class="tabspacer crumbs">'+crumbsHtml(Math.min(4,t.length))+ptl+'</div>'].concat(t.slice(0,4).reverse());
   let items;
   if(ct){
     const tabsHtml = ct.map(c => {
@@ -3387,17 +3466,24 @@ function renderCells(wide){
   const gs = view.grid===2 ? 2 : 3;          // Raster je Tab: 2x2 oder 3x3
   gridCols = wide?2*gs:gs; gridRows = gs;
   const pages = Math.max(1, ...items.map(it=>Math.floor((it.y+it.h-1)/gs)+1));
-  const place = wide ? (it=>{ const p=Math.floor(it.y/gs); return {c:it.x+gs*(p%2), r:it.y%gs+gs*Math.floor(p/2)}; }) : null;
+  const place0 = wide ? (it=>{ const p=Math.floor(it.y/gs); return {c:it.x+gs*(p%2), r:it.y%gs+gs*Math.floor(p/2)}; }) : null;
   const bands = wide ? Math.ceil(pages/2) : pages;
+  // Mehrere Seiten auf Panel/Tablet: zwischen zwei Seiten eine Abstandsreihe, damit eine
+  // eingerastete Seite genau die Flaeche fuellt (nichts von der Nachbarseite ragt herein).
+  // Seitenabstand = Innenabstand oben+unten (2*14) statt nur der Kachel-Fuge.
+  const sp = !ph && bands>1;
+  const place = sp ? (it=>{ const p=place0?place0(it):{c:it.x,r:it.y}; return {c:p.c, r:p.r+Math.floor(p.r/gs)}; }) : place0;
+  g.style.gridTemplateRows = sp ? Array.from({length:bands},(_,i)=>'repeat('+gs+',calc((100% - '+(gs-1)+' * var(--gap)) / '+gs+'))'+(i<bands-1?' 8px':'')).join(' ') : '';
   g.style.setProperty('--cc', gridCols);
   // Handy: so viele Zeilen je Bildschirm, dass die Kacheln etwa quadratisch sind
   g.style.setProperty('--gr', ph ? Math.max(gs, Math.round(g.clientHeight/((g.clientWidth||1)/gs))) : gs);
   g.classList.toggle('g2', gs===2); g.classList.toggle('g3', gs===3);
   // Rastanker je Seite (Wischen rastet seitenweise), unsichtbar
   let a=g.querySelectorAll('.cpage');
-  if(a.length!==bands || g._gs!==gs){ a.forEach(n=>n.remove()); g._gs=gs;
+  if(a.length!==bands || g._gs!==gs || g._sp!==sp){ a.forEach(n=>n.remove()); g._gs=gs; g._sp=sp;
     for(let i=0;i<bands;i++){ const n=document.createElement('div'); n.className='cpage';
-      n.style.gridRow=(i*gs+1)+' / span '+gs; g.appendChild(n); } }
+      n.style.gridRow=(i*(gs+(sp?1:0))+1)+' / span '+gs; g.appendChild(n); } }
+  g.classList.toggle('paged', sp);
   if(!items.length){ if(!g.querySelector('.empty')){ const e=document.createElement('div'); e.className='empty'; e.textContent='nichts hier'; g.appendChild(e); } }
   else { const e=g.querySelector('.empty'); if(e) e.remove(); }
   g.classList.toggle('snapy', bands>1);
@@ -3586,6 +3672,11 @@ function updateScrollInd(){
   const over = g.scrollHeight - g.clientHeight;
   if(over<=1){ ind.classList.remove('show'); return; }
   ind.classList.add('show');
+  if(g.classList.contains('paged')){   // Seitenpunkte: eine Seite = eine Bildschirmhoehe
+    const n=g.querySelectorAll(':scope>.cpage').length||1, cur=Math.min(n-1,Math.round(g.scrollTop/Math.max(1,g.clientHeight)));
+    if(ind._n!==n){ ind._n=n; ind.innerHTML='<div class="thumb"></div>'+Array.from({length:n},()=>'<i></i>').join(''); }
+    ind.classList.add('dots'); ind.querySelectorAll('i').forEach((d,i)=>d.classList.toggle('on',i===cur)); return; }
+  if(ind.classList.contains('dots')){ ind.classList.remove('dots'); ind._n=0; ind.querySelectorAll('i').forEach(d=>d.remove()); }
   const thumb=ind.querySelector('.thumb');
   const h=Math.max(24, g.clientHeight * g.clientHeight / g.scrollHeight);
   const top=(g.clientHeight-h) * (g.scrollTop/over);
@@ -4499,8 +4590,12 @@ function wxSheet(fi, swap){
   if(dt.feels_lo!=null&&dt.feels_hi!=null) chips.push(['Gefühlte Temperatur', dt.feels_lo+'° – '+dt.feels_hi+'°', has('feels')?'feels':'']);
   if(dt.humidity!=null) chips.push(['Luftfeuchte Ø', dt.humidity+' %', has('hum')?'hum':'']);
   if(dt.sunrise&&dt.sunset) chips.push(['Sonnenschein', dt.sunrise+' – '+dt.sunset, 'sun']);
-  ov.innerHTML='<div class="wxsbox"><div class="wxhd"><span class="wxico ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
-    '<span class="wxtt"><b>'+esc(f.day||'')+'</b><small>'+esc(dt.cond||'')+'</small></span>'+
+  // Heute wie auf dem Dashboard: aktuelles Wetter (Symbol + Text); die Tagesvorhersage
+  // steht klein dahinter, wenn sie abweicht. Folgetage: Tagesvorhersage.
+  const now0=fi===0&&(w.cond||w.icon), hIco=now0?(w.icon||f.icon):f.icon,
+        hTxt=now0?((w.cond||'')+(dt.cond&&dt.cond!==w.cond?' · Tagesvorhersage: '+dt.cond:'')):(dt.cond||'');
+  ov.innerHTML='<div class="wxsbox"><div class="wxhd"><span class="wxico ico '+esc(hIco||'cloud')+'">'+wxSvg(hIco)+'</span>'+
+    '<span class="wxtt"><b>'+esc(f.day||'')+'</b><small>'+esc(hTxt)+'</small></span>'+
     '<span class="wxhl"><b'+(f.hi!=null?' style="color:'+wxTcTxt(f.hi)+'"':'')+'>'+tdeg(f.hi)+'</b><small'+(f.lo!=null?' style="color:'+wxTcTxt(f.lo)+'"':'')+'>'+tdeg(f.lo)+'</small></span>'+
     '<button type="button" class="stsx" aria-label="Schließen">✕</button></div>'+
     '<div class="wxch">'+(hrs.length>1?wxChartHTML(hrs,'temp'):'')+'</div>'+

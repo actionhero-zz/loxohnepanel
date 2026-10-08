@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.93"
+APP_VERSION = "0.19.94"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -1213,6 +1213,18 @@ def _audiometa_config() -> dict:
 _CAM_ID_RE = re.compile(r"^(cam_[a-z0-9]{4,16}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{16})$")
 
 
+def _audiometa_sekunden(am: dict, schluessel: str, standard: float) -> float:
+    """Eine Zeit (s) des Audioserver-Ereignis-Clients aus loxpanel.cfg
+    audiometa.<schluessel> (retry_interval, response_timeout). Ohne gueltigen
+    Wert `standard` (AudioEventClient.NEU_VERSUCH_S bzw. PRUEF_ZEITLIMIT_S)."""
+    wert = am.get(schluessel) if isinstance(am, dict) else None
+    if isinstance(wert, (int, float)) and not isinstance(wert, bool) and math.isfinite(wert) and wert > 0:
+        return float(wert)
+    if wert is not None:
+        log.warning("loxpanel.cfg: audiometa.%s %r ungueltig, es gelten %s s", schluessel, wert, standard)
+    return float(standard)
+
+
 def _intercom_config() -> dict:
     base = Path(__file__).resolve().parent.parent / "config"
     f = base / "loxpanel.cfg"
@@ -2094,6 +2106,8 @@ class App:
         txt = unquote(str(raw))
         for sep in ("\r\n", "\\r\\n", "\\n", "\\r", "\r"):
             txt = txt.replace(sep, "\n")
+        # Loxone-Standard: Eintraege im State "entries" mit "|" getrennt
+        txt = txt.replace("|", "\n")
         return [ln.strip() for ln in txt.split("\n") if ln.strip()]
 
     @staticmethod
@@ -2288,11 +2302,11 @@ class App:
         # (Ergebnis kommt async -> _dirty). Der Loxone-sourceList-State ist bei
         # vielen Setups leer, deshalb ist das der zuverlaessige Weg.
         cl, pid = self._audio_client_for(c)
-        if cl is not None and pid is not None and (not cl.paired or cl.authed):
+        if cl is not None and pid is not None and (cl.paired is False or cl.authed):
             await cl.request_favs(pid)
             return
-        # Fallback ohne Event-Client (z.B. MS4H ohne 7091) oder bei gekoppeltem
-        # Audioserver ohne Anmeldung: Favoriten ueber den Miniserver holen.
+        # Fallback ohne Event-Client (z.B. MS4H ohne 7091), bei gekoppeltem
+        # Audioserver ohne Anmeldung oder unklarer Kopplung (paired None): Favoriten ueber den Miniserver holen.
         ua = c.get("uuidAction")
         if ua:
             await self.command(ua, "roomfav/get/0/20")
@@ -3372,6 +3386,14 @@ class App:
                 timeout=aiohttp.ClientTimeout(total=6))
         drv = disp.get("driver")
         res = {"device": name, "driver": drv, "on": on}
+        pw = str(disp.get("password") or "")
+
+        def von_gegenstelle(text: str) -> str:
+            # Gibt die Gegenstelle die Anfrage wieder (Echo, Fehlerseite), stuende
+            # das Kennwort im Klartext darin. Nur hier ersetzen: In selbst
+            # gebildeten Meldungen ("Cannot connect to host h:port") verriete die
+            # Ersetzung ueber den frei waehlbaren Port, ob er das Kennwort enthaelt.
+            return text.replace(pw, "***") if pw else text
         try:
             if drv == "fully":
                 # Fully Kiosk Browser, Remote Admin: GET /?cmd=screenOn|screenOff&password=...
@@ -3395,12 +3417,24 @@ class App:
                     txt = (await r.text())[:300]
                     ok = r.status == 200
             if not ok:
-                res["error"] = f"HTTP {r.status}: {txt}".strip()
-        except (aiohttp.ClientError, asyncio.TimeoutError, OSError) as err:
+                res["error"] = f"HTTP {r.status}: {von_gegenstelle(txt)}".strip()
+        except (aiohttp.ClientError, asyncio.TimeoutError, OSError, ValueError) as err:
+            # ValueError: Host, den die Namensaufloesung nicht annimmt
             ok = False
-            res["error"] = str(err) or err.__class__.__name__
+            # Ohne die Adresse: InvalidURL und ClientResponseError nennen sie
+            # ganz, bei Fully samt Kennwort.
+            if isinstance(err, aiohttp.InvalidURL):
+                res["error"] = f"ungültige Adresse {disp['host']}:{disp['port']}"
+            elif isinstance(err, aiohttp.ClientResponseError):
+                res["error"] = f"HTTP {err.status}: {von_gegenstelle(err.message)}"
+            else:
+                res["error"] = str(err) or err.__class__.__name__
         res["ok"] = ok
         if not ok:
+            # Das Kennwort so, wie es verschickt wurde: aus einem Echo der
+            # Anfrage oder einer Meldung mit der ganzen Adresse. Ersetzt den
+            # ganzen Wert, das Ergebnis haengt also nicht vom Kennwort ab.
+            res["error"] = re.sub(r"password=[^&\s]*", "password=***", res["error"])
             log.warning("Display-Treiber %s (%s): %s", name, drv, res["error"])
         return res
 
@@ -4236,8 +4270,24 @@ class App:
         return (DEVICE_MODELS.get(d.get("model") or "") or {}).get("scale", "off")
 
     def _write_devices(self, devices: dict) -> None:
+        # Erst schreiben, dann uebernehmen: scheitert das Schreiben, laeuft der
+        # Server mit dem Stand der Datei weiter
+        self._persist_panels_file(self.panels, devices)
         self.devices = devices
-        self._persist_panels_file(self.panels, self.devices)
+
+    @staticmethod
+    def _devices_export(devices: dict) -> dict:
+        """Geraete fuer den Konfigurator (/api/meta, Antwort von POST
+        /api/devices): das Display-Kennwort nur als hasPass, wie Miniserver
+        und Kamera in /api/settings. Leer zurueck heisst es "unveraendert"
+        (api_save_devices)."""
+        out = {}
+        for name, e in devices.items():
+            if isinstance(e, dict) and isinstance(e.get("display"), dict):
+                disp = {k: v for k, v in e["display"].items() if str(k).lower() not in ("pass", "password")}
+                e = {**e, "display": {**disp, "hasPass": bool(e["display"].get("password"))}}
+            out[name] = e
+        return out
 
     @staticmethod
     def _sanitize_devices(devices: dict, panel_ids: set) -> dict:
@@ -4588,7 +4638,7 @@ class App:
                 continue
             names.append(self._WD_ABBR.get(nm.lower(), nm))
         if not names:
-            return "%d Betriebsarten" % len(modes)
+            return f"{len(modes)} Betriebsart" + ("" if len(modes) == 1 else "en")
         # Alle 7 Wochentage -> „Täglich" (kompakter)
         if len(names) == 7 and all(v in names for v in self._WD_ABBR.values()):
             return "Täglich"
@@ -5067,9 +5117,9 @@ class App:
                 it["colorFixed"] = "#f2c14e"
         elif t == "PresenceDetector":
             on = bool(self._state(c, "active"))
-            itxt = self._text(c, "infoText")
+            itxt = _presence_de(self._text(c, "infoText"))
             it.update(icon="info", on=on,
-                      sublabel=(itxt if itxt and itxt.lower() not in ("on", "off")
+                      sublabel=(itxt if itxt and itxt.lower() not in ("an", "aus")
                                 else ("Anwesend" if on else "Abwesend")))
             if on:
                 it["colorFixed"] = "#52b881"        # gruen, solange Anwesenheit erkannt
@@ -5352,10 +5402,10 @@ class App:
         # Abspiel-Index (`play`) beruecksichtigt, dass Musikserver per `slot` und
         # Sonn per Item-`id` adressiert (siehe AudioEventClient._apply_favs).
         # Nur wenn der Kanal die Favoriten auch liefern darf: ein gekoppelter
-        # Audioserver ohne geglueckte Anmeldung schickt keine (dieselbe Bedingung
+        # Audioserver ohne geglueckte Anmeldung (oder unklare Kopplung) schickt keine (dieselbe Bedingung
         # wie beim Anfordern in prime_favs) -> dann die des Miniservers.
         _cl, _pid = self._audio_client_for(c) if c.get("type") in ("AudioZone", "AudioZoneV2") else (None, None)
-        if _cl is not None and _pid is not None and (not _cl.paired or _cl.authed):
+        if _cl is not None and _pid is not None and (_cl.paired is False or _cl.authed):
             favs = _cl.favs.get(_pid, [])
             items = [{"label": f["name"],
                       "cmd": {"uuid": ua, "cmd": f"roomfav/play/{f.get('play', f['slot'])}"},
@@ -6701,10 +6751,7 @@ class App:
             on = bool(self._state(c, "active"))
             itxt = self._text(c, "infoText")
             if itxt:
-                # Loxone liefert den Infotext teils englisch ("Off / Lock") -> eindeutschen
-                _de = {"on": "An", "off": "Aus", "lock": "Gesperrt", "locked": "Gesperrt",
-                       "presence": "Anwesend", "absence": "Abwesend", "active": "Aktiv"}
-                itxt = re.sub(r"[A-Za-z]+", lambda m: _de.get(m.group(0).lower(), m.group(0)), itxt)
+                itxt = _presence_de(itxt)
             big = itxt if (itxt and itxt.lower() not in ("an", "aus")) else ("Anwesend" if on else "Abwesend")
             return self._big_view(uuid, "info", big)
         if t == "Alarm":
@@ -7306,8 +7353,13 @@ class App:
                         want.add(host)
             for host in want:
                 if host not in self.audio_clients:
+                    am = self.audiometa_cfg or {}
                     cl = AudioEventClient(host, 7091, user=self.user,
-                                          token_provider=lambda: self.jwt)
+                                          token_provider=lambda: self.jwt,
+                                          neu_versuch_s=_audiometa_sekunden(
+                                              am, "retry_interval", AudioEventClient.NEU_VERSUCH_S),
+                                          pruef_zeitlimit_s=_audiometa_sekunden(
+                                              am, "response_timeout", AudioEventClient.PRUEF_ZEITLIMIT_S))
                     self.audio_clients[host] = cl
                     self._spawn(self._run_audio_client(host, cl))
                     log.info("Audioserver-Event-Client gestartet: %s", host)
@@ -8364,7 +8416,7 @@ async def api_meta(request: web.Request) -> web.Response:
             "iconUrl": app._icon_url(app.rooms[ru].get("image")), "room": True}
            for ru in app.rooms_with],
         "panels": panels,
-        "devices": app.devices,
+        "devices": App._devices_export(app.devices),
         "wsDevices": sorted({d for d in app.conn_dev.values() if d}),
         "theme": {"ui": {k: v for k, v in (app.theme.get("ui") or {}).items()
                          if k in THEME_UI_KEYS},
@@ -9124,6 +9176,20 @@ async def api_save_devices(request: web.Request) -> web.Response:
     except (ValueError, aiohttp.ContentTypeError):
         return web.json_response({"ok": False, "error": "kein JSON"}, status=400)
     devices = App._sanitize_devices(d.get("devices") or {}, set(app.panels))
+    # Leeres Display-Kennwort = unveraendert (/api/meta gibt es nicht heraus),
+    # aber nur beim selben Ziel (Treiber und Host), sonst ginge das gespeicherte
+    # an einen anderen Host. "verworfen": eines war da, das Ziel ist ein anderes.
+    # Vor _write_devices, das app.devices ersetzt.
+    verworfen = []
+    for n, e in devices.items():
+        disp = e.get("display") if isinstance(e, dict) else None
+        alt = (app.devices.get(n) or {}).get("display") if isinstance(app.devices.get(n), dict) else None
+        if not isinstance(disp, dict) or disp.get("password") or not isinstance(alt, dict) or not alt.get("password"):
+            continue
+        if alt.get("driver") == disp.get("driver") and alt.get("host") == disp.get("host"):
+            disp["password"] = alt["password"]
+        else:
+            verworfen.append(n)
     old = {n: app.effective_scale(n) for n in set(app.devices) | set(devices)}
     try:
         app._write_devices(devices)
@@ -9132,7 +9198,8 @@ async def api_save_devices(request: web.Request) -> web.Response:
     for n, sc in old.items():                      # Skalierung live nachziehen (ohne Neuladen)
         if app.effective_scale(n) != sc:
             await _push(app, {"t": "scale", "scale": app.effective_scale(n)}, "", n)
-    return web.json_response({"ok": True, "devices": devices})
+    return web.json_response({"ok": True, "devices": App._devices_export(devices),
+                              "kennwortVerworfen": verworfen})
 
 
 async def api_devices_get(request: web.Request) -> web.Response:
@@ -9649,6 +9716,14 @@ def _log_once_warn(key, msg: str, *args) -> None:
         _WARN_SEEN.clear()
     _WARN_SEEN.add(key)
     log.warning(msg, *args)
+
+
+def _presence_de(txt: str) -> str:
+    """Infotext des Praesenzmelders: Loxone liefert ihn teils englisch ("Off / Lock")
+    -> eindeutschen (Kachel und Detailseite gleich)."""
+    _de = {"on": "An", "off": "Aus", "lock": "Gesperrt", "locked": "Gesperrt",
+           "presence": "Anwesend", "absence": "Abwesend", "active": "Aktiv"}
+    return re.sub(r"[A-Za-z]+", lambda m: _de.get(m.group(0).lower(), m.group(0)), txt or "")
 
 
 def _log_exc_limited(key, msg: str, *args) -> None:

@@ -3580,7 +3580,7 @@ window.addEventListener('beforeunload',e=>{ if(dirty||SECT_DIRTY.size){ e.preven
    SETTINGS-Rubrik (frühere /settings-Seite als Reiter)
    ============================================================ */
 let SET=null;
-function flash(el,msg,ok){ if(!el)return; el.textContent=msg; el.className='toast show '+(ok?'ok':'err'); setTimeout(()=>el.classList.remove('show'),4000); }
+function flash(el,msg,ok){ if(!el)return; el.textContent=msg; el.className='toast show '+(ok?'ok':'err'); setTimeout(()=>{ if(!el.classList.contains('warn')) el.classList.remove('show'); },4000); }
 
 async function loadSettings(){
   const r=await fetch('/api/settings'); SET=await r.json(); if(rubric==='overview') renderOverview();
@@ -4087,10 +4087,19 @@ const DEV_OPEN=new Set(), DEV_NEW=new Set();   // aufgeklappte / neu erkannte Ge
 let DEV_POLLED=false;   // erst ab dem 2. Abruf gilt ein Name als "neu erkannt"
 let KNOWN_NAMES=[];    // bisher gesehene Geraetenamen (Agent ODER Browser ?device=)
 let DEVICE_IPS={};     // Geraetename -> zuletzt gesehene IP (Vorbelegung Display-Treiber)
+let PASS_ZIEL={};      // Geraetename -> {driver, host}, fuer das der Server ein Display-Kennwort hat
+// Das Kennwort selbst bekommt der Konfigurator nie, nur hasPass (wie beim Miniserver).
+function passZielLesen(devices){
+  PASS_ZIEL={};
+  Object.entries(devices||{}).forEach(([name,d])=>{
+    if(d && d.display && d.display.hasPass) PASS_ZIEL[name]={driver:d.display.driver, host:d.display.host};
+  });
+}
 async function loadPanelIds(){
   try{
     const r=await fetch('/api/meta'); const m=await r.json();
     PANEL_IDS=Object.keys(m.panels||{});
+    passZielLesen(m.devices);
     DEV={};
     Object.entries(m.devices||{}).forEach(([name,d])=>{
       DEV[name]={auto:d.auto!==false, modes:Object.entries(d.modes||{}), display:d.display||null,
@@ -4486,7 +4495,7 @@ function devRow(name){
       '<button class="btn sm ghost dm_add" type="button" style="margin-top:4px">'+T('+ Modus')+'</button>'+
       '<div class="dhint">'+T('Modus → Ansicht. Den Modus schickt Loxone per HTTP (siehe Hinweise unten).')+'</div></div></div>'+
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
-    '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display)+'</div>'+
+    '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display, name)+'</div>'+
     '<div class="ddelrow"><button type="button" class="btn ghost sm ddel" data-live="1">'+T('Gerät löschen')+'</button>'+
       '<span class="dhint">'+T('Entfernt Einstellungen und Erkennung. Ist das Gerät verbunden, meldet es sich neu an.')+'</span></div>'+
   '</div></div>';
@@ -4546,8 +4555,19 @@ function devScaleOpts(cur,mo){
     .map(([v,l])=>'<option value="'+v+'"'+(v===cur?' selected':'')+'>'+esc(l)+'</option>').join('');
 }
 const DRIVER_PORT={fully:2323, wallpanel:2971};
-function displayRow(disp){
-  const x=disp||{driver:'',host:'',port:'',password:''};
+// Leeres Kennwortfeld: Der Server behaelt das gespeicherte Kennwort nur fuer
+// dasselbe Ziel (Treiber und Host). Dieselbe Regel hier, damit der Platzhalter
+// sagt, was beim Speichern passiert.
+function pwHinweis(name, drv, host){
+  const z=PASS_ZIEL[name];
+  return (z && z.driver===drv && z.host===String(host||'').trim()) ? T('unverändert lassen') : T('Passwort (Fully)');
+}
+// ... fuer eine Zeile nach Treiber und Host, wie sie gerade im Formular stehen
+function pwHinweisZeigen(row){
+  row.querySelector('.dd_pw').placeholder=pwHinweis(row.dataset.name, row.querySelector('.dd_drv').value, row.querySelector('.dd_host').value);
+}
+function displayRow(disp, name){
+  const x=disp||{driver:'',host:'',port:'',password:''};   // password: nur selbst Eingetipptes
   // Nur mit Fully PLUS (Remote Admin) oder WallPanel noetig - daher eingeklappt, offen nur wenn eingerichtet
   return '<details class="ddwrap"'+(x.driver?' open':'')+'><summary>'+T('Erweitert: Display-Steuerung (nur Fully PLUS / WallPanel)')+'</summary>'+
     '<div class="ddrow" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:8px 0 2px">'+
@@ -4556,7 +4576,7 @@ function displayRow(disp){
       '<option value="wallpanel"'+(x.driver==='wallpanel'?' selected':'')+'>WallPanel (HTTP)</option></select>'+
     '<input type="text" class="dd_host" placeholder="IP" value="'+esc(x.host||'')+'" style="width:130px">'+
     '<input type="text" class="dd_port" placeholder="Port" value="'+esc(x.port||'')+'" style="width:70px">'+
-    '<input class="dd_pw" type="password" placeholder="'+T('Passwort (Fully)')+'" value="'+esc(x.password||'')+'" style="width:140px" autocomplete="new-password">'+
+    '<input class="dd_pw" type="password" placeholder="'+pwHinweis(name, x.driver, x.host)+'" value="'+esc(x.password||'')+'" style="width:140px" autocomplete="new-password">'+
   '</div><p class="hint" style="margin:4px 0 0">'+T('Ohne Fully-PLUS-Lizenz auf „keine“ lassen – das Display schaltet dann die Seite selbst.')+'</p></details>';
 }
 function readDevFromDom(){
@@ -4618,12 +4638,25 @@ function renderDevices(){
     const row=sel.closest('.dev'), name=row.dataset.name, drv=sel.value;
     const host=row.querySelector('.dd_host'), port=row.querySelector('.dd_port');
     if(drv){ if(!host.value && DEVICE_IPS[name]) host.value=DEVICE_IPS[name]; if(!port.value) port.value=DRIVER_PORT[drv]||''; }
+    pwHinweisZeigen(row);
   });
+  box.querySelectorAll('.dd_host').forEach(inp=>inp.oninput=()=>pwHinweisZeigen(inp.closest('.dev')));
   box.querySelectorAll('.dm_del').forEach(b=>b.onclick=()=>{
     const dev=b.closest('.dev'), name=dev.dataset.name;
     const idx=Array.from(dev.querySelectorAll('.dmrow')).indexOf(b.closest('.dmrow'));
     readDevFromDom(); DEV[name].modes.splice(idx,1); renderDevices();
   });
+}
+// Nach dem Speichern: welche Kennwoerter der Server jetzt hat (auch in den
+// Platzhaltern, "Speichern" zeichnet nicht neu); eines, das er wegen eines
+// anderen Ziels verworfen hat, nennen (bleibt stehen).
+function devGespeichert(j, text){
+  passZielLesen(j.devices);
+  document.querySelectorAll('#dev_list .dev').forEach(pwHinweisZeigen);
+  const weg=j.kennwortVerworfen||[], t=$('#dev_toast');
+  if(!weg.length){ flash(t,text,true); return; }
+  t.className='toast show warn';
+  t.textContent=text+' · '+T('Display-Kennwort nicht übernommen, weil Host oder Treiber geändert:')+' '+weg.join(', ');
 }
 $('#dev_save').onclick=async()=>{
   readDevFromDom();
@@ -4641,7 +4674,7 @@ $('#dev_save').onclick=async()=>{
   try{
     const r=await fetch('/api/devices',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({devices})});
     const j=await r.json();
-    if(j.ok){ flash($('#dev_toast'),T('✓ Gespeichert'),true); if(typeof pollDevices==='function') pollDevices(); } else flash($('#dev_toast'),j.error||T('Fehler'),false);
+    if(j.ok){ devGespeichert(j,T('✓ Gespeichert')); if(typeof pollDevices==='function') pollDevices(); } else flash($('#dev_toast'),j.error||T('Fehler'),false);
   }catch(e){ flash($('#dev_toast'),'Fehler: '+e,false); }
   $('#dev_save').disabled=false;
 };

@@ -18,6 +18,8 @@
       'Loxone-Statussymbol statt festem Symbol': 'Loxone status icon instead of fixed icon',
       'Status-Baustein · jetzt: ': 'Status block · now: ',
       'kein Status-Baustein': 'not a status block',
+      'Beides': 'Both',
+      'Loxone-Symbol': 'Loxone icon',
       // Rahmen / Navigation
       'Einstellungen': 'Settings',
       'Hier legst du fest, WANN Nacht ist – für alle Panels gleich. Nacht ist aktiv, solange der gewählte Betriebsmodus läuft oder der gewählte Baustein eingeschaltet ist. Ohne Auswahl: Sonnenuntergang bis Sonnenaufgang.':

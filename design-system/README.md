@@ -61,7 +61,8 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - Zusatzangaben (Betriebsart, Zeitplan, „Fenster offen“) als Chips unter dem Wert: Anzeige = transparent mit Haarlinie, tippbar = gefüllt mit Pfeil ˅/›.
 - Heizung nach Loxone-Vorbild: Sollwert-Zeile „− 24,0° Komfort-Soll +“ (Zeile = Anzeige, −/+ = runde Bedienelemente), darunter optional die Zeitleiste 0–24 Uhr mit Komfortzeiten aus dem Loxone-Zeitplan und „Komfort bis …“; Betriebsarten als Pillen unten.
 - Alles passt auf ein Panel (960 × 480, 480 × 480) ohne Scrollen; Verläufe füllen den freien Platz, bei zu wenigen Messwerten steht „Noch zu wenig Messwerte“.
-- Einträge (Zonen, Wecker, Ausgänge, Stimmungen) sind Listenzeilen: 46 px hoch (Tablet 52 px), `r-m`, Symbol links, Titel und Unterzeile, aktiv gefüllt in `ink`. Schmal eine Spalte, breit zwei gleich breite Spalten über die ganze Breite. Nie seitwärts scrollen.
+- Einträge (Lichtszenen, Zonen, Wecker, Ausgänge, Stimmungen) sind Listenzeilen: 46 px hoch (Tablet 52 px), `r-m`, Symbol links, Titel und Unterzeile, aktiv gefüllt in `ink`.
+- **Standard zwei Spalten:** Auf Panels und Tablets stehen Einträge in zwei gleich breiten Spalten über die ganze Breite (480 × 480 ab 3 Einträgen, breit immer) – Lichtszenen genauso wie Bewässerungszonen. Nie drei Spalten (einzige Ausnahme: Handy quer, zu wenig Höhe); Handy hoch eine Spalte. Passen nicht alle Einträge, scrollt die Liste senkrecht – der Rest der Ansicht bleibt unverändert. Nie seitwärts scrollen.
 - Kamera „ganzes Bild“: freie Ränder in Kartenfarbe oder als verwischtes Bild – nie weiße Streifen.
 
 ## Kacheltext und Seiten

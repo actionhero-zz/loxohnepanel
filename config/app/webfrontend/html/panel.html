@@ -1725,13 +1725,11 @@
     overflow-x:hidden;overflow-y:auto;gap:8px;}
   .grid.panel .pantop>.scenes:has(>:nth-child(5)),.grid.panel.wide .pantop>.scenes{grid-template-columns:repeat(2,minmax(0,1fr));}
   html.sqbig .grid.panel .pantop>.scenes{grid-auto-rows:52px;}
-  /* Viele Eintraege (ab 7): auf breiten Panels drei Spalten, sonst etwas niedrigere Zeilen -
-     die Liste soll auf ein Panel passen statt in sich zu scrollen. Handy bleibt einspaltig. */
-  .grid.panel.wide .pantop>.scenes:has(>:nth-child(7)){grid-template-columns:repeat(3,minmax(0,1fr));}
+  /* Standard (Designsystem): Listen in Detailansichten hoechstens zwei Spalten (auch breit,
+     z.B. Lichtszenen wie Bewaesserungszonen); passt es nicht, scrollt die Liste.
+     Ausnahme nur Handy quer (zu wenig Hoehe), Handy hoch einspaltig. */
   /* 480er (nicht Handy): schon ab 3 Eintraegen zwei Spalten, sonst scrollt die Liste in ihren ~125 px (z.B. 3 Bewaesserungszonen) */
   html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:not(.lsub):has(>:nth-child(3)){grid-template-columns:repeat(2,minmax(0,1fr));}
-  html:not(.phone) .grid.panel .pantop>.scenes:has(>:nth-child(7)){grid-auto-rows:40px;gap:6px;}
-  html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:has(>:nth-child(9)){grid-auto-rows:38px;gap:5px;}   /* 480er: 5 Reihen passen */
   html.phone .grid.panel .pantop>.scenes{grid-auto-rows:46px;align-content:start;grid-template-columns:minmax(0,1fr);}   /* Handy: Hoehe reicht, eine Spalte */
   .grid.panel .pantop>.scenes>.scene{flex-direction:row;align-items:center;justify-content:flex-start;min-width:0;height:auto;
     padding:0 14px;gap:10px;border-radius:var(--r-m);}

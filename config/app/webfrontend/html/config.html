@@ -381,6 +381,7 @@
     --fg:#1f2440; --muted:#5d6282; --accent:#9a6700; --good:#2b8055; --crit:#c4473d;
     --radius:22px; --pill:999px; --r-xl:36px; --r-l:22px; --r-m:14px; --r-s:8px; --r-pill:999px;
     --bezel:#0d0f1a; --bezel2:#171a2b; --bezel-ink:#eceaf8; --bezel-muted:#9a9fbd; --dot:#ffc145;
+    --tab-active:#262a45; --tab-active-ink:#ffffff;
     --shadow:0 1px 2px rgba(31,36,64,.05),0 8px 24px rgba(31,36,64,.06);
     --field:#ffffff; --prim:#1f2440; --prim-ink:#ffffff; --prim-hover:#2d3358;
     --active:#ffedb8; --active-ink:#1f2440; --active-sub:#5d6282;
@@ -410,9 +411,13 @@
   .main{background:var(--bg);border-radius:var(--r-l) 0 0 0;overflow:hidden;}
   .topbar{background:var(--bezel);border-bottom:0;padding:10px 28px 12px;}
   .rubrics{gap:6px;}
-  .rub{padding:9px 18px;border:0;border-radius:var(--pill);color:var(--bezel-muted);font-size:14px;}
+  /* wie die Panel-Tabs: Kachelradius, aktive Flaeche + Punkt in Akzentfarbe darunter */
+  .rub{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:8px 18px 6px;
+    border:0;border-radius:var(--r-m);color:var(--bezel-muted);font-size:14px;}
+  .rub::after{content:"";width:5px;height:5px;border-radius:1.5px;background:transparent;}
   .rub:hover{color:var(--bezel-strong);background:var(--bezel-tint);}
-  .rub.active{color:var(--bezel-strong);background:var(--bezel2);border:0;box-shadow:inset 0 0 0 1px var(--bezel-line);}
+  .rub.active{color:var(--tab-active-ink);background:var(--tab-active);border:0;font-weight:600;}
+  .rub.active::after{background:var(--dot);}
   #phead{padding:12px 4px 2px;color:var(--bezel-strong);}
   #phead h2{color:var(--bezel-strong);} #phead .phlead,#phead .kurl{color:var(--bezel-muted);} #phead .kurl code{color:var(--bezel-ink);}
   #phead .badge{background:var(--bezel-tint);border-color:transparent;color:var(--bezel-muted);border-radius:var(--pill);}
@@ -492,6 +497,7 @@
   /* Theme "Hell": heller Rahmen, gruen-graue Flaechen wie das Panel-Design "Hell" */
   :root[data-theme="hell"]{
     --bezel:#d5ded8; --bezel2:#ffffff; --bezel-ink:#1d2a22; --bezel-muted:#4f5f54; --bezel-strong:#0d120e;
+    --tab-active:#ffffff; --tab-active-ink:#2b8055;
     --bezel-tint:rgba(13,18,14,.05); --bezel-hover:rgba(13,18,14,.08); --bezel-line:rgba(13,18,14,.1); --dot:#2b8055;
     --bg:#ecf1ed; --panel:#ffffff; --panel2:#f4f7f5; --line:#d5ded8; --fg:#0d120e; --muted:#4f5f54;
     --accent:#a35e00; --field:#ffffff; --prim:#0d120e; --prim-ink:#ffffff; --prim-hover:#26302a;
@@ -503,6 +509,7 @@
   /* Theme "Dunkel": alles dunkel wie das Panel-Design "Dunkel" */
   :root[data-theme="dunkel"]{
     --bezel:#0b0f0c; --bezel2:#243027; --bezel-ink:#e7ede7; --bezel-muted:#8fa094; --bezel-strong:#ffffff;
+    --tab-active:#243027; --tab-active-ink:#52b881;
     --bg:#18211a; --panel:#243027; --panel2:#2a372d; --line:#36443a; --fg:#e7ede7; --muted:#9fb0a4;
     --accent:#e0a24d; --good:#52b881; --crit:#e2695f; --field:#1d271f;
     --prim:#e7ede7; --prim-ink:#0d120e; --prim-hover:#ffffff;
@@ -524,8 +531,14 @@
   .g2ed .libtabs button{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:6px;border-radius:var(--pill);cursor:pointer;}
   .g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
   .g2ed .libq{width:100%;}
-  .dbshow{display:flex;flex-direction:column;gap:8px;} .dbsrow{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-m);}
-  .dbsrow .dbsname{font-size:13px;font-weight:600;color:var(--fg);} .dbsrow .chk{margin:0;font-size:13px;} .dbsrow .hint{margin:0;}
+  .dbshow{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:var(--r-m);}
+  .dbsrow{display:flex;flex-direction:column;gap:6px;padding:8px 10px;} .dbsrow+.dbsrow{border-top:1px solid var(--line);}
+  .dbshd{display:flex;align-items:baseline;gap:8px;min-width:0;} .dbsname{font-size:13px;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dbshd small{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;} .dbsrow.off .dbsname{color:var(--muted);font-weight:500;}
+  .dbsctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;} .dbsctl .chk{margin:0;font-size:12px;gap:6px;} .dbsctl .chk input{width:16px;height:16px;}
+  .dbseg{display:inline-flex;padding:2px;gap:2px;background:var(--field,var(--panel2));border:1px solid var(--line);border-radius:var(--pill,999px);}
+  .dbseg button{height:26px;padding:0 10px;border:0;border-radius:var(--pill,999px);background:none;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;}
+  .dbseg button.on{background:var(--prim,var(--good));color:var(--prim-ink,#fff);font-weight:600;}
   .dbaricons{display:flex;flex-wrap:wrap;gap:6px;} .dbic{font-size:12px;} .dbic.on{outline:2px solid var(--accent);}
   .libfilt{display:flex;flex-direction:column;gap:6px;margin-top:6px;} .libfilt select{width:100%;min-width:0;font-size:12px;}
   .g2ed .liblist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
@@ -2683,12 +2696,11 @@ function renderDashProps(p){
         '<div class="dbarbody"><div><div class="dbarlbl">'+T('Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+
         ((sv.bar||[]).length?'<div class="dbarlbl" style="margin-top:8px">'+T('Statusleiste – Anzeige je Baustein')+'</div><div class="dbshow">'+
           (sv.bar||[]).map(u=>{ const c=tileRef(u)||{}, isSt=c.type==='TextState'||c.type==='InfoOnlyText', sh=(sv.barShow||{})[u]||{}, md=sh.mode||'icon';
-            return '<div class="dbsrow" data-bs="'+esc(u)+'"><div class="dbsname">'+esc(c.name||u)+'</div>'+
-              (isSt?'<div class="seg" style="display:flex;gap:4px">'+[['icon','Symbol'],['text','Text'],['both','Symbol + Text']].map(([k,l])=>
-                  '<button type="button" class="minibtn'+(md===k?' on':'')+'" data-bsm="'+k+'">'+T(l)+'</button>').join('')+'</div>'+
-                '<label class="chk"><input type="checkbox" data-bsl'+(sh.lox?' checked':'')+'> <span>'+T('Loxone-Statussymbol statt festem Symbol')+'</span></label>'+
-                '<div class="hint">'+T('Status-Baustein · jetzt: ')+'„'+esc(c.stext||'–')+'“</div>'
-               :'<div class="hint">'+esc(T(ST_TL[c.type]||c.type||''))+' · '+T('kein Status-Baustein')+'</div>')+'</div>'; }).join('')+
+            return '<div class="dbsrow'+(isSt?'':' off')+'" data-bs="'+esc(u)+'"><div class="dbshd"><span class="dbsname">'+esc(c.name||u)+'</span>'+
+              '<small>'+(isSt?'„'+esc(c.stext||'–')+'“':esc(T('kein Status-Baustein')))+'</small></div>'+
+              (isSt?'<div class="dbsctl"><div class="dbseg" role="group">'+[['icon','Symbol'],['text','Text'],['both','Beides']].map(([k,l])=>
+                  '<button type="button" class="'+(md===k?'on':'')+'" data-bsm="'+k+'">'+T(l)+'</button>').join('')+'</div>'+
+                '<label class="chk" title="'+esc(T('Loxone-Statussymbol statt festem Symbol'))+'"><input type="checkbox" data-bsl'+(sh.lox?' checked':'')+'> <span>'+T('Loxone-Symbol')+'</span></label></div>':'')+'</div>'; }).join('')+
           '</div><div class="dbarlbl" style="margin-top:8px">'+T('Symbol je Baustein (Tippen zum Ändern)')+'</div><div class="dbaricons">'+
           (sv.bar||[]).map(u=>{ const c=tileRef(u)||{}; const ic=(sv.barIcons||{})[u];
             return '<button type="button" class="tbicobtn dbic'+(dBarIcoFor===u?' on':'')+'" data-bic="'+esc(u)+'"><span class="tbico">'+barIcoHtml(c,ic)+'</span>'+esc(c.name||u)+'</button>'; }).join('')+

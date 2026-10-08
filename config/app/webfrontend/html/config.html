@@ -55,7 +55,7 @@
   #phead .kurl{color:var(--muted);font-size:12px;}
   #phead .kurl code{color:var(--fg);}
   #phead .phlead{width:100%;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:-6px;}
-  #phead .phcur{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);}
+  #phead .phcur{border-color:var(--accent);color:var(--accent);background:rgba(224,162,77,.12);background:color-mix(in srgb,var(--accent) 12%,transparent);}
   .subtabs{display:flex;gap:2px;padding:0 30px;border-bottom:1px solid var(--line);background:var(--bg);overflow-x:auto;}
   .stab{padding:11px 15px;background:none;border:none;border-bottom:2px solid transparent;
     color:var(--muted);font:inherit;font-size:13px;font-weight:550;cursor:pointer;white-space:nowrap;}
@@ -323,7 +323,7 @@
     padding:8px;position:relative;overflow:hidden;flex:none;}
   .ovw .visu{display:grid;grid-template-columns:repeat(var(--c,2),1fr);grid-template-rows:repeat(var(--r,2),1fr);gap:5px;height:100%;}
   .ovw .visu i{background:var(--tile);border:1px solid var(--tline);border-radius:5px;position:relative;}
-  .ovw .visu i::after{content:"";position:absolute;left:5px;top:5px;width:7px;height:7px;border-radius:2px;background:color-mix(in srgb,var(--accent) 55%,transparent);}
+  .ovw .visu i::after{content:"";position:absolute;left:5px;top:5px;width:7px;height:7px;border-radius:2px;background:rgba(224,162,77,.55);background:color-mix(in srgb,var(--accent) 55%,transparent);}
 
   .ovw .plist{display:flex;flex-direction:column;gap:5px;height:100%;} .ovw .plist u{flex:1;background:var(--tile);border:1px solid var(--tline);border-radius:5px;}
 
@@ -335,7 +335,7 @@
 
   .ovw .row{display:flex;flex-wrap:wrap;gap:18px 16px;}
   .ovw figure{margin:0;width:120px;} .ovw figcaption{margin-top:8px;font-size:12px;color:var(--muted);}
-  .ovw figcaption b{color:var(--fg);font-weight:600;display:block;font-size:12px;} .ovw figcaption .badge{display:inline-block;margin-top:3px;font-family:ui-monospace,monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:999px;padding:1px 6px;}
+  .ovw figcaption b{color:var(--fg);font-weight:600;display:block;font-size:12px;} .ovw figcaption .badge{display:inline-block;margin-top:3px;font-family:ui-monospace,monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(224,162,77,.45);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:999px;padding:1px 6px;}
   .ovw .dev{display:flex;gap:26px;flex-wrap:wrap;} .ovw .dev .panes{display:flex;gap:6px;}
   /* Setting-Boxen zweispaltig */
   .ovcols{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:30px;}
@@ -354,8 +354,8 @@
   .ovw .devcat .nm{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;font-weight:600;font-size:13px;color:var(--fg);}
   .ovw .devcat .spec{font-family:ui-monospace,monospace;font-size:10px;color:var(--smut);margin-top:4px;letter-spacing:.02em;}
   .ovw .devcat .desc{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45;}
-  .ovw .devcat .badge{font-family:ui-monospace,monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:999px;padding:1px 7px;}
-  .ovw .devcat .badge.ref{color:var(--good);border-color:color-mix(in srgb,#52b881 50%,transparent);}
+  .ovw .devcat .badge{font-family:ui-monospace,monospace;font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid rgba(224,162,77,.45);border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:999px;padding:1px 7px;}
+  .ovw .devcat .badge.ref{color:var(--good);border-color:rgba(82,184,129,.5);border-color:color-mix(in srgb,#52b881 50%,transparent);}
   /* Physische Formfaktoren proportional zur mm-Groesse */
   .ovw .faceplate{background:#0a0c10;border:1px solid var(--tline);border-radius:var(--r-m);position:relative;max-width:100%;
     display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03);}
@@ -531,7 +531,7 @@
   .g2ed .libit{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:var(--r-m);background:var(--field);border:1px solid var(--line);
     cursor:grab;touch-action:none;user-select:none;font-size:13px;transition:transform .12s,box-shadow .12s;}
   .g2ed .libit:hover{transform:translateX(2px);box-shadow:0 2px 8px rgba(31,36,64,.08);}
-  .g2ed .libit.used{background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));color:var(--fg);border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);} .g2ed .libit.used small{color:inherit;opacity:.7;} .g2ed .libit.used[data-new="room"],.g2ed .libit.used[data-new="cat"]{cursor:default;} .g2ed .libit small{margin-left:auto;color:var(--muted);font-size:11px;}
+  .g2ed .libit.used{background:rgba(255,193,69,.32);background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));color:var(--fg);border-color:rgba(255,193,69,.55);border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);} .g2ed .libit.used small{color:inherit;opacity:.7;} .g2ed .libit.used[data-new="room"],.g2ed .libit.used[data-new="cat"]{cursor:default;} .g2ed .libit small{margin-left:auto;color:var(--muted);font-size:11px;}
   .g2ed .libit .lnm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .g2ed .libit.wg{border-width:1px;}
   .g2ed .libhint{font-size:11px;color:var(--muted);padding:2px 4px;}
@@ -628,7 +628,7 @@
   .tbstrip .tbspacer{flex:1 1 0;min-width:8px;}
   .tbstrip .tbsep{width:1px;background:var(--line);margin:6px 2px;}
   .tbchip.dash{min-width:140px;}
-  .tbchip.dash:not(.on){background:color-mix(in srgb,var(--dot,#ffc145) 18%,var(--field,#fff));}
+  .tbchip.dash:not(.on){background:rgba(255,193,69,.18);background:color-mix(in srgb,var(--dot,#ffc145) 18%,var(--field,#fff));}
   .tbchip[draggable="true"]{cursor:grab;}
   .tbchip.dragging{opacity:.4;}
   .tbchip.dropto{box-shadow:0 0 0 2px var(--dot,#ffc145) inset;}
@@ -681,7 +681,7 @@
   .devtg b{font-size:15px;} .devtg small{color:var(--muted);font-size:12px;margin-left:2px;}
   .devtg .sdot{width:9px;height:9px;}
   .devtg .newb{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#10140f;background:var(--accent);border-radius:var(--r-l);padding:2px 7px;}
-  .devtg .chev{margin-left:auto;opacity:.55;transition:transform .2s ease;font-size:18px;}
+  .devtg .chev{margin-left:auto;}
   .dev.open .devtg .chev{transform:rotate(90deg);}
   .dev .devbody{display:none;padding:2px 14px 12px;border-top:1px solid var(--line);}
   .dev.open .devbody{display:block;padding-top:12px;}
@@ -692,9 +692,9 @@
   .dbri input[type=range]{flex:1;min-width:80px;} .dbri b{min-width:44px;text-align:right;font-variant-numeric:tabular-nums;}
   .devx .dsnd{margin:0;white-space:nowrap;font-size:13px;}
   .dbri .dbri_a{margin:0;white-space:nowrap;font-size:13px;} .dbri.auto input[type=range]{opacity:.35;}
-  #dev_list .devlive .ag>.dot,#dev_list .devlive .ag>.agn{display:none;}   /* Name/Status stehen im Kachelkopf */
+  #dev_list .dev .ag>.dot,#dev_list .dev .ag>.agn{display:none;}   /* Name/Status stehen im Kachelkopf */
   /* Geraetekachel: Abschnitte mit kleiner Ueberschrift, Kurzhinweis darunter */
-  #dev_list .devlive .ag{display:block;border:0;padding:0;margin:0;background:transparent;}
+  #dev_list .dev .ag{display:block;border:0;padding:0;margin:0;background:transparent;}
   .dev .dinfo{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 4px;}
   .dev .dsec{padding:10px 0;border-top:1px solid var(--line);}
   .dev .dsh{display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:8px;}
@@ -708,8 +708,8 @@
   #dev_list .dev.inactive>.devtg{opacity:.55;} #dev_list .dev.inactive.open>.devtg{opacity:.8;}
   .dev .dren{display:flex;gap:8px;margin-bottom:8px;} .dev .dren_in{flex:1;min-width:0;max-width:320px;}
   .dev .ddelrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
-  .dev .ddelrow .dhint{margin:0;} .dev .ddel{color:var(--crit,#e2695f);}
-  .dev .ddetbox{margin-top:10px;padding:10px 12px;border-radius:var(--r-s);background:color-mix(in srgb,var(--good) 8%,var(--panel2));border:1px solid color-mix(in srgb,var(--good) 30%,var(--line));font-size:12px;}
+  .dev .ddelrow .dhint{margin:0;}
+  .dev .ddetbox{margin-top:10px;padding:10px 12px;border-radius:var(--r-s);background:rgba(82,184,129,.1);background:color-mix(in srgb,var(--good) 8%,var(--panel2));border:1px solid rgba(82,184,129,.3);border:1px solid color-mix(in srgb,var(--good) 30%,var(--line));font-size:12px;}
   .dev .ddeth{display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:6px;}
   .dev .ddeth small{color:var(--muted);}
   .dev .ddetchips{display:flex;flex-wrap:wrap;gap:4px;}
@@ -724,7 +724,6 @@
   .dev .ddwrap{padding-top:10px;border-top:1px solid var(--line);}
   .devanon{margin-top:4px;} .devanon .note{margin:2px 0 8px;}
   .devhelp summary{cursor:pointer;list-style:none;} .devhelp summary h3{display:inline;margin:0;}
-  .devhelp summary::before{content:'›';display:inline-block;margin-right:8px;transition:transform .15s;} .devhelp[open] summary::before{transform:rotate(90deg);}
 
   /* Inhalt fuellt die Seite: Karten wachsen mit dem Fenster und stehen auf breiten
      Bildschirmen nebeneinander; Editoren und Listen immer ueber die volle Breite */
@@ -773,6 +772,23 @@
   /* Dashboard-Eigenschaften: Spalten nach verfuegbarer Breite, nichts ragt heraus */
   @container (max-width:1000px){ .dashprops{grid-template-columns:repeat(2,minmax(0,1fr));} }
   @container (max-width:520px){ .dashprops{grid-template-columns:minmax(0,1fr);} }
+  /* Ohne Container-Queries (Safari < 16): Fensterbreite minus ca. 300 px Seitenleiste */
+  @supports not (container-type:inline-size){
+    @media (max-width:1700px){ .sved.g2ed{grid-template-columns:190px minmax(0,1fr) 230px;gap:12px;} .sved.g2ed>.side{width:230px;} }
+    @media (max-width:1360px){
+      .sved.g2ed{grid-template-columns:minmax(0,1fr) 240px;grid-template-areas:"lib lib" "stage side";}
+      .sved.g2ed>.lib{grid-area:lib;position:static;max-height:260px;min-height:0;}
+      .sved.g2ed>.stage{grid-area:stage;min-width:0;}
+      .sved.g2ed>.side{grid-area:side;width:auto;}
+    }
+    @media (max-width:860px){
+      .sved.g2ed{grid-template-columns:minmax(0,1fr);grid-template-areas:"lib" "stage" "side";}
+      .sved.g2ed>.side{position:static;max-height:none;}
+      .g2ed .lib{position:static;max-height:280px;min-height:0;}
+    }
+    @media (max-width:1300px){ .dashprops{grid-template-columns:repeat(2,minmax(0,1fr));} }
+    @media (max-width:820px){ .dashprops{grid-template-columns:minmax(0,1fr);} }
+  }
   .dashprops select{max-width:100%;min-width:0;}
   .dashprops .dambrow [data-amb]{flex:none;}
 
@@ -893,23 +909,20 @@
   .xfold .xhd{display:flex;align-items:center;gap:8px;margin:0;}
   .xfold .xtg{all:unset;box-sizing:border-box;flex:1;min-width:0;display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 0;flex-wrap:wrap;}
   .xfold .xtg:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px;}
-  .xfold .xtg .xchev{margin-left:auto;color:var(--muted);transition:transform .22s ease;flex:none;order:9;}
-  .xfold.open .xtg .xchev{transform:rotate(180deg);}
+  .xfold .xtg .chev{margin-left:auto;order:9;}
+  .xfold.open .xtg .chev{transform:rotate(90deg);}
   .xfold .xbd{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s cubic-bezier(.2,0,0,1);}
   .xfold .xbd>div{overflow:hidden;min-height:0;}
   .xfold.open .xbd{grid-template-rows:1fr;}
   .xfold.open .xbd>div>.row2{margin-top:6px;}
-  @media (prefers-reduced-motion:reduce){ .xfold .xbd,.xfold .xchev{transition:none;} }
+  @media (prefers-reduced-motion:reduce){ .xfold .xbd,.chev,details>summary::after{transition:none;} }
   /* Erweiterte Optionen (eingeklappt): Schrift & Groessen */
-  .xdet>summary{cursor:pointer;list-style:none;font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px;padding:6px 0;}
-  .xdet>summary::-webkit-details-marker{display:none;}
-  .xdet>summary::before{content:'›';display:inline-block;transition:transform .15s;color:var(--muted);}
-  .xdet[open]>summary::before{transform:rotate(90deg);}
+  .xdet>summary{font-weight:600;font-size:13px;padding:6px 0;}
   .xdet>summary small{color:var(--muted);font-weight:400;}
   .xdetb{display:flex;flex-wrap:wrap;gap:12px 14px;align-items:flex-end;padding-top:4px;}
   /* Intercoms: je Tuerstation eine Box wie bei den Geraeten */
   .icwrap .sech{margin:0 0 10px;font-size:15px;}
-  .icwrap #ic_list{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px;align-items:start;}
+  .icwrap #ic_list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px;align-items:start;}
   .icbox{border:1px solid var(--line);border-radius:var(--r-m);background:var(--panel);box-shadow:var(--shadow);overflow:hidden;}
   .icbox .xhd{padding:0 14px;} .icbox .xtg{padding:12px 0;}
   .ic.icbox{border-top:1px solid var(--line);padding-top:0;margin-top:0;} .icbox .icname{font-weight:600;margin:0;} .icbox .icsum{color:var(--muted);font-size:12px;}
@@ -929,11 +942,11 @@
   .camrow:first-child{border-top:0;} .camrow .field{max-width:none;margin:0;min-width:0;}
   .camrow .field input{width:100%;max-width:none;}
   .camrow .camurl{grid-column:2 / span 2;}
-  .camdel{width:28px;height:28px;flex:none;border-radius:var(--r-round,32%);border:0;background:var(--crit);color:#fff;cursor:pointer;}
+  .camdel{flex:none;}
   /* Kamera-Auswahl im Widget */
   .camsel{display:flex;flex-direction:column;gap:4px;margin:4px 0 6px;}
   .camopt{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:var(--r-s);background:var(--field);border:1px solid var(--line);cursor:grab;font-size:13px;}
-  .camopt.on{background:color-mix(in srgb,var(--dot,#ffc145) 30%,var(--field,#fff));border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
+  .camopt.on{background:rgba(255,193,69,.3);background:color-mix(in srgb,var(--dot,#ffc145) 30%,var(--field,#fff));border-color:rgba(255,193,69,.55);border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
   .camopt.dragging{opacity:.4;}
   .camopt label{display:flex;align-items:center;gap:6px;flex:1;min-width:0;cursor:pointer;margin:0;}
   .camopt label span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -977,11 +990,11 @@
   .wznote{color:var(--muted);font-size:12px;margin-top:10px;} .wznote code,.mzopt code,.mzrow code,.mzchip code{background:var(--panel2);border-radius:4px;padding:1px 5px;}
   .mzchips{display:flex;flex-wrap:wrap;gap:8px;}
   .mzchip{border:1px solid var(--line);background:var(--field);color:var(--fg);border-radius:999px;padding:8px 14px;font:inherit;font-size:13px;cursor:pointer;}
-  .mzchip.on{background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
+  .mzchip.on{background:rgba(255,193,69,.32);background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));border-color:rgba(255,193,69,.55);border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
   .mzopts{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;}
   .mzopt{display:flex;flex-direction:column;gap:3px;text-align:left;border:1px solid var(--line);background:var(--field);color:var(--fg);border-radius:var(--r-m);padding:11px 13px;font:inherit;cursor:pointer;}
   .mzopt span{font-size:12px;color:var(--muted);}
-  .mzopt.on{background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
+  .mzopt.on{background:rgba(255,193,69,.32);background:color-mix(in srgb,var(--dot,#ffc145) 32%,var(--field,#fff));border-color:rgba(255,193,69,.55);border-color:color-mix(in srgb,var(--dot,#ffc145) 55%,transparent);}
   .mzadd{display:flex;gap:10px;align-items:flex-end;margin:14px 0 10px;} .mzadd .field{flex:1;max-width:260px;margin:0;}
   .mztable{display:flex;flex-direction:column;gap:6px;}
   .mzrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;border-radius:var(--r-s);background:var(--panel2);}
@@ -1117,6 +1130,66 @@
   .rubrics .themesw{flex:none;margin-left:8px;}
   .rubrics .themesw button{width:32px;height:30px;padding:0;}
   .rubrics .themesw svg{width:16px;height:16px;}
+  /* ===== Handy/Touch: Kopfzeile umbrechen, Speicherleiste fest, Reiter ohne Scrollbalken, Tippflaechen >= 44px ===== */
+  @media (max-width:760px){
+    .rubrics{flex-wrap:wrap;row-gap:6px;}
+    .rubrics .langrow{margin-left:auto;} .rubrics .themesw{margin-left:8px;}
+    .main{overflow:visible;} .savebar{position:sticky;bottom:0;z-index:30;}
+    .donate{display:none;}
+    .subtabs{scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);}
+    .subtabs::-webkit-scrollbar{display:none;}
+  }
+  @media (pointer:coarse){
+    .stab,.rub,.btn,.btn.ghost,.palbtn,.rubrics .langsel,.dcols summary,.ddwrap summary,.xdet>summary,.devhelp summary{min-height:44px;}
+    .btn.sm,.btn.ghost,.palbtn,.stab{display:inline-flex;align-items:center;justify-content:center;}
+    .dcols summary,.ddwrap summary,.xdet>summary,.devhelp summary{display:flex;align-items:center;}
+    .rubrics .themesw button{width:44px;height:44px;}
+    .rubrics .langsel{padding-top:0;padding-bottom:0;}
+    .qhelp{position:relative;}
+    .qhelp::after{content:'';position:absolute;inset:-11px;}
+    .chk{min-height:44px;margin-bottom:0;}
+    .sved .tbblk .chk,.dashprops .dexits .chk{min-height:44px;padding:0;}
+  }
+
+  /* ===== Vereinheitlichung: Aufklapper, Entfernen-Knöpfe, Geräte-Gruppen, Gerät hinzufügen ===== */
+  .npchoice[hidden],.npcard[hidden],#np_flow[hidden],#np_lead[hidden]{display:none !important;}
+  /* Aufklapper (details + Akkordeon-Köpfe): immer derselbe Pfeil › rechts, dreht sich beim Öffnen */
+  details>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;}
+  details>summary::-webkit-details-marker{display:none;}
+  details>summary::after{content:'›';}
+  details>summary::after,.chev{margin-left:auto;font-size:18px;line-height:1;opacity:.55;transition:transform .2s ease;flex:none;}
+  details[open]>summary::after{transform:rotate(90deg);}
+  .dev.open .devtg .chev{transform:rotate(90deg);}
+  details>summary small{color:var(--muted);font-weight:400;}
+  /* Entfernen: ein Stil (rot umrandet, Beschriftung "Entfernen") */
+  .minibtn.del{background:transparent;color:var(--crit);border-color:rgba(196,71,61,.35);}
+  .minibtn.del:hover{background:rgba(196,71,61,.07);border-color:var(--crit);}
+  /* Meine Geräte: Gruppen Status · Anzeige · Steuerung · Wartung */
+  .dev .dgp{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--fg);background:var(--panel2);border-radius:var(--r-s);padding:6px 10px;margin:16px 0 2px;}
+  .dev .devbody>.dgp:first-child{margin-top:2px;}
+  .dev .dgp+.dsec,.dev .dgp+.devlive .dsec,.dev .dgp+.devmaint .dsec{border-top:0;}
+  .dev .devctl:empty,.dev .devmaint:empty{display:none;}
+  .dev .devctl .dgp{margin-top:16px;}
+  .dev .dctl.off .drow>*,.dev .dctl.off .devx{opacity:.45;}
+  .dev .doff{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap;font-weight:700;font-size:13px;color:var(--muted);margin-bottom:8px;}
+  .dev .doff small{font-weight:400;}
+  .dev .btn.disabled,.dev a.btn[aria-disabled=true]{opacity:.45;pointer-events:none;}
+  /* Auswahlfelder in der Gerätekachel: volle Breite, nichts abgeschnitten */
+  .dev select{max-width:100%;min-width:0;}
+  .dev .devhead .dev_model,.dev .dev_scale,.dev .dd_drv{width:100%;max-width:none;flex:1 1 100%;}
+  .dev .drow .agsel{flex:1 1 220px;width:auto;}
+  .dev .dm_prof{flex:1 1 140px;}
+  /* Gerät hinzufügen: große Auswahlkacheln */
+  .nptiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px;margin-top:6px;}
+  .nptile{all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:4px;padding:16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--panel2);}
+  .nptile:hover{border-color:var(--prim);box-shadow:var(--shadow);}
+  .nptile:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  .nptile svg{width:30px;height:30px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;margin-bottom:6px;color:var(--prim);}
+  .nptile b{font-size:15px;} .nptile small{color:var(--muted);font-size:12px;}
+  #np_flow{display:grid;gap:18px;max-width:820px;}
+  .npbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .npcard{margin:0;}
+  .spane>.card.npchoice{column-span:all;}
 </style>
 </head>
 <body>
@@ -1235,7 +1308,7 @@
               <input type="text" id="fs_url" placeholder="https://www.fully-kiosk.com/en/" autocomplete="off"></div>
             <div class="actions"><button class="btn" id="fs_save" type="button" data-i18n>Adresse speichern</button>
               <label class="btn ghost" style="cursor:pointer"><input type="file" id="fs_file" accept=".apk,application/vnd.android.package-archive" hidden><span data-i18n>Eigene APK hochladen</span></label>
-              <button class="btn ghost" id="fs_del" type="button" hidden data-i18n>Eigene APK entfernen</button>
+              <button class="btn del" id="fs_del" type="button" hidden data-i18n>Eigene APK entfernen</button>
               <span class="toast" id="fs_toast"></span></div>
           </details>
           <details class="card devhelp">
@@ -1249,7 +1322,7 @@
 
         <!-- Audio -->
         <section class="spane" data-sub="audio">
-          <p class="lead" data-i18n>Cover, Titel und Favoriten vom Loxone-Audioserver – und ein Test-Ton, um die Lautsprecher der Panels zu prüfen.</p>
+          <p class="lead" data-i18n>Cover, Titel und Favoriten vom Loxone-Audioserver. Einen Test-Ton, um die Lautsprecher der Panels zu prüfen, findest du unter System → Diagnose.</p>
           <div class="card">
             <h3 data-i18n>Audioserver (Cover / Titel / Favoriten)</h3>
             <p class="note" data-i18n>Loxone-Audioserver (Gen 2) liefern Cover/Titel/Interpret und Favoriten über einen eigenen Live-Kanal (Audioprotokoll, Port 7091) — genau wie die Loxone-App. LoxPanel abonniert diesen Kanal und legt die Infos über die passende Zone. Die Audioserver-Adresse wird <b>automatisch</b> aus der Loxone-Struktur erkannt — keine IP-Eingabe nötig. Funktioniert mit dem originalen Loxone-Audioserver ebenso wie mit Nachbauten (Sonn/Audioserver4Home). Musikserver-/MS4H-Zonen bleiben unberührt (die liefern es ohnehin).</p>
@@ -1286,18 +1359,20 @@
         </section>
 
         <!-- Bedienung (gilt fuer alle Panels) -->
-        <section class="spane" data-sub="behavior"><div id="sysBehavior"></div>
+        <section class="spane" data-sub="behavior"><div id="sysBehavior"></div></section>
+        <!-- Nachtmodus-Karte: liegt hier nur zwischengelagert, wird in System → Darstellung eingehängt (renderGlobalEditor) -->
+        <div id="ntStash" hidden>
           <!-- Nachtmodus (serverweit) -->
-          <div class="card">
+          <div class="card" id="ntCard">
             <h3 data-i18n>Nachtmodus</h3>
-            <p class="note" data-i18n><b>Hier legst du fest, WANN Nacht ist – für alle Panels gleich.</b> Ohne Auslöser gilt Sonnenuntergang bis Sonnenaufgang (Zeiten vom Miniserver, ersatzweise vom Wetterdienst). Mit Auslöser ist Nacht, solange dieser Baustein eingeschaltet ist – z. B. ein Merker oder ein Loxone-Betriebsmodus, den du in Loxone Config auf einen Status-Baustein mit Raum und Kategorie legst.</p>
+            <p class="note" data-i18n><b>Hier legst du fest, WANN Nacht ist – für alle Panels gleich.</b> Nacht ist aktiv, solange der gewählte Betriebsmodus läuft oder der gewählte Baustein eingeschaltet ist. Ohne Auswahl: Sonnenuntergang bis Sonnenaufgang.</p>
             <p class="note" data-i18n><b>WAS nachts passiert, stellt jedes Panel selbst ein</b> (Panel wählen → Profil → Display &amp; Nacht): wie stark es abdunkelt (0 % = gar nicht) und wie lange es nach Antippen hell bleibt. Display-Abschaltung und Neuladen gelten dort Tag und Nacht.</p>
             <div class="row2">
-              <div class="field" style="max-width:460px"><label class="lbl" data-i18n>Auslöser – Nacht, solange dieser Baustein an ist</label><select id="nt_control"></select></div>
+              <div class="field" style="max-width:460px"><label class="lbl" data-i18n>Auslöser – Betriebsmodus oder Baustein</label><select id="nt_control"></select></div>
             </div>
             <div class="actions"><button class="btn" id="nt_save" data-i18n>Speichern</button><span class="toast" id="nt_toast"></span></div>
           </div>
-        </section>
+        </div>
 
         <!-- Sicherheit: optionaler Passwortschutz der Konfiguration -->
         <section class="spane" data-sub="diagnose">
@@ -1413,10 +1488,39 @@
       </div></section>
         <!-- Neues Gerät -->
         <section class="spane" data-sub="newpanel">
-          <p class="lead" data-i18n>Zwei Wege: ein Android-Panel oder Tablet mit Kiosk-App bekommt nur eine Start-URL; ein Linux-Panel bekommt den Agenten per SSH.</p>
-          <div class="card">
-            <h3 data-i18n>Android-Panel oder Tablet (Kiosk-App)</h3>
-            <p class="note" data-i18n>Start-URL in Fully Kiosk Browser oder WallPanel eintragen. Der Gerätename sorgt dafür, dass das Gerät unter Panels erscheint und per Betriebsmodus umgeschaltet werden kann. Display-Abschaltung: bei Fully die JavaScript-Schnittstelle einschalten oder oben einen Display-Treiber eintragen. Details in deploy/ANDROID.md.</p>
+          <p class="lead" id="np_lead" data-i18n>Erst das Gerät wählen – danach siehst du nur die passenden Schritte.</p>
+          <div class="card npchoice" id="np_choice">
+            <h3 data-i18n>Welches Gerät?</h3>
+            <p class="note" data-i18n>Android-Geräte (Shelly, Sonoff, Tablet) richtet LoxPanel auf Wunsch automatisch ein: per ADB über WLAN, ohne Kabel und ohne Eingaben am Gerät außer einer Bestätigung. Linux-Panels bekommen den Agenten per SSH. iPad, iPhone und Browser brauchen nur die Adresse.</p>
+            <div class="nptiles">
+              <button type="button" class="nptile" data-npk="shelly"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="3.5"/></svg><b data-i18n>Shelly Wall Display</b><small data-i18n>X2 · X2i · X1i</small></button>
+              <button type="button" class="nptile" data-npk="sonoff"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 18h4"/></svg><b data-i18n>Sonoff NSPanel Pro</b><small data-i18n>Wandpanel (Android)</small></button>
+              <button type="button" class="nptile" data-npk="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 16h2"/></svg><b data-i18n>Android-Tablet oder Handy</b><small data-i18n>mit Fully Kiosk</small></button>
+              <button type="button" class="nptile" data-npk="linux"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/></svg><b data-i18n>Linux-Panel</b><small data-i18n>Agent per SSH</small></button>
+              <button type="button" class="nptile" data-npk="ios"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><b data-i18n>iPad, iPhone oder Browser</b><small data-i18n>Safari, Chrome …</small></button>
+            </div>
+          </div>
+          <div id="np_flow" hidden>
+            <div class="npbar"><button type="button" class="btn ghost sm" id="np_back" data-i18n>‹ Anderes Gerät wählen</button><b id="np_kind"></b></div>
+            <div class="card npcard" id="np_adb" data-npf="shelly sonoff android">
+              <h3 data-i18n>Automatisch einrichten per ADB</h3>
+              <p class="note" id="ad_note" data-i18n>LoxPanel installiert Fully Kiosk und den „LoxPanel“-Launcher auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.</p>
+              <div class="row2">
+                <div class="field"><label class="lbl" data-i18n>Gerätename</label><input type="text" id="ad_name" placeholder="Tablet Küche"></div>
+                <div class="field"><label class="lbl" data-i18n>IP-Adresse des Geräts</label><input type="text" id="ad_ip" placeholder="10.0.0.77" inputmode="decimal" autocomplete="off"></div>
+              </div>
+              <div class="row2" style="margin-top:12px">
+                <div class="field"><label class="lbl" data-i18n>Startet mit Panel</label><select id="ad_panel"></select></div>
+                <div class="field"><label class="lbl" data-i18n>Server-Adresse (dieser Server)</label><input type="text" id="ad_server" placeholder="10.0.0.55:8099"></div>
+              </div>
+              <label class="chk" style="margin-top:12px"><input type="checkbox" id="ad_hasfully"><span data-i18n>Fully Kiosk ist schon auf dem Gerät – nur den Launcher einrichten</span></label>
+              <div class="actions"><button class="btn" id="ad_go" data-i18n>Automatisch einrichten</button><span class="toast" id="ad_toast"></span></div>
+              <div class="note" id="ad_out" style="display:none;margin-top:10px"></div>
+              <div class="actions" id="ad_done" style="display:none"><button class="btn ghost sm" id="ad_goto" data-i18n>Zu „Meine Geräte“</button></div>
+            </div>
+          <div class="card npcard" id="np_kiosk" data-npf="shelly sonoff android ios">
+            <h3 id="nk_h"></h3>
+            <p class="note" id="nk_note">Start-URL in Fully Kiosk Browser oder WallPanel eintragen. Der Gerätename sorgt dafür, dass das Gerät unter Panels erscheint und per Betriebsmodus umgeschaltet werden kann. Display-Abschaltung: bei Fully die JavaScript-Schnittstelle einschalten oder oben einen Display-Treiber eintragen. Details in deploy/ANDROID.md.</p>
             <div class="row2">
               <div class="field"><label class="lbl" data-i18n>Gerätename</label><input type="text" id="nk_name" placeholder="Tablet Küche"></div>
               <div class="field"><label class="lbl" data-i18n>Startet mit Panel</label><select id="nk_panel"></select></div>
@@ -1425,9 +1529,8 @@
             <div class="actions"><button class="btn" id="nk_gen" data-i18n>Start-URL erzeugen</button></div>
             <pre id="nk_out" class="cmdout" style="display:none"></pre>
             <div class="actions" id="nk_copyrow" style="display:none"><button class="btn ghost sm" id="nk_copy" data-i18n>In Zwischenablage kopieren</button><span class="toast" id="nk_toast"></span></div>
-
           </div>
-          <div class="card">
+          <div class="card npcard" id="np_linux" data-npf="linux">
             <h3 data-i18n>Linux-Panel mit Agent (SSH)</h3>
             <p class="note" data-i18n>Erzeugt den Befehl, der Agent + Config aufs Panel überträgt, den Autostart einrichtet und Chromium still stellt (keine Übersetzen-Leiste / Anmeldung). Einmal im Terminal ausführen — fragt nach dem SSH-/sudo-Passwort des Panels.</p>
             <div class="row2">
@@ -1442,6 +1545,7 @@
             <div class="actions"><button class="btn" id="np_gen" data-i18n>Befehl erzeugen</button></div>
             <pre id="np_out" class="cmdout" style="display:none"></pre>
             <div class="actions" id="np_copyrow" style="display:none"><button class="btn ghost sm" id="np_copy" data-i18n>In Zwischenablage kopieren</button><span class="toast" id="np_toast"></span></div>
+          </div>
           </div>
         </section>
       </div>
@@ -1606,10 +1710,14 @@ function deletePanel(id){
 function helpify(root){
   (root||document).querySelectorAll('.card').forEach(card=>{
     if(card.dataset.help) return;
-    const h=card.querySelector(':scope > h3'), notes=[...card.querySelectorAll(':scope > p.note')].filter(n=>!n.classList.contains('keep'));
-    if(!h||!notes.length) return;
+    // Hinweise: Karten-Notizen; ohne Notiz ersatzweise die erklärenden Kurzhinweise (ohne id/keep: die sind Statusfelder)
+    const keepers=n=>!n.classList.contains('keep')&&!n.id;
+    let notes=[...card.querySelectorAll(':scope > p.note')].filter(n=>!n.classList.contains('keep'));
+    if(!notes.length) notes=[...card.querySelectorAll(':scope > p.hint')].filter(keepers);
+    let row=card.querySelector(':scope > .cardhead'); const h=row?null:card.querySelector(':scope > h3');
+    if(!notes.length||(!row&&!h)) return;
     card.dataset.help='1';
-    const row=document.createElement('div'); row.className='cardhead'; card.insertBefore(row,h); row.appendChild(h);
+    if(!row){ row=document.createElement('div'); row.className='cardhead'; card.insertBefore(row,h); row.appendChild(h); }
     const b=document.createElement('button'); b.type='button'; b.className='qhelp'; b.textContent='?'; b.title=T('Hilfe'); b.setAttribute('aria-label',T('Hilfe')); row.appendChild(b);
     const pop=document.createElement('div'); pop.className='qpop'; pop.hidden=true; notes.forEach(n=>pop.appendChild(n)); row.after(pop);
     b.onclick=()=>{ pop.hidden=!pop.hidden; b.classList.toggle('on',!pop.hidden); b.setAttribute('aria-expanded',String(!pop.hidden)); };
@@ -1712,6 +1820,7 @@ async function syncPanelLang(lang){
 async function refreshAdmin(){ try{ ADMIN=await (await fetch('/api/admin/status')).json(); }catch(e){} if(rubric==='overview') renderOverview(); }
 async function renderAdminCard(){
   const box=$('#ovSec'); if(!box) return;
+  delete box.dataset.help;   // Inhalt wird neu gebaut: ?-Hilfe danach erneut anlegen
   try{ ADMIN=await (await fetch('/api/admin/status')).json(); }catch(e){}
   const on=!!ADMIN.enabled;
   box.innerHTML='<div class="cardhead"><h3>'+T('Zugriffsschutz')+'</h3><span class="secst'+(on?' on':'')+'">'+(on?T('Passwort aktiv'):T('aus'))+'</span></div>'+
@@ -1723,7 +1832,7 @@ async function renderAdminCard(){
       '<div class="field"><label class="lbl">'+T('Wiederholen')+'</label><input type="password" id="secNew2" autocomplete="new-password"></div>'+
     '</div><div class="actions">'+
       '<button class="btn" id="secSet">'+T(on?'Passwort ändern':'Passwort setzen')+'</button>'+
-      (on?'<button class="btn ghost" id="secOff">'+T('Schutz entfernen')+'</button><button class="btn ghost" id="secOut">'+T('Abmelden')+'</button>':'')+
+      (on?'<button class="btn del" id="secOff">'+T('Schutz entfernen')+'</button><button class="btn ghost" id="secOut">'+T('Abmelden')+'</button>':'')+
       '<span class="toast" id="secToast"></span></div>';
   const post=async(url,body)=>{ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})}); return r.json().catch(()=>({ok:false})); };
   $('#secSet').onclick=async()=>{ const n=$('#secNew').value, n2=$('#secNew2').value;
@@ -1784,7 +1893,11 @@ function openPalette(){
 function closePalette(){ const ov=$('#pal'); if(ov) ov.classList.remove('show'); }
 
 // ---- Rubriken / Reiter-Steuerung ----
+// Nachtmodus-Karte: wohnt in System → Darstellung. Vor jedem Neuaufbau der Panel-Seite
+// zurück ins Zwischenlager, damit sie (samt Speicherleisten-Anbindung) nicht verloren geht.
+function ntPark(){ const c=$('#ntCard'), st=$('#ntStash'); if(c&&st&&c.parentNode!==st) st.appendChild(c); }
 function setRubric(r){
+  ntPark();
   rubric=r;
   if(typeof checkUpdate==='function') checkUpdate();   // Update-Hinweis bei jedem Seitenwechsel auffrischen
   document.querySelectorAll('.rub').forEach(b=>b.classList.toggle('active',b.dataset.rub===(r==='global'?'settings':r)));   // Darstellung global liegt unter System
@@ -1865,7 +1978,7 @@ function sectDirty(k){ if(!SECT_DIRTY.has(k)){ SECT_DIRTY.add(k); const t=$('#to
 function sectBind(){
   SECTS.forEach(sc=>{ const b=$(sc.btn); if(!b) return; b.hidden=true; b.classList.add('sectsave');
     const root=sc.root?$(sc.root):b.closest('.card'); if(!root||root._sect) return; root._sect=sc.k;
-    const live=e=>e.target.closest('.devlive,.devx,[data-live],input[type=file]');
+    const live=e=>e.target.closest('.devlive,.devctl,.devmaint,.devx,[data-live],input[type=file]');
     const on=e=>{ if(!live(e)) sectDirty(sc.k); };
     root.addEventListener('input',on); root.addEventListener('change',on);
     // Zeilen hinzufuegen/entfernen und Bildausschnitt ziehen sind auch Aenderungen
@@ -1956,7 +2069,7 @@ const DESIGN_LABELS={bezel:'Rahmen',bezelInk:'Schrift auf Rahmen',tabIdle:'Tab-S
   dot4:'Punkt Tab 4',dot5:'Punkt Tab 5',tile:'Kachel',ink:'Schrift',ink2:'Nebenschrift',on:'Symbol „an“'};
 const DESIGN_NAMES={bunt:'Bunt',dunkel:'Dunkel',hell:'Hell'};
 function designOf(ui){ const d=(ui&&ui.design)||{}; const pr=(META.designPresets||{});
-  const preset=pr[d.preset]?d.preset:'bunt'; return {preset, colors:d.colors||{}, base:pr[preset]||{}}; }
+  const preset=pr[d.preset]?d.preset:'bunt'; return {preset, colors:d.colors||(d.colorsByPreset||{})[preset]||{}, base:pr[preset]||{}}; }
 function designField(ui){
   const d=designOf(ui), keys=META.designKeys||Object.keys(DESIGN_LABELS);
   return '<div class="field" style="max-width:none;flex:1 1 100%"><label class="lbl">'+T('Design')+'</label>'+
@@ -1980,11 +2093,14 @@ function designField(ui){
     '</div>';
 }
 function bindDesign(host, getUi, redraw){
-  const set=(fn)=>{ const ui=getUi(); const d=ui.design=ui.design||{preset:'bunt',colors:{}}; d.colors=d.colors||{}; fn(d); markDirty(); };
+  // Eigene Farben werden je Vorlage gemerkt (colorsByPreset); `colors` sind die der
+  // gewaehlten Vorlage. Nur „Eigene Farben zurücksetzen“ loescht sie.
+  const set=(fn)=>{ const ui=getUi(); const d=ui.design=ui.design||{preset:'bunt',colors:{}}; d.colors=d.colors||{}; d.colorsByPreset=d.colorsByPreset||{}; fn(d); markDirty(); };
+  const merke=d=>{ const p=d.preset||'bunt'; if(Object.keys(d.colors).length) d.colorsByPreset[p]=d.colors; else delete d.colorsByPreset[p]; };
   document.querySelectorAll('#fDesignPreset [data-preset]').forEach(b=>b.onclick=()=>{
-    set(d=>{ d.preset=b.dataset.preset; d.colors={}; }); redraw(); });
-  document.querySelectorAll('[data-dcol]').forEach(inp=>inp.oninput=()=>set(d=>{ d.colors[inp.dataset.dcol]=inp.value; }));
-  const r=$('#fDesignReset'); if(r) r.onclick=()=>{ set(d=>{ d.colors={}; }); redraw(); };
+    set(d=>{ merke(d); d.preset=b.dataset.preset; d.colors=Object.assign({},d.colorsByPreset[d.preset]||{}); }); redraw(); });
+  document.querySelectorAll('[data-dcol]').forEach(inp=>inp.oninput=()=>set(d=>{ d.colors[inp.dataset.dcol]=inp.value; merke(d); }));
+  const r=$('#fDesignReset'); if(r) r.onclick=()=>{ set(d=>{ d.colors={}; merke(d); }); redraw(); };
 }
 // Schriftauswahl (Liste + eigene Angabe) - fuer Grundschrift und Zahlen/Titel.
 function fontField(label,key,ui,id){
@@ -2033,6 +2149,7 @@ function appearanceFields(ui){
 }
 
 function renderGlobalEditor(p){
+  ntPark();
   const toCC=subGlob==='catcolors';   // alter Sprung "Kategorie-Farben" -> Karte auf der Darstellungs-Seite
   subGlob='appearance';
   $('#phead').innerHTML=''; $('#phead').style.display='none';
@@ -2054,6 +2171,7 @@ function renderGlobalEditor(p){
       '<p class="note">'+T('Pro Kategorie eine <b>Aktiv-</b> und <b>OK-Farbe</b> für Kachel-Hintergrund und Rahmen — gilt systemweit auf allen Panels (Wiedererkennung). ◐ einschalten = Zustands-Ampel (z. B. Alarm rot/grün, Tor gelb/grün). Aus = neutral. Analoge Messwerte bleiben immer neutral.')+'</p>'+
       '<div class="cclist" id="catcolors"></div></div></section>';
   bindAppearance(p);
+  { const nc=$('#ntCard'), sp=$('#pconfHost .spane[data-sub="appearance"]'); if(nc&&sp) sp.appendChild(nc); }   // Nachtmodus gehört zur Darstellung
   { const gm=$('#gMotion'); if(gm) gm.onchange=()=>{ p.ui=p.ui||{};
       if(gm.value==='full') delete p.ui.motion; else p.ui.motion=gm.value; markDirty(); }; }
   { const gs=$('#gSceneLight'); if(gs) gs.onchange=()=>{ p.ui=p.ui||{};
@@ -2170,7 +2288,7 @@ function renderEditor(){
      '</div><p class="hint">'+T('Bildschirm füllen: auf größeren Displays hochzoomen statt im 480er-Raster zu bleiben. Versatz nur nötig, wenn das Bild am Rand abgeschnitten ist.')+'</p></div>'+
      '<div class="card"><h3>'+T('Display &amp; Nacht')+'</h3>'+
        '<p class="note">'+T('<b>Display</b> gilt Tag und Nacht: Nach der Leerlaufzeit schaltet das Panel das Display aus (Fully Kiosk); Klingel, Wecker und Nachrichten schalten es wieder ein. Das automatische Neuladen hält die Seite auf Dauer frisch.')+'</p>'+
-       '<p class="note">'+T('<b>Nacht</b> wirkt nur, solange Nacht ist – wann das ist, legst du unter System → Bedienung → Nachtmodus fest (Auslöser-Baustein oder Sonnenuntergang bis -aufgang). Dann legt das Panel eine Abdunklung über das Bild; Antippen macht es kurz wieder hell. 0 % = dieses Panel dunkelt nachts nicht ab.')+'</p>'+
+       '<p class="note">'+T('<b>Nacht</b> wirkt nur, solange Nacht ist – wann das ist, legst du unter System → Darstellung → Nachtmodus fest (Auslöser-Baustein oder Sonnenuntergang bis -aufgang). Dann legt das Panel eine Abdunklung über das Bild; Antippen macht es kurz wieder hell. 0 % = dieses Panel dunkelt nachts nicht ab.')+'</p>'+
        '<div class="lbl2">'+T('Display')+'</div><div class="sizes">'+
        '<div class="field" style="max-width:220px"><label class="lbl">'+T('Ausschalten nach Leerlauf (Sek.)')+'</label>'+
          '<input type="number" min="0" max="3600" step="30" data-ui="dpmsOff" value="'+
@@ -2553,7 +2671,7 @@ function renderDashProps(p){
           '<option value="'+v+'"'+(((p.ui||{})[k]||'')===v?' selected':'')+'>'+t+'</option>').join('')+'</select></div>').join('')+
       ((p.ui||{}).ambBg==='image'?'<div class="dbgimg" id="dBgImg"><span class="dbgthumb" id="dBgThumb"></span>'+
         '<label class="minibtn" data-live="1">'+T('Bild wählen…')+'<input type="file" id="dBgFile" accept="image/jpeg,image/png,image/webp" hidden data-live="1"></label>'+
-        '<button type="button" class="minibtn" id="dBgDel" data-live="1" hidden>'+T('Entfernen')+'</button></div>'+
+        '<button type="button" class="minibtn del" id="dBgDel" data-live="1" hidden>'+T('Entfernen')+'</button></div>'+
         '<div class="hint">'+T('JPG, PNG oder WebP, max. 12 MB – wird sofort hochgeladen. Querformat passt am besten.')+'</div>':'')+'</div>'+
     '<div class="field dbar"><label class="lbl">'+T('Statusleiste')+'</label>'+
       '<label class="chk"><input type="checkbox" id="dBarOn"'+(barOn?' checked':'')+'> <span>'+T('Statusleiste oben anzeigen')+'</span></label>'+
@@ -2609,7 +2727,7 @@ function renderDashProps(p){
     if(fi) fi.onchange=async()=>{ const f=fi.files&&fi.files[0]; if(!f) return; const fd=new FormData(); fd.append('file',f);
       try{ const j=await (await fetch('/api/panel/bg?panel='+encodeURIComponent(cur),{method:'POST',body:fd})).json();
         if(j.ok){ show(j.url); snack(T('Hintergrundbild gespeichert')); } else snack(j.error||T('Fehler')); }catch(e){ snack('Fehler: '+e); } fi.value=''; };
-    if(del) del.onclick=async()=>{ try{ await fetch('/api/panel/bg?panel='+encodeURIComponent(cur)+'&delete=1',{method:'POST'}); show(''); snack(T('Hintergrundbild entfernt')); }catch(e){} }; }
+    if(del) del.onclick=async()=>{ if(!confirm(T('Hintergrundbild entfernen?'))) return; try{ await fetch('/api/panel/bg?panel='+encodeURIComponent(cur)+'&delete=1',{method:'POST'}); show(''); snack(T('Hintergrundbild entfernt')); }catch(e){} }; }
   box.querySelectorAll('[data-exit]').forEach(cb=>cb.onchange=()=>{ const s2=svCfg(p);
     s2.exit=SV_EXITS.map(e=>e[0]).filter(k=>box.querySelector('[data-exit="'+k+'"]').checked);
     s2.items=s2.items||[]; if(!s2.items.length && !s2.exit.length && !(s2.bar||[]).length) delete p.saver; markDirty(); });
@@ -2837,7 +2955,7 @@ function tbSideHTML(p){
     '<li>'+T('<b>Ecke</b> ziehen = Größe · auf andere Kachel ziehen = <b>tauschen</b>.')+'</li>'+
     '<li>'+T('<b>✕</b> oder <b>Entf</b> entfernt, <b>Strg+Z</b> macht rückgängig.')+'</li></ol></div>';
   const g=tbGrid(p,tbTab), items=tbEff[tbTab], rows=tbRows(items,g), d=SV_W[it.type]||{};
-  const head='<div class="box tbhead"><b>'+esc(it.type==='tile'?T('Baustein-Kachel'):(d.label||T({room:'Raum-Kachel',cat:'Kategorie-Kachel'}[it.type]||'')))+'</b><button class="minibtn" id="tbDel">'+T('Entfernen')+'</button></div>';
+  const head='<div class="box tbhead"><b>'+esc(it.type==='tile'?T('Baustein-Kachel'):(d.label||T({room:'Raum-Kachel',cat:'Kategorie-Kachel'}[it.type]||'')))+'</b><button class="minibtn del" id="tbDel">'+T('Entfernen')+'</button></div>';
   const size='<div class="seg">'+
     gridSizes(it.type,g,tbTabF()).map(([w,hh])=>'<button data-size="'+w+'x'+hh+'" title="'+w+' '+T('breit')+' × '+hh+' '+T('hoch')+'"'+
       (it.w===w&&it.h===hh?' class="on"':(tbFree(items,it.x,it.y,w,hh,tbSel,rows,g)?'':' class="blocked"'))+'>'+w+'×'+hh+'</button>').join('')+'</div>'+
@@ -3568,7 +3686,7 @@ async function pwNext(){
   else { const items=pwDashItems(); if(items.length) p.saver={grid:PW.grid, exit:['x'], items}; }
   PANELS[PW.id]=p; const goDev=!!($('#pwGoDev')&&$('#pwGoDev').checked);
   pwClose(); cur=PW.id; tileSel=null; tbReset(); markDirty(); await save();
-  if(goDev){ goTo('devices','newpanel'); const n=$('#nk_name'); if(n) n.value=PW.title||PW.id; }
+  if(goDev){ goTo('devices','newpanel'); npShow('android'); ['#nk_name','#ad_name'].forEach(i=>{ const n=$(i); if(n) n.value=PW.title||PW.id; }); }
   else { subPconf='tabs'; tbTab=DK; renderList(); setRubric('pconf'); }
   snack(T('Panel „')+(PW.title||PW.id)+T('“ angelegt'));
 }
@@ -3620,7 +3738,7 @@ checkUpdate();
       box.innerHTML=SET.intercoms.map(ic=>{ const op=IC_OPEN.has(ic.uuid);
         return '<div class="ic icbox xfold'+(op?' open':'')+'" data-uuid="'+esc(ic.uuid)+'">'+
         '<div class="xhd"><button type="button" class="xtg" aria-expanded="'+(op?'true':'false')+'"><i class="sdot'+(ic.url?' on':'')+'"></i><b class="icname">'+esc(ic.name)+'</b>'+
-          '<small class="icsum">'+[ic.url?T('Video'):T('kein Video'), ic.sound?T('Ton an'):'', ic.hasCustomSound?T('eigener Klingelton'):''].filter(Boolean).join(' · ')+'</small><svg class="xchev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button></div>'+
+          '<small class="icsum">'+[ic.url?T('Video'):T('kein Video'), ic.sound?T('Ton an'):'', ic.hasCustomSound?T('eigener Klingelton'):''].filter(Boolean).join(' · ')+'</small><span class="chev" aria-hidden="true">›</span></button></div>'+
         '<div class="xbd"><div><div class="icb">'+
         '<div class="field"><label class="lbl">'+T('Video-URL (MJPEG)')+'</label><input type="text" class="ic_url" value="'+esc(ic.url)+'" placeholder="http://192.168.1.201/cgi-bin/faststream.jpg?stream=full&fps=8"></div>'+
         '<div class="row2"><div class="field"><label class="lbl">'+T('Benutzer')+'</label><input type="text" class="ic_user" value="'+esc(ic.user)+'" autocomplete="off"></div>'+
@@ -3638,11 +3756,11 @@ checkUpdate();
             '<span class="icsndbtns">'+
               '<label class="minibtn icsndup">'+T(ic.hasCustomSound?'Ersetzen…':'Eigene Datei…')+
                 '<input type="file" class="ic_soundfile" hidden accept="audio/mpeg,audio/mp3,audio/ogg,audio/wav,audio/mp4,audio/aac,.mp3,.ogg,.wav,.m4a,.aac"></label>'+
-              (ic.hasCustomSound?'<button type="button" class="minibtn ic_soundrm">'+T('Entfernen')+'</button>':'')+
+              (ic.hasCustomSound?'<button type="button" class="minibtn del ic_soundrm">'+T('Entfernen')+'</button>':'')+
               '<button type="button" class="minibtn ic_soundtest">'+T('Klingeln testen')+'</button>'+
             '</span></div>'+
           '<span class="toast ic_soundtoast"></span>'+
-          '<p class="hint">'+T('MP3/OGG/WAV/M4A/AAC, max. 5 MB – wird sofort hochgeladen. „Klingeln testen“ schickt ein echtes Klingel-Event an das unter „Audio → Test-Ton“ gewählte Panel. Manche Kiosk-Apps spielen Ton nur mit „Autoplay Audio“.')+'</p>'+
+          '<p class="hint">'+T('MP3/OGG/WAV/M4A/AAC, max. 5 MB – wird sofort hochgeladen. „Klingeln testen“ schickt ein echtes Klingel-Event an das unter „Diagnose → Test-Ton“ gewählte Panel. Manche Kiosk-Apps spielen Ton nur mit „Autoplay Audio“.')+'</p>'+
         '</div>'+
         (ic.url?crpHTML(ic):'')+'</div></div></div></div>'; }
       ).join('');
@@ -3665,6 +3783,7 @@ checkUpdate();
         };
         const rm=row.querySelector('.ic_soundrm');
         if(rm) rm.onclick=async()=>{
+          if(!confirm(T('Eigenen Klingelton entfernen? Danach gilt wieder der Standardton.'))) return;
           try{
             await fetch('/api/settings/intercom/sound/delete',{method:'POST',
               headers:{'Content-Type':'application/json'}, body:JSON.stringify({id:uuid})});
@@ -3705,9 +3824,9 @@ checkUpdate();
   // Nachtmodus-Ausloeser
   const nt=SET.night||{}, ntSel=$('#nt_control');
   if(ntSel){
-    ntSel.innerHTML='<option value="">'+T('Kein Baustein (nach Sonnenstand)')+'</option>'
+    ntSel.innerHTML='<option value="">'+T('Kein Auslöser (nach Sonnenstand)')+'</option>'
       + (nt.options||[]).map(o=>'<option value="'+esc(o.uuid)+'"'+(o.uuid===nt.control?' selected':'')+'>'
-          + esc((o.room?o.room+' · ':'')+o.name+' ('+o.type+')')+'</option>').join('');
+          + esc(o.mode?T('Betriebsmodus')+': '+o.name.replace(/^Betriebsmodus: /,''):(o.room?o.room+' · ':'')+o.name+' ('+o.type+')')+'</option>').join('');
   }
   // Kalender & Wetter
   const cal=SET.calendar||{};
@@ -3861,8 +3980,8 @@ function camRow(c,i){
   const op=CAM_OPEN.has(i)||!c.url;
   return '<div class="camrow xfold'+(op?' open':'')+'" data-i="'+i+'">'+
     '<div class="xhd"><button type="button" class="xtg" aria-expanded="'+(op?'true':'false')+'"><b class="camhn">'+esc(c.name||T('Kamera')+' '+(i+1))+'</b>'+
-      '<small class="camhu">'+esc(c.url||'')+'</small>'+'<svg class="xchev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>'+'</button>'+
-      '<button type="button" class="camdel" title="'+T('Kamera entfernen')+'" aria-label="'+T('Kamera entfernen')+'">✕</button></div>'+
+      '<small class="camhu">'+esc(c.url||'')+'</small>'+'<span class="chev" aria-hidden="true">›</span>'+'</button>'+
+      '<button type="button" class="btn del sm camdel" title="'+T('Kamera entfernen')+'" aria-label="'+T('Kamera entfernen')+'">'+T('Entfernen')+'</button></div>'+
     '<div class="xbd"><div><div class="camb">'+
     '<div class="field"><label class="lbl">'+T('Name')+'</label><input type="text" class="cam_name" maxlength="40" value="'+esc(c.name||'')+'" placeholder="'+T('z. B. Garten')+'"></div>'+
     '<div class="field camurl"><label class="lbl">'+T('Video-URL (MJPEG)')+'</label><input type="text" class="cam_url" value="'+esc(c.url||'')+'" placeholder="http://192.168.1.60/mjpg/video.mjpg"></div>'+
@@ -3957,7 +4076,7 @@ function renderCals(){
   else box.innerHTML=CALS.map((q,i)=>{ const op=CAL_OPEN.has(i)||!q.url; return ''+
     '<div class="cal xfold'+(op?' open':'')+'" data-i="'+i+'">'+
       '<div class="calh xhd"><button type="button" class="xtg" aria-expanded="'+(op?'true':'false')+'"><span class="caldot" style="background:'+esc(q.color||CAL_PALETTE[i%CAL_PALETTE.length])+'"></span>'+
-      '<span class="caln">'+esc(q.name||(T('Kalender')+' '+(i+1)))+'</span>'+calStatHTML(q)+'<svg class="xchev" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>'+'</button>'+
+      '<span class="caln">'+esc(q.name||(T('Kalender')+' '+(i+1)))+'</span>'+calStatHTML(q)+'<span class="chev" aria-hidden="true">›</span>'+'</button>'+
       '<button class="btn del sm" data-caldel="'+i+'">'+T('Entfernen')+'</button></div>'+
       '<div class="xbd"><div><div class="row2">'+
         '<div class="field" style="max-width:260px"><label class="lbl">'+T('Name')+'</label>'+
@@ -3991,7 +4110,8 @@ function renderCals(){
     if(d) d.style.background=inp.value;
   });
   box.querySelectorAll('[data-caldel]').forEach(b=>b.onclick=()=>{
-    CALS.splice(+b.dataset.caldel,1); CAL_DIRTY=true; renderCals();
+    const i=+b.dataset.caldel, gone=CALS.splice(i,1)[0]; CAL_DIRTY=true; renderCals();
+    snack(T('Kalender „')+((gone&&(gone.name||gone.url))||'')+T('“ entfernt – wirksam mit Speichern'), ()=>{ CALS.splice(i,0,gone); CAL_DIRTY=true; renderCals(); sectDirty('cal'); });
   });
 }
 // Erste noch freie Farbe der Palette. Ueber die Listenlaenge zu gehen waere
@@ -4131,39 +4251,45 @@ function devReconnecting(d){ if(!d||d.online) return false;
 function deviceRow(d, sel){
   const cur=(sel!==undefined)?sel:(d.profile||'');
   const caps=d.caps||[], has=c=>caps.indexOf(c)>=0, disp=!!(DEV[d.name]||{}).display;
-  const btn=(act,label,tip,primary)=>'<button class="btn sm'+(primary?'':' ghost')+'" data-act="'+act+'"'+(tip?' title="'+esc(tip)+'"':'')+'>'+label+'</button>';
-  // Steuerung: was das Geraet kann (Agent, Display-Treiber, adb)
-  let ctl='';
-  if(d.agent) ctl+=btn('start',T('Start'),T('Kiosk-Browser starten'),!d.connections)+btn('reload',T('Reload'),T('Browser neu laden'))+btn('stop',T('Stop'),T('Kiosk-Browser beenden'));
-  if(disp) ctl+=btn('dispoff',T('Display aus'))+btn('dispon',T('Display an'));
-  if(has('kioskrestart')) ctl+=btn('kioskrestart',T('Fully neu starten'),T('Fully beenden und neu öffnen (per adb)'));
-  if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'));
-  if(has('fullyinstall')) ctl+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'));
-  // Letzte Instanz: LoxPanel-Launcher per adb (Shelly: wird Startbildschirm mit „LoxPanel“ + „Shelly“)
-  if(has('fullyinstall')) ctl+=btn('launcher',T('Launcher einrichten'),T('LoxPanel-Launcher per adb installieren und Start-URL eintragen; das Symbol „LoxPanel“ öffnet Fully Kiosk mit dem Panel'));
-  const extra=devExtraHTML(d,caps), adb=has('reboot')||has('brightness');
-  return '<div class="ag dlive" data-name="'+esc(d.name)+'" data-ip="'+esc(d.agent?d.agent.ip:'')+'" data-devip="'+esc(d.ip||'')+'">'+
-    '<div class="dsec">'+dsh('view',T('Anzeige'))+
+  const off=!d.online, rc=devReconnecting(d);   // offline: Live-Steuerung ausgegraut
+  const btn=(act,label,tip,primary,live)=>'<button class="btn sm'+(primary?'':' ghost')+'" data-act="'+act+'"'+(tip?' title="'+esc(tip)+'"':'')+(live&&off?' disabled':'')+'>'+label+'</button>';
+  const wrap=inner=>'<div class="ag dlive" data-name="'+esc(d.name)+'" data-ip="'+esc(d.agent?d.agent.ip:'')+'" data-devip="'+esc(d.ip||'')+'">'+inner+'</div>';
+  // Anzeige: welche Ansicht das Geraet zeigt
+  const view=wrap('<div class="dsec">'+dsh('view',T('Ansicht'))+
       '<div class="drow">'+profSelect('agsel',cur)+(d.connections?btn('switch',T('Ansicht wechseln'),'',true)+btn('wsreload',T('Neu laden')):'')+'</div>'+
-      '<div class="dhint">'+(d.connections?T('Ansicht wählen und „Ansicht wechseln“ – wirkt sofort am Gerät.'):T('Wechseln geht, sobald die Visu am Gerät geöffnet ist.'))+'</div></div>'+
-    (ctl||extra?'<div class="dsec">'+dsh('ctl',T('Steuerung'))+(ctl?'<div class="drow">'+ctl+'</div>':'')+extra+
-      (adb?'<div class="dhint">'+T('Per adb: ADB über WLAN muss am Gerät aktiv und für diesen Server freigegeben sein.')+'</div>':'')+'</div>'
-      :'')+
-  '</div>';
+      '<div class="dhint">'+(d.connections?T('Ansicht wählen und „Ansicht wechseln“ – wirkt sofort am Gerät.'):T('Wechseln geht, sobald die Visu am Gerät geöffnet ist.'))+'</div></div>');
+  // Steuerung (live, braucht ein erreichbares Geraet): Agent, Display, Neustarts, Helligkeit
+  let ctl='';
+  if(d.agent) ctl+=btn('start',T('Start'),T('Kiosk-Browser starten'),!d.connections,1)+btn('reload',T('Reload'),T('Browser neu laden'),0,1)+btn('stop',T('Stop'),T('Kiosk-Browser beenden'),0,1);
+  if(disp) ctl+=btn('dispoff',T('Display aus'),'',0,1)+btn('dispon',T('Display an'),'',0,1);
+  if(has('kioskrestart')) ctl+=btn('kioskrestart',T('Fully neu starten'),T('Fully beenden und neu öffnen (per adb)'),0,1);
+  if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'),0,1);
+  const extra=devExtraHTML(d,caps,off), adb=has('reboot')||has('brightness');
+  const ctlH=(ctl||extra)?wrap('<div class="dgp">'+T('Steuerung')+'</div><div class="dsec dctl'+(off?' off':'')+'">'+
+      (off?'<div class="doff">'+(rc?T('Gerät verbindet …'):T('Gerät offline'))+' <small>'+T('– die Knöpfe gehen wieder, sobald es erreichbar ist.')+'</small></div>':'')+
+      (ctl?'<div class="drow">'+ctl+'</div>':'')+extra+
+      (adb?'<div class="dhint">'+T('Per adb: ADB über WLAN muss am Gerät aktiv und für diesen Server freigegeben sein.')+'</div>':'')+'</div>'):'';
+  // Wartung: Einrichtung per adb (geht auch, solange Fully noch fehlt oder nicht laeuft)
+  let mt='';
+  if(has('fullyinstall')) mt+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'))+
+    btn('launcher',T('Launcher einrichten'),T('LoxPanel-Launcher per adb installieren und Start-URL eintragen; das Symbol „LoxPanel“ öffnet Fully Kiosk mit dem Panel'));
+  const maint=mt?wrap('<div class="dsec">'+dsh('setup',T('Einrichten per adb'))+'<div class="drow">'+mt+'</div></div>'):'';
+  return {view:view, ctl:ctlH, maint:maint};
 }
 // Android: Display-Helligkeit per adb; mit Fully: Link zum Fully Remote Admin (Port 2323)
-function devExtraHTML(d,caps){
+function devExtraHTML(d,caps,off){
+  const dis=off?' disabled':'';
   const bri=caps.indexOf('brightness')>=0, fully=d.ip&&(d.type==='fully'||caps.indexOf('kioskrestart')>=0);
   if(!bri&&!fully) return '';
   return '<div class="devx drow" data-name="'+esc(d.name)+'" data-devip="'+esc(d.ip||'')+'">'+
     (bri?(()=>{ const st=DEV_BRI[d.name]||{}, au=st.auto!==false;   // Standard: Automatik (bis der Wert gelesen ist)
       return '<div class="dbri'+(au?' auto':'')+'"><span>'+T('Helligkeit')+'</span>'+
-        '<label class="chk dbri_a" title="'+T('Das Gerät regelt die Helligkeit selbst nach dem Umgebungslicht')+'"><input type="checkbox" class="dbri_auto"'+(au?' checked':'')+'> '+T('Automatisch')+'</label>'+
-        '<input type="range" min="1" max="100" step="1" value="'+(st.pct||70)+'" class="dbri_r"'+(au?' disabled':'')+'>'+
+        '<label class="chk dbri_a" title="'+T('Das Gerät regelt die Helligkeit selbst nach dem Umgebungslicht')+'"><input type="checkbox" class="dbri_auto"'+(au?' checked':'')+dis+'> '+T('Automatisch')+'</label>'+
+        '<input type="range" min="1" max="100" step="1" value="'+(st.pct||70)+'" class="dbri_r"'+(au||off?' disabled':'')+'>'+
         '<b class="dbri_v">'+(au?(st.read?T('auto'):'–'):(st.pct?st.pct+' %':'–'))+'</b>'+
-        '<button type="button" class="btn sm ghost dbri_get" title="'+T('Aktuellen Zustand vom Gerät lesen')+'">↻</button></div>'+
-        '<label class="chk dsnd" title="'+T('Android spielt bei jedem Antippen eines Bedienelements einen Klick ab')+'"><input type="checkbox" class="dsnd_on"'+(DEV_SND[d.name]?' checked':'')+'> '+T('Tipp-Töne')+'</label>'; })():'')+
-    (fully?'<a class="btn sm ghost" href="http://'+esc(d.ip)+':2323" target="_blank" rel="noopener" title="'+T('Fully Remote Admin (in Fully unter Remote Administration aktivieren)')+'">'+T('Fully Remote Admin')+' ↗</a>':'')+
+        '<button type="button" class="btn sm ghost dbri_get"'+dis+' title="'+T('Aktuellen Zustand vom Gerät lesen')+'">↻</button></div>'+
+        '<label class="chk dsnd" title="'+T('Android spielt bei jedem Antippen eines Bedienelements einen Klick ab')+'"><input type="checkbox" class="dsnd_on"'+(DEV_SND[d.name]?' checked':'')+dis+'> '+T('Tipp-Töne')+'</label>'; })():'')+
+    (fully?'<a class="btn sm ghost'+(off?' disabled':'')+'"'+(off?' aria-disabled="true" tabindex="-1"':'')+' href="http://'+esc(d.ip)+':2323" target="_blank" rel="noopener" title="'+T('Fully Remote Admin (in Fully unter Remote Administration aktivieren)')+'">'+T('Fully Remote Admin')+' ↗</a>':'')+
   '</div>';
 }
 const DEV_BRI={};   // je Geraet: {pct, auto, read} - zuletzt gelesen/gesetzt
@@ -4208,14 +4334,16 @@ function renderDeviceList(j){
     const dd=dv.querySelector('.ddet'), h2=dd?devDetHTML(dv.dataset.name,ms.value):''; if(dd&&dd.innerHTML!==h2) dd.innerHTML=h2; });
   // Waehrend jemand in einer Live-Zeile tippt oder auswaehlt, nicht neu zeichnen.
   const ae=document.activeElement;
-  if(ae && ae.tagName!=='BUTTON' && ae.closest && ae.closest('.devlive, #ag_list')) return;
+  if(ae && ae.tagName!=='BUTTON' && ae.closest && ae.closest('.devlive, .devctl, .devmaint, #ag_list')) return;
   const prevSel={}, prevName={};
   list.querySelectorAll('.ag[data-name]').forEach(n=>{ const s=n.querySelector('.agsel'); if(s) prevSel[n.dataset.name]=s.value; });
   box.querySelectorAll('.ag[data-anon]').forEach(n=>{ const i=n.querySelector('.anname'); if(i) prevName[n.dataset.anon]=i.value; });
   const devs=j.devices||[], anon=j.anonymous||[], live={};
   devs.forEach(d=>live[d.name]=d);
   list.querySelectorAll('.dev').forEach(n=>{ const d=live[n.dataset.name], slot=n.querySelector('.devlive');
-    slot.innerHTML=d?deviceRow(d,prevSel[d.name]):''; n.classList.toggle('online',!!d);
+    const parts=d?deviceRow(d,prevSel[d.name]):{view:'',ctl:'',maint:''};
+    slot.innerHTML=parts.view; n.querySelector('.devctl').innerHTML=parts.ctl; n.querySelector('.devmaint').innerHTML=parts.maint;
+    n.classList.toggle('online',!!d); n.classList.toggle('off',!(d&&d.online));
     const dot=n.querySelector('.devtg .sdot'), st=n.querySelector('.devtg .devst');
     const up=!!(d&&d.online), rc=devReconnecting(d);
     if(dot){ dot.classList.toggle('on',up); dot.classList.toggle('wait',rc); }
@@ -4232,10 +4360,10 @@ function renderDeviceList(j){
     const g=x.querySelector('.dbri_get'); if(g) g.onclick=()=>{ devBrightness(x,'read'); devTouchSound(x,null); };
     const sn=x.querySelector('.dsnd_on'); if(sn) sn.onchange=()=>{ devTouchSound(x, sn.checked); sn.blur(); };
     // beim ersten Anzeigen den echten Zustand vom Geraet holen (einmal je Sitzung)
-    const nm=x.dataset.name; if(!DEV_BRI_TRY.has(nm) && x.closest('.dev.open')){ DEV_BRI_TRY.add(nm); devBrightness(x,'read'); devTouchSound(x,null); } });
+    const nm=x.dataset.name; if(!DEV_BRI_TRY.has(nm) && x.closest('.dev.open') && !x.closest('.dev.off')){ DEV_BRI_TRY.add(nm); devBrightness(x,'read'); devTouchSound(x,null); } });
   list.querySelectorAll('.ag[data-name] button[data-act]').forEach(b=>{
     const row=b.closest('.ag');
-    b.onclick=()=>deviceAction(b.dataset.act, row.dataset.name, row.dataset.ip, row.querySelector('.agsel').value, row.dataset.devip);
+    b.onclick=()=>deviceAction(b.dataset.act, row.dataset.name, row.dataset.ip, (row.closest('.dev').querySelector('.agsel')||{}).value||'', row.dataset.devip);
   });
   box.querySelectorAll('.ag[data-anon] button[data-act="name"]').forEach(b=>{
     const row=b.closest('.ag');
@@ -4461,11 +4589,11 @@ function devRow(name){
   const d=DEV[name]||{auto:true,modes:[]};
   const pairs=d.modes&&d.modes.length?d.modes:[['','']];
   const rows=pairs.map(([m,p])=>
-    '<div class="dmrow" style="display:flex;gap:6px;align-items:center;margin:4px 0">'+
+    '<div class="dmrow" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0">'+
       '<input type="text" class="dm_mode" placeholder="'+T('Modus (z.B. gaeste)')+'" value="'+esc(m)+'" style="flex:1;min-width:120px">'+
       '<span style="opacity:.6">→</span>'+
       '<select class="dm_prof" style="flex:1;min-width:120px">'+profOpts(p)+'</select>'+
-      '<button class="btn sm ghost dm_del" type="button" title="'+T('Zeile entfernen')+'">✕</button>'+
+      '<button class="btn sm del dm_del" type="button" title="'+T('Zeile entfernen')+'" aria-label="'+T('Zeile entfernen')+'">'+T('Entfernen')+'</button>'+
     '</div>').join('');
   const models=META.deviceModels||[], mo=models.find(m=>m.key===d.model);
   const isNew=DEV_NEW.has(name), open=DEV_OPEN.has(name);
@@ -4473,9 +4601,8 @@ function devRow(name){
     '<button type="button" class="devtg"><i class="sdot"></i><b>'+esc(name)+'</b><small class="devst">'+T('offline')+'</small>'+
       (isNew?'<span class="newb">'+T('neu')+'</span>':'')+'<span class="chev">›</span></button>'+
     '<div class="devbody">'+
-    '<div class="dsec dsetup">'+dsh('setup',T('Einrichtung'))+
-      '<div class="drow dren"><input type="text" class="dren_in" data-live="1" maxlength="60" value="'+esc(name)+'" aria-label="'+T('Gerätename')+'">'+
-        '<button type="button" class="btn ghost sm dren_go" data-live="1">'+T('Umbenennen')+'</button></div>'+
+    '<div class="dgp">'+T('Status')+'</div>'+
+    '<div class="dsec dsetup">'+dsh('setup',T('Gerätetyp'))+
       '<div class="drow devhead">'+
         '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
           models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
@@ -4485,6 +4612,7 @@ function devRow(name){
       '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div>'+
       '<div class="ddet">'+devDetHTML(name,d.model)+'</div>'+
       '<div class="dtips">'+devTipsHTML(name,mo)+'</div></div>'+
+    '<div class="dgp">'+T('Anzeige')+'</div>'+
     '<div class="devlive"></div>'+
     '<div class="dsec">'+dsh('zoom',T('Zoom'))+
       '<select class="dev_scale">'+devScaleOpts(d.scale,mo)+'</select>'+
@@ -4494,9 +4622,15 @@ function devRow(name){
       '<div class="dmwrap"'+(d.auto?'':' hidden')+'><div class="dmrows">'+rows+'</div>'+
       '<button class="btn sm ghost dm_add" type="button" style="margin-top:4px">'+T('+ Modus')+'</button>'+
       '<div class="dhint">'+T('Modus → Ansicht. Den Modus schickt Loxone per HTTP (siehe Hinweise unten).')+'</div></div></div>'+
+    '<div class="devctl"></div>'+
+    '<div class="dgp">'+T('Wartung')+'</div>'+
+    '<div class="devmaint"></div>'+
+    '<div class="dsec">'+dsh('setup',T('Name'))+
+      '<div class="drow dren"><input type="text" class="dren_in" data-live="1" maxlength="60" value="'+esc(name)+'" aria-label="'+T('Gerätename')+'">'+
+        '<button type="button" class="btn ghost sm dren_go" data-live="1">'+T('Umbenennen')+'</button></div>'+'</div>'+
     // Display-Treiber (Fully PLUS / WallPanel) nur fuer Android-Geraete oder wenn schon eingerichtet
     '<div class="ddhost"'+((mo&&mo.os==='android')||(d.display&&d.display.driver)?'':' hidden')+'>'+displayRow(d.display, name)+'</div>'+
-    '<div class="ddelrow"><button type="button" class="btn ghost sm ddel" data-live="1">'+T('Gerät löschen')+'</button>'+
+    '<div class="ddelrow"><button type="button" class="btn del sm ddel" data-live="1">'+T('Gerät löschen')+'</button>'+
       '<span class="dhint">'+T('Entfernt Einstellungen und Erkennung. Ist das Gerät verbunden, meldet es sich neu an.')+'</span></div>'+
   '</div></div>';
 }
@@ -4609,7 +4743,7 @@ function renderDevices(){
   if(LAST_DEVS) renderDeviceList(LAST_DEVS);
   box.querySelectorAll('.devtg').forEach(b=>b.onclick=()=>{ const dv=b.closest('.dev'), n=dv.dataset.name;
     const op=dv.classList.toggle('open'); if(op) DEV_OPEN.add(n); else DEV_OPEN.delete(n);
-    const bx=op&&dv.querySelector('.devx'); if(bx && !DEV_BRI_TRY.has(n) && bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); }
+    const bx=op&&!dv.classList.contains('off')&&dv.querySelector('.devx'); if(bx && !DEV_BRI_TRY.has(n) && bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); }
     if(DEV_NEW.delete(n)){ dv.classList.remove('isnew'); const nb=b.querySelector('.newb'); if(nb) nb.remove(); } });
   box.querySelectorAll('.dm_add').forEach(b=>b.onclick=()=>{
     readDevFromDom(); const name=b.closest('.dev').dataset.name;
@@ -4644,7 +4778,8 @@ function renderDevices(){
   box.querySelectorAll('.dm_del').forEach(b=>b.onclick=()=>{
     const dev=b.closest('.dev'), name=dev.dataset.name;
     const idx=Array.from(dev.querySelectorAll('.dmrow')).indexOf(b.closest('.dmrow'));
-    readDevFromDom(); DEV[name].modes.splice(idx,1); renderDevices();
+    readDevFromDom(); const gone=DEV[name].modes.splice(idx,1)[0]; renderDevices();
+    snack(T('Zeile entfernt – wirksam mit Speichern'), ()=>{ readDevFromDom(); DEV[name].modes.splice(idx,0,gone); renderDevices(); sectDirty('dev'); });
   });
 }
 // Nach dem Speichern: welche Kennwoerter der Server jetzt hat (auch in den
@@ -4699,8 +4834,8 @@ $('#at_send').onclick=async()=>{
 
 // ---- Neues Panel: Befehl-Generator ----
 function fillNewPanel(){
-  ['#np_server','#nk_server'].forEach(id=>{ const srv=$(id); if(srv && !srv.value) srv.value=location.host; });
-  ['#np_panel','#nk_panel'].forEach(id=>{ const sel=$(id); if(sel) sel.innerHTML='<option value="">'+T('(Standard)')+'</option>'+
+  ['#np_server','#nk_server','#ad_server'].forEach(id=>{ const srv=$(id); if(srv && !srv.value) srv.value=location.host; });
+  ['#np_panel','#nk_panel','#ad_panel'].forEach(id=>{ const sel=$(id); if(sel) sel.innerHTML='<option value="">'+T('(Standard)')+'</option>'+
     PANEL_IDS.map(p=>'<option value="'+esc(p)+'">'+esc(p)+'</option>').join(''); });
 }
 function genKioskUrl(){
@@ -4725,6 +4860,50 @@ $('#np_gen').onclick=genPanelCmd;
 $('#np_copy').onclick=()=>{ navigator.clipboard.writeText($('#np_out').textContent)
   .then(()=>flash($('#np_toast'),T('✓ kopiert'),true))
   .catch(()=>flash($('#np_toast'),T('Kopieren nicht möglich – bitte manuell markieren'),false)); };
+
+// ---- Gerät hinzufügen: erst "Welches Gerät?", dann nur die passenden Schritte ----
+const NP_KINDS={shelly:{t:'Shelly Wall Display',dev:'shelly'},sonoff:{t:'Sonoff NSPanel Pro',dev:'android'},
+  android:{t:'Android-Tablet oder Handy',dev:'android'},linux:{t:'Linux-Panel'},ios:{t:'iPad, iPhone oder Browser'}};
+let NP_KIND='';
+const NK_NOTE0=$('#nk_note')?$('#nk_note').textContent:'';
+function npShow(k){
+  NP_KIND=NP_KINDS[k]?k:'';
+  $('#np_choice').hidden=!!NP_KIND; $('#np_flow').hidden=!NP_KIND; $('#np_lead').hidden=!!NP_KIND;
+  document.querySelectorAll('#np_flow .npcard').forEach(c=>{ c.hidden=!(NP_KIND&&c.dataset.npf.split(' ').indexOf(NP_KIND)>=0); });
+  $('#np_kind').textContent=NP_KIND?T(NP_KINDS[NP_KIND].t):'';
+  const ios=NP_KIND==='ios', h=$('#nk_h'), n=$('#nk_note');
+  if(h) h.textContent=ios?T('Adresse für iPad, iPhone oder Browser'):T('Alternativ: Start-URL von Hand eintragen');
+  if(n) n.textContent=ios?T('Diese Adresse im Browser (Safari, Chrome …) öffnen. Mit „Zum Home-Bildschirm“ startet sie wie eine App. Der Gerätename sorgt dafür, dass das Gerät unter „Meine Geräte“ erscheint und per Betriebsmodus umgeschaltet werden kann.'):T(NK_NOTE0);
+  const sc=$('#scroll'); if(sc) sc.scrollTop=0;
+}
+document.querySelectorAll('.nptile').forEach(b=>b.onclick=()=>npShow(b.dataset.npk));
+$('#np_back').onclick=()=>npShow('');
+$('#ad_goto').onclick=()=>goTo('devices','panels');
+$('#ad_go').onclick=async()=>{
+  const name=$('#ad_name').value.trim(), ip=$('#ad_ip').value.trim(), panel=$('#ad_panel').value, server=$('#ad_server').value.trim();
+  const t=$('#ad_toast'), out=$('#ad_out');
+  if(!name||!ip||!server){ flash(t,T('Gerätename, IP-Adresse und Server-Adresse nötig'),false); return; }
+  const btn=$('#ad_go'); btn.disabled=true; out.style.display='block'; $('#ad_done').style.display='none';
+  const lines=[]; const show=()=>{ out.innerHTML=lines.map(l=>'<div>'+esc(l)+'</div>').join(''); };
+  try{
+    if(!$('#ad_hasfully').checked){
+      lines.push(T('Lade Fully Kiosk und installiere per adb … (bis zu einer Minute)')); show();
+      const j=await postJson('/api/kiosk/fully',{device:name, ip});
+      lines.pop();
+      if(!j.ok){ lines.push('✗ '+T('Fully Kiosk')+': '+(j.error||T('Fehler'))); show(); flash(t,T('Fehler: ')+(j.error||''),false); return; }
+      lines.push('✓ '+T('Fully Kiosk')+' '+(j.version||'')+' '+T('installiert')); show();
+    }
+    lines.push(T('Richte Launcher per adb ein …')); show();
+    const j=await postJson('/api/panel/launcher',{ip, server, panel:panel||'', device:(NP_KINDS[NP_KIND]||{}).dev||'android', name});
+    lines.pop();
+    if(j.ok){ lines.push('✓ '+(j.fully?T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))); 
+      lines.push(T('Sobald das Gerät die Visu geöffnet hat, erscheint es unter „Meine Geräte“.')); show();
+      flash(t,'✓ '+name,!!j.fully); $('#ad_done').style.display='flex'; }
+    else { lines.push('✗ '+T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':'')); show(); flash(t,T('Fehler: ')+(j.error||''),false); }
+  }catch(e){ lines.push('✗ '+e); show(); flash(t,'Fehler: '+e,false); }
+  finally{ btn.disabled=false; }
+};
+npShow('');
 
 // ---- Start ----
 load().catch(e=>{ $('#pconfHost').innerHTML='<div class="empty">Konnte Daten nicht laden: '+esc(e)+'</div>'; });

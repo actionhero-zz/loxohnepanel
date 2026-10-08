@@ -14,6 +14,11 @@
     en: {
       // Rahmen / Navigation
       'Einstellungen': 'Settings',
+      'Hier legst du fest, WANN Nacht ist – für alle Panels gleich. Nacht ist aktiv, solange der gewählte Betriebsmodus läuft oder der gewählte Baustein eingeschaltet ist. Ohne Auswahl: Sonnenuntergang bis Sonnenaufgang.':
+        'Here you define WHEN it is night – the same for all panels. Night is active while the selected operating mode is running or the selected block is switched on. With no selection: sunset to sunrise.',
+      'Auslöser – Betriebsmodus oder Baustein': 'Trigger – operating mode or block',
+      'Kein Auslöser (nach Sonnenstand)': 'No trigger (by sun position)',
+      'Betriebsmodus': 'Operating mode',
       'Konfiguration': 'Configuration',
       'Intercom / Kameras': 'Intercom / cameras',
       'bald': 'soon',
@@ -256,7 +261,49 @@
       // Dialoge
       'ID des neuen Panels (klein, ohne Leerzeichen), z. B. wohnzimmer:':
         'ID of the new panel (lowercase, no spaces), e.g. livingroom:',
-      'Ungültige ID.': 'Invalid ID.'
+      'Ungültige ID.': 'Invalid ID.',
+      // Gerät hinzufügen / Meine Geräte (Vereinheitlichung)
+      'Welches Gerät?': 'Which device?',
+      'Erst das Gerät wählen – danach siehst du nur die passenden Schritte.': 'Pick the device first – then you only see the matching steps.',
+      'Android-Geräte (Shelly, Sonoff, Tablet) richtet LoxPanel auf Wunsch automatisch ein: per ADB über WLAN, ohne Kabel und ohne Eingaben am Gerät außer einer Bestätigung. Linux-Panels bekommen den Agenten per SSH. iPad, iPhone und Browser brauchen nur die Adresse.': 'LoxPanel can set up Android devices (Shelly, Sonoff, tablet) automatically: via ADB over Wi-Fi, no cable and nothing to enter on the device except one confirmation. Linux panels get the agent via SSH. iPad, iPhone and browsers only need the address.',
+      'Shelly Wall Display': 'Shelly Wall Display',
+      'Sonoff NSPanel Pro': 'Sonoff NSPanel Pro',
+      'Wandpanel (Android)': 'Wall panel (Android)',
+      'Android-Tablet oder Handy': 'Android tablet or phone',
+      'mit Fully Kiosk': 'with Fully Kiosk',
+      'Linux-Panel': 'Linux panel',
+      'Agent per SSH': 'Agent via SSH',
+      'iPad, iPhone oder Browser': 'iPad, iPhone or browser',
+      'Safari, Chrome …': 'Safari, Chrome …',
+      '‹ Anderes Gerät wählen': '‹ Choose another device',
+      'Automatisch einrichten per ADB': 'Set up automatically via ADB',
+      'LoxPanel installiert Fully Kiosk und den „LoxPanel“-Launcher auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.': 'LoxPanel installs Fully Kiosk and the “LoxPanel” launcher on the device and enters the start address. You only need to switch on ADB over Wi-Fi on the device (Settings → Developer options → USB debugging / ADB over Wi-Fi, port 5555). The first time, the device asks “Allow USB debugging?” – confirm with “Always allow” and press the button again.',
+      'Gerätename': 'Device name',
+      'IP-Adresse des Geräts': 'Device IP address',
+      'Fully Kiosk ist schon auf dem Gerät – nur den Launcher einrichten': 'Fully Kiosk is already on the device – only set up the launcher',
+      'Automatisch einrichten': 'Set up automatically',
+      'Zu „Meine Geräte“': 'Go to “My devices”',
+      'Gerätename, IP-Adresse und Server-Adresse nötig': 'Device name, IP address and server address required',
+      'Lade Fully Kiosk und installiere per adb … (bis zu einer Minute)': 'Downloading Fully Kiosk and installing via adb … (up to a minute)',
+      'Sobald das Gerät die Visu geöffnet hat, erscheint es unter „Meine Geräte“.': 'As soon as the device has opened the visu, it appears under “My devices”.',
+      'Adresse für iPad, iPhone oder Browser': 'Address for iPad, iPhone or browser',
+      'Alternativ: Start-URL von Hand eintragen': 'Alternatively: enter the start URL by hand',
+      'Diese Adresse im Browser (Safari, Chrome …) öffnen. Mit „Zum Home-Bildschirm“ startet sie wie eine App. Der Gerätename sorgt dafür, dass das Gerät unter „Meine Geräte“ erscheint und per Betriebsmodus umgeschaltet werden kann.': 'Open this address in the browser (Safari, Chrome …). With “Add to Home Screen” it starts like an app. The device name makes the device appear under “My devices” and lets it be switched by operating mode.',
+      'Status': 'Status',
+      'Gerätetyp': 'Device type',
+      'Ansicht': 'View',
+      'Steuerung': 'Controls',
+      'Wartung': 'Maintenance',
+      'Einrichten per adb': 'Set up via adb',
+      'Gerät offline': 'Device offline',
+      'Gerät verbindet …': 'Device connecting …',
+      '– die Knöpfe gehen wieder, sobald es erreichbar ist.': '– the buttons work again as soon as it is reachable.',
+      'Zeile entfernt – wirksam mit Speichern': 'Row removed – takes effect on save',
+      'Kalender „': 'Calendar “',
+      '“ entfernt – wirksam mit Speichern': '” removed – takes effect on save',
+      'Hintergrundbild entfernen?': 'Remove background image?',
+      'Eigenen Klingelton entfernen? Danach gilt wieder der Standardton.': 'Remove custom ring tone? The default tone applies again.',
+      'Cover, Titel und Favoriten vom Loxone-Audioserver. Einen Test-Ton, um die Lautsprecher der Panels zu prüfen, findest du unter System → Diagnose.': 'Cover, title and favourites from the Loxone audio server. A test tone for checking the panel speakers is under System → Diagnostics.',
     }
   };
 

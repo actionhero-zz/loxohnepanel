@@ -375,19 +375,37 @@ DESIGN_PRESETS = {
 DESIGN_DEFAULT = "bunt"
 
 
-def clean_design(d) -> dict | None:
-    """Design aus der Konfiguration pruefen: {preset, colors{key: #rrggbb}}.
-    Fehlende Farben kommen aus der Vorlage. None = ungueltig/nicht gesetzt."""
-    if not isinstance(d, dict):
-        return None
-    preset = d.get("preset") if d.get("preset") in DESIGN_PRESETS else DESIGN_DEFAULT
-    colors = {}
-    roh = d.get("colors") if isinstance(d.get("colors"), dict) else {}
+def _farben_rein(roh) -> dict:
+    """Nur gueltige Designfarben {key: #rrggbb} aus einem Roh-Dict."""
+    out = {}
+    roh = roh if isinstance(roh, dict) else {}
     for k in DESIGN_KEYS:
         v = roh.get(k)
         if isinstance(v, str) and _HEX.match(v.strip()):
-            colors[k] = v.strip().lower()
-    return {"preset": preset, "colors": colors}
+            out[k] = v.strip().lower()
+    return out
+
+
+def clean_design(d) -> dict | None:
+    """Design aus der Konfiguration pruefen:
+    {preset, colors{key: #rrggbb}, colorsByPreset{vorlage: {key: #rrggbb}}}.
+    `colors` sind die eigenen Farben der GEWAEHLTEN Vorlage; `colorsByPreset`
+    merkt sie je Vorlage, damit ein Wechsel Dunkel/Hell/Bunt sie nicht verliert.
+    Altformat (nur `colors`): gehoert zur gewaehlten Vorlage. Fehlende Farben
+    kommen aus der Vorlage. None = ungueltig/nicht gesetzt."""
+    if not isinstance(d, dict):
+        return None
+    preset = d.get("preset") if d.get("preset") in DESIGN_PRESETS else DESIGN_DEFAULT
+    byp = {}
+    roh = d.get("colorsByPreset") if isinstance(d.get("colorsByPreset"), dict) else {}
+    for name in DESIGN_PRESETS:
+        c = _farben_rein(roh.get(name))
+        if c:
+            byp[name] = c
+    colors = _farben_rein(d.get("colors")) or byp.get(preset, {})
+    if colors:
+        byp[preset] = colors
+    return {"preset": preset, "colors": colors, "colorsByPreset": byp}
 
 
 def design_vars(d: dict | None) -> dict:

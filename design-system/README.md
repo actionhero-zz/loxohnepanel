@@ -54,9 +54,27 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - Zwischen Kacheln `space-gap`, in der Kachel `space-tile`, Karte zum Rand `space-frame`.
 
 ## Detailansicht-Schema
-- Reihenfolge immer: Kopf (Raum, Name) → Zustand (großer Wert, eine Zeile darunter) → Einträge → Aktionen.
+- Reihenfolge immer, einspaltig untereinander (auch auf 960 × 480): **Kopf** (Raum in Versalien klein, darunter der Bausteinname) → **großer Zustand** (eine kurze Zeile darunter) → **Einträge** → **Aktionen**.
+- Der große Wert ist der **Ist-Zustand**: Licht „An/Aus“ (aktive Szene als Zeile darunter), Heizung die Ist-Temperatur (Sollwerte darunter, Verstellen mit −/+), Sensor die Zahl mit Einheit (Loxone-Text wie „sehr gute Luftqualität“ als Zeile darunter), Alarm „Scharf/Unscharf/Alarm“.
+- Ist der Zustand ein Text statt einer Zahl (Taster „Zuletzt ausgelöst“), steht er kleiner (`value-hero` · Stufe 22–30 px), die Zeit darunter.
+- Zustandsfarbe des großen Werts nur aus dem Theme: heizt = Wärme-Token (`dot-3`), kühlt = kühler Token, ruht = `ink`.
+- Zusatzangaben (Betriebsart, Zeitplan, „Fenster offen“) als Chips unter dem Wert: Anzeige = transparent mit Haarlinie, tippbar = gefüllt mit Pfeil ˅/›.
+- Heizung nach Loxone-Vorbild: Sollwert-Zeile „− 24,0° Komfort-Soll +“ (Zeile = Anzeige, −/+ = runde Bedienelemente), darunter optional die Zeitleiste 0–24 Uhr mit Komfortzeiten aus dem Loxone-Zeitplan und „Komfort bis …“; Betriebsarten als Pillen unten.
+- Alles passt auf ein Panel (960 × 480, 480 × 480) ohne Scrollen; Verläufe füllen den freien Platz, bei zu wenigen Messwerten steht „Noch zu wenig Messwerte“.
 - Einträge (Zonen, Wecker, Ausgänge, Stimmungen) sind Listenzeilen: 46 px hoch (Tablet 52 px), `r-m`, Symbol links, Titel und Unterzeile, aktiv gefüllt in `ink`. Schmal eine Spalte, breit zwei gleich breite Spalten über die ganze Breite. Nie seitwärts scrollen.
 - Kamera „ganzes Bild“: freie Ränder in Kartenfarbe oder als verwischtes Bild – nie weiße Streifen.
+
+## Kacheltext und Seiten
+- **Gemeinsame Grundlinie:** Der Textblock der Kachel hat drei feste Plätze – Raumzeile, Name (Platz für zwei Zeilen, sonst „…“), Zustand unten. Kacheln einer Reihe stehen dadurch bündig, egal ob der Name ein- oder zweizeilig ist.
+- **Seiten:** Raster, die mehr als eine Bildschirmhöhe brauchen, werden exakt in Seiten geschnitten (keine angeschnittene Folgereihe). Die Position zeigen **Seitenpunkte** rechts in einer eigenen Spur (9 px, aktiv `ink` 75 %, sonst 32 %) – einen klassischen Scrollbalken gibt es im Kachelraster nicht.
+- Kachel-Bedienelemente: Mini-Buttons 30 px, Schalter 38 × 22, je mit unsichtbar erweiterter Tippfläche. Eingeschaltet ist **eine** Farbe: Schalter, Symbol und Zustand in `on`.
+
+## Popups
+- **Blatt** (Status, Wetter, PIN): Hintergrund abgedunkelt, mittig, `r-xl` (sehr hoch: `r-l`), Kopf 56 px mit Titel links und Schließen-Kreis rechts (≥ 44 px Tippfläche). Breite 440 px auf 960 × 480 (breiter Inhalt 720), sonst Bildschirm − 32 px; Höhe nach Inhalt, auf Panels ohne Scrollen. Zeilen nach „Fläche heißt tippbar“, Aktionen als Pillen L, aktiv `ink`. Schließt über ✕, Tippen daneben, Wischen nach unten (Handy) und immer beim Navigieren.
+- **Menü** (Auswahl an einem Knopf): `r-m`, Einträge 44 px, mind. 160 px breit, aktive Wahl `ink`; schließt bei Wahl oder Tippen daneben.
+- **Hinweis** (Meldung, Verbindung, Test-Ton): oben, `r-m`, Theme-Schrift, Stufenfarbe als Token, nicht tippbar, verschwindet selbst.
+- **Vollbild nur für Alarm:** über allem, schließt nur über „Ausblenden“ oder eine Aktion. Die Klingel bleibt ein Hinweis in der Türstation.
+- Reihenfolge von hinten nach vorn: Menü < Blatt < Hinweis < Alarm < Nachtabdunklung.
 
 ## Fläche heißt tippbar
 - Alles Tippbare hat eine Fläche; der Rang zeigt sich an Größe und Deckkraft: Hauptaktion `tile` deckend (aktiv `ink`), Nebenaktion (Kreis 32 px) und Chips `tile` 55 %, ohne Umriss.
@@ -73,7 +91,7 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 
 - Kachelsymbole sind Linien-Icons (24er Raster, Strich 1,7, runde Enden) in `currentColor`; die Kachel färbt sie über `ink-2` bzw. `on`.
 - Loxone-Icons (IconsFilled, ~550, vom Miniserver) werden per CSS-Maske in derselben Farbe gezeigt – nie als buntes Bild.
-- Im Hintergrund der Detailansicht steht das Symbol übergroß, links unten angeschnitten, 8 % Deckkraft.
+- **Regel Hintergrund-Piktogramm:** Detailansichten von **Anzeigen ohne Schaltelemente** (Sensoren, Zustände, Messwerte) tragen das Bausteinsymbol übergroß im Hintergrund – 85 % der kleineren Kartenseite, links unten, bewusst angeschnitten (rund zwei Drittel sichtbar), 8 % Deckkraft. Es lockert die sonst leere Seite auf. Nie hinter Bedienelementen, nie bei Bausteinen mit Schaltern/Pillen.
 
 ## Config
 

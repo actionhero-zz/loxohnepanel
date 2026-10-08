@@ -42,6 +42,10 @@
     --r-xl:36px; --r-l:22px; --r-m:14px; --r-s:8px; --r-pill:999px;
     --r-tile:var(--r-l); --r-ctrl:var(--r-m);         /* Kachel-/Button-Rundung */
     --pill-l:56px; --pill-m:44px; --pill-s:30px;      /* Pillen-Hoehen (Designsystem) */
+    /* Ebenen der Ueberlagerungen: Menue < Sheet (Status/Wetter/PIN) < Hinweis < Alarm-Vollbild < Nachtabdunklung */
+    --z-menu:60; --z-sheet:70; --z-toast:80; --z-alarm:90; --z-night:100000;
+    /* Alarm-Vollbild (Rot bewusst fest, pulsierend) */
+    --al-bg:#2a0607; --al-card:#C62F2D; --al-on:#8E1F1D; --al-press:#f3d3d3; --al-pulse:rgba(255,90,90,.65);
     --anim-scale:1;                                   /* 0=aus, 1=an */
     --anim-fast:calc(120ms * var(--anim-scale));       /* Tastendruck, Fokus */
     --anim-med:calc(220ms * var(--anim-scale));        /* Tabwechsel, Kachel-Einblendung */
@@ -267,9 +271,13 @@
     opacity:0;transition:opacity var(--anim-fast) var(--ease);pointer-events:none;
     z-index:6;position:relative;}
   .scrollind.show{opacity:1;}
-  .scrollind.dots{background:transparent;width:8px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;}
+  .scrollind.dots{background:transparent;width:10px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:7px;}
   .scrollind.dots .thumb{display:none;}
-  .scrollind.dots i{width:6px;height:6px;border-radius:50%;background:var(--ink);opacity:.22;transition:opacity var(--anim-fast) var(--ease);}
+  /* Geblaetterte Raster: rechts eine eigene Spur fuer die Seitenpunkte, damit sie die Kacheln nicht beruehren */
+  .screen>.grid.paged,.screen>.grid.hasdots{padding-right:28px;}
+  .grid{scrollbar-width:none;} .grid::-webkit-scrollbar{display:none;}   /* klassischer Balken entfaellt, Punkte zeigen die Position */
+  .screen>.scrollind.dots{margin-right:21px;}
+  .scrollind.dots i{width:9px;height:9px;border-radius:50%;background:var(--ink);opacity:.32;transition:opacity var(--anim-fast) var(--ease);}
   .scrollind.dots i.on{opacity:.75;}
   .scrollind .thumb{position:absolute;left:0;width:100%;border-radius:2px;
     top:0;background:rgba(var(--wash,255,255,255),.34);will-change:transform;}
@@ -367,7 +375,7 @@
   .tswitch .knob{position:absolute;top:1px;left:1px;width:18px;height:18px;border-radius:50%;
     background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.4);
     transition:transform var(--anim-fast) var(--ease);}
-  .tswitch.on{background:var(--accent);border-color:var(--accent);}
+  .tswitch.on{background:var(--glow,var(--accent));border-color:var(--glow,var(--accent));}
   .tswitch.on .knob{transform:translateX(16px);}
   .tswitch:active .knob{filter:brightness(.92);}
   /* Runder Taster-Button (Pushbutton) - gleicher Platz wie .tswitch, aber
@@ -410,6 +418,18 @@
   .tile .sub{font-size:var(--sub-size,15px);color:var(--muted);font-weight:400;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:4px;}
   .tile.on .sub{color:var(--glow);}
+  /* Textblock der Kachel: feste Zeilenfaecher (Raum / Name / Status), damit in einer
+     Kachelreihe jede Zeile auf gleicher Hoehe sitzt. Der Name reserviert --nm-n Zeilen
+     (zweizeilig mit Ellipse, wo umgebrochen wird), die Statuszeile sitzt unten.
+     Die --rm-/--nm-/--sb--Werte spiegeln die Schriftgroessen der Groessenklassen unten. */
+  .tile{--nm-n:1;--nm-lh:1.15;--rm-s:var(--room-size,12px);--rm-mb:2px;--nm-s:var(--name-size,18px);
+    --sb-s:var(--sub-size,15px);--sb-mt:4px;}
+  .tile .body{display:grid;grid-template-columns:minmax(0,1fr);min-width:0;
+    grid-template-rows:calc(var(--rm-s) * 1.3 + var(--rm-mb)) calc(var(--nm-n) * var(--nm-lh) * var(--nm-s)) calc(var(--sb-s) * 1.3 + var(--sb-mt));}
+  .tile .body .room{grid-row:1;align-self:start;line-height:1.3;}
+  .tile .body .name{grid-row:2;align-self:start;}
+  .tile .body .sub{grid-row:3;align-self:end;line-height:1.3;}
+  .grid.list .tile .body{display:block;}
   .tile.good{background:rgba(var(--good-rgb,82,184,129),.16);
     border:1px solid rgba(var(--good-rgb,82,184,129),.55);}
   .tile.good .ico,.tile.good .icowrap,.tile.good .sub{color:var(--good-txt);}
@@ -479,6 +499,8 @@
   .pbig{text-align:center;font-size:clamp(56px,15vw,84px);font-weight:600;letter-spacing:-.02em;line-height:1.06;
     padding:8px 8px;word-break:break-word;}
   .pbig.good{color:var(--good-txt);} .pbig.crit{color:var(--crit-txt);}
+  /* Raumregelung: Farbton des Istwerts nach Loxone-Zustand (heizt/kuehlt), nur Theme-Farben */
+  .pbig.heat{color:var(--dot-3,#ff9e7a);} .pbig.cool{color:var(--cool,#7fb2e6);}
   .grid.panel.bigpage{justify-content:center;gap:14px;}
   /* Verlaufs-Diagramm (Block k:'chart'). Farben nur ueber Theme-Variablen. */
   /* Verlauf wie die Wetter-Diagramme: weisse Flaeche (Kachelfarbe), Werte/Linien in Theme-Farben */
@@ -500,6 +522,7 @@
   .chbody .chlab{font-size:12px;font-weight:700;fill:var(--ink);font-family:var(--font-num,inherit);text-anchor:middle;}   /* wie .wxlab */
   .chbody .chpt{fill:var(--tile,#fff);stroke-width:2.4;}
   .chmsg{color:var(--muted);font-size:14px;text-align:center;padding:26px 0;}
+  .chbody>.chmsg{flex:1 1 auto;display:flex;align-items:center;justify-content:center;}   /* Hinweis mittig im Diagrammrahmen */
   .chleg{display:flex;flex-wrap:wrap;gap:2px 14px;justify-content:center;font-size:12px;color:var(--muted);
     margin-top:2px;font-variant-numeric:tabular-nums;}
   .chleg .chdot{display:inline-block;width:9px;height:9px;border-radius:var(--r-round,32%);margin-right:6px;}
@@ -537,14 +560,16 @@
   /* Aktions-Pillen sind ein Grid: der Pfeil gehoert in dieselbe Zeile wie der Text */
   .brow.act .btn.toggler{display:flex;align-items:center;justify-content:center;}
   /* Auswahl-Popup (Klima Modus/Fan) */
-  .menuov{position:absolute;inset:0;z-index:25;}
+  .menuov{position:absolute;inset:0;z-index:var(--z-menu);}
   .menubox{position:absolute;background:var(--screen);border:1px solid var(--line);
-    border-radius:var(--r-m);padding:4px;min-width:150px;max-height:82%;overflow-y:auto;
+    border-radius:var(--r-m);padding:4px;min-width:160px;max-height:82%;overflow-y:auto;animation:lpfade .12s ease-out;
     box-shadow:0 14px 44px rgba(0,0,0,.65);display:flex;flex-direction:column;gap:1px;}
-  .menuitem{padding:7px 16px;border-radius:var(--r-s);font-size:15px;line-height:1.15;white-space:nowrap;
+  @keyframes lpfade{from{opacity:0}to{opacity:1}}
+  html[data-motion="off"] .menubox,html[data-motion="off"] .lpnotify{animation:none;}
+  .menuitem{display:flex;align-items:center;min-height:44px;box-sizing:border-box;padding:0 16px;border-radius:var(--r-s);font-size:15px;line-height:1.15;white-space:nowrap;
     cursor:pointer;user-select:none;-webkit-user-select:none;color:var(--ink);}
   .menuitem:active{background:rgba(var(--wash,255,255,255),.13);}
-  .menuitem.on{color:var(--glow);background:rgba(var(--on-rgb,224,162,77),.15);}
+  .menuitem.on{background:var(--ink);color:var(--screen);font-weight:600;}
   /* Musik-Player */
   /* Cover = zentriertes Quadrat, das in Breite UND Hoehe der Flaeche passt.
      Ohne Hoehen-Cap ueberdeckt/verdraengt es auf flachen bzw. quadratischen
@@ -627,9 +652,14 @@
   .conn{grid-row:1;grid-column:1;place-self:center;z-index:6;pointer-events:none;
     width:8px;height:8px;border-radius:var(--r-round,32%);background:var(--crit-dot,#c14338);display:none;}
   .conn.ok{background:var(--accent);}
-  #linkbar{position:fixed;left:10px;right:10px;bottom:10px;z-index:60;padding:8px 12px;border-radius:var(--r-s);
-    background:rgba(224,162,77,.96);color:#10140f;font-size:14px;font-weight:600;text-align:center;
-    pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.4);}
+  /* Hinweise (Meldung, Verbindung, Audio): eine Klasse, oben, nicht bedienbar, Pegel als Punkt */
+  #lptoasts{position:absolute;left:16px;right:16px;top:12px;z-index:var(--z-toast);display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;}
+  .lpnotify{box-sizing:border-box;max-width:min(100%,560px);min-height:44px;padding:10px 16px;display:flex;align-items:center;gap:10px;
+    border-radius:var(--r-m);background:var(--face-1,var(--screen));color:var(--ink);border:1px solid var(--line);
+    font-family:inherit;font-size:15px;font-weight:600;line-height:1.25;word-break:break-word;pointer-events:none;
+    box-shadow:0 8px 24px rgba(0,0,0,.35);animation:lpfade .15s ease-out;}
+  .lpnotify::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;background:var(--st-ok,#43b581);}
+  .lpnotify.lv-warn::before{background:var(--st-hint,#e0a24d);} .lpnotify.lv-crit::before{background:var(--st-alarm,#e25c5a);}
   html.stale .grid{filter:saturate(.35);opacity:.7;}
   /* Online-Punkt ausgeblendet: Verbindungsausfaelle meldet der Hinweisbalken (#linkbar).
      Das Element bleibt als Statusmerker (Klasse ok) fuer die Logik bestehen. */
@@ -703,6 +733,7 @@
      gleiche Zellen wie der Screensaver; mehrere Seiten rasten beim Wischen ein. */
   .grid.cells{grid-template-columns:repeat(var(--cc,3),minmax(0,1fr));
     grid-auto-rows:calc((100% - (var(--gr,3) - 1) * var(--gap)) / var(--gr,3));}
+  .grid .pgap{grid-column:1 / -1;pointer-events:none;}
   .grid.cells .cpage{grid-column:1 / -1;pointer-events:none;scroll-snap-align:start;min-height:0;}
   .grid.cells .empty{grid-column:1 / -1;grid-row:1 / span var(--gr,3);}
   .grid.cells .svw .tile{height:100%;}
@@ -714,6 +745,9 @@
   .grid.cells.g3 .svw[data-sz="1x1"] .tile .name,.grid.cells.g3 .svw[data-sz="2x1"] .tile .name{font-size:calc(var(--name-size,18px) * .8);line-height:1.12;}
   .grid.cells.g3 .svw[data-sz="1x1"] .tile .sub,.grid.cells.g3 .svw[data-sz="2x1"] .tile .sub{font-size:calc(var(--sub-size,15px) * .82);margin-top:2px;}
   .grid.cells.g3 .svw[data-sz="2x1"] .tile .name{-webkit-line-clamp:1;}
+  .grid.cells.g3 .svw[data-sz="1x1"] .tile,.grid.cells.g3 .svw[data-sz="2x1"] .tile{--rm-s:calc(var(--room-size,12px) * .85);--rm-mb:1px;
+    --nm-s:calc(var(--name-size,18px) * .8);--nm-lh:1.12;--sb-s:calc(var(--sub-size,15px) * .82);--sb-mt:2px;--nm-n:2;}
+  .grid.cells.g3 .svw[data-sz="2x2"] .tile{--nm-s:calc(var(--name-size,18px) * 1.3);--sb-s:calc(var(--sub-size,15px) * 1.15);--nm-n:2;}
   .grid.cells.g3 .svw[data-sz="2x2"] .tile{--ico-size:56px;padding:18px;}
   .grid.cells.g3 .svw[data-sz="2x2"] .tile .name{font-size:calc(var(--name-size,18px) * 1.3);}
   .grid.cells.g3 .svw[data-sz="2x2"] .tile .sub{font-size:calc(var(--sub-size,15px) * 1.15);}
@@ -721,11 +755,12 @@
   .tab img.tico{background:none;object-fit:contain;}
   .grid.cells.g2 .svw[data-sz="2x2"] .tile{--ico-size:72px;padding:22px;}
   .grid.cells.g2 .svw[data-sz="2x2"] .tile .name{font-size:calc(var(--name-size,18px) * 1.5);}
+  .grid.cells.g2 .svw[data-sz="2x2"] .tile{--nm-s:calc(var(--name-size,18px) * 1.5);--nm-n:1;}
   .svw>*{flex:1;min-width:0;}
   /* Gleicher Aufbau und gleiche Groessen wie im Raster (Raum, Name, Status).
      Die Zellen sind schmaler als normale Kacheln: lange Namen duerfen deshalb
      auf zwei Zeilen umbrechen (mit Silbentrennung) statt abgeschnitten zu werden. */
-  .svw .tile{height:100%;animation:none;}
+  .svw .tile{height:100%;animation:none;--nm-n:2;}
   .svw .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
     hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere;}
   .svw-empty{display:flex;align-items:center;justify-content:center;text-align:center;color:var(--muted);
@@ -750,18 +785,18 @@
   .svw .svw-wx .fc{padding:6px 4px;gap:4px;border-radius:var(--r-m);justify-content:center;min-height:0;}
   /* Schrift waechst mit der Einstellung, aber nie ueber die Kachel hinaus (Containerhoehe) */
   .svw.svw-weather-cell{container-type:size;}
-  .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 9cqh);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 13px);font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 9cqh);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
   .svw .svw-wx .fc .ico{flex:1 1 0;width:100%;height:auto;min-height:14px;max-height:64px;}
   /* Tag und Temperaturen behalten ihre Hoehe; nur das Symbol passt sich an
      (sonst drueckte ein grosses Symbol die Tageszeile auf wenige Pixel). */
   .svw .svw-wx .fc .d,.svw .svw-wx .fc .tt{flex:none;line-height:1.2;}
-  .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 12cqh);white-space:nowrap;}
+  .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 18px);font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 12cqh);white-space:nowrap;}
   /* 1x1: Zustand/Hoch-Tief unter die Temperatur (sonst auf 0 px gequetscht);
      reicht die Hoehe nicht fuer die Tagesvorschau, entfaellt sie. */
   .svw[data-sz="1x1"] .svw-wx{padding:10px 12px;gap:6px;}
   .svw[data-sz="1x1"] .svw-wx .now{flex-wrap:wrap;row-gap:2px;column-gap:6px;}
-  .svw[data-sz="1x1"] .svw-wx .now .ico{width:min(40px,22cqh);height:min(40px,22cqh);}
-  .svw[data-sz="1x1"] .svw-wx .now .t{font-size:min(32px,24cqh);}
+  .svw[data-sz="1x1"] .svw-wx .now .ico{width:min(40px,33px);height:min(40px,33px);width:min(40px,22cqh);height:min(40px,22cqh);}
+  .svw[data-sz="1x1"] .svw-wx .now .t{font-size:min(32px,36px);font-size:min(32px,24cqh);}
   .svw[data-sz="1x1"] .svw-wx .now .meta{flex-basis:100%;min-width:0;}
   .svw[data-sz="1x1"] .svw-wx .now .meta>*{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   @container (max-width:220px) and (max-height:170px){ .svw .svw-wx .fore{display:none !important;} }
@@ -776,6 +811,18 @@
     .svw .svw-wx .fore{flex:1;min-width:0;grid-template-columns:repeat(var(--fc,3),minmax(0,1fr));}
     .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 12cqh);}
     .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 14cqh);}
+  }
+  /* Ohne Container-Queries (Safari < 16): dieselben Regeln ueber die Kachelgroesse */
+  @supports not (container-type:size){
+    .svw[data-sz="1x1"] .svw-wx .fore{display:none !important;}
+    .svw[data-sz="3x1"] .svw-wx{flex-direction:row;align-items:stretch;gap:10px;}
+    .svw[data-sz="3x1"] .svw-wx .now{flex:none;align-self:center;flex-direction:column;gap:2px;}
+    .svw[data-sz="3x1"] .svw-wx .now .meta{display:none;}
+    .svw[data-sz="3x1"] .svw-wx .now .ico{width:34px;height:34px;}
+    .svw[data-sz="3x1"] .svw-wx .now .t{font-size:32px;}
+    .svw[data-sz="3x1"] .svw-wx .fore{flex:1;min-width:0;grid-template-columns:repeat(var(--fc,3),minmax(0,1fr));}
+    .svw[data-sz="3x1"] .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 15px);}
+    .svw[data-sz="3x1"] .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 18px);}
   }
   .svw .svw-curve svg{width:100%;height:auto;max-height:150px;display:block;}
   .svw .svw-cal{justify-content:flex-start;gap:6px;}
@@ -1054,20 +1101,22 @@
     background:rgba(var(--wash,255,255,255),.06);}
   .moreb:active{transform:scale(.92);}
   /* PIN-Eingabe im Kartenstil: grosse Pillen, Punkte-Anzeige, Abbrechen = x oder daneben tippen */
-  .pinov{position:absolute;inset:0;z-index:45;background:rgba(0,0,0,.55);display:grid;place-items:center;}
-  .pinbox{background:var(--face-1,var(--screen));color:var(--ink);border-radius:var(--r-xl);padding:14px 16px 16px;
-    width:min(92%,380px);max-height:96%;box-shadow:0 20px 50px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;}
-  .pinhd{display:flex;align-items:center;justify-content:space-between;min-height:40px;}
+  .pinov{position:absolute;inset:0;z-index:var(--z-sheet);background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px;}
+  .pinbox{background:var(--face-1,var(--screen));color:var(--ink);border-radius:var(--r-xl);padding:var(--shp,18px);
+    box-sizing:border-box;width:var(--shw,440px);max-height:100%;box-shadow:0 20px 50px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:10px;}
+  .pinhd{display:flex;align-items:center;justify-content:space-between;min-height:56px;flex:none;}
   .pinttl{font-weight:700;font-size:18px;padding-left:6px;}
-  .pinx{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:var(--tile);font-size:18px;}
+  .pinx{position:relative;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;cursor:pointer;background:rgba(var(--wash,255,255,255),.10);font-size:16px;}
+  .pinx::after{content:"";position:absolute;inset:-4px;}
   .pindisp{font-family:var(--font-num,"Sora",sans-serif);font-size:30px;text-align:center;letter-spacing:.35em;min-height:40px;line-height:40px;}
   .pinmsg{color:var(--crit-txt);font-size:14px;text-align:center;min-height:0;}
   .pinmsg:empty{display:none;}
   .pinpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-  .pinkey{height:52px;border-radius:var(--r-pill);display:grid;place-items:center;font-family:var(--font-num,"Sora",sans-serif);
+  .pinkey{height:56px;border-radius:var(--r-pill);display:grid;place-items:center;font-family:var(--font-num,"Sora",sans-serif);
     font-size:22px;font-weight:600;cursor:pointer;user-select:none;background:var(--tile);color:var(--ink);}
   .pinkey:active{transform:scale(.96);}
-  .pinkey.ok{background:var(--ink);color:var(--tile);font-size:18px;}
+  .pinkey.ok{background:var(--ink);color:var(--screen);font-size:18px;}
+  .pinov.short .pinkey{height:44px;}
   .pinkey.del{font-size:22px;}
   /* ==== Layout-Redesign (UI-Mockup 09/2026): Tab-Leiste oben auf dem Rahmen,
      darunter EINE abgerundete Karte je Tab in dessen Farbe, weisse Kacheln.
@@ -1141,9 +1190,18 @@
   /* Hintergrund-Symbol links unten angeschnitten: die Box ist genau so gross
      wie die Karte und schneidet ab - sonst vergroesserte das ueberstehende
      Symbol die Scrollflaeche und die Detailansicht bekam einen Scrollbalken. */
+  /* Regel: Anzeige ohne Schaltelemente → Piktogramm im Hintergrund
+     - nur Detailansichten ohne Schaltelemente (Server setzt dafuer view.bgIcon);
+       sobald ein Schalter, Regler oder eine Szenenliste da ist, gibt es kein Piktogramm
+     - immer gleich: Seite = 85 % der kleineren Kartenseite (--dbs, von fitDbg() gesetzt),
+       Position links unten, um 18 % (links) und 20 % (unten) seiner Seite ueber den
+       Kartenrand geschoben - die Kartenrundung schneidet es an, rund zwei Drittel der Symbolflaeche bleiben sichtbar
+     - immer gleiche Deckkraft (.08) und Strichstaerke, nie ueber Bedienelementen
+       (die Inhalte liegen mit z-index:1 darueber, das Piktogramm faengt keine Eingaben ab) */
   .dbg{position:absolute;inset:0;overflow:hidden;border-radius:inherit;z-index:0;pointer-events:none;
-    color:var(--ink);opacity:.08;}
-  .dbg>*{position:absolute;left:-70px;bottom:-80px;width:330px;height:330px;}
+    color:var(--ink);opacity:.08;--dbs:330px;}
+  .dbg>*{position:absolute;left:calc(var(--dbs) * -.18);bottom:calc(var(--dbs) * -.2);width:var(--dbs);height:var(--dbs);}
+  .grid.hasbg>:not(.dbg):not(.dcover){position:relative;z-index:1;}
   .dbg svg{stroke-width:.7;}
   .dbg .rawico{object-fit:contain;}
   .dbg .dbgm{display:block;background-color:var(--ink);
@@ -1270,7 +1328,7 @@
   .dimcard i{position:absolute;left:0;right:0;bottom:0;background:var(--glow);opacity:.5;}
   .dimcard.heat i{background:var(--dot-3,#ff9e7a);opacity:.55;}
   .dimcard .dimtxt{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:none;}
-  .dimcard .dcap,.dimcard .dsub{font-size:15px;color:var(--muted);}
+  .dimcard .dcap,.dimcard .dsub{font-size:15px;color:var(--ink);opacity:.78;}   /* auf der farbigen Fuellung: Tinte statt --muted (Kontrast in hell/dunkel) */
   /* Aktionsreihe: alle Knoepfe als gleich hohe Pille (56 px).
      Breiten: 1 Pille = 1/2 (mittig), 2 Pillen = je 1/4 (mittig), mehr = teilen
      sich die Breite. Der Verlauf ist die unwichtigste Aktion: neben anderen im
@@ -1314,71 +1372,71 @@
   .tswitch{background:rgba(var(--wash,255,255,255),.2);border-color:transparent;}
   .tile.good,.tile.crit{border-width:2px;}
   /* Screensaver = Ruhemodus auf dem Rahmen: helle Schrift, Karten leicht getoent. */
+  .saver.ambdark{color:#eef1f7;--ink:#eef1f7;--muted:rgba(238,241,247,.72);--bezel-ink:#eef1f7;}
   .saver{color:var(--bezel-ink,var(--ink));--ink:var(--bezel-ink,#e7ede7);--muted:var(--tab-idle,#9fb0a4);
     --wash:var(--bezel-ink-rgb,255,255,255);--line:rgba(var(--bezel-ink-rgb,255,255,255),.08);
     --tile:rgba(var(--bezel-ink-rgb,255,255,255),.06);}
 
   /* ===== Status-Widget (Ampel) ===== */
   .svw.svw-status-cell{container-type:size;}
-  .stw{height:100%;box-sizing:border-box;border-radius:var(--tile-r,18px);padding:clamp(8px,6cqmin,16px);display:flex;flex-direction:column;gap:clamp(5px,4cqmin,10px);cursor:pointer;overflow:hidden;}
+  .stw{height:100%;box-sizing:border-box;border-radius:var(--tile-r,18px);padding:9px;padding:clamp(8px,6cqmin,16px);display:flex;flex-direction:column;gap:6px;gap:clamp(5px,4cqmin,10px);cursor:pointer;overflow:hidden;}
   .stw.lv-ok{background:#D2EDE0;color:#0F5132;} .stw.lv-hint{background:#FAE6B8;color:#633806;} .stw.lv-alarm{background:#F5C9C9;color:#791F1F;}
-  .sthd{display:flex;align-items:center;gap:clamp(5px,4cqmin,10px);font-weight:600;font-size:clamp(12px,9cqmin,22px);line-height:1.1;min-width:0;}
+  .sthd{display:flex;align-items:center;gap:6px;gap:clamp(5px,4cqmin,10px);font-weight:600;font-size:13.5px;font-size:clamp(12px,9cqmin,22px);line-height:1.1;min-width:0;}
   .sthd span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .sthi{width:1.15em;height:1.15em;flex:none;display:grid;}
   .sthi svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
-  .stbody{flex:1;min-height:0;display:flex;gap:clamp(5px,4cqmin,10px);}
-  .stchips{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:clamp(4px,3cqmin,8px);flex:1;min-width:0;}
+  .stbody{flex:1;min-height:0;display:flex;gap:6px;gap:clamp(5px,4cqmin,10px);}
+  .stchips{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:4.5px;gap:clamp(4px,3cqmin,8px);flex:1;min-width:0;}
   .stw.wide:not(.tall) .stchips{flex:0 0 46%;}
   .stw.tall .stbody{flex-direction:column;} .stw.tall .stchips{flex:0 0 auto;grid-template-columns:repeat(2,1fr);grid-auto-rows:auto;}
   .stw.wide.tall .stchips{grid-template-columns:repeat(4,1fr);}
-  .stchip{border:0;border-radius:clamp(7px,5cqmin,12px);padding:clamp(4px,3cqmin,9px) clamp(5px,3.5cqmin,10px);display:flex;align-items:center;gap:clamp(4px,2.5cqmin,7px);min-width:0;font:inherit;
-    font-size:clamp(10px,6.5cqmin,15px);font-weight:600;cursor:pointer;background:rgba(255,255,255,.62);color:inherit;text-align:left;touch-action:manipulation;line-height:1.15;}
+  .stchip{border:0;border-radius:7.5px;border-radius:clamp(7px,5cqmin,12px);padding:4.5px 5.25px;padding:clamp(4px,3cqmin,9px) clamp(5px,3.5cqmin,10px);display:flex;align-items:center;gap:4px;gap:clamp(4px,2.5cqmin,7px);min-width:0;font:inherit;
+    font-size:10px;font-size:clamp(10px,6.5cqmin,15px);font-weight:600;cursor:pointer;background:rgba(255,255,255,.62);color:inherit;text-align:left;touch-action:manipulation;line-height:1.15;}
   .stchip .stn{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
   .stchip .stt{font-weight:500;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .stw.wide .stchip{flex-wrap:wrap;align-content:center;} .stw.wide .stchip .stn{flex:1;} .stw.wide .stchip .stt{width:100%;font-size:.88em;}
   .stchip.lv-hint{background:#E8AE3C;color:#412402;} .stchip.lv-alarm{background:#DC5654;color:#fff;} .stchip.lv-info{background:#C2DAF2;color:#0C447C;}
   .stci{width:1.15em;height:1.15em;flex:none;background:currentColor;-webkit-mask:var(--u) center/contain no-repeat;mask:var(--u) center/contain no-repeat;}
   .stci.svg{background:none;-webkit-mask:none;mask:none;display:grid;} .stci.svg svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:2;}
-  .stlist{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:clamp(3px,2.5cqmin,6px);overflow:hidden;}
-  .stli{background:rgba(255,255,255,.62);border-radius:clamp(7px,5cqmin,12px);padding:clamp(4px,2.5cqmin,8px) clamp(6px,3.5cqmin,10px);font-size:clamp(10px,5.5cqmin,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;}
+  .stlist{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;gap:3.75px;gap:clamp(3px,2.5cqmin,6px);overflow:hidden;}
+  .stli{background:rgba(255,255,255,.62);border-radius:7.5px;border-radius:clamp(7px,5cqmin,12px);padding:4px 6px;padding:clamp(4px,2.5cqmin,8px) clamp(6px,3.5cqmin,10px);font-size:10px;font-size:clamp(10px,5.5cqmin,14px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;}
   .stli.lv-hint{background:rgba(232,174,60,.45);} .stli.lv-alarm{background:rgba(220,86,84,.35);}
-  .stlog{font-size:clamp(9px,4.5cqmin,12px);opacity:.8;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .stft{font-size:clamp(10px,5.5cqmin,14px);line-height:1.25;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;}
+  .stlog{font-size:9px;font-size:clamp(9px,4.5cqmin,12px);opacity:.8;margin-top:auto;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stft{font-size:10px;font-size:clamp(10px,5.5cqmin,14px);line-height:1.25;opacity:.9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:none;}
   .stw.tall .stft{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
   /* Standard: passend zum Hintergrund (wie die anderen Widgets: Kachelfarbe des Designs
      bzw. dunkel im Dashboard); die Ampel zeigt sich ueber Akzentfarben */
   .stw.look-auto{background:var(--tile);border:1px solid var(--line);color:var(--ink);
     --st-ok:#43b581;--st-hint:#e0a24d;--st-alarm:#e25c5a;--st-info:#5b9bd5;}
   .stw.look-auto .sthd{color:var(--st-ok);} .stw.look-auto.lv-hint .sthd{color:var(--st-hint);} .stw.look-auto.lv-alarm .sthd{color:var(--st-alarm);}
-  .stw.look-auto.lv-alarm{border-color:color-mix(in srgb,var(--st-alarm) 70%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--st-alarm) 50%,transparent);}
-  .stw.look-auto .stchip{background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);}
+  .stw.look-auto.lv-alarm{border-color:rgba(226,92,90,.7);border-color:color-mix(in srgb,var(--st-alarm) 70%,transparent);box-shadow:inset 0 0 0 1px rgba(226,92,90,.5);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--st-alarm) 50%,transparent);}
+  .stw.look-auto .stchip{background:rgba(127,127,127,.14);background:color-mix(in srgb,var(--ink) 7%,transparent);color:var(--ink);}
   .stw.look-auto .stchip .stci{color:var(--muted);}
-  .stw.look-auto .stchip.lv-hint{background:color-mix(in srgb,var(--st-hint) 26%,transparent);} .stw.look-auto .stchip.lv-hint .stci{color:var(--st-hint);}
-  .stw.look-auto .stchip.lv-alarm{background:color-mix(in srgb,var(--st-alarm) 34%,transparent);} .stw.look-auto .stchip.lv-alarm .stci{color:var(--st-alarm);}
-  .stw.look-auto .stchip.lv-info{background:color-mix(in srgb,var(--st-info) 24%,transparent);} .stw.look-auto .stchip.lv-info .stci{color:var(--st-info);}
-  .stw.look-auto .stli{background:color-mix(in srgb,var(--ink) 7%,transparent);}
-  .stw.look-auto .stli.lv-hint{background:color-mix(in srgb,var(--st-hint) 22%,transparent);} .stw.look-auto .stli.lv-alarm{background:color-mix(in srgb,var(--st-alarm) 28%,transparent);}
+  .stw.look-auto .stchip.lv-hint{background:rgba(224,162,77,.26);background:color-mix(in srgb,var(--st-hint) 26%,transparent);} .stw.look-auto .stchip.lv-hint .stci{color:var(--st-hint);}
+  .stw.look-auto .stchip.lv-alarm{background:rgba(226,92,90,.34);background:color-mix(in srgb,var(--st-alarm) 34%,transparent);} .stw.look-auto .stchip.lv-alarm .stci{color:var(--st-alarm);}
+  .stw.look-auto .stchip.lv-info{background:rgba(91,155,213,.24);background:color-mix(in srgb,var(--st-info) 24%,transparent);} .stw.look-auto .stchip.lv-info .stci{color:var(--st-info);}
+  .stw.look-auto .stli{background:rgba(127,127,127,.14);background:color-mix(in srgb,var(--ink) 7%,transparent);}
+  .stw.look-auto .stli.lv-hint{background:rgba(224,162,77,.22);background:color-mix(in srgb,var(--st-hint) 22%,transparent);} .stw.look-auto .stli.lv-alarm{background:rgba(226,92,90,.28);background:color-mix(in srgb,var(--st-alarm) 28%,transparent);}
   .stw.look-auto .stft,.stw.look-auto .stlog{color:var(--muted);opacity:1;}
   /* Status-Seite (Tipp auf die Kachel) */
-  .stsheet{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.35);display:grid;place-items:center;padding:16px;}
+  .stsheet{position:absolute;inset:0;z-index:var(--z-sheet);background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px;}
   .stsheet[hidden]{display:none;}
   /* Info-Popups (Status, Wetter): einheitlicher Rahmen - gleiche Breite, Raender,
      Radius, Schatten; Hoehe nach Inhalt; Kopf = Symbol, Titel, (Extra), X rechts oben. */
-  .stsbox,.wxsbox{width:min(440px,100%);max-height:100%;overflow:auto;border-radius:var(--r-l);padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 40px rgba(0,0,0,.35);}
-  .stsbox .sthd,.wxsbox .wxhd{display:flex;align-items:center;gap:10px;min-height:34px;}
+  .stsbox,.wxsbox{box-sizing:border-box;width:var(--shw,440px);max-width:100%;max-height:100%;overflow:auto;border-radius:var(--r-xl);padding:var(--shp,18px);background:var(--face-1,var(--screen));color:var(--ink);display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 40px rgba(0,0,0,.35);}
+  .stsbox .sthd,.wxsbox .wxhd{display:flex;align-items:center;gap:10px;min-height:56px;flex:none;}
   .stsbox .sthd .sthi,.wxsbox .wxhd .wxico,.wxsbox .wxhd .wxico svg{width:30px;height:30px;flex:none;}
-  .stsbox .stsx,.wxsbox .stsx{margin-left:auto;flex:none;align-self:flex-start;}
-  .stsbox.lv-ok{background:#D2EDE0;color:#0F5132;} .stsbox.lv-hint{background:#FAE6B8;color:#633806;} .stsbox.lv-alarm{background:#F5C9C9;color:#791F1F;}
+  .stsbox .stsx,.wxsbox .stsx{margin-left:auto;flex:none;}
+  .stsbox .sthi{color:var(--st-ok,#43b581);} .stsbox.lv-hint .sthi{color:var(--st-hint,#e0a24d);} .stsbox.lv-alarm .sthi{color:var(--st-alarm,#e25c5a);}
   .stsbox .sthd{font-size:20px;}
-  .stsx{margin-left:auto;border:0;background:rgba(255,255,255,.6);color:inherit;width:34px;height:34px;border-radius:50%;font-size:14px;cursor:pointer;}
-  .strow{display:flex;align-items:center;gap:10px;border:0;border-radius:var(--r-m);padding:12px 14px;font:inherit;font-size:15px;background:rgba(255,255,255,.7);color:var(--ink,#1f2440);cursor:pointer;text-align:left;}
+  .stsx{position:relative;margin-left:auto;border:0;background:rgba(var(--wash,255,255,255),.10);color:inherit;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;display:grid;place-items:center;padding:0;}
+  .stsx::after{content:"";position:absolute;inset:-4px;}
+  .strow{display:flex;align-items:center;gap:10px;border:0;border-radius:var(--r-m);padding:12px 14px;font:inherit;font-size:15px;background:rgba(var(--wash,255,255,255),.08);color:var(--ink,#1f2440);cursor:pointer;text-align:left;}
   .strow .stci{width:20px;height:20px;} .strow .stn{display:flex;flex-direction:column;min-width:0;font-weight:600;}
   .stroom{font-weight:700;}
   /* Wetter-Tagesdetails (Popup im Stil des Status-Fensters, Pastell-Blau) */
   .wxtap{cursor:pointer;border-radius:var(--r-m);transition:background var(--anim-fast,.15s) ease;}
   .wxtap:active{background:rgba(var(--wash,255,255,255),.12);}
-  .wxsbox{background:var(--face-2,var(--tile,#D3E8FF));color:var(--ink,#1f2440);}
-  .wxsbox .stsx{background:rgba(var(--wash,255,255,255),.10);}
   @keyframes wxin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
   .wxtt{display:flex;flex-direction:column;min-width:0;} .wxtt b{font-size:20px;font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));font-weight:var(--name-weight,450);} .wxtt small{font-size:13px;color:var(--muted);}
   .wxhl{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;line-height:1.05;font-variant-numeric:tabular-nums;}
@@ -1400,28 +1458,31 @@
   .wxsun{fill:#ffd36a;stroke:#fff6d6;stroke-width:2.5;filter:drop-shadow(0 0 6px rgba(255,200,80,.8));opacity:0;animation:wxfade .4s ease 1s forwards;}
   .wxttl{font-size:11px;font-weight:700;fill:var(--muted,#565c7c);letter-spacing:.02em;}
   .wxc.wxsel{cursor:pointer;transition:box-shadow .2s ease,transform .15s ease;}
+  .wxc.wxsel{background:var(--tile,rgba(255,255,255,.7));border-color:transparent;}
   .wxc.wxsel:active{transform:scale(.97);}
   .wxc.on{box-shadow:inset 0 0 0 2px var(--accent,#ffc145);}
   .wxchips{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;}
-  .wxc{background:var(--tile,rgba(255,255,255,.7));border-radius:var(--r-m);padding:9px 12px;display:flex;flex-direction:column;gap:2px;opacity:0;animation:wxin .35s var(--ease,ease) forwards;}
+  .wxc{background:transparent;border:1px solid var(--line);border-radius:var(--r-m);padding:9px 12px;display:flex;flex-direction:column;gap:2px;opacity:0;animation:wxin .35s var(--ease,ease) forwards;}
   .wxc span{font-size:11px;color:var(--muted);} .wxc b{font-size:15px;font-variant-numeric:tabular-nums;}
   html[data-motion="off"] .wxsbox,html[data-motion="off"] .wxsbox *{animation:none!important;opacity:1;transform:none;stroke-dashoffset:0;}
   .strow .stn small{font-weight:400;font-size:12px;opacity:.75;line-height:1.35;} .strow .stn small:first-of-type{margin-top:2px;} .strow .stt{margin-left:auto;font-size:13px;opacity:.85;white-space:nowrap;} .strow .stgo{opacity:.5;font-size:18px;}
-  .strow.lv-hint{background:#E8AE3C;color:#412402;} .strow.lv-alarm{background:#DC5654;color:#fff;} .strow.lv-info{background:#C2DAF2;color:#0C447C;}
-  .stsbox .stlog{font-size:12px;white-space:normal;background:rgba(255,255,255,.5);border-radius:var(--r-m);padding:10px 12px;opacity:1;}
+  .strow.lv-hint{background:rgba(224,162,77,.26);background:color-mix(in srgb,var(--st-hint,#e0a24d) 26%,transparent);}
+  .strow.lv-alarm{background:rgba(226,92,90,.34);background:color-mix(in srgb,var(--st-alarm,#e25c5a) 34%,transparent);}
+  .strow.lv-info{background:rgba(91,155,213,.24);background:color-mix(in srgb,var(--st-info,#5b9bd5) 24%,transparent);}
+  .stsbox .stlog{font-size:12px;white-space:normal;background:transparent;border:1px solid var(--line);border-radius:var(--r-m);padding:10px 12px;opacity:1;}
   .stsbox .stlog b{display:block;margin-bottom:4px;}
 
   /* ===== Alarm-Vollbild =====
      Deckt den ganzen Bildschirm ab; Karte wie eine Detailseite (Radius,
      Kopf mit Raum/Name), Status gross in der Zahlen-Schrift, Aktionen als
      Pillen. Rot bewusst fest und pulsierend - muss auffallen. */
-  .secal{position:absolute;inset:0;z-index:40;background:#2a0607;display:flex;gap:12px;padding:12px;overflow:auto;}
-  .secbox{flex:1 1 0;min-width:0;border-radius:var(--r-xl);background:#C62F2D;color:#fff;display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px;
+  .secal{position:absolute;inset:0;z-index:var(--z-alarm);background:var(--al-bg);display:flex;gap:12px;padding:12px;overflow:auto;}
+  .secbox{flex:1 1 0;min-width:0;border-radius:var(--r-xl);background:var(--al-card);color:#fff;display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px;
     position:relative;}
   /* Puls-Ring als eigene Ebene: nur transform/opacity (Compositor) statt box-shadow, das
      jedes Bild neu gezeichnet werden muesste - gleiches Aussehen, kaum Last (Shelly). */
   .secbox::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-    box-shadow:0 0 0 9px rgba(255,90,90,.65);animation:secpulse 1.6s ease-out infinite;}
+    box-shadow:0 0 0 9px var(--al-pulse);animation:secpulse 1.6s ease-out infinite;}
   .screen:not(.split) .secal{flex-direction:column;}
   @keyframes secpulse{0%{transform:scale(.97);opacity:1;}100%{transform:scale(1.06);opacity:0;}}
   .secbox .dhead .droom{color:rgba(255,255,255,.8);} .secbox .dhead .dname{color:#fff;}
@@ -1437,8 +1498,8 @@
     font:inherit;font-size:15px;font-weight:600;cursor:pointer;touch-action:manipulation;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .secpill:active{background:rgba(255,255,255,.3);}
   @media (max-width:600px){ .secrow{gap:8px;} .secpill{font-size:13px;padding:0 4px;} .secopt{display:none;} }
-  .secpill.main{background:#fff;color:#8E1F1D;font-weight:700;}
-  .secpill.main:active,.secpill.main.sent{background:#f3d3d3;}
+  .secpill.main{background:#fff;color:var(--al-on);font-weight:700;}
+  .secpill.main:active,.secpill.main.sent{background:var(--al-press);}
   .sectap{display:none;width:max-content;margin-top:8px;font-size:13px;font-weight:600;background:rgba(0,0,0,.25);border-radius:999px;padding:4px 12px;}
   html.tone-blocked .sectap{display:block;}
   html[data-motion="off"] .secbox::after{animation:none;opacity:0;}
@@ -1463,14 +1524,14 @@
   .grid .stw.look-auto{border:0;box-shadow:var(--tile-shadow,0 3px 10px rgba(0,0,0,.14));}
   .grid.cells.g3 .svw[data-sz="1x1"] .stw,.grid.cells.g3 .svw[data-sz="2x1"] .stw,.grid.cells.g3 .svw[data-sz="3x1"] .stw{padding:10px 12px;gap:6px;}
   .stw .sthd{font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));
-    font-size:min(var(--name-size,18px),12cqmin);font-weight:var(--name-weight,450);letter-spacing:-.01em;line-height:1.15;gap:.4em;}
+    font-size:min(var(--name-size,18px),18px);font-size:min(var(--name-size,18px),12cqmin);font-weight:var(--name-weight,450);letter-spacing:-.01em;line-height:1.15;gap:.4em;}
   .stw .sthi{width:1.15em;height:1.15em;}
-  .stw .stchip{font-size:min(calc(var(--sub-size,15px) * .87),8.5cqmin);font-weight:500;}
+  .stw .stchip{font-size:min(calc(var(--sub-size,15px) * .87),12.75px);font-size:min(calc(var(--sub-size,15px) * .87),8.5cqmin);font-weight:500;}
   .stw .stchip .stci{width:1.1em;height:1.1em;}
-  .stw .stli{font-size:min(calc(var(--sub-size,15px) * .87),8cqmin);}
-  .stw .stft{font-size:min(var(--sub-size,15px),8cqmin);font-weight:400;}
-  .stw .stlog{font-size:min(calc(var(--sub-size,15px) * .8),7cqmin);}
-  .stw.tall .sthd,.stw.wide.tall .sthd{font-size:min(calc(var(--name-size,18px) * 1.3),11cqmin);}
+  .stw .stli{font-size:min(calc(var(--sub-size,15px) * .87),12px);font-size:min(calc(var(--sub-size,15px) * .87),8cqmin);}
+  .stw .stft{font-size:min(var(--sub-size,15px),12px);font-size:min(var(--sub-size,15px),8cqmin);font-weight:400;}
+  .stw .stlog{font-size:min(calc(var(--sub-size,15px) * .8),10.5px);font-size:min(calc(var(--sub-size,15px) * .8),7cqmin);}
+  .stw.tall .sthd,.stw.wide.tall .sthd{font-size:min(calc(var(--name-size,18px) * 1.3),16.5px);font-size:min(calc(var(--name-size,18px) * 1.3),11cqmin);}
   .stsbox .sthd span{font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));font-weight:var(--name-weight,450);}
 
   /* ===== Animierte Symbole =====
@@ -1482,6 +1543,7 @@
   @keyframes icPop{0%{transform:scale(1);filter:brightness(1.3);}40%{transform:scale(1.12);}100%{transform:scale(1);filter:none;}}
   @keyframes valTick{0%{opacity:.35;transform:translateY(3px);}100%{opacity:1;transform:none;}}
   @keyframes chipFlash{0%{box-shadow:0 0 0 0 color-mix(in srgb,currentColor 55%,transparent);}100%{box-shadow:0 0 0 8px transparent;}}
+  @supports not (color:color-mix(in srgb,red,blue)){@keyframes chipFlash{0%{box-shadow:0 0 0 0 currentColor;opacity:.6;}100%{box-shadow:0 0 0 8px transparent;opacity:1;}}}
   @keyframes icRing{0%,55%,100%{transform:rotate(0);}8%{transform:rotate(-12deg);}16%{transform:rotate(11deg);}24%{transform:rotate(-8deg);}32%{transform:rotate(6deg);}40%{transform:rotate(-3deg);}}
   @keyframes icBobUp{0%,100%{transform:translateY(0);}50%{transform:translateY(-2px);}}
   @keyframes icBobDown{0%,100%{transform:translateY(0);}50%{transform:translateY(2px);}}
@@ -1559,6 +1621,7 @@
   .grid.cells.g2 .svw[data-sz="1x1"] .tile .name,
   html.phone .screen>.grid:not(.panel):not(.list):not(.scheme) .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
     -webkit-box-orient:vertical;overflow:hidden;}
+  html.phone .screen>.grid:not(.panel):not(.list):not(.scheme) .tile{--nm-n:2;}
 
   /* Kamera "ganzes Bild": freie Raender fuellen (Config -> Kameras -> Bildausschnitt) */
   .camfill-card{background:var(--face,var(--tile)) linear-gradient(rgba(31,36,64,.07),rgba(31,36,64,.07)) !important;}
@@ -1606,6 +1669,34 @@
   /* Eintrag oeffnet eine Ansicht: Pfeil rechts wie bei Kacheln */
   .pantop>.pbig ~ .scenes .scene.nav::after{content:"\203A";margin-left:auto;padding-left:8px;font-size:22px;line-height:1;opacity:.55;}
 
+  /* ==== Raumregelung-Detail: Pillen, Sollwert-Zeile, Tagesplan ====
+     Anzeigen transparent mit Haarlinie, Tippbares gefuellt (Flaeche heisst tippbar). */
+  .pchips{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;flex-shrink:0;max-width:640px;margin:0 auto;}
+  .pchip{height:var(--pill-s,30px);padding:0 14px;border-radius:var(--r-pill);display:inline-flex;align-items:center;max-width:100%;
+    font-size:14px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    background:transparent;box-shadow:inset 0 0 0 1px rgba(var(--wash,255,255,255),.14);}
+  .pchip.heat{color:var(--dot-3,#ff9e7a);} .pchip.cool{color:var(--cool,#7fb2e6);}
+  .pchip.tap{background:var(--tile);box-shadow:none;cursor:pointer;}
+  .pchip.tap::after{content:'\25BE';margin-left:7px;opacity:.55;font-size:.82em;}
+  .psetp{flex-shrink:0;width:100%;max-width:640px;margin:0 auto;height:var(--pill-m,44px);padding:0 4px;border-radius:var(--r-pill);
+    display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:inset 0 0 0 1px rgba(var(--wash,255,255,255),.14);}
+  .psetp .sb{flex:none;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--tile);color:var(--ink);cursor:pointer;touch-action:none;}
+  .psetp .sb:active{transform:scale(.94);}
+  .psetp .sb svg{width:20px;height:20px;}
+  .psetp .spv{display:flex;align-items:baseline;justify-content:center;gap:10px;min-width:0;}
+  .psetp .spv b{font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));font-size:22px;font-weight:600;}
+  .psetp .spv span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;}
+  .ptl{flex-shrink:0;width:100%;max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:3px;padding:0 6px;box-sizing:border-box;}
+  .ptl .tlbar{position:relative;height:10px;border-radius:var(--r-s);box-shadow:inset 0 0 0 1px rgba(var(--wash,255,255,255),.14);}
+  .ptl .tlbar i{position:absolute;top:0;bottom:0;border-radius:var(--r-s);}
+  .ptl .tlbar i.comfort{background:var(--glow);} .ptl .tlbar i.other{background:rgba(var(--wash,255,255,255),.25);}
+  .ptl .tlbar i.eco{background:rgba(var(--wash,255,255,255),.10);}
+  .ptl .tlbar.dflt{background:var(--glow);} .ptl .tlbar.dflt i.eco{background:var(--tile);}
+  .ptl .tlbar .now{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;border-radius:1px;background:var(--ink);}
+  .ptl .tlax{position:relative;height:13px;font-size:11px;line-height:13px;color:var(--muted);}
+  .ptl .tlax span{position:absolute;top:0;transform:translateX(-50%);}
+  .ptl .tlax span:first-child{transform:none;} .ptl .tlax span:last-child{transform:translateX(-100%);}
+  .ptl .tltx{text-align:center;font-size:14px;color:var(--muted);min-height:17px;}
   /* ==== Flaeche heisst tippbar (0.19.80) ====
      Alles Tippbare hat eine Flaeche; Rang ueber Groesse und Deckkraft:
      Haupt = tile deckend, Neben (Kreis 32 px) und Chips = tile 55 %, ohne Umriss.
@@ -1633,6 +1724,8 @@
   /* Viele Eintraege (ab 7): auf breiten Panels drei Spalten, sonst etwas niedrigere Zeilen -
      die Liste soll auf ein Panel passen statt in sich zu scrollen. Handy bleibt einspaltig. */
   .grid.panel.wide .pantop>.scenes:has(>:nth-child(7)){grid-template-columns:repeat(3,minmax(0,1fr));}
+  /* 480er (nicht Handy): schon ab 3 Eintraegen zwei Spalten, sonst scrollt die Liste in ihren ~125 px (z.B. 3 Bewaesserungszonen) */
+  html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:not(.lsub):has(>:nth-child(3)){grid-template-columns:repeat(2,minmax(0,1fr));}
   html:not(.phone) .grid.panel .pantop>.scenes:has(>:nth-child(7)){grid-auto-rows:40px;gap:6px;}
   html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:has(>:nth-child(9)){grid-auto-rows:38px;gap:5px;}   /* 480er: 5 Reihen passen */
   html.phone .grid.panel .pantop>.scenes{grid-auto-rows:46px;align-content:start;grid-template-columns:minmax(0,1fr);}   /* Handy: Hoehe reicht, eine Spalte */
@@ -1640,7 +1733,9 @@
     padding:0 14px;gap:10px;border-radius:var(--r-m);}
   .grid.panel .pantop>.scenes>.scene .stx{min-width:0;flex:1 1 auto;}
   .grid.panel .pantop>.scenes>.scene b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .grid.panel .pantop>.scenes>.scene .ssub{font-size:12px;}
+  /* Untertitel (z.B. Wochentage beim Wecker) bis zu 2 Zeilen statt mit "..." abgeschnitten */
+  .grid.panel .pantop>.scenes>.scene .ssub{font-size:11.5px;line-height:1.1;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;}
+  .grid.panel .pantop>.scenes>.scene b{line-height:1.15;}
   .grid.panel .pantop>.scenes .sico{flex:none;display:grid;place-items:center;}
   .grid.panel .pantop>.scenes .sico svg{width:22px;height:22px;margin:0;}
   .grid.panel.wide .brow.act{width:100%;max-width:640px;margin-left:auto;margin-right:auto;}
@@ -1656,6 +1751,10 @@
 
   /* Wetter-Info: Tag wechseln (Pfeile = Nebenaktionen, Punkte = Indikatoren) */
   .wxnav{display:flex;align-items:center;gap:10px;}
+  /* breite Sheets (Panel 960, Tablet): Verlauf links, Kennzahlen rechts - passt ohne Scrollen */
+  .stsheet.two .wxsbox{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px 16px;align-content:start;}
+  .stsheet.two .wxsbox>.wxhd,.stsheet.two .wxsbox>.wxnav{grid-column:1/-1;}
+  .stsheet.two .wxsbox>.wxch{grid-column:1;align-self:center;} .stsheet.two .wxsbox>.wxchips{grid-column:2;align-content:center;}
   .wxar{position:relative;width:32px;height:32px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink);
     background:rgba(255,255,255,.55);background:color-mix(in srgb,var(--tile) 55%,transparent);}
   .wxar::after{content:"";position:absolute;inset:-6px;}
@@ -1688,7 +1787,7 @@
   /* ==== Kachel-Bedienelemente gross (0.19.94): Pfeile 44 px (Pille M), Schalter 52x32 ====
      Rueckweg auf die alte Groesse: --tile-ub:30px; --tile-ub-ico:16px; --tile-sw-w:38px; --tile-sw-h:22px
      (3x3-Raster behaelt die alten Masse, dort ist die Kachel zu klein) */
-  :root{--tile-ub:44px;--tile-ub-ico:20px;--tile-sw-w:38px;--tile-sw-h:22px;}   /* Schalter wieder klein (0.19.97) */
+  :root{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;}   /* Pfeile/Schalter wieder Ursprungsgroesse (0.19.98) */
   .grid.cells.g3{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;}
   /* Niedrige Fenster (Handy quer, kleines Browserfenster): Kacheln sind dort nur ~128 px hoch */
   @media (max-height:430px){ :root{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;} }
@@ -1711,9 +1810,25 @@
     html.pls .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 12cqh);}
     html.pls .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 14cqh);}
   }
+  @supports not (container-type:size){
+    html.pls .svw[data-sz="2x1"] .svw-wx,html.pls .svw[data-sz="3x1"] .svw-wx{flex-direction:row;align-items:stretch;gap:10px;}
+    html.pls .svw[data-sz="2x1"] .svw-wx .now,html.pls .svw[data-sz="3x1"] .svw-wx .now{flex:none;align-self:center;flex-direction:column;gap:2px;}
+    html.pls .svw[data-sz="2x1"] .svw-wx .now .meta,html.pls .svw[data-sz="3x1"] .svw-wx .now .meta{display:none;}
+    html.pls .svw[data-sz="2x1"] .svw-wx .now .ico,html.pls .svw[data-sz="3x1"] .svw-wx .now .ico{width:34px;height:34px;}
+    html.pls .svw[data-sz="2x1"] .svw-wx .now .t,html.pls .svw[data-sz="3x1"] .svw-wx .now .t{font-size:32px;}
+    html.pls .svw[data-sz="2x1"] .svw-wx .fore,html.pls .svw[data-sz="3x1"] .svw-wx .fore{flex:1;min-width:0;grid-template-columns:repeat(var(--fc,3),minmax(0,1fr));}
+    html.pls .svw[data-sz="2x1"] .svw-wx .fc .d,html.pls .svw[data-sz="3x1"] .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 15px);}
+    html.pls .svw[data-sz="2x1"] .svw-wx .fc .tt,html.pls .svw[data-sz="3x1"] .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 18px);}
+  }
   /* Detailseiten flacher: Wert, Pillen (M statt L) und Symbole niedriger, damit nichts abgeschnitten wird */
   html.pls .grid.panel .pbig,html.pls .grid.panel.wide .pbig.word,html.pls .grid.panel .dstate .pbig{font-size:clamp(30px,11vh,42px);}
   html.pls .grid.panel .status{font-size:14px;}
+  /* Handy quer: Szenenliste in 3 Spalten (ab 5 Eintraegen), ab 7 niedrigere Zeilen -> alle Eintraege (auch der aktive) sichtbar ohne Scrollen */
+  html.pls .grid.panel .pantop>.scenes:has(>:nth-child(5)){grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
+  html.pls .grid.panel .pantop>.scenes:has(>:nth-child(7)){grid-auto-rows:38px !important;gap:5px !important;}
+  /* Rollladen/Beschattung: Status-Zeile ausblenden, damit Auf/Ab-Balken mind. 44 px (Pille M) hoch sind */
+  html.pls .grid.panel .pantop:has(>.shade)>.status{display:none;}
+  html.pls .shade .sbar:not(.pos){min-height:var(--pill-m,44px);flex:0 0 auto;}
   html.pls .grid.panel .brow.act{min-height:var(--pill-m,44px);}
   html.pls .grid.panel .brow.act .btn{height:var(--pill-m,44px);}
   html.pls .grid.panel .brow.act .btn svg{width:24px;height:24px;}
@@ -1738,12 +1853,15 @@
   html.pls .grid:not(.panel) .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
     font-size:min(var(--name-size,18px),16px);}
   html.pls .grid:not(.panel) .tile .sub{margin-top:2px;font-size:min(var(--sub-size,15px),14px);}
+  html.pls .grid:not(.panel) .tile{--rm-mb:0px;--nm-n:2;--nm-s:min(var(--name-size,18px),16px);--sb-s:min(var(--sub-size,15px),14px);--sb-mt:2px;}
   @media (max-height:380px){
     html.pls .grid:not(.panel) .tile{padding:6px 11px;}
     html.pls .grid:not(.panel) .tile .name{font-size:min(var(--name-size,18px),15px);}
     html.pls .grid:not(.panel) .tile .sub{font-size:min(var(--sub-size,15px),13px);margin-top:1px;}
     html.pls .grid:not(.panel) .tile .room{font-size:min(var(--room-size,12px),11px);}
+    html.pls .grid:not(.panel) .tile{--nm-s:min(var(--name-size,18px),15px);--sb-s:min(var(--sub-size,15px),13px);--sb-mt:1px;--rm-s:min(var(--room-size,12px),11px);}
   }
+  .pbig.sm{font-size:clamp(22px,5vw,30px) !important;}   /* Text statt Zahl als grosser Wert (z. B. Taster "Zuletzt ausgelöst") */
 </style>
 </head>
 <body>
@@ -2010,18 +2128,7 @@ function stopRingAudio(){
 // tatsaechlich ankam, und meldet den AudioContext-Status. So laesst sich
 // "Push kommt nicht an" von "Audio-Ausgabe stumm" trennen.
 function flashAudioBadge(txt, ok){
-  let b=document.getElementById('audiobadge');
-  if(!b){
-    b=document.createElement('div'); b.id='audiobadge';
-    b.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:99999;'+
-      'padding:13px 20px;border-radius:var(--r-m);font:600 15px system-ui,sans-serif;color:#fff;'+
-      'box-shadow:0 8px 28px rgba(0,0,0,.45);pointer-events:none;opacity:0;transition:opacity .3s;max-width:90vw;text-align:center;';
-    document.body.appendChild(b);
-  }
-  b.textContent=txt;
-  b.style.background = ok ? 'rgba(82,184,129,.96)' : 'rgba(226,107,95,.96)';
-  b.style.opacity='1';
-  clearTimeout(b._t); b._t=setTimeout(()=>{ b.style.opacity='0'; }, 3500);
+  lpToast('audiobadge', txt, ok ? 'ok' : 'crit', 3.5);
 }
 // Kurzer Test-Ton (3 Pieptoene) von der Einstellungen-Seite ausgeloest. Eigener
 // AudioContext (stoert einen evtl. laufenden echten Weckton nicht). resume()
@@ -2078,7 +2185,45 @@ function cmdAck(m){
     if(m.ok && e.el){ clearTimeout(e.el._sentT); e.el.classList.remove('sent'); }
     break; }
 }
-function closeSheets(){ ['wxSheet','stSheet'].forEach(id=>{ const o=el(id); if(o) o.hidden=true; }); }
+// ---- Einheitliche Popups: Sheet (Status, Wetter, PIN), Menue, Hinweis ----
+// Breite nach Geraet: Panel 960 = 440 (breit 720), 480er/Handy = Bildschirm - 32, Tablet (gezoomt) 480 (breit 640);
+// Innenabstand 18 (14 unter 400 px); Radius r-xl, bei Hoehe > 70 % des Bildschirms r-l.
+function sheetFit(ov, wide){
+  const s=document.querySelector('.screen'); if(!s||!ov) return;
+  const sw=s.clientWidth, sh=s.clientHeight;
+  const big=parseFloat(getComputedStyle(s).getPropertyValue('--ui-scale'))>1.05;
+  const w = sw<=520 ? (sw-32)+'px' : (big ? (wide?640:480) : (wide?720:440))+'px';
+  ov.style.setProperty('--shw', w);
+  ov.style.setProperty('--shp', (sw<400?14:18)+'px');
+  ov.classList.toggle('short', sh<480);
+  ov.classList.toggle('two', !!wide && sw>520);
+  const box=ov.firstElementChild;
+  if(box) box.style.borderRadius = box.offsetHeight>sh*0.7 ? 'var(--r-l)' : '';
+}
+// Wischen nach unten schliesst das Sheet (nur Handy, nur senkrecht, nicht im gescrollten Inhalt)
+function sheetSwipe(box, close){
+  let y0=null, x0=0;
+  box.addEventListener('touchstart',e=>{ if(!isPhone()||e.touches.length!==1){ y0=null; return; } y0=e.touches[0].clientY; x0=e.touches[0].clientX; },{passive:true});
+  box.addEventListener('touchend',e=>{ if(y0==null) return; const t=e.changedTouches[0], dy=t.clientY-y0, dx=t.clientX-x0; y0=null;
+    if(dy>80 && dy>Math.abs(dx)*2 && box.scrollTop<=0) close(); },{passive:true});
+}
+// Hinweis oben (eine Klasse fuer Meldung, Verbindung, Audio); secs 0 = bleibt, bis er entfernt wird
+function lpToast(id, text, level, secs){
+  const s=document.querySelector('.screen')||document.body;
+  let c=document.getElementById('lptoasts');
+  if(!c){ c=document.createElement('div'); c.id='lptoasts'; s.appendChild(c); }
+  let n=document.getElementById(id);
+  if(!n){ n=document.createElement('div'); n.id=id; c.appendChild(n); }
+  n.className='lpnotify lv-'+(level||'ok'); n.textContent=text;
+  clearTimeout(n._t);
+  if(secs>0) n._t=setTimeout(()=>{ if(n.parentNode) n.parentNode.removeChild(n); }, secs*1000);
+  return n;
+}
+function closeSheets(){
+  ['wxSheet','stSheet'].forEach(id=>{ const o=el(id); if(o) o.hidden=true; });
+  const p=document.querySelector('.pinov'); if(p&&p._cancel) p._cancel();
+  closeMenu();
+}
 function nav(route){
   closeSheets();   // Wetter-/Status-Blatt nicht ueber der neuen Seite stehen lassen
   stack.push(route);
@@ -2243,18 +2388,21 @@ function askPin(cb,msg){
       const lbl=k==='del'?'⌫':(k==='ok'?'OK':k);
       return '<div class="'+cls+'" data-k="'+k+'">'+lbl+'</div>';
     }).join('')+'</div></div>';
-  s.appendChild(ov);
+  s.appendChild(ov); sheetFit(ov,false); popZoomIn(ov.querySelector('.pinbox'));
   const disp=ov.querySelector('#pindisp');
   const draw=()=>{ disp.textContent='•'.repeat(val.length); };
   const done=v=>{ ov.remove(); cb(v); };
+  ov._cancel=()=>done(null);
+  const closeAnim=()=>popZoomOut(ov.querySelector('.pinbox'),()=>done(null));
+  sheetSwipe(ov.querySelector('.pinbox'),closeAnim);
   ov.querySelectorAll('.pinkey').forEach(b=>{ b.onclick=()=>{
     const k=b.dataset.k;
     if(k==='ok') done(val);
     else if(k==='del'){ val=val.slice(0,-1); draw(); }
     else if(val.length<12){ val+=k; draw(); }
   };});
-  ov.querySelector('.pinx').onclick=()=>done(null);
-  ov.onclick=e=>{ if(e.target===ov) done(null); };   // neben die Karte tippen = abbrechen
+  ov.querySelector('.pinx').onclick=closeAnim;
+  ov.onclick=e=>{ if(e.target===ov) closeAnim(); };   // neben die Karte tippen = abbrechen
 }
 function doSecure(uuid,cmd,msg){
   askPin(pin=>{ if(pin==null){pendingSecure=null;return;} pendingSecure={uuid,cmd}; send({t:'cmd',uuid,cmd,pin}); }, msg);
@@ -2508,6 +2656,35 @@ function cellIco(n){ return STROKE_ICONS[n]?svg(ICONS[n]):svgF(ICONS[n]||ICONS.i
 function isChartCell(c){ return !!(c&&(((c.icon==='chart'||c.icon==='link')&&c.nav)||c.minor)); }   // Verlauf / Verknuepft / "Quellen ›": Nebenaktionen, kleiner   // Verlauf / "Quellen ›": Nebenaktionen, kleiner
 function actCls(cells){ const n=cells.filter(c=>!isChartCell(c)).length, h=cells.some(isChartCell);
   return ' n'+Math.min(n,5)+(h?' hasc':''); }
+// ---- Raumregelung: Zustands-Pillen, Sollwert-Zeile, Tagesplan (Bloecke chips/setp/tline) ----
+function bigTone(t){ return t==='good'?' good':(t==='crit'?' crit':(t==='heat'?' heat':(t==='cool'?' cool':''))); }
+function chipsHtml(b){ return '<div class="pchips">'+(b.items||[]).map((c,i)=>
+  '<span class="pchip'+(c.tone?' '+esc(c.tone):'')+(c.menu?' tap':'')+'" data-ch="'+i+'">'+esc(c.text||'')+'</span>').join('')+'</div>'; }
+function setpHtml(b){ return '<div class="psetp"><div class="sb" data-sp="minus">'+cellIco('minus')+'</div>'+
+  '<div class="spv"><b>'+esc(b.text||'')+'</b><span>'+esc(b.label||'')+'</span></div>'+
+  '<div class="sb" data-sp="plus">'+cellIco('plus')+'</div></div>'; }
+function hhmm(m){ m=Math.min(1440,Math.max(0,Math.round(m))); return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function tlineHtml(b){
+  const segs=(b.segs||[]).map(s=>'<i class="'+esc(s.k)+'" style="left:'+(s.a/14.4)+'%;width:'+((s.b-s.a)/14.4)+'%"></i>').join('');
+  return '<div class="ptl"><div class="tlbar'+(b.dk==='comfort'?' dflt':'')+'">'+segs+'<u class="now"></u></div>'+
+    '<div class="tlax"><span style="left:0">0</span><span style="left:25%">6</span><span style="left:50%">12</span><span style="left:75%">18</span><span style="left:100%">24</span></div>'+
+    '<div class="tltx"></div></div>'; }
+// Jetzt-Marke + Text aus dem Plan, den Loxone liefert (Komfort bis / ab ...)
+function paintTline(e,b){ if(!e||!b) return; const d=new Date(), m=d.getHours()*60+d.getMinutes();
+  const nw=e.querySelector('.now'); if(nw) nw.style.left=(m/14.4)+'%';
+  const cs=(b.segs||[]).filter(s=>s.k==='comfort'), nm=(cs[0]&&cs[0].name)||'Komfort';
+  const in_=cs.find(s=>s.a<=m&&m<s.b), nx=cs.filter(s=>s.a>m).sort((x,y)=>x.a-y.a)[0];
+  const t=in_?nm+' bis '+hhmm(in_.b):(nx?nm+' ab '+hhmm(nx.a):(cs.length?'Heute kein '+nm+' mehr':''));
+  const tx=e.querySelector('.tltx'); if(tx) tx.textContent=t; }
+function bindRegler(g,blocks){
+  const cb=blocks.find(b=>b.k==='chips'), ce=g.querySelector('.pchips');
+  if(cb&&ce) ce.querySelectorAll('.pchip.tap').forEach(n=>{ const c=cb.items[+n.dataset.ch]; if(!c)return;
+    n.addEventListener('pointerdown',ev=>{ ev.preventDefault(); openMenu(n,c.menu); }); });
+  const sb=blocks.find(b=>b.k==='setp');
+  if(sb) g.querySelectorAll('.psetp .sb').forEach(n=>n.addEventListener('pointerdown',ev=>{ ev.preventDefault();
+    const c=sb[n.dataset.sp]; if(c) sendCmd(c.uuid,c.cmd,view&&view.secured); }));
+  const tb=blocks.find(b=>b.k==='tline'), te=g.querySelector('.ptl'); if(te){ te._b=tb; paintTline(te,tb); } }
+setInterval(()=>{ const te=document.querySelector('.ptl'); if(te&&te._b) paintTline(te,te._b); },60000);
 function cellHtml(c,i){
   const minor=isChartCell(c);
   const inner=minor?cellIco(c.icon||'info'):(c.icon?cellIco(c.icon):esc(c.label));
@@ -2547,6 +2724,7 @@ function blockSig(blocks){
     b.k==='row' ? 'row'+b.cells.length+(b.hidden?'h':'')
     : b.k==='favs' ? 'favs'+(b.items?b.items.length:0)
     : b.k==='alarmlist' ? 'alarm'+JSON.stringify(b.entries||[])   // geaenderte Weckzeit -> neu zeichnen
+    : (b.k==='chips'||b.k==='setp'||b.k==='tline') ? b.k+JSON.stringify(b)   // Inhalt aendert sich -> neu zeichnen
     : b.k==='astat' ? 'astat'+(b.sub?1:0)
     : b.k==='scenes' ? 'scenes'+(b.items?b.items.length:0)
     : b.k).join('|');
@@ -2584,6 +2762,11 @@ function paintChart(box,b){
     box._ck=null;
     body.innerHTML='<div class="chmsg">'+(b.state==='loading'?'Verlauf wird geladen …'
       :b.state==='error'?'Verlauf nicht abrufbar':'Keine Aufzeichnung in diesem Zeitraum')+'</div>';
+    return; }
+  // Weniger als 3 Messwerte (alle Reihen zusammen): Hinweis statt leerem Raster
+  if((b.series||[]).reduce((a,se)=>a+((se.pts||[]).length),0)<3){
+    box._ck=null;
+    body.innerHTML='<div class="chmsg">Noch zu wenig Messwerte</div>';
     return; }
   // Zeichenflaeche in echter Pixelgroesse: Beschriftung bleibt scharf und unverzerrt,
   // und das Diagramm fuellt genau den Platz, den die Seite ihm laesst (kein Scrollen).
@@ -2788,7 +2971,7 @@ function renderPanel(blocks){
   closeMenu();
   setMore((blocks.find(b=>b.k==='more')||{}).route||null);
   el('conn').classList.remove('vis');
-  el('grid').classList.add('panel');
+  el('grid').classList.add('panel'); el('grid').classList.remove('paged'); el('grid').style.gridTemplateRows='';
   el('grid').querySelectorAll('.svw-cam img').forEach(camStop);   // Kameras eines Raster-Tabs beenden
   el('grid').classList.remove('list','snapy','scheme','cells');
   el('grid').classList.toggle('bigpage', blocks.some(b=>b.k==='big'));
@@ -2800,7 +2983,7 @@ function renderPanel(blocks){
   const anchorBot = !!(view && view.anchor==='bottom');
   g.classList.toggle('anchorbot', anchorBot);
   const TOPK = {dhead:1,hero:1,cover:1,video:1,status:1,title:1,value:1,big:1,astat:1,eflow:1,scenes:1,shade:1,dim:1,
-    state:1,log:1,kpis:1,audiomid:1,alarmedit:1,web:1};
+    state:1,log:1,kpis:1,audiomid:1,alarmedit:1,web:1,chips:1,setp:1,tline:1};
   const bh = b => {
     if(b.k==='eflow') return '<div class="epane-detail" data-eflow></div>';   // Radial; wird nach dem Einfuegen von paintEnergy gefuellt
     if(b.k==='hero'){ const hic = b.iconImg
@@ -2820,13 +3003,16 @@ function renderPanel(blocks){
       (b.vol?'<div class="avol"><div class="btn" data-av="1">'+svg(ICONS.plus)+'</div><div class="avbar"><i></i><b></b></div><div class="btn" data-av="-1">'+svg(ICONS.minus)+'</div></div>':'<div class="amsp"></div>')+'</div>';
     if(b.k==='alarmedit') return alarmEditHtml(b);
     if(b.k==='web') return '<div class="webframe"><iframe src="'+esc(b.url||'')+'" referrerpolicy="no-referrer"></iframe></div>';
+    if(b.k==='chips') return chipsHtml(b);
+    if(b.k==='setp') return setpHtml(b);
+    if(b.k==='tline') return tlineHtml(b);
     if(b.k==='status') return '<div class="status">'+esc(b.text||'')+'</div>';
     if(b.k==='title') return '<div class="ptitle">'+esc(b.text||'')+'<div class="psub">'+esc(b.sub||'')+'</div></div>';
     if(b.k==='value') return '<div class="pbar">'+esc(b.text||'')+'</div>';
-    if(b.k==='big') return '<div class="pbig'+(b.tone==='good'?' good':(b.tone==='crit'?' crit':''))+'">'+fmtBig(b.text)+'</div>';
+    if(b.k==='big') return '<div class="pbig'+bigTone(b.tone)+(b.small?' sm':'')+'">'+fmtBig(b.text)+'</div>';
     if(b.k==='astat') return '<div class="astat'+(b.tone==='crit'?' crit':'')+'">'+esc(b.text||'')+(b.sub?'<div class="astatsub">'+esc(b.sub)+'</div>':'')+'</div>';
     if(b.k==='slider') return '<div class="srow"><span class="sico">'+svg(ICONS[b.icon]||ICONS.vol)+'</span><button type="button" class="sbtn" data-sd="dn">−</button><input type="range" class="sld" min="'+b.min+'" max="'+b.max+'"'+(b.step?' step="'+b.step+'"':'')+' value="'+b.value+'"><button type="button" class="sbtn" data-sd="up">+</button><span class="sval">'+b.value+'</span></div>';
-    if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
+    if(b.k==='scenes') return '<div class="scenes'+((b.items||[]).some(it=>sceneSub(it).length>22)?' lsub':'')+'">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
       '<span class="sico">'+sceneIco(it)+'</span><span class="stx"><b>'+esc(it.label)+'</b>'+(sceneSub(it)?'<span class="ssub">'+esc(sceneSub(it))+'</span>':'<span class="ssub"></span>')+'</span></div>').join('')+'</div>';
     if(b.k==='shade') return '<div class="shade'+(b.dir==='open'?' open':'')+'"><div class="sbar'+(b.up&&b.up.on?' on':'')+'" data-dir="up">'+svg(ICONS.up)+'</div>'+
       '<div class="sbar pos"><i style="height:'+(b.pct==null?0:b.pct)+'%"></i><b class="pbig">'+fmtBig(shadeTxt(b))+'</b></div>'+
@@ -2857,6 +3043,9 @@ function renderPanel(blocks){
       : bi.iconUrl ? '<span class="dbgm" style="--u:url(\''+esc(bi.iconUrl)+'\')"></span>'
       : svg(ICONS[bi.icon]||ICONS.info))+'</div>' : '';
   g.classList.toggle('hasbg', !!bi);
+  // Piktogramm-Groesse relativ zur Karte (kleinere Seite), bei Groessenaenderung nachziehen
+  const fitDbg=()=>{ const d=g.querySelector('.dbg'); if(!d||!d.clientWidth) return;
+    d.style.setProperty('--dbs', Math.round(Math.min(d.clientWidth,d.clientHeight)*.85)+'px'); };
   const bgc=view&&view.bgCover;
   const coverHtml = bgc ? '<div class="dcover" aria-hidden="true"><img alt="" src="'+esc(bgc)+'"></div>' : '';
   if(anchorBot){
@@ -2874,6 +3063,9 @@ function renderPanel(blocks){
     for(const b of blocks){ if(b.k!=='more') html+=bh(b); }
     g.innerHTML=bgHtml+html;
   }
+  fitDbg();
+  if(bi&&window.ResizeObserver){ if(g._dbgRo) g._dbgRo.disconnect(); g._dbgRo=new ResizeObserver(fitDbg); g._dbgRo.observe(g); }
+  else if(g._dbgRo){ g._dbgRo.disconnect(); g._dbgRo=null; }
   const efb=blocks.find(b=>b.k==='eflow'); if(efb){ const d=g.querySelector('[data-eflow]'); if(d){ paintEnergy(d, efb.e); fitEflow(d); } }   // Radial in der Detailansicht zeichnen
   const hc=g.querySelector('.hero .circle'); if(hc){
     const cc=(view&&view.catColor)||''; hc.style.color=cc; hc.style.borderColor=cc; }
@@ -2896,6 +3088,7 @@ function renderPanel(blocks){
     if(sup) sup.addEventListener('pointerdown',ev=>{ ev.preventDefault(); nudgeSld(sld,step,g.querySelector('.sval')); });
   }
   bindLive(g,blocks);
+  bindRegler(g,blocks);
   bindAudio(g,blocks.find(b=>b.k==='audiomid'));
   bindAlarmEdit(g,blocks);
   fitBig(g);
@@ -2954,7 +3147,7 @@ function updatePanel(blocks){
     blocks.filter(b=>b.k===k).forEach((b,i)=>{ if(es[i]) fn(es[i],b); }); };
   nth('status','.status:not(.alist-empty)',(e,b)=>{ e.textContent=b.text||''; });
   nth('value','.pbar',(e,b)=>{ e.textContent=b.text||''; });
-  nth('big','.pbig:not(.sbar .pbig):not(.dimcard .pbig):not(.dstate .pbig):not(.aedit .pbig)',(e,b)=>{ const h=fmtBig(b.text); if(e.innerHTML!==h) e.innerHTML=h; e.className='pbig'+(b.tone==='good'?' good':(b.tone==='crit'?' crit':'')); });
+  nth('big','.pbig:not(.sbar .pbig):not(.dimcard .pbig):not(.dstate .pbig):not(.aedit .pbig)',(e,b)=>{ const h=fmtBig(b.text); if(e.innerHTML!==h) e.innerHTML=h; e.className='pbig'+bigTone(b.tone); });
   nth('title','.ptitle',(e,b)=>{ leadText(e, b.text||''); const su=e.querySelector('.psub'); if(su)su.textContent=b.sub||''; });
   nth('astat','.astat',(e,b)=>{ leadText(e, b.text||''); e.className='astat'+(b.tone==='crit'?' crit':''); const su=e.querySelector('.astatsub'); if(su)su.textContent=b.sub||''; });
   const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img&&img.getAttribute('src')!==cov.src){img.style.opacity='0'; img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
@@ -3436,7 +3629,12 @@ function render(){
   const _wl = view.layout==='list' && g.clientWidth>700; g.classList.toggle('wide', _wl);
   if(!items.length){ g.innerHTML='<div class="empty">nichts hier</div>'; renderTabs(); return; }
   const _pg = (view.layout==='list'?(_wl?8:4):gridCols*gridRows);   // Snap-Seite: Liste 4 Zeilen, sonst cols x rows
-  const html = items.map((it,i)=>tileHtml(it, i%_pg===0?' snap':'')).join('');
+  // Raumseiten auf Panel/Tablet: wie die Favoriten-Raster seitenweise geschnitten (Abstandsreihe
+  // zwischen den Seiten + Klasse paged mit Seitenpunkten), damit keine Kachelreihe der Nachbarseite hereinragt.
+  const pgd = !isPhone() && view.layout!=='list' && items.length>_pg, bands=Math.ceil(items.length/_pg), gr=gridRows;
+  g.classList.toggle('paged', pgd);
+  g.style.gridTemplateRows = pgd ? Array.from({length:bands},(_,i)=>'repeat('+gr+',calc((100% - '+(gr-1)+' * var(--gap)) / '+gr+'))'+(i<bands-1?' 8px':'')).join(' ') : '';
+  const html = items.map((it,i)=>(pgd&&i>0&&i%_pg===0?'<div class="pgap"></div>':'')+tileHtml(it, i%_pg===0?' snap':'')).join('');
   g.innerHTML = html;
   g.classList.toggle('snapy', items.length > (view.layout==='list'?4:gridCols*gridRows));   // Snapping erst ab >1 Seite
   g.querySelectorAll('.tile[data-id]').forEach(n=>bindTile(n, items.find(x=>String(x.id)===n.dataset.id)));
@@ -3508,7 +3706,7 @@ function schemeValHtml(it,i){
 function renderScheme(v){
   const g=el('grid');
   g.classList.remove('panel','list','bigpage','anchorbot','snapy','cells');
-  g.classList.add('scheme');
+  g.classList.add('scheme'); g.classList.remove('paged'); g.style.gridTemplateRows='';
   el('conn').classList.remove('vis');
   const sw=v.sw||1300, sh=v.sh||866, items=v.items||[];
   let html='<div class="schemetitle">'+esc(v.title||'')+'</div>'+
@@ -3672,13 +3870,16 @@ function sceneFades(){
 function updateScrollInd(){
   const g=el('grid'), ind=el('scrollInd'); if(!g||!ind) return;
   const over = g.scrollHeight - g.clientHeight;
-  if(over<=1){ ind.classList.remove('show'); return; }
+  if(over<=1){ ind.classList.remove('show'); g.classList.remove('hasdots'); return; }
   ind.classList.add('show');
-  if(g.classList.contains('paged')){   // Seitenpunkte: eine Seite = eine Bildschirmhoehe
-    const n=g.querySelectorAll(':scope>.cpage').length||1, cur=Math.min(n-1,Math.round(g.scrollTop/Math.max(1,g.clientHeight)));
+  // Seitenpunkte statt Scrollbalken (0.19.98): geblaettert = eine Seite je Bildschirmhoehe,
+  // sonst so viele Punkte wie Bildschirmhoehen, der Punkt folgt der Scrollposition.
+  { const paged=g.classList.contains('paged'), ch=Math.max(1,g.clientHeight);
+    const n=paged ? (g.querySelectorAll(':scope>.cpage').length||g.querySelectorAll(':scope>.tile.snap').length||1) : Math.max(2,Math.ceil(g.scrollHeight/ch-0.05));
+    const cur=Math.min(n-1, paged ? Math.round(g.scrollTop/ch) : Math.round(g.scrollTop/over*(n-1)));
     if(ind._n!==n){ ind._n=n; ind.innerHTML='<div class="thumb"></div>'+Array.from({length:n},()=>'<i></i>').join(''); }
-    ind.classList.add('dots'); ind.querySelectorAll('i').forEach((d,i)=>d.classList.toggle('on',i===cur)); return; }
-  if(ind.classList.contains('dots')){ ind.classList.remove('dots'); ind._n=0; ind.querySelectorAll('i').forEach(d=>d.remove()); }
+    ind.classList.add('dots'); g.classList.add('hasdots');
+    ind.querySelectorAll('i').forEach((d,i)=>d.classList.toggle('on',i===cur)); return; }
   const thumb=ind.querySelector('.thumb');
   const h=Math.max(24, g.clientHeight * g.clientHeight / g.scrollHeight);
   const top=(g.clientHeight-h) * (g.scrollTop/over);
@@ -3852,10 +4053,9 @@ function linkBanner(){
     : !msOk ? 'Miniserver nicht erreichbar'+(msSince?' seit '+new Date(msSince).toLocaleTimeString(LANG||undefined,{hour:'2-digit',minute:'2-digit'}):'')+' – Werte evtl. veraltet'
     : '';
   document.documentElement.classList.toggle('stale', !!txt);
-  let b=document.getElementById('linkbar');
+  const b=document.getElementById('linkbar');
   if(!txt){ if(b) b.remove(); return; }
-  if(!b){ b=document.createElement('div'); b.id='linkbar'; document.body.appendChild(b); }
-  b.textContent=txt;
+  lpToast('linkbar', txt, 'warn', 0);
 }
 function connect(){
   if(ws && (ws.readyState===0 || ws.readyState===1)) return;   // schon (im Aufbau) verbunden: keine Doppelverbindung
@@ -4070,6 +4270,10 @@ function ambientApply(){
     ? 'linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.42)),url("'+AMB.img.replace(/"/g,'')+'") center/cover no-repeat'
     : bg ? 'linear-gradient(180deg,'+ambRgb(bg.top)+','+ambRgb(bg.bot)+')' : '';
   sv.classList.toggle('ambclk', !!ck);
+  // Dunkler Himmel/Bild hinter der Uhr: Schrift hell, auch im hellen Theme (dort ist die
+  // Rahmen-Tinte dunkel und waere auf dem Nachthimmel unlesbar)
+  const lum=c=>c?(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255:1;
+  sv.classList.toggle('ambdark', (AMB.bg==='image'&&!!AMB.img) || (!!bg && (lum(bg.top)+lum(bg.bot))/2<0.45));
   if(ck) sv.style.setProperty('--amb-clock', ambRgb(ck.fg)); else sv.style.removeProperty('--amb-clock');
 }
 setInterval(ambientApply, 60000);
@@ -4367,11 +4571,25 @@ function renderSaverGrid(){
   g.style.setProperty('--svc', cols); g.style.setProperty('--svr', saverRows());
   const its = ph ? saverCfg.items.map(it=>(it.x<gs&&it.x+it.w>gs)?Object.assign({},it,{w:gs-it.x}):it)
                  : saverCfg.items.filter(it=>it.x+it.w<=cols);
-  const place = ph ? (it=>it.x>=gs ? {c:it.x-gs, r:it.y+gs} : {c:it.x, r:it.y}) : null;
-  const pl=phoneLandscape()&&!place, rows=saverRows(), lay=pl ? fillGaps(its, cols, rows) : its;
+  let place = ph ? (it=>it.x>=gs ? {c:it.x-gs, r:it.y+gs} : {c:it.x, r:it.y}) : null;
+  let rows=saverRows(), phPortrait=false;
+  // Handy hochkant: leere Zeilen entfallen (kein Loch zwischen Wetter und Kamera) und eine
+  // Uhr ohne Nachbarn ueber die ganze Breite, mittig (wie auf iPad/quer). Nur Darstellung, Panels unberuehrt.
+  let lay0=its;
+  if(ph && !phoneLandscape()){
+    const pl2=its.map(it=>{ const q=place(it); return Object.assign({},it,{x:q.c,y:q.r}); });
+    const used=[...new Set(pl2.flatMap(it=>Array.from({length:it.h},(_,k)=>it.y+k)))].sort((a,b)=>a-b);
+    if(used.length){
+      const idx=r=>used.indexOf(r);
+      lay0=pl2.map(it=>{ const rs=used.filter(r=>r>=it.y&&r<it.y+it.h);
+        const o=Object.assign({},it,{y:idx(rs[0]),h:rs.length});
+        if(it.type==='clock' && !pl2.some(o2=>o2!==it&&o2.y<it.y+it.h&&it.y<o2.y+o2.h)){ o.x=0; o.w=gs; o.align='center'; }
+        return o; });
+      rows=used.length; place=null; phPortrait=true; g.style.setProperty('--svr', rows); } }
+  const pl=phoneLandscape()&&!place&&!phPortrait, lay=pl ? fillGaps(its, cols, rows) : lay0;
   // Handy quer: Reihen nach Inhalt gewichten - eine reine Uhr-Reihe braucht wenig Hoehe
   // (0,618 : 1, goldener Schnitt), Wetter/Kamera bekommen den Rest statt gequetscht zu werden.
-  g.style.gridTemplateRows = pl ? Array.from({length:rows},(_,r)=>{
+  g.style.gridTemplateRows = (pl||phPortrait) ? Array.from({length:rows},(_,r)=>{
       const inRow=lay.filter(it=>it.y<=r&&r<it.y+it.h);
       return (inRow.length&&inRow.every(it=>it.type==='clock'&&it.h===1)) ? 'minmax(0,.618fr)' : 'minmax(0,1fr)'; }).join(' ') : '';
   renderLayout(g, lay, saverData, place, saverOn());
@@ -4613,9 +4831,9 @@ function wxSheet(fi, swap){
     const go=d=>{ const n=fi+d; if(n>=0&&n<nf) wxSheet(n,true); };
     ov.querySelectorAll('.wxar').forEach(b=>b.onclick=e=>{ e.stopPropagation(); go(+b.dataset.d); });
     const bx=ov.querySelector('.wxsbox'); let x0=null;
-    bx.onpointerdown=e=>{ x0=e.clientX; }; bx.onpointerup=e=>{ if(x0==null) return; const dx=e.clientX-x0; x0=null; if(Math.abs(dx)>50) go(dx<0?1:-1); };
+    let y0=0; bx.onpointerdown=e=>{ x0=e.clientX; y0=e.clientY; }; bx.onpointerup=e=>{ if(x0==null) return; const dx=e.clientX-x0, dy=e.clientY-y0; x0=null; if(Math.abs(dx)>50 && Math.abs(dx)>Math.abs(dy)) go(dx<0?1:-1); };
   }
-  ov.hidden=false; if(!swap) popZoomIn(ov.querySelector('.wxsbox'));
+  closeMenu(); ov.hidden=false; sheetFit(ov,true); if(!swap) popZoomIn(ov.querySelector('.wxsbox'));
   // Chip antippen: Graph zeigt diese Kennzahl; nochmal (oder Kopf) -> zurueck zur Temperatur
   let cur='temp';
   const show=m=>{ cur=m; const host=ov.querySelector('.wxch'); if(host&&hrs.length>1) host.innerHTML=wxChartHTML(hrs,m,dt,fi===0);
@@ -4625,6 +4843,7 @@ function wxSheet(fi, swap){
   const close=()=>popZoomOut(ov.querySelector('.wxsbox'), ()=>{ ov.hidden=true; });
   ov.querySelector('.stsx').onclick=e=>{ e.stopPropagation(); close(); };
   ov.onclick=e=>{ e.stopPropagation(); if(e.target===ov) close(); };
+  sheetSwipe(ov.querySelector('.wxsbox'), close);
 }
 // Antippen eines Vorschau-Tags (nur mit aktivierter Detailansicht, .wxtap):
 // in der Capture-Phase, damit das Dashboard den Tipp nicht als "schliessen" liest.
@@ -4663,10 +4882,11 @@ function stSheet(st, go){
       '<span class="stn">'+esc(c.name)+(c.detail&&c.detail.length?c.detail.map(d=>'<small>'+stDet(d)+'</small>').join(''):'')+'</span>'+
       '<span class="stt">'+esc(c.text)+'</span><span class="stgo">›</span></button>').join('')+
     ((st.log||[]).length?'<div class="stlog"><b>Verlauf</b>'+st.log.map(x=>'<div>'+esc(x)+'</div>').join('')+'</div>':'')+'</div>';
-  ov.hidden=false; popZoomIn(ov.querySelector('.stsbox'));
+  closeMenu(); ov.hidden=false; sheetFit(ov,false); popZoomIn(ov.querySelector('.stsbox'));
   const close=()=>popZoomOut(ov.querySelector('.stsbox'), ()=>{ ov.hidden=true; });
   ov.querySelector(".stsx").onclick=e=>{ e.stopPropagation(); close(); };
   ov.onclick=e=>{ if(e.target===ov) close(); };
+  sheetSwipe(ov.querySelector('.stsbox'), close);
   ov.querySelectorAll('[data-stid]').forEach(b=>b.onclick=e=>{ e.stopPropagation(); ov.hidden=true; go(b.dataset.stid); });
 }
 // Kamera-Widget: Live-Bild einer Kamera (Intercoms + eigene), Pillen oben rechts
@@ -5176,6 +5396,7 @@ function applySaverSplit(){
   el('saver').classList.toggle('split', !!themeSplit && window.innerWidth > window.innerHeight && !isPhone());
 }
 function showSaver(){ tickClock();
+  if(el('saver').classList.contains('hidden')) closeSheets();   // Popups nicht ueber dem Dashboard stehen lassen
   applySaverSplit();
   el('saver').classList.remove('hidden');
   if(saverLayoutOn()) svStartCams();
@@ -5206,18 +5427,8 @@ function hideSaver(){
 // Kurze Nachricht/Banner vom Server (t:'notify') oben im Panel einblenden.
 function showNotify(text, level, secs){
   if(!text) return;
-  const s=document.querySelector('.screen'); if(!s) return;
-  let n=s.querySelector('.lpnotify');
-  if(!n){ n=document.createElement('div'); n.className='lpnotify';
-    n.style.cssText='position:absolute;left:10px;right:10px;top:10px;z-index:50;padding:12px 14px;'+
-      'border-radius:var(--r-m);font-size:15px;font-weight:600;line-height:1.25;text-align:center;'+
-      'box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;word-break:break-word;';
-    s.appendChild(n); }
-  const col = level==='crit' ? '226,107,95' : (level==='warn' ? '224,162,77' : '82,184,129');
-  n.style.background='rgba('+col+',.96)'; n.style.color='#10140f';
-  n.textContent=text; hideSaver();
-  clearTimeout(n._t);
-  n._t=setTimeout(()=>{ if(n&&n.parentNode) n.parentNode.removeChild(n); }, Math.max(1,(secs||5))*1000);
+  lpToast('lpnotifyMsg', text, level==='crit'?'crit':(level==='warn'?'warn':'ok'), Math.max(1,(secs||5)));
+  hideSaver();
 }
 // Fester Player im Split-Layout (linke Spalte). Baut das Grundgeruest einmal
 // auf und aktualisiert danach nur Cover/Titel/Transport/Lautstaerke in-place
@@ -5305,7 +5516,7 @@ function nightLayer(){
   if(!nightEl){
     nightEl=document.createElement('div'); nightEl.id='nightdim';
     nightEl.style.cssText='position:fixed;inset:0;background:#000;opacity:0;'+
-      'pointer-events:none;z-index:100000;transition:opacity .8s ease';
+      'pointer-events:none;z-index:var(--z-night,100000);transition:opacity .8s ease';
     document.body.appendChild(nightEl);
   }
   return nightEl;

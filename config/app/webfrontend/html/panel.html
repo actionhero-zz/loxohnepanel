@@ -5219,7 +5219,10 @@ function armDpms(){ clearTimeout(dpmsTimer);
   if(DISP.agent || !(DISP.dpmsOff>0)) return;
   // Mit Kiosk-JS (Fully) direkt abschalten; sonst dem Server Leerlauf melden,
   // der schaltet ueber den Display-Treiber des Geraets (Fully REST / WallPanel).
-  dpmsTimer=setTimeout(()=>{ wakeOff(); camsDark(true); if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
+  // Kamera nur anhalten, wenn das Display wirklich ausgeht (Kiosk-App, screenOff).
+  // Ein normaler Browser (Laptop, Tablet ohne Fully) bleibt sichtbar - dort haelt
+  // nur ein tatsaechlich verborgener Tab die Kamera an (document.hidden).
+  dpmsTimer=setTimeout(()=>{ wakeOff(); if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
 function applyDisplayCfg(msg){
   DISP.dpmsOff = (typeof msg.dpmsOff==='number' && msg.dpmsOff>0) ? msg.dpmsOff : 0;
   // Neu laden: null = nicht eingestellt (nachts um reloadAt Uhr), sonst Stunden, 0 = aus

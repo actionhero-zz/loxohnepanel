@@ -1643,6 +1643,10 @@
      sonst wird der Kopf so hoch, dass die Zustandszeile ("52 % zu") abgeschnitten wird. */
   .grid.cells.g3 .svw[data-sz="1x1"] .updown,.grid.cells.g3 .svw[data-sz="2x1"] .updown{flex-direction:row;gap:6px;}
 
+  /* Schwache Panels (Shelly): keine Glas-Unschaerfe - backdrop-filter rechnet bei jeder
+     Aenderung darunter neu; stattdessen etwas dichtere Flaeche. */
+  html.lite *{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
+  html.lite .video .vrow .btn,html.lite .video .vhead{opacity:.94;}
   /* Kamera-Overlays ohne Glas-Unschaerfe: backdrop-filter wird bei JEDEM Kamerabild
      neu berechnet - auf schwachen Panels (Shelly) eine Dauerlast. Dunklerer Grund statt Blur. */
   .campill,.camlbl,.icab{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
@@ -3647,6 +3651,11 @@ let DIAG=false; const _clogQ=[];
 function clog(m){ if(!DIAG) return; const t=new Date().toTimeString().slice(0,8)+' '+String(m).slice(0,400);
   if(ws&&ws.readyState===1){ try{ ws.send(JSON.stringify({t:'clog',msg:t})); return; }catch(e){} }
   _clogQ.push(t); if(_clogQ.length>40) _clogQ.shift(); }
+// Bei Diagnose alle 10 min Speicherstand melden: JS-Speicher, laufende Kamera-Streams,
+// DOM-Groesse - zeigt im Diagnose-Log, ob das Panel ueber Tage "zulaeuft".
+setInterval(()=>{ if(!DIAG) return; const m=performance.memory, mb=b=>Math.round(b/1048576);
+  clog('Speicher · JS '+(m?mb(m.usedJSHeapSize)+'/'+mb(m.jsHeapSizeLimit)+' MB':'?')+' · Kamera-Streams '+camImgs.size+
+    ' · DOM '+document.getElementsByTagName('*').length+' · offen '+Math.round(performance.now()/3600000)+' h'); }, 600000);
 function clogFlush(){ while(DIAG&&_clogQ.length&&ws&&ws.readyState===1){ try{ ws.send(JSON.stringify({t:'clog',msg:'(nachgereicht) '+_clogQ.shift()})); }catch(e){ break; } } }
 window.addEventListener('error',e=>clog('JS-Fehler: '+(e.message||e)+' @'+String(e.filename||'').split('/').pop()+':'+(e.lineno||'')));
 window.addEventListener('unhandledrejection',e=>clog('Promise-Fehler: '+((e.reason&&e.reason.message)||e.reason)));
@@ -3720,7 +3729,7 @@ function connect(){
     if(!msg || typeof msg!=='object') return;
     if(msg.t==='camcrop'){ CAM_CROP=msg.map||{}; camCropAll(); return; }
     if(msg.t==='scale'){ uiScaleCfg=scaleCfg(msg.scale); applyScale(); return; }   // Geraete-Skalierung geaendert (ohne Neuladen)
-    if(msg.t==='theme'){ if(msg.camCrop){ CAM_CROP=msg.camCrop; camCropAll(); } const v=msg.vars||{}; for(const k in v){ if(v[k]) document.documentElement.style.setProperty(k,v[k]); }
+    if(msg.t==='theme'){ LITE=!!msg.lite; document.documentElement.classList.toggle('lite',LITE); if(msg.camCrop){ CAM_CROP=msg.camCrop; camCropAll(); } const v=msg.vars||{}; for(const k in v){ if(v[k]) document.documentElement.style.setProperty(k,v[k]); }
       profCols = (v['--cols']?(parseInt(v['--cols'])||2):2);
       profRows = (v['--rows']?(parseInt(v['--rows'])||2):2);
       gridCols = profCols; gridRows = profRows;
@@ -4496,7 +4505,10 @@ function camSwStart(cell){
   const it=cell._it||{}, sd=cell._sd||saverData, cams=camList(it,sd); if(!cams.length) return;
   const imgs=[...cell.querySelectorAll('.svw-cam img.camimg')], stat=cell.querySelector('.sv-cam-status'), lbl=cell.querySelector('.camlbl');
   if(!imgs.length) return;
-  const preload=cams.length<=3;                   // mehr Streams belegen zu viele Browser-Verbindungen
+  // Nur die sichtbare Kamera streamen: versteckte Vorlade-Streams kosten auf schwachen
+  // Panels (Shelly, 2 GB) dauernd Dekodier- und Grafikspeicher. Der Server haelt das
+  // letzte Bild jeder Kamera bereit, ein Umschalten zeigt also sofort ein Bild.
+  const preload=false;
   let cur=-1; const err={};
   const start=i=>{ const img=imgs[i], c=cams[i]; if(!img||!c||img.getAttribute('src')) return;
     camStream(img, c.src, c.reconnectH||0,
@@ -4567,6 +4579,10 @@ el('svClose').addEventListener('click', e=>{ e.stopPropagation(); hideSaver(); r
 //  - Rueckkehr ans Panel (Screensaver weg / Seite wieder sichtbar) -> Neuaufbau
 //  - optional alle N Stunden Neuaufbau (Settings -> Kamera, je Intercom)
 const CAM_RETRY_MS=8000;
+// Schwaches Panel (Shelly): Kamera als Einzelbilder statt MJPEG-Dauerstrom. Ein
+// Dauerstrom wird im WebView Bild fuer Bild dekodiert und belegte dort ueber Tage
+// immer mehr Grafikspeicher; Einzelbilder ersetzen sich sauber. Klingel 4/s, sonst 2/s.
+let LITE=false;
 const camImgs=new Set();
 // Bildausschnitt je Kamera (System -> Intercom): Fokuspunkt + Zoom bzw. ganzes Bild.
 let CAM_CROP={};
@@ -4602,9 +4618,10 @@ function camCropAll(){ document.querySelectorAll('img[data-camid]').forEach(camC
 function camStream(img, src, reconnectH, onErr, onOk){
   if(!img||!src) return;
   const mid=/[?&]id=([^&]+)/.exec(src); img.dataset.camid=mid?decodeURIComponent(mid[1]):''; camCrop(img);
+  const single=LITE && src.indexOf('/mjpeg?')===0, tick=/[?&]fps=/.test(src)?500:250;
   const load=()=>{
-    clearTimeout(img._camRetry); clearTimeout(img._camCycle);
-    img.src=src+(src.indexOf('?')<0?'?':'&')+'_t='+Date.now();
+    clearTimeout(img._camRetry); clearTimeout(img._camCycle); clearTimeout(img._camTick);
+    img.src=src+(src.indexOf('?')<0?'?':'&')+(single?'single=1&':'')+'_t='+Date.now();
     if(reconnectH>0) img._camCycle=setTimeout(()=>{ if(img.isConnected) load(); }, reconnectH*3600*1000);
   };
   img._camLoad=load;
@@ -4615,17 +4632,27 @@ function camStream(img, src, reconnectH, onErr, onOk){
     const wait=Math.min(60000, CAM_RETRY_MS*Math.pow(2, img._camFails-1));
     img._camRetry=setTimeout(function again(){ if(!img.isConnected) return;
       if(document.hidden){ img._camRetry=setTimeout(again, 5000); return; } load(); }, wait); };
-  img.onload=()=>{ img._camFails=0; if(onOk) onOk(); };
+  img.onload=()=>{ img._camFails=0; if(onOk) onOk();
+    // Einzelbild-Modus: naechstes Bild nach `tick`, bei ausgeblendeter Seite pausieren
+    if(single) img._camTick=setTimeout(function next(){ if(!img.isConnected||!img._camLoad) return;
+      if(document.hidden){ img._camTick=setTimeout(next, 2000); return; }
+      img.src=src+'&single=1&_t='+Date.now(); }, tick); };
   camImgs.add(img);
   load();
 }
 function camStop(img){ if(!img) return;
-  clearTimeout(img._camRetry); clearTimeout(img._camCycle);
+  clearTimeout(img._camRetry); clearTimeout(img._camCycle); clearTimeout(img._camTick);
   img.onerror=null; img.onload=null; img._camLoad=null; img.src=''; camImgs.delete(img); }
 // Alle noch angezeigten Streams neu aufbauen (entfernte Bilder vergessen).
+// Aus dem DOM entfernte Bilder (Neuaufbau der Seite, Widget weg) laden ihren
+// MJPEG-Stream sonst weiter, bis der Browser sie irgendwann aufraeumt - auf dem
+// Shelly liefen so unbemerkt mehrere Streams parallel und fuellten den Speicher.
+function camsSweep(){ camImgs.forEach(img=>{ if(!img.isConnected) camStop(img); }); }
+setInterval(camsSweep, 3000);
 function camsRefresh(){
+  camsSweep();
   camImgs.forEach(img=>{
-    if(!img.isConnected||!img._camLoad){ camImgs.delete(img); return; }
+    if(!img._camLoad){ camImgs.delete(img); return; }
     img._camLoad();
   });
 }

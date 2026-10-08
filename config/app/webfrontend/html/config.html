@@ -847,6 +847,7 @@
   .msmon .mmfw{grid-column:1/-1;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;}
   .sdot{width:10px;height:10px;border-radius:var(--r-round,32%);background:var(--crit);display:inline-block;flex:none;}
   .sdot.on{background:var(--good);box-shadow:0 0 0 4px rgba(82,184,129,.18);}
+  .sdot.wait{background:var(--accent);}
   .ovp{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border:0;background:var(--panel2);border-radius:var(--r-s);padding:8px 10px;font:inherit;color:var(--fg);cursor:pointer;text-align:left;}
   .ovp:hover{background:var(--hover-tint,var(--panel2));outline:1px solid var(--line);}
   .ovp b{font-size:14px;font-family:inherit;}
@@ -1103,6 +1104,10 @@
   .crpmini i{position:absolute;left:14px;top:0;width:44px;height:40px;background:linear-gradient(#cfd6dc 0 38%,#9aa3a8 38% 60%,#7d6f63 60%);}
   .crpmini.mcard{background:#f5c7b4;}
   .crpmini.mblur em{position:absolute;inset:-8px;background:linear-gradient(#cfd6dc 0 38%,#9aa3a8 38% 60%,#7d6f63 60%);filter:blur(6px);}
+
+  .dgstat{font-size:13px;color:var(--muted);margin:2px 0 10px;font-variant-numeric:tabular-nums;}
+  .dgdev{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);}
+  .dgdev:first-child{border-top:0;} .dgdev small{color:var(--muted);margin-right:auto;}
 </style>
 </head>
 <body>
@@ -1187,15 +1192,6 @@
             <p class="note" data-i18n>Bei jedem Tastendruck prüft das Panel im Hintergrund, ob der Befehl beim Miniserver angekommen ist und angenommen wurde. Bleibt diese Rückmeldung länger als 12 Sekunden aus (z. B. WLAN-Aussetzer), erscheint am Panel „Keine Antwort – Befehl evtl. nicht ausgeführt“. Die Bedienung wird dadurch nicht langsamer. Abgelehnte Befehle meldet das Panel immer – auch ohne Monitoring.</p>
             <div class="actions"><button class="btn" id="cw_save" data-i18n>Speichern</button><span class="toast" id="cw_toast"></span></div>
           </div>
-          <div class="card">
-            <h3 data-i18n>Diagnose-Log</h3>
-            <label class="chk"><input type="checkbox" id="dg_on"><span data-i18n>Ausführliches Diagnose-Log schreiben</span></label>
-            <p class="note" data-i18n>Zum Fehlersuchen: Der Server protokolliert ausführlich – Verbindung zum Miniserver, empfangene Werte pro Minute, verbundene Panels, Verbindungsabbrüche und Fehler der Panels (mit Gerätename). Nur bei Bedarf einschalten. Größe begrenzt, ältere Einträge werden überschrieben.</p>
-            <p class="note" id="dg_size"></p>
-            <div class="actions"><button class="btn" id="dg_save" data-i18n>Speichern</button>
-              <button class="btn ghost" id="dg_dl" data-i18n>Herunterladen</button>
-              <button class="btn del" id="dg_clear" data-i18n>Löschen</button><span class="toast" id="dg_toast"></span></div>
-          </div>
         </section>
 
         <!-- Intercom / Kameras -->
@@ -1252,14 +1248,6 @@
             <div class="note" id="am_servers" style="margin-top:8px"></div>
             <div class="actions"><button class="btn" id="am_save" data-i18n>Speichern</button><span class="toast" id="am_toast"></span></div>
           </div>
-          <div class="card">
-            <h3 data-i18n>Test-Ton (Diagnose)</h3>
-            <p class="note" data-i18n>Spielt drei kurze Pieptöne auf dem gewählten Panel – so prüfst du, ob Weckton und Klingel hörbar sind. Das Panel muss die Visu geöffnet haben.</p>
-            <div class="row2">
-              <div class="field" style="max-width:280px"><label class="lbl" data-i18n>Ziel-Panel</label><select id="at_panel"></select></div>
-            </div>
-            <div class="actions"><button class="btn" id="at_send" data-i18n>🔊 Test-Ton senden</button><span class="toast" id="at_toast"></span></div>
-          </div>
         </section>
 
         <!-- Kalender & Wetter (Front / Dashboard) -->
@@ -1303,6 +1291,32 @@
         </section>
 
         <!-- Sicherheit: optionaler Passwortschutz der Konfiguration -->
+        <section class="spane" data-sub="diagnose">
+          <p class="lead" data-i18n>Alles zur Fehlersuche an einer Stelle: Protokoll des Servers, Protokolle der Geräte und ein Test-Ton.</p>
+          <div class="card">
+            <h3 data-i18n>Diagnose-Log</h3>
+            <label class="chk"><input type="checkbox" id="dg_on"><span data-i18n>Ausführliches Diagnose-Log schreiben</span></label>
+            <p class="note" data-i18n>Zum Fehlersuchen: Der Server protokolliert ausführlich – Verbindung zum Miniserver, empfangene Werte pro Minute, verbundene Panels, Verbindungsabbrüche und Fehler der Panels (mit Gerätename). Nur bei Bedarf einschalten. Größe begrenzt, ältere Einträge werden überschrieben.</p>
+            <div class="dgstat" id="dg_size"></div>
+            <div class="actions"><button class="btn" id="dg_save" data-i18n>Speichern</button>
+              <button class="btn ghost" id="dg_dl" data-i18n>Herunterladen</button>
+              <button class="btn del" id="dg_clear" data-i18n>Löschen</button><span class="toast" id="dg_toast"></span></div>
+          </div>
+          <div class="card">
+            <h3 data-i18n>Geräte-Logs</h3>
+            <p class="note" data-i18n>Android-Geräte (z. B. Shelly Wall Display), die per adb über WLAN erreichbar sind: Systemprotokoll, Hänger („isn’t responding“), Speicher und CPU als Textdatei – nur lesend, am Gerät wird nichts verändert. Am besten direkt nach einem Hänger holen, das Android-Protokoll reicht nur einige Stunden zurück.</p>
+            <div id="dg_devs"></div><span class="toast" id="dg_devtoast"></span>
+          </div>
+          <div class="card">
+            <h3 data-i18n>Test-Ton</h3>
+            <p class="note" data-i18n>Spielt drei kurze Pieptöne auf dem gewählten Panel – so prüfst du, ob Weckton und Klingel hörbar sind. Das Panel muss die Visu geöffnet haben.</p>
+            <div class="row2">
+              <div class="field" style="max-width:280px"><label class="lbl" data-i18n>Ziel-Panel</label><select id="at_panel"></select></div>
+            </div>
+            <div class="actions"><button class="btn" id="at_send" data-i18n>🔊 Test-Ton senden</button><span class="toast" id="at_toast"></span></div>
+          </div>
+        </section>
+
         <section class="spane" data-sub="security">
           <p class="lead" data-i18n>Zugriff auf diese Konfiguration absichern.</p>
           <div class="card ovsec" id="ovSec"></div>
@@ -1529,7 +1543,7 @@ const PCONF_TABS=[
 const GLOBAL_TABS=[{k:'appearance',label:'Aussehen'}];
 const SET_TABS=[
   {k:'miniserver',label:'Miniserver'},{k:'calendar',label:'Kalender'},
-  {k:'intercom',label:'Kameras'},{k:'audio',label:'Audio'},{k:'behavior',label:'Bedienung'},{k:'security',label:'Sicherheit'}];
+  {k:'intercom',label:'Kameras'},{k:'audio',label:'Audio'},{k:'behavior',label:'Bedienung'},{k:'security',label:'Sicherheit'},{k:'diagnose',label:'Diagnose'}];
 const DEV_TABS=[
   {k:'panels',label:'Meine Geräte'},{k:'newpanel',label:'Gerät hinzufügen'},{k:'supported',label:'Unterstützte Geräte'}];
 
@@ -1616,8 +1630,8 @@ function renderOverview(){
       '<div class="msmon" id="ovMsMon">'+msMonHTML()+'</div></button>'+
     '<div class="ovcard ovpanels"><span class="ovk">'+T('Geräte')+'</span>'+
       '<b>'+dot(online.length>0)+online.length+' / '+devs.length+' '+T('online')+'</b>'+
-      (devs.length?devs.map(d=>'<button class="ovp" data-goto="devices:panels"><b class="ovpd">'+dot(d.online)+esc(d.name)+'</b>'+
-        '<small>'+(d.online?(d.profile?esc(d.profile):T('kein Panel')):T('offline'))+'</small></button>').join('')
+      (devs.length?devs.map(d=>'<button class="ovp" data-goto="devices:panels"><b class="ovpd">'+(devReconnecting(d)?'<i class="sdot wait"></i>':dot(d.online))+esc(d.name)+'</b>'+
+        '<small>'+(d.online?(d.profile?esc(d.profile):T('kein Panel')):devReconnecting(d)?T('verbindet …'):T('offline'))+'</small></button>').join('')
         :'<button class="ovp" data-goto="devices:newpanel"><b>'+T('Noch kein Gerät verbunden')+'</b><small>'+T('Hinzufügen')+' ›</small></button>')+'</div>'+
     '<div class="ovcard ovpanels"><span class="ovk">'+T('Panels')+'</span>'+
       '<b>'+dot(panels.length>0)+panels.length+' '+T(panels.length===1?'Panel':'Panels')+'</b>'+
@@ -1835,7 +1849,8 @@ const SECTS=[
   {k:'fs', label:'Fully-Kiosk-Quelle', btn:'#fs_save', root:'#fullySrc'},
   {k:'am', label:'Audioserver', btn:'#am_save'},
   {k:'cal', label:'Kalender', btn:'#cal_save', root:'section[data-sub="calendar"]'},
-  {k:'nt', label:'Nachtmodus', btn:'#nt_save'}];
+  {k:'nt', label:'Nachtmodus', btn:'#nt_save'},
+  {k:'dg', label:'Diagnose-Log', btn:'#dg_save'}];
 const SECT_DIRTY=new Set();
 function sectDirty(k){ if(!SECT_DIRTY.has(k)){ SECT_DIRTY.add(k); const t=$('#toast'); if(t){ t.className='toast'; t.textContent=''; } } saveInfo(); }
 function sectBind(){
@@ -3987,6 +4002,27 @@ if($('#cal_add')) $('#cal_add').onclick=()=>{
 
 // Wetterquelle (System -> Miniserver)
 $('#wx_ms').onchange=()=>{ $('#wx_alt').hidden=$('#wx_ms').checked; };
+// Geraete-Logs (System -> Diagnose): alle per adb erreichbaren Geraete
+async function devLogDownload(name, ip, toast){
+  flash(toast, T('Lese Geräte-Log per adb … (bis zu 1 Minute)'), true);
+  try{ const r=await fetch('/api/device/adblog?device='+encodeURIComponent(name)+'&ip='+encodeURIComponent(ip||''));
+    if((r.headers.get('Content-Type')||'').indexOf('text/plain')===0){
+      const blob=await r.blob(), m=/filename="([^"]+)"/.exec(r.headers.get('Content-Disposition')||'');
+      const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=m?m[1]:'geraet.log'; document.body.appendChild(a); a.click();
+      setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+      flash(toast, '✓ '+T('Geräte-Log von')+' '+name+' '+T('heruntergeladen'), true);
+    } else { const j=await r.json(); flash(toast, T('Fehler: ')+(j.error||''), false); }
+  }catch(e){ flash(toast, T('Fehler: ')+e, false); }
+}
+function renderDiagDevices(){
+  const box=$('#dg_devs'); if(!box) return;
+  const devs=((LAST_DEVS&&LAST_DEVS.devices)||[]).filter(d=>(d.caps||[]).indexOf('reboot')>=0);
+  box.innerHTML=devs.length ? devs.map(d=>'<div class="dgdev"><i class="sdot'+(d.online?' on':devReconnecting(d)?' wait':'')+'"></i><b>'+esc(d.name)+'</b>'+
+      '<small>'+esc((d.detected&&d.detected.ip)||d.ip||'')+'</small><button class="btn sm ghost" data-dglog="'+esc(d.name)+'">'+T('Log holen')+'</button></div>').join('')
+    : '<p class="hint">'+T('Kein Gerät mit adb gefunden. Android-Panels erscheinen hier, sobald ihr Gerätetyp gesetzt ist (Geräte → Meine Geräte) und adb über WLAN aktiv ist.')+'</p>';
+  box.querySelectorAll('[data-dglog]').forEach(b=>b.onclick=()=>{ const d=devs.find(x=>x.name===b.dataset.dglog)||{};
+    devLogDownload(d.name, (d.detected&&d.detected.ip)||d.ip||'', $('#dg_devtoast')); });
+}
 // Diagnose-Log (System): an/aus, Groesse, Herunterladen, Loeschen
 const dgFmt=b=>b<1024?b+' B':b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1).replace('.',',')+' MB';
 const dgShow=j=>{ if(!j||!j.ok) return; $('#dg_on').checked=!!j.on;
@@ -4047,7 +4083,7 @@ async function loadPanelIds(){
     DEV={};
     Object.entries(m.devices||{}).forEach(([name,d])=>{
       DEV[name]={auto:d.auto!==false, modes:Object.entries(d.modes||{}), display:d.display||null,
-                 model:d.model||'', fully:!!d.fully, scale:(d.scale===undefined?'':d.scale)};
+                 model:d.model||'', fully:!!d.fully, nrestart:d.nrestart, scale:(d.scale===undefined?'':d.scale)};
     });
   }catch(e){ PANEL_IDS=[]; }
 }
@@ -4067,6 +4103,11 @@ const DSI={
 const dsh=(ic,t)=>'<div class="dsh"><span class="dsi">'+svg(DSI[ic])+'</span>'+t+'</div>';
 // Live-Teil einer Geraetekachel, in Abschnitten: Anzeige (welche Ansicht), Steuerung
 // (Display, Neustarts, Helligkeit, Fully). Einstellungen folgen darunter (devRow).
+// Kurz getrennt (Server-Neustart, Seite laedt neu - schwache Panels brauchen 30-40 s):
+// innerhalb von 2 min "verbindet …" statt sofort "offline".
+function devReconnecting(d){ if(!d||d.online) return false;
+  const last=Math.max(d.lastSeen||0, (d.detected&&d.detected.last)||0);
+  return last>0 && (Date.now()/1000-last)<120; }
 function deviceRow(d, sel){
   const cur=(sel!==undefined)?sel:(d.profile||'');
   const caps=d.caps||[], has=c=>caps.indexOf(c)>=0, disp=!!(DEV[d.name]||{}).display;
@@ -4077,7 +4118,6 @@ function deviceRow(d, sel){
   if(disp) ctl+=btn('dispoff',T('Display aus'))+btn('dispon',T('Display an'));
   if(has('kioskrestart')) ctl+=btn('kioskrestart',T('Fully neu starten'),T('Fully beenden und neu öffnen (per adb)'));
   if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'));
-  if(has('reboot')) ctl+=btn('devlog',T('Geräte-Log holen'),T('Android-Protokoll, Hänger („isn’t responding“), Speicher und CPU per adb auslesen – nur lesend'));
   if(has('fullyinstall')) ctl+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'));
   // Letzte Instanz: LoxPanel-Launcher per adb (Shelly: wird Startbildschirm mit „LoxPanel“ + „Shelly“)
   if(has('fullyinstall')) ctl+=btn('launcher',T('Launcher einrichten'),T('LoxPanel-Launcher per adb installieren und Start-URL eintragen; das Symbol „LoxPanel“ öffnet Fully Kiosk mit dem Panel'));
@@ -4157,10 +4197,10 @@ function renderDeviceList(j){
   list.querySelectorAll('.dev').forEach(n=>{ const d=live[n.dataset.name], slot=n.querySelector('.devlive');
     slot.innerHTML=d?deviceRow(d,prevSel[d.name]):''; n.classList.toggle('online',!!d);
     const dot=n.querySelector('.devtg .sdot'), st=n.querySelector('.devtg .devst');
-    const up=!!(d&&d.online);
-    if(dot) dot.classList.toggle('on',up);
+    const up=!!(d&&d.online), rc=devReconnecting(d);
+    if(dot){ dot.classList.toggle('on',up); dot.classList.toggle('wait',rc); }
     const ia=devInactiveDays(n.dataset.name); n.classList.toggle('inactive', ia>0);
-    if(st) st.textContent=(up?T('online'):(ia?T('seit')+' '+ia+' '+T('Tagen nicht gesehen'):T('offline')))+(d&&d.profile?' · '+d.profile:'')+(d&&d.ip?' · '+d.ip:''); });
+    if(st) st.textContent=(up?T('online'):rc?T('verbindet …'):(ia?T('seit')+' '+ia+' '+T('Tagen nicht gesehen'):T('offline')))+(d&&d.profile?' · '+d.profile:'')+(d&&d.ip?' · '+d.ip:''); });
   box.innerHTML=anon.length?'<div class="devanon"><b>'+T('Ohne Kennung')+'</b><div class="note">'+T('Nach IP erkannt. Einen Namen vergeben, damit das Gerät dauerhaft gelistet und per Betriebsmodus umgeschaltet werden kann.')+'</div>'+
     anon.map(a=>anonRow(a,prevName[a.ip])).join('')+'</div>':'';
   list.querySelectorAll('.devx').forEach(x=>{
@@ -4238,17 +4278,6 @@ async function deviceAction(act, name, ip, panel, devip){
       j=await postJson('/api/panel/launcher',{ip:devip, server:location.host, panel:panel||'', device:shelly?'shelly':'android', name});
       flash($('#ag_toast'), j.ok ? (j.fully?'✓ '+T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))
                                  : T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':''), !!(j.ok&&j.fully));
-      return; }
-    else if(act==='devlog'){
-      flash($('#ag_toast'), T('Lese Geräte-Log per adb … (bis zu 1 Minute)'), true);
-      try{ const r=await fetch('/api/device/adblog?device='+encodeURIComponent(name)+'&ip='+encodeURIComponent(devip||''));
-        if((r.headers.get('Content-Type')||'').indexOf('text/plain')===0){
-          const blob=await r.blob(), cd=r.headers.get('Content-Disposition')||'', m=/filename="([^"]+)"/.exec(cd);
-          const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=m?m[1]:'geraet.log'; document.body.appendChild(a); a.click();
-          setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
-          flash($('#ag_toast'), '✓ '+T('Geräte-Log heruntergeladen'), true);
-        } else { const j=await r.json(); flash($('#ag_toast'), T('Fehler: ')+(j.error||''), false); }
-      }catch(e){ flash($('#ag_toast'), T('Fehler: ')+e, false); }
       return; }
     else if(act==='kioskrestart'||act==='devreboot'){
       const reb=act==='devreboot';
@@ -4390,7 +4419,7 @@ function devInactiveDays(name){
 async function pollDevices(){
   try{
     const r=await fetch('/api/devices'); const j=await r.json();
-    LAST_DEVS=j; if(rubric==='overview') renderOverview();
+    LAST_DEVS=j; if(rubric==='overview') renderOverview(); renderDiagDevices();
     const names=(j.devices||[]).map(d=>d.name).filter(Boolean);
     (j.devices||[]).forEach(d=>{ if(d.ip) DEVICE_IPS[d.name]=d.ip; });
     const fresh=names.filter(n=>KNOWN_NAMES.indexOf(n)<0), isNew=fresh.length>0;
@@ -4431,6 +4460,8 @@ function devRow(name){
         '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
           models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
         '<label class="chk dev_fullyl"'+(mo&&mo.os==='android'?'':' style="display:none"')+'><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
+        // Fully nachts neu starten (per adb, 3:05): gibt den ueber Tage gewachsenen Speicher frei. Vorgabe: Shelly an
+        '<label class="chk dev_nrl" title="'+T('Per adb um 3:05 Uhr – gibt den Speicher der Kiosk-App frei, den das nächtliche Neuladen der Seite nicht erreicht.')+'"'+(mo&&mo.os==='android'&&d.fully?'':' style="display:none"')+'><input type="checkbox" class="dev_nr"'+((d.nrestart===undefined?!!(mo&&mo.shelly):d.nrestart)?' checked':'')+'> '+T('Fully nachts neu starten')+'</label>'+
       '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div>'+
       '<div class="ddet">'+devDetHTML(name,d.model)+'</div>'+
       '<div class="dtips">'+devTipsHTML(name,mo)+'</div></div>'+
@@ -4528,9 +4559,11 @@ function readDevFromDom(){
     const display=drv?{driver:drv, host:n.querySelector('.dd_host').value.trim(),
       port:parseInt(n.querySelector('.dd_port').value)||DRIVER_PORT[drv]||0,
       password:n.querySelector('.dd_pw').value}:null;
-    const model=n.querySelector('.dev_model').value, fully=n.querySelector('.dev_fully').checked;
+    const model=n.querySelector('.dev_model').value, fully=n.querySelector('.dev_fully').checked, nri=n.querySelector('.dev_nr');
+    // Nachts neu starten: nur eine eigene Wahl merken, sonst gilt die Vorgabe des Geraetetyps
+    const nrestart=(nri.dataset.touched||typeof (DEV[n.dataset.name]||{}).nrestart==='boolean')?nri.checked:undefined;
     const sv=n.querySelector('.dev_scale').value, scale=(sv===''||sv==='off'||sv==='auto')?sv:parseFloat(sv);
-    DEV[n.dataset.name]={auto:n.querySelector('.dev_auto').checked, modes, display, model, fully, scale};
+    DEV[n.dataset.name]={auto:n.querySelector('.dev_auto').checked, modes, display, model, fully, nrestart, scale};
   });
 }
 function renderDevices(){
@@ -4563,9 +4596,13 @@ function renderDevices(){
     const m=(META.deviceModels||[]).find(x=>x.key===sel.value), dv=sel.closest('.dev'), l=dv.querySelector('.dev_fullyl'), dh=dv.querySelector('.ddhost');
     const andr=!!(m&&m.os==='android');
     if(l) l.style.display=andr?'':'none';
+    const nr=dv.querySelector('.dev_nrl'); if(nr){ nr.style.display=andr&&dv.querySelector('.dev_fully').checked?'':'none';
+      const d0=DEV[dv.dataset.name]; if(!d0||typeof d0.nrestart!=='boolean') nr.querySelector('input').checked=!!(m&&m.shelly); }
     const zs=dv.querySelector('.dev_scale'); if(zs) zs.innerHTML=devScaleOpts(zs.value,m);
     const tp=dv.querySelector('.dtips'); if(tp) tp.innerHTML=devTipsHTML(dv.dataset.name,m);
     if(dh) dh.hidden=!andr && !dv.querySelector('.dd_drv').value; });
+  box.querySelectorAll('.dev_nr').forEach(cb=>cb.addEventListener('change',()=>{ cb.dataset.touched='1'; }));
+  box.querySelectorAll('.dev_fully').forEach(cb=>cb.addEventListener('change',()=>{ const nr=cb.closest('.dev').querySelector('.dev_nrl'); if(nr) nr.style.display=cb.checked?'':'none'; }));
   box.querySelectorAll('.dd_drv').forEach(sel=>sel.onchange=()=>{
     const row=sel.closest('.dev'), name=row.dataset.name, drv=sel.value;
     const host=row.querySelector('.dd_host'), port=row.querySelector('.dd_port');
@@ -4586,7 +4623,7 @@ $('#dev_save').onclick=async()=>{
     const display=(d.display&&d.display.driver&&d.display.host)?d.display:null;
     const sc=(d.scale===undefined||d.scale===null)?'':d.scale;
     if(Object.keys(modes).length || display || d.model || sc!==''){ devices[name]={auto:d.auto!==false, modes}; if(display) devices[name].display=display;
-      if(d.model){ devices[name].model=d.model; if(d.fully) devices[name].fully=true; }
+      if(d.model){ devices[name].model=d.model; if(d.fully){ devices[name].fully=true; if(typeof d.nrestart==='boolean') devices[name].nrestart=d.nrestart; } }
       if(sc!=='') devices[name].scale=sc; }
   });
   $('#dev_save').disabled=true;

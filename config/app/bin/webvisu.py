@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.88"
+APP_VERSION = "0.19.89"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -1495,6 +1495,8 @@ class App:
         # Sendesperre je Panel-Verbindung: Navigation (ws_handler) und Live-Updates
         # (broadcaster) schreiben sonst gleichzeitig in dieselbe Verbindung.
         self._ws_locks: dict = {}
+        self._nr_day = time.localtime().tm_yday   # naechtlicher Fully-Neustart: erst ab der naechsten Nacht
+        self._dev_gone: dict[str, float] = {}     # Geraetename -> Zeitpunkt der letzten Trennung
         self.jwt: str | None = None
         self.alg: str = "SHA1"
         self._auth_gen = 0               # zaehlt jede Anmeldung (-> _renew_token)
@@ -1602,6 +1604,9 @@ class App:
         EINE Stelle fuer alle conn_*-Tabellen und den Sende-Cache - vorher an
         fuenf Stellen einzeln und unterschiedlich vollstaendig gepflegt, der
         Sende-Cache (_last_sent) wurde beim normalen Trennen nie geleert."""
+        dev = self.conn_dev.get(ws)
+        if dev:                                   # Zeitpunkt der Trennung -> Config zeigt kurz "verbindet …"
+            self._dev_gone[dev] = time.time()
         for d in (self.conn_route, self.conn_prof, self.conn_dev, self.conn_info,
                   self.conn_player, self.conn_energy, self.conn_chart, self.conn_camera,
                   self._last_sent, self._ws_locks):
@@ -3294,6 +3299,9 @@ class App:
             e["lastSeen"] = max(e["lastSeen"], info.get("ts", 0))
         for name in self.devices:
             entry(name)["configured"] = True
+        for name, t in list(self._dev_gone.items()):
+            if name in devs and not devs[name]["online"]:
+                devs[name]["lastSeen"] = max(devs[name]["lastSeen"], t)
         for e in devs.values():
             e["detected"] = self.device_summary(e["name"])
             cfg = self.devices.get(e["name"]) if isinstance(self.devices.get(e["name"]), dict) else {}
@@ -3623,6 +3631,7 @@ class App:
             ("Android", ["getprop", "ro.build.display.id"]),
             ("Speicher", ["cat", "/proc/meminfo"]),
             ("Speicher je App", ["dumpsys", "meminfo", "-c"]),
+            ("Speicher Kiosk-Browser (Fully)", ["dumpsys", "meminfo", "de.ozerov.fully"]),
             ("CPU", ["dumpsys", "cpuinfo"]),
             ("Prozesse (top)", ["top", "-b", "-n", "1", "-m", "25"]),
             ("ANR / Abstürze (dropbox)", ["dumpsys", "dropbox", "--print", "system_server_anr",
@@ -4226,6 +4235,8 @@ class App:
                 entry["model"] = model                 # Geraetetyp (s. DEVICE_MODELS)
                 if DEVICE_MODELS[model]["os"] == "android" and cfg.get("fully"):
                     entry["fully"] = True              # Fully Kiosk laeuft darauf
+                    if "nrestart" in cfg:              # Fully nachts neu starten (Vorgabe: Shelly an)
+                        entry["nrestart"] = bool(cfg.get("nrestart"))
             if scale is not None:
                 entry["scale"] = scale                 # Skalierung (sonst Vorgabe des Geraetetyps)
             out[name.strip()[:60]] = entry
@@ -7719,8 +7730,34 @@ class App:
         Token-Erneuerung) bis MS_OFFLINE_GRACE zaehlen noch als erreichbar."""
         return self.ms_up or (now or time.time()) - self.ms_down_since < MS_OFFLINE_GRACE
 
+    def _nrestart_on(self, name: str) -> bool:
+        """Fully auf diesem Geraet nachts neu starten? Eigene Wahl, sonst Vorgabe
+        des Geraetetyps (Shelly: ja - dort waechst der Speicher von Fully ueber Tage)."""
+        cfg = self.devices.get(name) if isinstance(self.devices.get(name), dict) else {}
+        mdl = DEVICE_MODELS.get(cfg.get("model") or "") or {}
+        if mdl.get("os") != "android" or not cfg.get("fully"):
+            return False
+        return bool(cfg.get("nrestart", mdl.get("shelly", False)))
+
+    async def _nightly_restarts(self) -> None:
+        """Einmal je Nacht (NEULADEN_STUNDE): Fully per adb neu starten. Das Neuladen
+        der Seite raeumt nur die Seite auf; der Speicher des Fully-Prozesses (inkl.
+        Grafik) wird erst durch einen Neustart der App frei. Nacheinander, adb ist
+        ohnehin gesperrt; die Seite schaltet das Display danach wieder selbst ab."""
+        for name in [n for n in self.devices if self._nrestart_on(n)]:
+            try:
+                r = await self.kiosk_restart(name, "app")
+                log.info("Nächtlicher Neustart von Fully auf %s: %s", name,
+                         "ok" if r.get("ok") else r.get("error", "Fehler"))
+            except Exception as e:                # ein Geraet darf die anderen nicht aufhalten
+                log.warning("Nächtlicher Neustart %s fehlgeschlagen: %s", name, e)
+
     async def _broadcast_tick(self) -> None:
         now = time.time()
+        lt = time.localtime(now)
+        if lt.tm_hour == NEULADEN_STUNDE and lt.tm_min >= 5 and self._nr_day != lt.tm_yday:
+            self._nr_day = lt.tm_yday          # 3:05 - nach dem Neuladen der Seiten um 3:00
+            self._spawn(self._nightly_restarts())
         if self.diag and now >= self._diag_next:
             self._diag_stats(now)
         ok = self.ms_ok(now)
@@ -9896,6 +9933,16 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
         hub.unsubscribe(q)
         return web.Response(status=502, text="camera unreachable")
 
+    # ?single=1: nur das aktuelle Einzelbild (schwache Panels holen so 1-2 Bilder/s,
+    # statt einen Dauerstrom zu dekodieren - der Speicher des Browsers bleibt begrenzt).
+    # Der Verteiler bleibt danach noch IDLE_KEEP_S verbunden, das naechste Bild ist frisch.
+    if request.query.get("single"):
+        hub.unsubscribe(q)
+        while not q.empty():
+            first = q.get_nowait()
+        return web.Response(body=first, content_type="image/jpeg",
+                            headers={"Cache-Control": "no-cache, no-store"})
+
     bnd = CamHub.BOUNDARY
     resp = web.StreamResponse(status=200, headers={
         "Content-Type": f"multipart/x-mixed-replace; boundary={bnd}",
@@ -9969,6 +10016,8 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "phone": prof.get("phone", False),
                             "scale": app.effective_scale(dev),
                             "wake": bool((DEVICE_MODELS.get(((app.devices.get(dev) or {}) if dev else {}).get("model") or "") or {}).get("wake")),
+                            # Schwache Panels (Shelly, 2 GB): Kamera als Einzelbilder, keine Glas-Unschaerfe
+                            "lite": bool((DEVICE_MODELS.get(((app.devices.get(dev) or {}) if dev else {}).get("model") or "") or {}).get("shelly")),
                             "panes": prof.get("panes") or {},
                             "dpmsOff": app.panel_dpms(prof["id"]),
                             "reloadHours": app.panel_reload(prof["id"]),

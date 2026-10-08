@@ -4382,8 +4382,10 @@ function renderSaverGrid(){
 // damit ein nicht voll belegtes Dashboard keine Loecher zeigt. Nur Darstellung -
 // gespeichert wird nichts. Panels (Shelly 960x480) sind hoeher und bleiben unberuehrt.
 // Testweise NUR auf Handys: Handy-Profil oder Handy-Browser (iPhone / Android Mobile) - nie Panels oder Tablets.
+// Handy quer: Handy-Profil, Handy-Browser oder ein Fenster unter 430 px Hoehe (kein Wandpanel
+// ist so niedrig - z.B. ein kleines Browserfenster, das sonst Kacheln abschneidet).
 function phoneLandscape(){ return window.innerHeight<450 && window.innerWidth>window.innerHeight &&
-  (themePhone || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent)); }
+  (themePhone || window.innerHeight<=430 || /iPhone|iPod|Android.+Mobile/i.test(navigator.userAgent)); }
 function fillGaps(items, cols, rows){
   const occ=[...Array(rows)].map(()=>Array(cols).fill(false));
   const out=items.map(it=>Object.assign({},it));

@@ -1901,7 +1901,9 @@ function subTabs(){
 }
 // System: eigene Reiter + "Darstellung global" (Darstellung, Kategorie-Farben).
 // Die Darstellungs-Reiter laufen intern weiter als Rubrik "global" (Panel-Editor).
-function SYS_TABS(){ return SET_TABS.concat(GLOBAL_TABS.map(t=>({k:'g:'+t.k,label:t.k==='appearance'?'Darstellung':t.label}))); }
+// Darstellung zwischen Bedienung und Sicherheit einreihen
+function SYS_TABS(){ const g=GLOBAL_TABS.map(t=>({k:'g:'+t.k,label:t.k==='appearance'?'Darstellung':t.label}));
+  const i=SET_TABS.findIndex(t=>t.k==='security'); return i<0 ? SET_TABS.concat(g) : SET_TABS.slice(0,i).concat(g, SET_TABS.slice(i)); }
 function renderSubtabs(){
   const tabs=subTabs(), active=rubric==='global'?'g:'+subGlob:getSub();
   const bar=$('#subtabs');

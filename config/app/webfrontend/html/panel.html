@@ -3653,9 +3653,16 @@ function clog(m){ if(!DIAG) return; const t=new Date().toTimeString().slice(0,8)
   _clogQ.push(t); if(_clogQ.length>40) _clogQ.shift(); }
 // Bei Diagnose alle 10 min Speicherstand melden: JS-Speicher, laufende Kamera-Streams,
 // DOM-Groesse - zeigt im Diagnose-Log, ob das Panel ueber Tage "zulaeuft".
+// Lange Rechenschritte (>50 ms, "Hänger") zaehlen: zeigt auf dem Geraet selbst, ob
+// die Seite ruckelt - Anzahl, Summe und laengster je 10 Minuten.
+const LT={n:0,ms:0,max:0};
+try{ new PerformanceObserver(l=>l.getEntries().forEach(e=>{ LT.n++; LT.ms+=e.duration; LT.max=Math.max(LT.max,e.duration); }))
+  .observe({type:'longtask', buffered:false}); }catch(e){ LT.n=-1; }
 setInterval(()=>{ if(!DIAG) return; const m=performance.memory, mb=b=>Math.round(b/1048576);
-  clog('Speicher · JS '+(m?mb(m.usedJSHeapSize)+'/'+mb(m.jsHeapSizeLimit)+' MB':'?')+' · Kamera-Streams '+camImgs.size+
-    ' · DOM '+document.getElementsByTagName('*').length+' · offen '+Math.round(performance.now()/3600000)+' h'); }, 600000);
+  clog('Speicher · JS '+(m?mb(m.usedJSHeapSize)+'/'+mb(m.jsHeapSizeLimit)+' MB':'?')+' · Kamera-Streams '+camImgs.size+(CAM_DARK?' (angehalten)':'')+
+    ' · DOM '+document.getElementsByTagName('*').length+' · offen '+Math.round(performance.now()/3600000)+' h'+
+    ' · Hänger '+(LT.n<0?'?':LT.n+'× / '+Math.round(LT.ms)+' ms (max '+Math.round(LT.max)+' ms)'));
+  if(LT.n>=0){ LT.n=0; LT.ms=0; LT.max=0; } }, 600000);
 function clogFlush(){ while(DIAG&&_clogQ.length&&ws&&ws.readyState===1){ try{ ws.send(JSON.stringify({t:'clog',msg:'(nachgereicht) '+_clogQ.shift()})); }catch(e){ break; } } }
 window.addEventListener('error',e=>clog('JS-Fehler: '+(e.message||e)+' @'+String(e.filename||'').split('/').pop()+':'+(e.lineno||'')));
 window.addEventListener('unhandledrejection',e=>clog('Promise-Fehler: '+((e.reason&&e.reason.message)||e.reason)));
@@ -3774,7 +3781,7 @@ function connect(){
     if(msg.t==='alarm'){ if(msg.on){ wake(); toneOn('alarm'); if(msg.id) nav({view:'control',id:msg.id}); } else { toneOff('alarm'); } return; }
     if(msg.t==='secalarm'){ secAlarm(msg); return; }   // Alarmanlage/Rauchmelder ausgeloest -> Vollbild
     if(msg.t==='testtone'){ playTestTone(); return; }
-    if(msg.t==='front'){ frontData=msg; ambientApply(); renderFront(); if(view&&view.layout==='cells'&&el('grid').classList.contains('cells')) render(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
+    if(msg.t==='front'){ frontData=(msg.part==='weather'&&frontData) ? Object.assign({}, frontData, {weather:msg.weather}) : msg;   /* Nur-Wetter-Nachricht: Rest bleibt */ ambientApply(); renderFront(); if(view&&view.layout==='cells'&&el('grid').classList.contains('cells')) render(); if(FRONT_TEST) renderFrontRich(el('frontPage')); applyPane(); return; }   // Kalender/Wetter fuer die Uhr-Seite
     if(msg.t==='player'){ renderPlayer(msg.blocks); return; }   // fester Player im Split-Layout
     if(msg.t==='energy'){ energyData=msg; const fp=el('frontpane'); if(fp && paneKind(paneForTab(activeTab()))==='energy') renderEnergyPane(fp); return; }   // Energiefluss-Pane
     if(msg.t==='saver'){ saverData=msg; renderSaverGrid(); return; }   // Live-Daten der Screensaver-Belegung
@@ -3982,6 +3989,9 @@ function svEvHTML(evs, d){
     '<span class="ttl">'+calDot(d,e)+esc(e.title||'')+'</span>'+
     (tag?'<span class="tag">'+esc(tag)+'</span>':'')+'</div>'; }).join('');
 }
+// Nur schreiben, wenn sich der Inhalt aendert: ein Neuaufbau kostet auf schwachen
+// Panels Layout und Neuzeichnen des ganzen Bereichs, auch bei identischem Text.
+function setHTML(node, html){ if(node._html!==html){ node.innerHTML=html; node._html=html; } }
 function renderFront(){
   if(saverLayoutOn()){ renderSaverGrid(); return; }   // eigene Belegung statt klassischem Screensaver
   const wxEl=el('svWx'), calEl=el('svCal'), camEl=el('svCam'); if(!wxEl||!calEl) return;
@@ -3989,18 +3999,18 @@ function renderFront(){
   if(w){
     const fc=Array.isArray(w.forecast)?w.forecast:[];
     wxEl.style.setProperty('--fc', Math.max(1,Math.min(7,fc.length))||4);
-    wxEl.innerHTML=svWxHTML(w); wxEl.hidden=false;
-  } else { wxEl.hidden=true; wxEl.innerHTML=''; }
+    setHTML(wxEl, svWxHTML(w)); wxEl.hidden=false;
+  } else { wxEl.hidden=true; setHTML(wxEl, ''); }
   // Wie viele Termine auf die Uhr-Seite passen, sagt die Einstellung — mit
   // mehreren Kalendern sind drei schnell zu wenig, um den Tag zu sehen.
   const evs=(Array.isArray(d.events)?d.events:[]).slice(0,svCount(d));
   let camShown=false;
   if(evs.length){
-    calEl.innerHTML=svEvHTML(evs, d);
+    setHTML(calEl, svEvHTML(evs, d));
     calEl.hidden=false;
     if(camEl){ camEl.hidden=true; stopScreensaverCam(); }
   } else {
-    calEl.hidden=true; calEl.innerHTML='';
+    calEl.hidden=true; setHTML(calEl, '');
     // "Fenster zur Aussenwelt": nur starten, wenn der Screensaver auch wirklich
     // sichtbar ist - renderFront() laeuft sonst auch im Hintergrund mit jedem
     // periodischen Wetter/Kalender-Push (alle ~15 Min), das soll den MJPEG-
@@ -4621,6 +4631,7 @@ function camStream(img, src, reconnectH, onErr, onOk){
   const single=LITE && src.indexOf('/mjpeg?')===0, tick=/[?&]fps=/.test(src)?500:250;
   const load=()=>{
     clearTimeout(img._camRetry); clearTimeout(img._camCycle); clearTimeout(img._camTick);
+    if(CAM_DARK) return;                       // Display aus: erst beim Aufwecken (camsDark) laden
     img.src=src+(src.indexOf('?')<0?'?':'&')+(single?'single=1&':'')+'_t='+Date.now();
     if(reconnectH>0) img._camCycle=setTimeout(()=>{ if(img.isConnected) load(); }, reconnectH*3600*1000);
   };
@@ -4631,11 +4642,11 @@ function camStream(img, src, reconnectH, onErr, onOk){
     img._camFails=(img._camFails||0)+1;
     const wait=Math.min(60000, CAM_RETRY_MS*Math.pow(2, img._camFails-1));
     img._camRetry=setTimeout(function again(){ if(!img.isConnected) return;
-      if(document.hidden){ img._camRetry=setTimeout(again, 5000); return; } load(); }, wait); };
+      if(document.hidden||CAM_DARK){ img._camRetry=setTimeout(again, 5000); return; } load(); }, wait); };
   img.onload=()=>{ img._camFails=0; if(onOk) onOk();
     // Einzelbild-Modus: naechstes Bild nach `tick`, bei ausgeblendeter Seite pausieren
     if(single) img._camTick=setTimeout(function next(){ if(!img.isConnected||!img._camLoad) return;
-      if(document.hidden){ img._camTick=setTimeout(next, 2000); return; }
+      if(document.hidden||CAM_DARK){ img._camTick=setTimeout(next, 2000); return; }
       img.src=src+'&single=1&_t='+Date.now(); }, tick); };
   camImgs.add(img);
   load();
@@ -4657,6 +4668,17 @@ function camsRefresh(){
   });
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) camsRefresh(); });
+// Display aus (Leerlauf, Server, Fully): Kamerabilder anhalten statt im Dunkeln
+// weiter zu holen und zu dekodieren; beim Aufwecken sofort neu aufbauen.
+let CAM_DARK=false;
+function camsDark(on){ on=!!on; if(CAM_DARK===on) return; CAM_DARK=on;
+  if(on) camImgs.forEach(img=>{ clearTimeout(img._camTick); clearTimeout(img._camRetry); clearTimeout(img._camCycle);
+    if(img.getAttribute('src')) img.removeAttribute('src'); });   // ohne src: Laden bricht ab, ohne Fehler-Ereignis
+  else camsRefresh();
+  clog('Display '+(on?'aus – Kamera angehalten':'an – Kamera läuft'));
+}
+// Fully meldet den echten Schirmzustand (auch wenn Fully selbst abgeschaltet hat)
+setInterval(()=>{ const f=kiosk(); if(f&&typeof f.isScreenOn==='function'){ try{ camsDark(!f.isScreenOn()); }catch(e){} } }, 5000);
 // Live-MJPEG-Bild der gewaehlten Intercom fuer den Screensaver. Wird nicht neu
 // aufgebaut, solange dieselbe Kamera schon laeuft (sonst reisst der Stream bei
 // jedem periodischen Front-Push unnoetig ab). Bei Ladefehler (Kamera kurz
@@ -5145,8 +5167,8 @@ function kiosk(){
   const f=window.fully;
   return (f && typeof f.turnScreenOff==='function' && typeof f.turnScreenOn==='function') ? f : null;
 }
-function screenOff(){ const f=kiosk(); if(!f) return; _screenWasOff=true; try{ f.turnScreenOff(); }catch(e){} }
-function screenOn(){ const f=kiosk(); if(!f) return; _screenWasOff=false;
+function screenOff(){ const f=kiosk(); if(!f) return; _screenWasOff=true; camsDark(true); try{ f.turnScreenOff(); }catch(e){} }
+function screenOn(){ camsDark(false); const f=kiosk(); if(!f) return; _screenWasOff=false;
   try{ if(typeof f.isScreenOn!=='function' || !f.isScreenOn()) f.turnScreenOn(); }catch(e){} }
 // Wach-Sperre (Screen Wake Lock) fuer Tablets/iPad ohne Kiosk-App: das Geraet
 // geht sonst nach der System-Sperrzeit schlafen. Gehalten, solange das Panel
@@ -5160,11 +5182,11 @@ function wakeOn(){
 function wakeOff(){ const l=_wake; _wake=null; if(l) l.release().catch(()=>{}); }
 document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') armDpms(); });
 function armDpms(){ clearTimeout(dpmsTimer);
-  wakeOn();
+  wakeOn(); camsDark(false);
   if(DISP.agent || !(DISP.dpmsOff>0)) return;
   // Mit Kiosk-JS (Fully) direkt abschalten; sonst dem Server Leerlauf melden,
   // der schaltet ueber den Display-Treiber des Geraets (Fully REST / WallPanel).
-  dpmsTimer=setTimeout(()=>{ wakeOff(); if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
+  dpmsTimer=setTimeout(()=>{ wakeOff(); camsDark(true); if(kiosk()) screenOff(); else send({t:'idle'}); }, DISP.dpmsOff*1000); }
 function applyDisplayCfg(msg){
   DISP.dpmsOff = (typeof msg.dpmsOff==='number' && msg.dpmsOff>0) ? msg.dpmsOff : 0;
   // Neu laden: null = nicht eingestellt (nachts um reloadAt Uhr), sonst Stunden, 0 = aus

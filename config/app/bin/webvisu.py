@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.89"
+APP_VERSION = "0.19.90"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -1547,6 +1547,7 @@ class App:
         # Terminen darin) wuerde ueberschrieben.
         self._front_good_cal: dict = {}
         self._front_dirty = False
+        self._front_sent: dict | None = None    # zuletzt an alle verteilter Stand (fuer Nur-Wetter-Nachrichten)
         self._front_refresh = asyncio.Event()
         # Letzter fertig gebauter Front-Stand (nach _front_keep) und ab wann der
         # Kalender wieder aus dem Netz geholt wird (time.monotonic(), 0 = sofort).
@@ -3632,6 +3633,14 @@ class App:
             ("Speicher", ["cat", "/proc/meminfo"]),
             ("Speicher je App", ["dumpsys", "meminfo", "-c"]),
             ("Speicher Kiosk-Browser (Fully)", ["dumpsys", "meminfo", "de.ozerov.fully"]),
+            # Wer spielt Ton ab (Tipp-Toene, Klingel)? Abspiel-Verlauf je App + Einstellung
+            ("Tipp-Töne (Android-Einstellung)", ["settings", "get", "system", "sound_effects_enabled"]),
+            ("Audio (Abspiel-Verlauf je App)", ["dumpsys", "audio"]),
+            # Herstellereigene Schalter finden (z.B. Shelly-Tippton am Android-Schalter vorbei)
+            ("Einstellungen system", ["settings", "list", "system"]),
+            ("Einstellungen global", ["settings", "list", "global"]),
+            ("Einstellungen secure", ["settings", "list", "secure"]),
+            ("Systemeigenschaften", ["getprop"]),
             ("CPU", ["dumpsys", "cpuinfo"]),
             ("Prozesse (top)", ["top", "-b", "-n", "1", "-m", "25"]),
             ("ANR / Abstürze (dropbox)", ["dumpsys", "dropbox", "--print", "system_server_anr",
@@ -7800,7 +7809,16 @@ class App:
             # aktuellen Stand ausserdem direkt beim Verbinden (ws_handler).
             self._front_dirty = False
             if self._front is not None:
-                await self._send_all(self.conn_route, self._front)
+                # Meist hat sich nur das Wetter bewegt (Miniserver-Push, z.B. Wind):
+                # dann nur das Wetter schicken statt erneut aller Termine (~14 KB).
+                prev, cur = self._front_sent, self._front
+                if prev and {k: v for k, v in prev.items() if k != "weather"} == \
+                        {k: v for k, v in cur.items() if k != "weather"}:
+                    out = {"t": "front", "part": "weather", "weather": cur.get("weather")}
+                else:
+                    out = cur
+                self._front_sent = cur
+                await self._send_all(self.conn_route, out)
         if self._pending_reload:
             # Loxone-Struktur hat sich geaendert (Config) -> Panels neu laden, damit
             # neue/umbenannte Controls erscheinen. Nur bei echter Aenderung gesetzt.

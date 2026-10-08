@@ -638,7 +638,7 @@
   /* Anti-Einbrennen: Inhalt driftet langsam ueber den Schirm. Kleinere Amplitude
      als bei der reinen Uhr, damit Wetter/Termine nicht ueber den Rand wandern. */
   .saver .sv-wrap{display:flex;flex-direction:column;align-items:center;gap:16px;
-    width:min(92%,440px);animation:svdrift 90s linear infinite;}
+    width:min(92%,440px);animation:svdrift 360s step-end infinite;}
   @keyframes svdrift{
     0%{transform:translate(-14px,-5px);}   25%{transform:translate(14px,-5px);}
     50%{transform:translate(14px,5px);}     75%{transform:translate(-14px,5px);}
@@ -683,7 +683,7 @@
   .saver.layout .sv-grid{display:grid;position:absolute;inset:70px 12px 12px;padding:14px;gap:10px;border-radius:var(--r-xl);
     background:rgba(var(--bezel-ink-rgb,255,255,255),.035);
     grid-template-columns:repeat(var(--svc,3),minmax(0,1fr));grid-template-rows:repeat(var(--svr,3),minmax(0,1fr));
-    animation:svgriddrift 120s linear infinite;}
+    animation:svgriddrift 480s step-end infinite;}
   @keyframes svgriddrift{0%,100%{transform:translate(-3px,-2px);}25%{transform:translate(3px,-2px);}
     50%{transform:translate(3px,2px);}75%{transform:translate(-3px,2px);}}
   .svw{min-width:0;min-height:0;position:relative;display:flex;}
@@ -808,7 +808,7 @@
      je Profil) im Stil eines Tab-Symbols */
   .saver .sv-bar{display:none;}
   .saver.layout .sv-bar{display:flex;position:absolute;left:12px;right:12px;top:8px;height:52px;align-items:center;gap:8px;z-index:3;
-    animation:svgriddrift 120s linear infinite;}   /* Einbrennschutz wie das Raster (immer, auch bei Animation "Keine") */
+    animation:svgriddrift 480s step-end infinite;}   /* Einbrennschutz wie das Raster (immer, auch bei Animation "Keine") */
   .sv-st{display:flex;align-items:center;gap:4px;min-width:0;overflow:hidden;
     align-self:stretch;}   /* volle Leistenhoehe: Platz fuer die Zahlen-Bubble ueber dem Symbol (sonst abgeschnitten) */
   .sv-st .svsti{height:100%;max-height:52px;}
@@ -1642,6 +1642,11 @@
   /* Kleine Kacheln im 3x3-Raster (z. B. Shelly X2i): Auf/Ab nebeneinander wie Zurueck/Vor,
      sonst wird der Kopf so hoch, dass die Zustandszeile ("52 % zu") abgeschnitten wird. */
   .grid.cells.g3 .svw[data-sz="1x1"] .updown,.grid.cells.g3 .svw[data-sz="2x1"] .updown{flex-direction:row;gap:6px;}
+
+  /* Kamera-Overlays ohne Glas-Unschaerfe: backdrop-filter wird bei JEDEM Kamerabild
+     neu berechnet - auf schwachen Panels (Shelly) eine Dauerlast. Dunklerer Grund statt Blur. */
+  .campill,.camlbl,.icab{-webkit-backdrop-filter:none !important;backdrop-filter:none !important;}
+  .campill{background:rgba(0,0,0,.42);} .camlbl{background:rgba(0,0,0,.5);} .icab{background:rgba(0,0,0,.5);}
 </style>
 </head>
 <body>
@@ -2355,7 +2360,8 @@ window.addEventListener('pointercancel', endHold);
 function bindCell(btn,c){ btn._cmd=c.cmd||null; btn._release=c.release||null; btn._hold=!!c.hold; btn._menu=c.menu||null; }
 // Strich-Icons der Aktionsreihe (power/minus/plus) als Linie zeichnen, die
 // uebrigen Knopf-Icons (play/pause ...) wie bisher gefuellt.
-const STROKE_ICONS={power:1,minus:1,plus:1,chart:1,shield:1,link:1,bolt:1,list:1};   // als Linie zeichnen (nicht gefuellt)
+const STROKE_ICONS={power:1,minus:1,plus:1,chart:1,shield:1,link:1,bolt:1,list:1,check:1,fail:1};   // als Linie zeichnen (nicht gefuellt)
+ICONS.check=ICONS.check||'<path d="M5 12.5l4.5 4.5L19 7"/>'; ICONS.fail=ICONS.fail||'<path d="M6 6l12 12M18 6L6 18"/>';   // Taster-Historie
 ICONS.bolt=ICONS.bolt||'<path d="M13 3L5 14h6l-1 7 8-11h-6l1-7z"/>';   // Erzwingen (Rueckfall ohne Miniserver)
 // Loxone-Symbole statt eigener: der Miniserver liefert seine IconsFilled-SVGs
 // (Linien-Icons wie unsere). Sie werden zur Laufzeit geholt - nicht mitgeliefert -,
@@ -4638,7 +4644,7 @@ function renderScreensaverCam(camEl){
     '<div class="sv-cam-frame"><img class="sv-cam-img" alt=""><div class="sv-cam-status"></div></div>';
   camEl.hidden=false;
   const img=camEl.querySelector('.sv-cam-img'), stat=camEl.querySelector('.sv-cam-status');
-  camStream(img, '/mjpeg?id='+encodeURIComponent(screensaverCam.uuid), screensaverCam.reconnectH||0,
+  camStream(img, '/mjpeg?id='+encodeURIComponent(screensaverCam.uuid)+'&fps=5', screensaverCam.reconnectH||0,
     ()=>{ if(stat) stat.textContent='Kamera nicht erreichbar …'; },
     ()=>{ if(stat) stat.textContent=''; });
 }

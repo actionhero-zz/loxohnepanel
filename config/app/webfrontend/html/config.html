@@ -4077,6 +4077,7 @@ function deviceRow(d, sel){
   if(disp) ctl+=btn('dispoff',T('Display aus'))+btn('dispon',T('Display an'));
   if(has('kioskrestart')) ctl+=btn('kioskrestart',T('Fully neu starten'),T('Fully beenden und neu öffnen (per adb)'));
   if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'));
+  if(has('reboot')) ctl+=btn('devlog',T('Geräte-Log holen'),T('Android-Protokoll, Hänger („isn’t responding“), Speicher und CPU per adb auslesen – nur lesend'));
   if(has('fullyinstall')) ctl+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'));
   // Letzte Instanz: LoxPanel-Launcher per adb (Shelly: wird Startbildschirm mit „LoxPanel“ + „Shelly“)
   if(has('fullyinstall')) ctl+=btn('launcher',T('Launcher einrichten'),T('LoxPanel-Launcher per adb installieren und Start-URL eintragen; das Symbol „LoxPanel“ öffnet Fully Kiosk mit dem Panel'));
@@ -4237,6 +4238,17 @@ async function deviceAction(act, name, ip, panel, devip){
       j=await postJson('/api/panel/launcher',{ip:devip, server:location.host, panel:panel||'', device:shelly?'shelly':'android', name});
       flash($('#ag_toast'), j.ok ? (j.fully?'✓ '+T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))
                                  : T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':''), !!(j.ok&&j.fully));
+      return; }
+    else if(act==='devlog'){
+      flash($('#ag_toast'), T('Lese Geräte-Log per adb … (bis zu 1 Minute)'), true);
+      try{ const r=await fetch('/api/device/adblog?device='+encodeURIComponent(name)+'&ip='+encodeURIComponent(devip||''));
+        if((r.headers.get('Content-Type')||'').indexOf('text/plain')===0){
+          const blob=await r.blob(), cd=r.headers.get('Content-Disposition')||'', m=/filename="([^"]+)"/.exec(cd);
+          const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=m?m[1]:'geraet.log'; document.body.appendChild(a); a.click();
+          setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+          flash($('#ag_toast'), '✓ '+T('Geräte-Log heruntergeladen'), true);
+        } else { const j=await r.json(); flash($('#ag_toast'), T('Fehler: ')+(j.error||''), false); }
+      }catch(e){ flash($('#ag_toast'), T('Fehler: ')+e, false); }
       return; }
     else if(act==='kioskrestart'||act==='devreboot'){
       const reb=act==='devreboot';

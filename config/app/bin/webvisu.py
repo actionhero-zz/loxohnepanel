@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.87"
+APP_VERSION = "0.19.88"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -531,6 +531,7 @@ def _ms_reason_code(rejected: bool, close_code: int | None, out_of_service: bool
     if close_code in (4004, 4005):
         return "user_changed"
     return "net"
+WIDGET_CAM_FPS = 5        # Bilder/s fuer Kamera-Widgets (Dashboard); Klingel-Vollansicht ungebremst
 ICON_CACHE_MAX = 800     # Icons im Speicher (Loxone-SVGs, je wenige KB)
 COVER_TIMEOUT = 10       # s: Albumcover vom Audioserver/aus dem Netz (sonst haengt die Anfrage offen)
 FRONT_INTERVAL = 900     # s: Kalender + Open-Meteo so oft neu holen; Wetter-Pushes dazwischen ohne Abruf
@@ -1245,6 +1246,21 @@ def _clean_crop(v) -> dict | None:
     return out
 
 
+# ---- Taster-Historie: die letzten Ausloesungen je Taster (Detailansicht) ----
+# Nur Anzeige: was ueber ein Panel gesendet wurde (mit Antwort des Miniservers)
+# und was Loxone selbst meldet (App, Wandtaster, Logik: State "active" 0->1).
+PUSHLOG_FILE = _CFGDIR / "pushlog.json"
+PUSHLOG_KEEP = 3
+
+
+def _pushlog_load() -> dict:
+    try:
+        d = json.loads(PUSHLOG_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {k: v[:PUSHLOG_KEEP] for k, v in d.items() if isinstance(v, list)} if isinstance(d, dict) else {}
+
+
 # ---- Diagnose-Log (System -> Diagnose) ----
 # Ausfuehrliches Protokoll zum Fehlersuchen: Server-Meldungen ab DEBUG, Panel-
 # Ereignisse (Verbindungsabbrueche, JS-Fehler) und eine Statistik je Minute.
@@ -1538,6 +1554,8 @@ class App:
         self._front_cal_due = 0.0
         self._front_session: aiohttp.ClientSession | None = None
         self.bell_map: dict[str, str] = {}
+        self.push_state: dict[str, str] = {}      # State-UUID "active" -> Taster-UUID
+        self.push_hist: dict[str, list] = _pushlog_load()   # Taster-UUID -> letzte Ausloesungen
         self._bell_prev: dict[str, object] = {}
         # Klingel (Intercom): analog zum Wecker beide Flanken als Queue, damit
         # der Ton (falls fuer diese Intercom aktiviert) so lange laeuft, wie
@@ -1716,6 +1734,12 @@ class App:
         self.bell_map = {}
         self.alarm_map = {}
         self.sec_map = {}
+        self.push_state = {}
+        for _pu, _pc in self.controls.items():
+            if _pc.get("type") == "Pushbutton":
+                _ps = (_pc.get("states") or {}).get("active")
+                if isinstance(_ps, str):
+                    self.push_state[_ps] = _pu
         # Betriebsarten (id -> Name) fuer die Wecker-Wiederholung: die `modes`
         # eines Eintrags verweisen hierauf (z.B. Wochentage Mo-So).
         self.op_modes = {str(k): v for k, v in (st.get("operatingModes") or {}).items()}
@@ -2722,11 +2746,11 @@ class App:
                 e = self.intercom_cfg.get(u)
                 if (e.get("url") if isinstance(e, dict) else e):
                     out.append({"id": u, "name": _clean(c.get("name")) or "Intercom",
-                                "src": f"/mjpeg?id={quote(u)}", "reconnectH": self._cam_reconnect_h(u)})
+                                "src": f"/mjpeg?id={quote(u)}&fps={WIDGET_CAM_FPS}", "reconnectH": self._cam_reconnect_h(u)})
         for k, e in self.intercom_cfg.items():
             if k.startswith("cam_") and isinstance(e, dict) and e.get("url"):
                 out.append({"id": k, "name": str(e.get("name") or "Kamera")[:40],
-                            "src": f"/mjpeg?id={quote(k)}", "reconnectH": 0})
+                            "src": f"/mjpeg?id={quote(k)}&fps={WIDGET_CAM_FPS}", "reconnectH": 0})
         return out
 
     def _widgets_data(self, items: list, prof: dict | None, show_room: bool = True) -> dict:
@@ -3581,6 +3605,42 @@ class App:
         ok = code == 0 and "rror" not in out
         log.info("Fully auf %s (%s) neu gestartet: %s", device, target, "ok" if ok else out)
         return {"ok": ok, "via": "adb", **({} if ok else {"error": out[-300:]})}
+
+    async def device_adblog(self, device: str, ip: str = "") -> dict:
+        """Android-Geraet (Shelly, Tablet) per adb auslesen - NUR lesend: Systemprotokoll,
+        ANR-Eintraege ("isn't responding"), Speicher, CPU, Laufzeit. -> {ok, text|error}"""
+        ip = ip or self._device_ip(device)
+        try:
+            ip = str(ipaddress.ip_address(ip.strip()))
+        except (ValueError, AttributeError):
+            return {"ok": False, "error": "IP des Geräts unbekannt – Visu am Panel einmal öffnen"}
+        if not shutil.which("adb"):
+            return {"ok": False, "error": "adb fehlt im Container"}
+        target = f"{ip}:5555"
+        parts = [f"LoxPanel Geräte-Log · {device} ({ip}) · {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} · Version {APP_VERSION}"]
+        steps = [
+            ("Laufzeit", ["uptime"]),
+            ("Android", ["getprop", "ro.build.display.id"]),
+            ("Speicher", ["cat", "/proc/meminfo"]),
+            ("Speicher je App", ["dumpsys", "meminfo", "-c"]),
+            ("CPU", ["dumpsys", "cpuinfo"]),
+            ("Prozesse (top)", ["top", "-b", "-n", "1", "-m", "25"]),
+            ("ANR / Abstürze (dropbox)", ["dumpsys", "dropbox", "--print", "system_server_anr",
+                                         "system_app_anr", "data_app_anr", "system_app_crash", "data_app_crash"]),
+            ("Systemprotokoll (logcat, letzte 3000 Zeilen)", ["logcat", "-d", "-t", "3000", "-v", "time"]),
+        ]
+        async with _adb_lock:
+            code, out = await _adb("connect", target, timeout=15)
+            if "connected" not in out or "failed" in out:
+                return {"ok": False, "error": "Panel per adb nicht erreichbar – ADB über WLAN am Panel aktiv?"}
+            code, out = await _adb("-s", target, "get-state", timeout=10)
+            if out != "device":
+                return {"ok": False, "error": "adb nicht freigegeben – am Panel „USB-Debugging zulassen“ bestätigen"}
+            for title, cmd in steps:
+                code, out = await _adb("-s", target, "shell", *cmd, timeout=40)
+                parts.append(f"\n===== {title} =====\n{out[-400000:] if out else '(leer)'}")
+        log.info("Geräte-Log von %s (%s) geholt", device, ip)
+        return {"ok": True, "text": "\n".join(parts)}
 
     async def _agent_start(self, agent: dict, profile: str) -> bool:
         """Startet den Kiosk eines Panel-Agenten mit einem Profil (Fernbefehl)."""
@@ -6314,14 +6374,26 @@ class App:
                     "anchor": "bottom", "blocks": blocks}
         if t == "Pushbutton":
             ua = c.get("uuidAction")
+            hist = self.push_hist.get(uuid) or []
+            blocks = []
+            if hist:
+                h0 = hist[0]
+                # Grosser Wert = letzte Ausloesung, darunter Tag + Ergebnis
+                blocks += [{"k": "big", "text": self._push_time(h0["ts"])},
+                           {"k": "status", "text": "zuletzt ausgelöst · " + self._push_day(h0["ts"])
+                            + ("" if h0.get("ok", True) else " · nicht erfolgreich")}]
+                # Die letzten Ausloesungen als reine Anzeige-Zeilen (kein Befehl)
+                blocks.append({"k": "scenes", "items": [{
+                    "id": f"{uuid}:h{i}", "icon": "check" if h.get("ok", True) else "fail",
+                    "label": self._push_day(h["ts"]) + " " + self._push_time(h["ts"]),
+                    "sub": ("erfolgreich" if h.get("ok", True) else "nicht erfolgreich") + " · " + (h.get("src") or "Loxone"),
+                    "on": not h.get("ok", True)} for i, h in enumerate(hist)]})
+            else:
+                blocks += [{"k": "state", "icon": "switch", "tone": "idle", "text": "Bereit",
+                            "sub": "Noch keine Auslösung erfasst"}]
+            blocks.append({"k": "row", "act": True, "cells": [{"label": "Auslösen", "cmd": {"uuid": ua, "cmd": "pulse"}}]})
             return {"t": "view", "title": _clean(c.get("name")), "route": route,
-                    "anchor": "bottom", "blocks": [
-                # Zustandsflaeche wie bei der Alarmanlage: ein Taster hat keinen
-                # Zustand, also "Bereit" und was die Aktion tut
-                {"k": "state", "icon": "switch", "tone": "idle", "text": "Bereit",
-                 "sub": "„Auslösen“ sendet einen kurzen Impuls"},
-                {"k": "row", "act": True, "cells": [{"label": "Auslösen", "cmd": {"uuid": ua, "cmd": "pulse"}}]},
-            ]}
+                    "anchor": "bottom", "blocks": blocks}
         if t in SWITCHY:
             ua = c.get("uuidAction")
             on = bool(self._state(c, "active"))
@@ -7395,12 +7467,50 @@ class App:
                 if self.theme.get("ui", {}).get("alarmsEnabled", True):
                     self._pending_alarm.append({"id": self.alarm_map[uuid], "on": now})
             self._alarm_prev[uuid] = value
+        if uuid in self.push_state and value and not self._bell_prev.get(("push", uuid)):
+            # Taster meldet eine Ausloesung (0 -> 1). Kam sie gerade von einem Panel,
+            # ist sie dort schon (mit Ergebnis) eingetragen -> nicht doppelt.
+            cu = self.push_state[uuid]
+            last = (self.push_hist.get(cu) or [{}])[0]
+            if time.time() - float(last.get("ts") or 0) > 4:
+                self.push_record(cu, True, "")
+        if uuid in self.push_state:
+            self._bell_prev[("push", uuid)] = bool(value)
         if uuid in self.sec_map:
             now = bool(value)
             if now != bool(self._sec_prev.get(uuid)):
                 # Beide Flanken: an -> Vollbild auf den Panels, aus -> schliessen
                 self._pending_sec.append({"id": self.sec_map[uuid], "on": now})
             self._sec_prev[uuid] = value
+
+    @staticmethod
+    def _push_time(ts: float) -> str:
+        return datetime.fromtimestamp(ts).strftime("%H:%M")
+
+    @staticmethod
+    def _push_day(ts: float) -> str:
+        d = datetime.fromtimestamp(ts).date(), date.today()
+        return "heute" if d[0] == d[1] else ("gestern" if (d[1] - d[0]).days == 1 else d[0].strftime("%d.%m."))
+
+    def push_uuid(self, uuid: str) -> str | None:
+        """Taster-UUID zu einer Befehls-UUID (uuidAction oder Control-UUID)."""
+        c = self.controls.get(uuid)
+        if c and c.get("type") == "Pushbutton":
+            return uuid
+        for cu, cc in self.controls.items():
+            if cc.get("type") == "Pushbutton" and cc.get("uuidAction") == uuid:
+                return cu
+        return None
+
+    def push_record(self, cu: str, ok: bool, src: str) -> None:
+        """Ausloesung eintragen (neueste zuerst, max. PUSHLOG_KEEP) und speichern."""
+        lst = [{"ts": round(time.time(), 1), "ok": bool(ok), "src": (src or "")[:40]}] + (self.push_hist.get(cu) or [])
+        self.push_hist[cu] = lst[:PUSHLOG_KEEP]
+        self._dirty = True
+        try:
+            _atomic_write(PUSHLOG_FILE, json.dumps(self.push_hist, ensure_ascii=False))
+        except OSError as err:
+            log.debug("Taster-Historie nicht gespeichert: %s", err)
 
     def _on_weather(self, uuid: str, entries: list) -> None:
         """Wetter-Tabelle vom Miniserver uebernehmen (nur mit Wetterdienst).
@@ -9071,6 +9181,20 @@ async def api_tab_layout(request: web.Request) -> web.Response:
     return web.json_response({"ok": True, "items": app._tab_layout(tab, prof)})
 
 
+async def api_device_adblog(request: web.Request) -> web.Response:
+    """Geraete-Log per adb als Textdatei: GET ?device=&ip= (nur lesend)."""
+    app: App = request.app["app"]
+    dev = str(request.query.get("device") or "").strip()
+    if not dev:
+        return web.json_response({"ok": False, "error": "device fehlt"}, status=400)
+    res = await app.device_adblog(dev, str(request.query.get("ip") or ""))
+    if not res.get("ok"):
+        return web.json_response(res)
+    name = "geraet-" + re.sub(r"[^A-Za-z0-9_-]+", "-", dev)[:40] + datetime.now().strftime("-%Y%m%d-%H%M") + ".log"
+    return web.Response(text=res["text"], content_type="text/plain", charset="utf-8",
+                        headers={"Content-Disposition": f'attachment; filename="{name}"', **_NOCACHE})
+
+
 async def api_kiosk_restart(request: web.Request) -> web.Response:
     """Panel per adb neu starten: POST {device, action: app|reboot, ip?}.
     app = Fully neu starten, reboot = Geraet neu starten."""
@@ -9748,6 +9872,14 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
     if isinstance(ent, dict) and ent.get("user"):
         auth = aiohttp.BasicAuth(ent.get("user", ""), ent.get("pass", ""))
 
+    # Bildrate je Betrachter begrenzen (?fps=): das Dashboard-Widget braucht keine
+    # 15 Bilder/s - schwache Panels (Shelly) muessten jedes Bild dekodieren.
+    try:
+        fps = max(0.0, min(30.0, float(request.query.get("fps", "0"))))
+    except ValueError:
+        fps = 0.0
+    gap = 1.0 / fps if fps else 0.0
+
     hub = app._cam_hubs.get(uuid)
     if hub and not hub.same(url, auth):          # URL/Zugang geaendert -> neu
         hub.stop()
@@ -9776,9 +9908,17 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
             # Timeout auf das Schreiben: liest ein eingefrorener Browser nicht mehr
             # mit, wird er abgehaengt statt die Verteilung aufzuhalten.
             await asyncio.wait_for(resp.write(head + frame + b"\r\n"), timeout=15)
+            sent = time.monotonic()
             frame = await q.get()
-    except (aiohttp.ClientError, ConnectionResetError, asyncio.CancelledError, asyncio.TimeoutError):
-        pass
+            if gap:
+                # Bis zum naechsten erlaubten Zeitpunkt warten, dann das NEUESTE Bild nehmen
+                wait = gap - (time.monotonic() - sent)
+                if wait > 0:
+                    await asyncio.sleep(wait)
+                while not q.empty():
+                    frame = q.get_nowait()
+    except (aiohttp.ClientError, ConnectionError, asyncio.CancelledError, asyncio.TimeoutError):
+        pass                                     # Betrachter weg (Seite zu, WLAN) - kein Fehler
     finally:
         hub.unsubscribe(q)
     return resp
@@ -9887,6 +10027,9 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                 pin = data.get("pin")
                 code = await app.command(str(data.get("uuid") or ""), str(data.get("cmd") or ""),
                                          None if pin is None else str(pin))
+                pu = app.push_uuid(str(data.get("uuid") or "")) if data.get("cmd") == "pulse" else None
+                if pu:                           # Taster: mit Ergebnis in die Historie
+                    app.push_record(pu, code == "200", dev or "Panel")
                 if data.get("id") is not None:
                     # Quittung fuer das Befehls-Monitoring des Panels
                     await app._send_or_drop(ws, {"t": "cmdack", "id": data.get("id"), "ok": code == "200"})
@@ -10283,6 +10426,7 @@ def main() -> None:
     a.router.add_post("/api/devices", api_save_devices)
     a.router.add_get("/api/devices", api_devices_get)
     a.router.add_post("/api/device/switch", api_device_switch)
+    a.router.add_get("/api/device/adblog", api_device_adblog)
     a.router.add_post("/api/device/name", api_device_name)
     a.router.add_post("/api/device/delete", api_device_delete)
     a.router.add_route("*", "/api/panel/bg", api_panel_bg)

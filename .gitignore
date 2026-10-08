@@ -10,6 +10,7 @@ config/app/config/panels.json
 config/app/config/theme.json
 config/app/config/visu.json
 config/app/config/diag.log*
+config/app/config/pushlog.json
 config/app/deploy/loxpanel-kiosk.conf
 
 # Build-/Release-Artefakte

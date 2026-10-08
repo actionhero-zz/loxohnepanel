@@ -1690,6 +1690,10 @@
      (3x3-Raster behaelt die alten Masse, dort ist die Kachel zu klein) */
   :root{--tile-ub:44px;--tile-ub-ico:20px;--tile-sw-w:52px;--tile-sw-h:32px;}
   .grid.cells.g3{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;}
+  /* Niedrige Fenster (Handy quer, kleines Browserfenster): Kacheln sind dort nur ~128 px hoch */
+  @media (max-height:430px){ :root{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;} }
+  /* Handy hochkant: Auf/Ab nebeneinander, sonst passen zwei 44er-Knoepfe nicht in die Kachel */
+  html.phone .updown{flex-direction:row;gap:6px;}
   .updown .ub,.prevnext .ub{width:var(--tile-ub);height:var(--tile-ub);}
   .updown .ub svg,.prevnext .ub svg{width:var(--tile-ub-ico);height:var(--tile-ub-ico);}
   .tswitch{width:var(--tile-sw-w);height:var(--tile-sw-h);}

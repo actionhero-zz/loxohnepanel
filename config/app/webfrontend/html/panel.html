@@ -1688,7 +1688,7 @@
   /* ==== Kachel-Bedienelemente gross (0.19.94): Pfeile 44 px (Pille M), Schalter 52x32 ====
      Rueckweg auf die alte Groesse: --tile-ub:30px; --tile-ub-ico:16px; --tile-sw-w:38px; --tile-sw-h:22px
      (3x3-Raster behaelt die alten Masse, dort ist die Kachel zu klein) */
-  :root{--tile-ub:44px;--tile-ub-ico:20px;--tile-sw-w:52px;--tile-sw-h:32px;}
+  :root{--tile-ub:44px;--tile-ub-ico:20px;--tile-sw-w:38px;--tile-sw-h:22px;}   /* Schalter wieder klein (0.19.97) */
   .grid.cells.g3{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;}
   /* Niedrige Fenster (Handy quer, kleines Browserfenster): Kacheln sind dort nur ~128 px hoch */
   @media (max-height:430px){ :root{--tile-ub:30px;--tile-ub-ico:16px;--tile-sw-w:38px;--tile-sw-h:22px;} }
@@ -3004,9 +3004,7 @@ function renderTabs(){
   const backHtml = stack.length>1
     ? '<div class="tabback on" id="tabback" title="Zurück">'+svg('<path d="m15 6-6 6 6 6"/>')+'</div>'
     : '<div class="tabback dash" id="tabback" title="Dashboard">'+svg(dashIconInner())+'</div>';
-  // Kopf: Brotkrumen und dahinter der Name der aktuellen Seite (Tab, Raum, Verknuepft …).
-  // Detailseiten nicht - dort steht der Name gross in der Karte.
-  const ptl = (view && !view.blocks && view.title) ? '<span class="crtitle">'+esc(view.title)+'</span>' : '';
+  const ptl = '';   // Seitenname im Kopf (0.19.94) wieder entfernt; .crtitle-Stil bleibt fuer spaeter
   const bar = t => [backHtml,'<div class="tabspacer crumbs">'+crumbsHtml(Math.min(4,t.length))+ptl+'</div>'].concat(t.slice(0,4).reverse());
   let items;
   if(ct){

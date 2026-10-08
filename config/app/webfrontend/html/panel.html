@@ -876,6 +876,10 @@
     color:var(--tab-idle,var(--muted));font:inherit;font-size:13px;font-weight:500;white-space:nowrap;cursor:pointer;touch-action:manipulation;}
   .svsti .stci{width:var(--sv-ico,20px);height:var(--sv-ico,20px);} .svsti .cbw{--cbs:var(--sv-ico,20px);} .svsti img.stci{object-fit:contain;}
   .sv-st.many{gap:2px;} .sv-st.many .svsti{padding:0 7px;gap:4px;font-size:12px;}
+  /* Status-Baustein mit Text: Text max. ~120 px mit Ellipse; Leiste darf umbrechen statt ueberzulaufen */
+  .svsti .svstt{max-width:120px;overflow:hidden;text-overflow:ellipsis;}
+  .sv-st.txt{flex-wrap:wrap;align-content:flex-start;} .sv-st.txt .svsti{height:36px;align-self:center;}
+  .saver.layout .sv-bar:has(.sv-st.txt){height:auto;min-height:52px;}
   .sv-st.tight .svsti>span:not(.stci){display:none;} .sv-st.tight .svsti{padding:0 8px;}
   /* Zustand nur ueber die Symbolfarbe (kein Hintergrund, kein Text); Anzahl als
      kleine Plakette oben rechts am Symbol */
@@ -1862,6 +1866,8 @@
     html.pls .grid:not(.panel) .tile{--nm-s:min(var(--name-size,18px),15px);--sb-s:min(var(--sub-size,15px),13px);--sb-mt:1px;--rm-s:min(var(--room-size,12px),11px);}
   }
   .pbig.sm{font-size:clamp(22px,5vw,30px) !important;}   /* Text statt Zahl als grosser Wert (z. B. Taster "Zuletzt ausgelöst") */
+  .saver.layout.bar2 .sv-bar{height:auto;min-height:52px;}
+  .saver.layout.bar2 .sv-grid{top:calc(var(--svbar-h,52px) + 18px);}   /* zweizeilige Statusleiste: Raster rutscht nach */
 </style>
 </head>
 <body>
@@ -4543,14 +4549,25 @@ function svStRender(){
   const b=saverData&&saverData.bar, chips=(b&&b.chips)||[];
   // Nur Symbole: Anzahl (z.B. offene Fenster) als Plakette oben rechts wie bei
   // Mail-Apps; reine Zustaende (scharf, ausgeloest ...) nur ueber die Symbolfarbe.
-  const html=chips.map(c=>{ const n=+c.count||0;
-    return '<button type="button" class="svsti lv-'+esc(c.level)+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+(c.text?': '+c.text:''))+'">'+
-      (n>0?cbHtml(stIco(c),n,'',0,true):'<span class="svsico">'+stIco(c)+'</span>')+'</button>'; }).join('');
+  // Status-Bausteine (Loxone-Statusbaustein): je Eintrag Symbol, Text oder beides
+  // (Profil: barShow). Text/Symbol/Farbe liefert der Miniserver, hier nur Anzeige.
+  const stMode=c=>(c.stext&&(c.smode==='text'||c.smode==='both'))?c.smode:'icon';
+  const html=chips.map(c=>{ const n=+c.count||0, md=stMode(c);
+    let ico=n>0?cbHtml(stIco(c),n,'',0,true):'<span class="svsico">'+stIco(c)+'</span>';
+    if(c.slox&&c.sicon) ico='<span class="svsico"><span class="stci" style="--u:url(\''+esc(c.sicon)+'\')'+(c.scolor?';color:'+esc(c.scolor):'')+'"></span></span>';
+    return '<button type="button" class="svsti lv-'+esc(c.level)+(md!=='icon'?' sttxt':'')+'" data-stid="'+esc(c.id)+'" title="'+esc(c.name+(c.text?': '+c.text:''))+'">'+
+      (md==='text'?'':ico)+(md!=='icon'?'<span class="svstt">'+esc(c.stext)+'</span>':'')+'</button>'; }).join('');
+  const hasTxt=chips.some(c=>stMode(c)!=='icon');
+  host.classList.toggle('txt', hasTxt);
+  // Leiste mit Texten darf zweizeilig werden: Raster darunter um die echte Hoehe verschieben
+  { const sv=el('saver'), bar=el('svBar');
+    if(sv&&bar) requestAnimationFrame(()=>{ const h=hasTxt&&host.parentNode===bar ? bar.scrollHeight : 0;
+      sv.classList.toggle('bar2', h>56); if(h>56) sv.style.setProperty('--svbar-h', h+'px'); }); }
   if(host._html!==html){ host._html=html; host.innerHTML=html;
     // 480 px: ab 5 Eintraegen kompakter; passt es dann noch nicht, nur Symbole
     // (Zustand bleibt ueber Farbe/Hintergrund sichtbar, Text steht im Info-Fenster).
     host.classList.toggle('many', chips.length>4); host.classList.remove('tight');
-    if(host.scrollWidth>host.clientWidth+1) host.classList.add('tight');
+    if(!hasTxt && host.scrollWidth>host.clientWidth+1) host.classList.add('tight');
     host.querySelectorAll('.svsti').forEach(n=>{ const id=n.dataset.stid, l=[...n.classList].find(x=>x.startsWith('lv-'));
       if(_svStPrev[id]&&_svStPrev[id]!==l) animOnce(n,'an-pop'); _svStPrev[id]=l; }); }
   if(!host._bound){ host._bound=true;

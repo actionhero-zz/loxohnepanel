@@ -12,6 +12,12 @@
 
   var CAT = {
     en: {
+      // Statusleiste: Anzeige je Baustein
+      'Statusleiste – Anzeige je Baustein': 'Status bar – display per block',
+      'Symbol + Text': 'Icon + text',
+      'Loxone-Statussymbol statt festem Symbol': 'Loxone status icon instead of fixed icon',
+      'Status-Baustein · jetzt: ': 'Status block · now: ',
+      'kein Status-Baustein': 'not a status block',
       // Rahmen / Navigation
       'Einstellungen': 'Settings',
       'Hier legst du fest, WANN Nacht ist – für alle Panels gleich. Nacht ist aktiv, solange der gewählte Betriebsmodus läuft oder der gewählte Baustein eingeschaltet ist. Ohne Auswahl: Sonnenuntergang bis Sonnenaufgang.':
@@ -36,6 +42,8 @@
       'Benutzer': 'User',
       'Passwort': 'Password',
       'unverändert lassen': 'leave unchanged',
+      'Auslöser – Loxone-Betriebsmodus': 'Trigger – Loxone operating mode',
+      '<b>Hier legst du fest, WANN Nacht ist – für alle Panels gleich.</b> Wähle einen Loxone-Betriebsmodus (z. B. „Nacht“): Nacht ist aktiv, solange dieser Modus läuft. Die Betriebsmodi legst du in Loxone Config an. Ohne Auswahl gilt Sonnenuntergang bis Sonnenaufgang (Zeiten vom Miniserver).': '<b>This sets WHEN it is night – the same for all panels.</b> Pick a Loxone operating mode (e.g. “Night”): night is active while this mode is running. Operating modes are created in Loxone Config. Without a choice, sunset to sunrise applies (times from the Miniserver).',
       'Display-Kennwort nicht übernommen, weil Host oder Treiber geändert:': 'Display password not kept because host or driver changed:',
       'Zertifikat prüfen (Gen2 mit selbstsigniertem Zertifikat: aus)':
         'Verify certificate (Gen2 with self-signed cert: off)',

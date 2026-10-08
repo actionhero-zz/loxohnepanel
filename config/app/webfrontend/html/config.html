@@ -524,6 +524,8 @@
   .g2ed .libtabs button{flex:1;border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:6px;border-radius:var(--pill);cursor:pointer;}
   .g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
   .g2ed .libq{width:100%;}
+  .dbshow{display:flex;flex-direction:column;gap:8px;} .dbsrow{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-m);}
+  .dbsrow .dbsname{font-size:13px;font-weight:600;color:var(--fg);} .dbsrow .chk{margin:0;font-size:13px;} .dbsrow .hint{margin:0;}
   .dbaricons{display:flex;flex-wrap:wrap;gap:6px;} .dbic{font-size:12px;} .dbic.on{outline:2px solid var(--accent);}
   .libfilt{display:flex;flex-direction:column;gap:6px;margin-top:6px;} .libfilt select{width:100%;min-width:0;font-size:12px;}
   .g2ed .liblist{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:4px;padding-right:2px;}
@@ -1365,10 +1367,10 @@
           <!-- Nachtmodus (serverweit) -->
           <div class="card" id="ntCard">
             <h3 data-i18n>Nachtmodus</h3>
-            <p class="note" data-i18n><b>Hier legst du fest, WANN Nacht ist – für alle Panels gleich.</b> Nacht ist aktiv, solange der gewählte Betriebsmodus läuft oder der gewählte Baustein eingeschaltet ist. Ohne Auswahl: Sonnenuntergang bis Sonnenaufgang.</p>
+            <p class="note" data-i18n><b>Hier legst du fest, WANN Nacht ist – für alle Panels gleich.</b> Wähle einen Loxone-Betriebsmodus (z. B. „Nacht“): Nacht ist aktiv, solange dieser Modus läuft. Die Betriebsmodi legst du in Loxone Config an. Ohne Auswahl gilt Sonnenuntergang bis Sonnenaufgang (Zeiten vom Miniserver).</p>
             <p class="note" data-i18n><b>WAS nachts passiert, stellt jedes Panel selbst ein</b> (Panel wählen → Profil → Display &amp; Nacht): wie stark es abdunkelt (0 % = gar nicht) und wie lange es nach Antippen hell bleibt. Display-Abschaltung und Neuladen gelten dort Tag und Nacht.</p>
             <div class="row2">
-              <div class="field" style="max-width:460px"><label class="lbl" data-i18n>Auslöser – Betriebsmodus oder Baustein</label><select id="nt_control"></select></div>
+              <div class="field" style="max-width:460px"><label class="lbl" data-i18n>Auslöser – Loxone-Betriebsmodus</label><select id="nt_control"></select></div>
             </div>
             <div class="actions"><button class="btn" id="nt_save" data-i18n>Speichern</button><span class="toast" id="nt_toast"></span></div>
           </div>
@@ -2171,7 +2173,8 @@ function renderGlobalEditor(p){
       '<p class="note">'+T('Pro Kategorie eine <b>Aktiv-</b> und <b>OK-Farbe</b> für Kachel-Hintergrund und Rahmen — gilt systemweit auf allen Panels (Wiedererkennung). ◐ einschalten = Zustands-Ampel (z. B. Alarm rot/grün, Tor gelb/grün). Aus = neutral. Analoge Messwerte bleiben immer neutral.')+'</p>'+
       '<div class="cclist" id="catcolors"></div></div></section>';
   bindAppearance(p);
-  { const nc=$('#ntCard'), sp=$('#pconfHost .spane[data-sub="appearance"]'); if(nc&&sp) sp.appendChild(nc); }   // Nachtmodus gehört zur Darstellung
+  // Nachtmodus gehört zur Darstellung: als zweite Karte (linke Spalte, unter „Aussehen“)
+  { const nc=$('#ntCard'), sp=$('#pconfHost .spane[data-sub="appearance"]'); if(nc&&sp){ const c1=sp.querySelector(':scope>.card'); if(c1&&c1.nextSibling) sp.insertBefore(nc,c1.nextSibling); else sp.appendChild(nc); } }
   { const gm=$('#gMotion'); if(gm) gm.onchange=()=>{ p.ui=p.ui||{};
       if(gm.value==='full') delete p.ui.motion; else p.ui.motion=gm.value; markDirty(); }; }
   { const gs=$('#gSceneLight'); if(gs) gs.onchange=()=>{ p.ui=p.ui||{};
@@ -2678,7 +2681,15 @@ function renderDashProps(p){
       (barOn?'<div class="dbarbox'+(dBarSecOpen?' open':'')+'"><button type="button" class="dbarhd" aria-expanded="'+(dBarSecOpen?'true':'false')+'"><span>'+T('Bausteine')+' <small>'+(sv.bar||[]).length+'/6</small></span>'+
         '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>'+
         '<div class="dbarbody"><div><div class="dbarlbl">'+T('Haken setzen, ziehen zum Sortieren')+'</div>'+stPickHTML(sv.bar,'dBar',true)+
-        ((sv.bar||[]).length?'<div class="dbarlbl" style="margin-top:8px">'+T('Symbol je Baustein (Tippen zum Ändern)')+'</div><div class="dbaricons">'+
+        ((sv.bar||[]).length?'<div class="dbarlbl" style="margin-top:8px">'+T('Statusleiste – Anzeige je Baustein')+'</div><div class="dbshow">'+
+          (sv.bar||[]).map(u=>{ const c=tileRef(u)||{}, isSt=c.type==='TextState'||c.type==='InfoOnlyText', sh=(sv.barShow||{})[u]||{}, md=sh.mode||'icon';
+            return '<div class="dbsrow" data-bs="'+esc(u)+'"><div class="dbsname">'+esc(c.name||u)+'</div>'+
+              (isSt?'<div class="seg" style="display:flex;gap:4px">'+[['icon','Symbol'],['text','Text'],['both','Symbol + Text']].map(([k,l])=>
+                  '<button type="button" class="minibtn'+(md===k?' on':'')+'" data-bsm="'+k+'">'+T(l)+'</button>').join('')+'</div>'+
+                '<label class="chk"><input type="checkbox" data-bsl'+(sh.lox?' checked':'')+'> <span>'+T('Loxone-Statussymbol statt festem Symbol')+'</span></label>'+
+                '<div class="hint">'+T('Status-Baustein · jetzt: ')+'„'+esc(c.stext||'–')+'“</div>'
+               :'<div class="hint">'+esc(T(ST_TL[c.type]||c.type||''))+' · '+T('kein Status-Baustein')+'</div>')+'</div>'; }).join('')+
+          '</div><div class="dbarlbl" style="margin-top:8px">'+T('Symbol je Baustein (Tippen zum Ändern)')+'</div><div class="dbaricons">'+
           (sv.bar||[]).map(u=>{ const c=tileRef(u)||{}; const ic=(sv.barIcons||{})[u];
             return '<button type="button" class="tbicobtn dbic'+(dBarIcoFor===u?' on':'')+'" data-bic="'+esc(u)+'"><span class="tbico">'+barIcoHtml(c,ic)+'</span>'+esc(c.name||u)+'</button>'; }).join('')+
           '</div><div id="dBarIcoPick" class="tbicopick"'+(dBarIcoFor?'':' hidden')+'><div class="itabs">'+
@@ -2701,7 +2712,15 @@ function renderDashProps(p){
       tbHist[DK]=[]; delete tbLast[DK]; tbSel=-1; tbCommit(p); renderTabList(p); }); });
   stPickBind($('#dBar'), ids=>{ const s2=svCfg(p); if(ids.length) s2.bar=ids; else delete s2.bar;
     if(s2.barIcons){ Object.keys(s2.barIcons).forEach(u=>{ if((s2.bar||[]).indexOf(u)<0) delete s2.barIcons[u]; }); if(!Object.keys(s2.barIcons).length) delete s2.barIcons; }
+    if(s2.barShow){ Object.keys(s2.barShow).forEach(u=>{ if((s2.bar||[]).indexOf(u)<0) delete s2.barShow[u]; }); if(!Object.keys(s2.barShow).length) delete s2.barShow; }
     dBarOpen=true; markDirty(); renderDashProps(p); renderTabEditor(); }, ()=>renderDashProps(p), 6);
+  // Anzeige je Status-Baustein (barShow {uuid:{mode,lox}}); Standard (Symbol, fest) wird nicht gespeichert
+  { const setShow=(u,fn)=>{ const s2=svCfg(p); s2.barShow=s2.barShow||{}; const e=s2.barShow[u]||{mode:'icon',lox:false}; fn(e);
+      if(e.mode==='icon'&&!e.lox) delete s2.barShow[u]; else s2.barShow[u]=e; if(!Object.keys(s2.barShow).length) delete s2.barShow; markDirty(); };
+    box.querySelectorAll('.dbsrow[data-bs]').forEach(r=>{ const u=r.dataset.bs;
+      r.querySelectorAll('[data-bsm]').forEach(b=>b.onclick=()=>{ setShow(u,e=>{ e.mode=b.dataset.bsm; });
+        r.querySelectorAll('[data-bsm]').forEach(x=>x.classList.toggle('on',x===b)); });
+      const l=r.querySelector('[data-bsl]'); if(l) l.onchange=()=>setShow(u,e=>{ e.lox=l.checked; }); }); }
   // Eigenes Symbol je Statusleisten-Baustein (gleicher Waehler wie bei den Tabs)
   { const tgt=()=>({box:'dBarIpick', get:()=>((svCfg(p).barIcons)||{})[dBarIcoFor],
       set:ic=>{ const s2=svCfg(p); s2.barIcons=s2.barIcons||{}; if(ic) s2.barIcons[dBarIcoFor]=ic; else delete s2.barIcons[dBarIcoFor];

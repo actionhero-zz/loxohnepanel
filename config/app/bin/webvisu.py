@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.98"
+APP_VERSION = "0.19.99"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -854,6 +854,19 @@ def _sanitize_saver(sv, dg: int = 3) -> dict | None:
         icons = {u: ic for u, ic in ((u, _clean_icon(bi.get(u))) for u in bar) if ic}
         if icons:
             out["barIcons"] = icons
+        # Anzeige je Baustein (nur Status-Bausteine): mode icon|text|both, lox = Loxone-Statussymbol
+        bs = sv.get("barShow") if isinstance(sv.get("barShow"), dict) else {}
+        show = {}
+        for u in bar:
+            e = bs.get(u)
+            if not isinstance(e, dict):
+                continue
+            mode = e.get("mode") if e.get("mode") in ("icon", "text", "both") else "icon"
+            lox = e.get("lox") is True
+            if mode != "icon" or lox:
+                show[u] = {"mode": mode, "lox": lox}
+        if show:
+            out["barShow"] = show
     return out
 
 
@@ -2711,6 +2724,9 @@ class App:
             try:
                 out["bar"] = self.status_data(sv["bar"], None)
                 for ch in out["bar"].get("chips") or []:   # eigene Symbole je Baustein
+                    sh = (sv.get("barShow") or {}).get(ch.get("id"))
+                    if sh and "stext" in ch:             # nur Status-Bausteine
+                        ch["smode"], ch["slox"] = sh["mode"], sh["lox"]
                     ic = (sv.get("barIcons") or {}).get(ch.get("id"))
                     ref = self._icon_ref(ic) if ic else {}
                     if ref:
@@ -2817,8 +2833,17 @@ class App:
             tone = it.get("tone")
             lvl = {"crit": "alarm", "warn": "hint", "good": "ok"}.get(tone) or ("info" if it.get("on") else "ok")
             txt, icon = str(it.get("sublabel") or ""), it.get("icon") or "info"
-        return {"id": uuid, "name": name, "level": lvl, "text": txt[:60], "icon": icon,
+        chip = {"id": uuid, "name": name, "level": lvl, "text": txt[:60], "icon": icon,
                 "iconUrl": self._control_icon_url(c), "detail": detail[:6], "count": count}
+        if t in ("TextState", "InfoOnlyText"):
+            # Statusbaustein: Text und Symbol/Farbe der aktiven Zeile, wie vom Miniserver geliefert
+            ic = self._json_state(c, "iconAndColor") if "iconAndColor" in (c.get("states") or {}) else None
+            ic = ic if isinstance(ic, dict) else {}
+            col = str(ic.get("color") or "")
+            chip["stext"] = txt[:120]
+            chip["sicon"] = self._icon_url(ic["icon"]) if isinstance(ic.get("icon"), str) and _icon_path_ok(ic["icon"]) else None
+            chip["scolor"] = col if re.match(r"^#[0-9a-fA-F]{6}$", col) else None
+        return chip
 
     # ---- Alarm-Vollbild ----
     # Loest eine Alarmanlage oder ein Rauchmelder aus, zeigt jedes Panel, das
@@ -3334,16 +3359,14 @@ class App:
             if nm:
                 out.append({"uuid": f"opmode:{mid}", "name": f"Betriebsmodus: {nm}",
                             "type": "", "room": "", "mode": True})
-        modes = len(out)
-        for u, c in self.controls.items():
-            if not (c.get("states") or {}).get("active"):
-                continue
-            name = _clean(c.get("name"))
-            if not name:
-                continue
-            out.append({"uuid": u, "name": name, "type": c.get("type"),
+        # Nur Betriebsmodi anbieten (Nutzerwunsch). Ein frueher gewaehlter Baustein bleibt
+        # sichtbar und gueltig, damit eine bestehende Einstellung nicht still verschwindet.
+        cur = str((self.night_cfg or {}).get("control") or "") if isinstance(getattr(self, "night_cfg", None), dict) else ""
+        if cur and not cur.startswith("opmode:") and cur in self.controls:
+            c = self.controls[cur]
+            out.append({"uuid": cur, "name": _clean(c.get("name")) + " (bisheriger Baustein)", "type": c.get("type"),
                         "room": _clean((self.rooms.get(c.get("room")) or {}).get("name"))})
-        return out[:modes] + sorted(out[modes:], key=lambda d: (d["room"], d["name"]))
+        return out
 
     def _opmode_active(self, mid: str) -> bool | None:
         """Laeuft der Loxone-Betriebsmodus `mid` gerade? Quelle: globaler State
@@ -8577,6 +8600,9 @@ async def api_meta(request: web.Request) -> web.Response:
                             if m.get("uuid") in app.controls]}
                if (c.get("type") or "").startswith("Central") else {}),
             "iconUrl": app._control_icon_url(c),
+            # Statusbaustein: aktueller Text der aktiven Zeile (nur Anzeige im Editor)
+            **({"stext": str(app._state(c, "textAndIcon") or app._state(c, "text") or "")[:120]}
+               if c.get("type") in ("TextState", "InfoOnlyText") else {}),
             # Zeichnet der Baustein auf? Dann bietet der Konfigurator ihn fuer
             # die Verlaufs-Pane und den Mini-Verlauf in der Kachel an.
             "stat": bool(c.get("statistic") or c.get("statisticV2")),

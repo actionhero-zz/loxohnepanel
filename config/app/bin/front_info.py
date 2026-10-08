@@ -21,6 +21,7 @@ Zahlen (Temperaturen) gehen als Zahl an das Panel, das sie deutsch formatiert.
 from __future__ import annotations
 
 import asyncio
+import copy
 import hashlib
 import logging
 import re
@@ -496,6 +497,9 @@ def error_text(e) -> str:
     return _URL_RE.sub(lambda m: m.group(1) + ("/…" if m.group(2) else ""), txt)
 
 
+_PARSE_CACHE: dict = {}          # URL -> ((Datei-Hash, Tage, Datum, Quelle), Termine)
+_PARSE_SEM: asyncio.Semaphore | None = None   # iCal nacheinander zerlegen (Speicher/CPU auf dem Pi)
+
 async def fetch_events(session: aiohttp.ClientSession, url: str, days: int,
                        quelle: dict | None = None) -> list:
     """iCal-Abo laden (async) und parsen (Parsen im Thread, blockiert die Loop nicht).
@@ -552,8 +556,24 @@ async def fetch_events(session: aiohttp.ClientSession, url: str, days: int,
             log.info("Kalender '%s': %s — Versuch %d von %d in %.0f s",
                      name, error_text(e), nr + 2, versuche, pause)
             await asyncio.sleep(pause)
-    loop = asyncio.get_running_loop()
-    return await loop.run_in_executor(None, _parse_events, data, days, quelle)
+    # Unveraenderte Datei am selben Tag nicht erneut zerlegen (Serien aufloesen ist
+    # die teuerste wiederkehrende Arbeit auf dem Pi) - und nie mehrere gleichzeitig.
+    import json as _json
+    ck = (hashlib.sha1(data).hexdigest(), days, date.today().isoformat(),
+          _json.dumps(quelle or {}, sort_keys=True, default=str))
+    hit = _PARSE_CACHE.get(url)
+    if hit and hit[0] == ck:
+        return copy.deepcopy(hit[1])
+    global _PARSE_SEM
+    if _PARSE_SEM is None:
+        _PARSE_SEM = asyncio.Semaphore(1)
+    async with _PARSE_SEM:
+        loop = asyncio.get_running_loop()
+        res = await loop.run_in_executor(None, _parse_events, data, days, quelle)
+    if len(_PARSE_CACHE) > 32:
+        _PARSE_CACHE.clear()
+    _PARSE_CACHE[url] = (ck, copy.deepcopy(res))
+    return res
 
 
 def _iso(s):

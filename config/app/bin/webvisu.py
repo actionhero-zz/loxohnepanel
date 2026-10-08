@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.90"
+APP_VERSION = "0.19.91"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -479,6 +479,11 @@ STAT_MAX_POINTS = 240    # Punkte je Linie nach dem Ausduennen (Diagramm ~440 px
 STAT_REFRESH = 300       # Monatsdatei, die noch waechst, nach so vielen Sekunden neu holen
 STAT_RETRY = 60          # nach einem Abruffehler fruehestens wieder versuchen
 STAT_CACHE_MAX = 240     # Monatsdateien im Speicher (abgeschlossene Monate aendern sich nicht)
+STAT_ROWS_MAX = 1_500_000  # zusaetzlich: Messpunkte gesamt (Minutenwerte sind ~40k je Monat) - Speicher auf dem Pi
+
+
+def _rows_total(entries, idx: int) -> int:
+    return sum(len(e[idx] or ()) for e in entries)
 # visuType der Statistik-Ausgaenge, wie an der Anlage beobachtet: 0 Analogwert
 # (Temperatur, Leistung ...), 1 Digitalwert (Regen, Sonnenschein), 2 Zaehlerstand
 # (Gesamtverbrauch kWh). Zaehlerstaende zeigen den Verbrauch je Stunde/Tag als Balken.
@@ -1547,6 +1552,8 @@ class App:
         # Terminen darin) wuerde ueberschrieben.
         self._front_good_cal: dict = {}
         self._front_dirty = False
+        self._tick_memo: dict = {}
+        self._rt_sum, self._rt_n, self._rt_max = 0.0, 0, 0.0   # Renderzeit (Diagnose)
         self._front_sent: dict | None = None    # zuletzt an alle verteilter Stand (fuer Nur-Wetter-Nachrichten)
         self._front_refresh = asyncio.Event()
         # Letzter fertig gebauter Front-Stand (nach _front_keep) und ab wann der
@@ -1617,7 +1624,18 @@ class App:
         """Hintergrund-Task starten und sauber referenziert halten."""
         task = asyncio.ensure_future(coro)
         self.bg_tasks.add(task)
-        task.add_done_callback(self.bg_tasks.discard)
+        task.add_done_callback(self._task_done)
+
+    def _task_done(self, task) -> None:
+        """Hintergrund-Task fertig: Fehler sofort melden (sonst erst beim Aufraeumen
+        des Speichers als "Task exception was never retrieved")."""
+        self.bg_tasks.discard(task)
+        if not task.cancelled() and task.exception() is not None:
+            err = task.exception()
+            key = ("task", repr(err)[:80])
+            if time.monotonic() - _EXC_SEEN.get(key, -1e9) >= 300:   # gleiche Meldung hoechstens alle 5 min
+                _EXC_SEEN[key] = time.monotonic()
+                log.error("Hintergrund-Task fehlgeschlagen: %s", err, exc_info=err)
 
     def _song_cover(self, artist: str, title: str) -> str | None:
         """Album-Cover (ueber /cover-Proxy) zu Interpret+Titel, gecacht.
@@ -1658,7 +1676,10 @@ class App:
             log.debug("Cover-Lookup (%s): %s", key, err)
         # Treffer lange cachen (gleicher Song -> gleiches Cover), Fehlschlag kurz
         # (aus Wortbeitrag wird spaeter wieder ein Titel).
-        self._cover_cache[key] = (url, time.time() + (24 * 3600 if url else 900))
+        now = time.time()
+        if len(self._cover_cache) > 300:          # ueber Tage nicht unbegrenzt wachsen: Abgelaufenes raus
+            self._cover_cache = {k: v for k, v in self._cover_cache.items() if v[1] > now}
+        self._cover_cache[key] = (url, now + (24 * 3600 if url else 900))
         self._cover_pending.discard(key)
         if url:
             self._dirty = True
@@ -2026,7 +2047,8 @@ class App:
         try:
             return json.loads(txt)
         except ValueError:
-            log.warning("%s.%s nicht als JSON parsebar: %r", control.get("type"), name, txt[:160])
+            _log_once_warn(("json", control.get("uuidAction"), name),
+                           "%s.%s nicht als JSON parsebar: %r", control.get("type"), name, txt[:160])
             return None
 
     @staticmethod
@@ -4117,7 +4139,11 @@ class App:
             while name in taken:
                 name, n = f"{base} {n}", n + 1
             created = True
-        changed = (e.get("name") != name or e.get("info") != info or e.get("ip") != ip)
+        # "zuletzt gesehen" mind. taeglich speichern: sonst bliebe auf der Platte der
+        # alte Stand und das Aufraeumen nach einem Neustart hielte aktive Geraete
+        # fuer 90 Tage verschwunden und loeschte sie.
+        changed = (e.get("name") != name or e.get("info") != info or e.get("ip") != ip
+                   or now - (e.get("last") or 0) > 86400)
         self.devinfo[uid] = {"name": name, "info": info, "ip": ip,
                              "first": e.get("first") or now, "last": now}
         cfg = self.devices.get(name) if isinstance(self.devices.get(name), dict) else None
@@ -4396,7 +4422,9 @@ class App:
             if status == 404:
                 rows = []
             elif status == 200:
-                rows = _parse_stat_xml(body.decode("utf-8", "replace"))
+                # Monatsdatei kann MB gross sein: im Hilfsthread zerlegen, Live-Updates laufen weiter
+                rows = await asyncio.get_running_loop().run_in_executor(
+                    None, _parse_stat_xml, body.decode("utf-8", "replace"))
             else:
                 log.info("Statistik %s.%s: HTTP %s", ua, ym, status)
         except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError) as err:
@@ -4405,7 +4433,8 @@ class App:
             self.stat_pending.discard(key)
         self.stat_cache.pop(key, None)          # neu einsortieren = zuletzt benutzt
         self.stat_cache[key] = (time.monotonic(), datetime.now().strftime("%Y%m"), rows)
-        while len(self.stat_cache) > STAT_CACHE_MAX:
+        while len(self.stat_cache) > STAT_CACHE_MAX or (
+                len(self.stat_cache) > 1 and _rows_total(self.stat_cache.values(), 2) > STAT_ROWS_MAX):
             self.stat_cache.pop(next(iter(self.stat_cache)))
         self.stat_gen += 1
         self.stat_memo = {}
@@ -4431,7 +4460,7 @@ class App:
                 rows = []
                 log.info("Statistik V2 %s: keine Daten (%s)", path, body[:160].decode("utf-8", "replace"))
             else:
-                rows = _parse_stat2_bin(body)
+                rows = await asyncio.get_running_loop().run_in_executor(None, _parse_stat2_bin, body)
                 if rows is None:
                     log.info("Statistik V2 %s: unerwartete Antwort, %d Bytes", path, len(body))
         except (aiohttp.ClientError, asyncio.TimeoutError, ConnectionError) as err:
@@ -4440,7 +4469,8 @@ class App:
             self.stat_pending.discard(key)
         self.stat2_cache.pop(key, None)
         self.stat2_cache[key] = (time.monotonic(), rows)
-        while len(self.stat2_cache) > STAT_CACHE_MAX:
+        while len(self.stat2_cache) > STAT_CACHE_MAX or (
+                len(self.stat2_cache) > 1 and _rows_total(self.stat2_cache.values(), 1) > STAT_ROWS_MAX):
             self.stat2_cache.pop(next(iter(self.stat2_cache)))
         self.stat_gen += 1
         self.stat_memo = {}
@@ -4514,7 +4544,7 @@ class App:
             try:
                 data = json.loads(txt)
             except Exception:
-                log.warning("Wecker entryList nicht als JSON parsebar: %r", txt[:200])
+                _log_once_warn(("alarm", txt[:60]), "Wecker entryList nicht als JSON parsebar: %r", txt[:200])
                 return []
         seq = data.values() if isinstance(data, dict) else data
         if not isinstance(seq, (list, tuple)) and not hasattr(seq, "__iter__"):
@@ -7675,9 +7705,14 @@ class App:
         sterbenden Sockets auch RuntimeError, oder send blockiert bei half-open).
         Das ws wird zusaetzlich geschlossen, damit das Panel den Abbruch bemerkt
         und sich neu verbindet (statt still ohne Live-Updates weiterzulaufen)."""
+        if ws.closed:
+            self.drop_conn(ws)
+            return False
         lock = self._ws_locks.get(ws)
         if lock is None:
-            lock = self._ws_locks[ws] = asyncio.Lock()
+            lock = asyncio.Lock()
+            if ws in self.conn_prof:                # nur fuer angemeldete Verbindungen merken (sonst Leck)
+                self._ws_locks[ws] = lock
 
         async def _do():
             async with lock:
@@ -7832,6 +7867,9 @@ class App:
             await self._send_all(self.conn_route, {"t": "night", "on": night})
         if self._dirty and self.conn_route:
             self._dirty = False
+            # Gleiche Ansicht (Route + Profil) nur EINMAL je Takt aufbauen, auch wenn
+            # mehrere Panels sie zeigen - das Rendern ist der teuerste Teil des Takts.
+            self._tick_memo = {}
             # Jedes Panel einzeln und GLEICHZEITIG beliefern (siehe _send_all):
             # ein haengendes Panel verzoegert nur sich selbst, nicht das ganze Haus.
             await asyncio.gather(*(self._push_conn(ws, route) for ws, route in list(self.conn_route.items())))
@@ -7842,12 +7880,22 @@ class App:
         if ws not in self.conn_route:             # inzwischen getrennt
             return
         prof = self.conn_prof.get(ws)
+        memo = self._tick_memo
+        t0 = time.perf_counter()
         try:
-            msg = self.render(route, prof)
+            # Profil-Id statt Objekt: jede Verbindung haelt ihr eigenes (inhaltsgleiches) Profil-dict
+            rk = ("view", json.dumps(route, sort_keys=True, default=str), (prof or {}).get("id"))
+            msg = memo.get(rk)
+            if msg is None:
+                msg = memo[rk] = self.render(route, prof)
+                dt = time.perf_counter() - t0          # Diagnose: Renderzeit je Minute
+                self._rt_sum += dt
+                self._rt_n += 1
+                self._rt_max = max(self._rt_max, dt)
         except Exception:
             # EINE fehlerhafte Kachel/Route darf NIEMALS die Live-Update-
             # Schleife killen. Fehler loggen, diese Verbindung ueberspringen.
-            log.exception("render() fehlgeschlagen (route=%s) — uebersprungen", route)
+            _log_exc_limited(("render", str(route)), "render() fehlgeschlagen (route=%s) — uebersprungen", route)
             return
         # Split-Layout: Player-Pane des aktiven Tabs mitrendern (Zone kommt
         # vom Client via setplayer -> conn_player). Fehler isolieren.
@@ -7858,7 +7906,7 @@ class App:
                 pb = self.player_blocks(_zone)
                 player_msg = {"t": "player", "blocks": pb} if pb is not None else None
             except Exception:
-                log.exception("player_blocks fehlgeschlagen (%s)", _zone)
+                _log_exc_limited(("player", str(_zone)), "player_blocks fehlgeschlagen (%s)", _zone)
         # Split-Layout: Energiefluss-Pane des aktiven Tabs mitrendern (Kachel
         # kommt vom Client via setenergy -> conn_energy). Fehler isolieren.
         energy_msg = None
@@ -7868,7 +7916,7 @@ class App:
                 eb = self.energy_blocks(_euid)
                 energy_msg = {"t": "energy", **eb} if eb is not None else None
             except Exception:
-                log.exception("energy_blocks fehlgeschlagen (%s)", _euid)
+                _log_exc_limited(("energy", str(_euid)), "energy_blocks fehlgeschlagen (%s)", _euid)
         # Split-Layout: Verlaufs-Pane (chart:<uuid>) des aktiven Tabs
         # mitrendern (kommt vom Client via setchart -> conn_chart).
         chart_msg = None
@@ -7878,7 +7926,7 @@ class App:
                 cb = self.chart_blocks(*_chart)
                 chart_msg = {"t": "chart", **cb} if cb is not None else None
             except Exception:
-                log.exception("chart_blocks fehlgeschlagen (%s)", _chart)
+                _log_exc_limited(("chart", str(_chart)), "chart_blocks fehlgeschlagen (%s)", _chart)
         # Split-Layout: Kamera-Pane (Intercom-Vollansicht) des aktiven Tabs
         # mitrendern (kommt vom Client via setcamera -> conn_camera).
         camera_msg = None
@@ -7888,12 +7936,15 @@ class App:
                 ib = self.intercom_blocks(_cuid)
                 camera_msg = {"t": "camera", "blocks": ib} if ib is not None else None
             except Exception:
-                log.exception("intercom_blocks fehlgeschlagen (%s)", _cuid)
+                _log_exc_limited(("camera", str(_cuid)), "intercom_blocks fehlgeschlagen (%s)", _cuid)
         saver_msg = None
         try:
-            saver_msg = self.saver_data(self.conn_prof.get(ws) or {})
+            sk = ("saver", (prof or {}).get("id"))
+            saver_msg = memo.get(sk)
+            if saver_msg is None:
+                saver_msg = memo[sk] = self.saver_data(prof or {})
         except Exception:
-            log.exception("saver_data fehlgeschlagen")
+            _log_exc_limited(("saver", str(None)), "saver_data fehlgeschlagen")
         # Nur senden, was sich seit der letzten Zustellung an DIESE
         # Verbindung geaendert hat. Der Tick laeuft, sobald sich
         # irgendein Wert im Haus bewegt — meist betrifft das die
@@ -7938,9 +7989,12 @@ class App:
         panels = ", ".join(f"{self.conn_dev.get(w) or (self.conn_info.get(w) or {}).get('ip') or '?'}"
                            f"[{(r or {}).get('view')}:{(r or {}).get('tab') or (r or {}).get('id') or ''}]"
                            for w, r in list(self.conn_route.items())) or "keine"
-        log.info("Diagnose: Miniserver %s, letzte Nachricht vor %s, %s Werte/min, %d States, Panels: %s",
+        log.info("Diagnose: Miniserver %s, letzte Nachricht vor %s, %s Werte/min, %d States, "
+                 "Render %d× / %.0f ms (max %.0f ms), Panels: %s",
                  "verbunden" if self.ms_up else "GETRENNT", age,
-                 "?" if first else self._diag_vals, len(self.states), panels)
+                 "?" if first else self._diag_vals, len(self.states),
+                 self._rt_n, self._rt_sum * 1000, self._rt_max * 1000, panels)
+        self._rt_sum, self._rt_n, self._rt_max = 0.0, 0, 0.0
         self._diag_vals = 0
 
     async def broadcaster(self) -> None:
@@ -8098,9 +8152,17 @@ class App:
                 # fuer Anlagen ohne Loxone-Wetterdienst. Liefert der Wetterserver
                 # Wetter, braucht es weder Koordinaten noch einen zweiten Abruf.
                 cfg["fore_days"] = 4                 # Vorschau-Tage waehlt jedes Wetter-Widget selbst (max. 4)
-                wx = self._loxone_weather() if cfg.get("weather_ms", True) is not False else None
-                configured = bool(front_info.calendar_sources(cfg)) or wx is not None or (
-                    cfg.get("lat") not in (None, "") and cfg.get("lon") not in (None, ""))
+                try:
+                    wx = self._loxone_weather() if cfg.get("weather_ms", True) is not False else None
+                    configured = bool(front_info.calendar_sources(cfg)) or wx is not None or (
+                        cfg.get("lat") not in (None, "") and cfg.get("lon") not in (None, ""))
+                except Exception:
+                    # Ungewoehnliche Wetterdaten duerfen Kalender/Wetter nicht bis zum
+                    # Neustart lahmlegen: diesen Durchgang auslassen, spaeter neu.
+                    _log_exc_limited(("front", "cfg"), "front_task: Wetter/Quellen nicht lesbar")
+                    wx, configured = None, False
+                    await asyncio.sleep(30)
+                    continue
                 if configured:
                     try:
                         if time.monotonic() < self._front_cal_due:
@@ -8208,7 +8270,7 @@ async def update_handler(request: web.Request) -> web.Response:
     """{current, latest, newer}: neuere Version im Repo? Ergebnis 5 min gepuffert
     (die Config fragt bei jedem Seitenwechsel - GitHub nicht bei jedem Klick)."""
     now = time.time()
-    if now - _UPD_CACHE["ts"] > 300 or request.query.get("force"):
+    if now - _UPD_CACHE["ts"] > 300 or (request.query.get("force") and now - _UPD_CACHE["ts"] > 30):
         try:
             async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=8)) as sess:
                 async with sess.get(RELEASE_CFG_URL, headers={"Cache-Control": "no-cache"}) as r:
@@ -9573,19 +9635,54 @@ async def manifest_handler(request: web.Request) -> web.Response:
 _adb_lock = asyncio.Lock()   # adb-Server im Container nur einmal gleichzeitig benutzen
 
 
+# Fehler in der Live-Schleife (alle 0,3 s je Panel) nur einmal je 5 min mit
+# Traceback melden - eine dauerhaft kaputte Ansicht fuellte sonst das Log.
+_EXC_SEEN: dict = {}
+_WARN_SEEN: set = set()
+
+
+def _log_once_warn(key, msg: str, *args) -> None:
+    """Warnung je Schluessel nur einmal (Render laeuft ~3x/s je Panel)."""
+    if key in _WARN_SEEN:
+        return
+    if len(_WARN_SEEN) > 1000:
+        _WARN_SEEN.clear()
+    _WARN_SEEN.add(key)
+    log.warning(msg, *args)
+
+
+def _log_exc_limited(key, msg: str, *args) -> None:
+    now = time.monotonic()
+    if now - _EXC_SEEN.get(key, -1e9) >= 300:
+        if len(_EXC_SEEN) > 500:
+            _EXC_SEEN.clear()
+        _EXC_SEEN[key] = now
+        log.exception(msg + " (weitere gleiche Meldungen 5 min still)", *args)
+    else:
+        log.debug(msg, *args, exc_info=True)
+
+
 async def _adb(*args: str, timeout: float = 30) -> tuple[int, str]:
     """adb im Container ausfuehren -> (Returncode, Ausgabe). HOME zeigt auf das
     Config-Volume, dort legt adb seinen Schluessel (~/.android/adbkey) ab."""
     ADB_HOME.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "HOME": str(ADB_HOME)}
-    proc = await asyncio.create_subprocess_exec(
-        "adb", *args, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "adb", *args, env=env, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+    except OSError as e:
+        return 127, f"adb nicht startbar: {e}"
     try:
         out, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout)
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
         return 124, f"Zeitueberschreitung nach {timeout:.0f}s"
+    except BaseException:
+        # Aufrufer abgebrochen (Seite zu, Server stoppt): adb nicht verwaist zuruecklassen
+        with contextlib.suppress(ProcessLookupError):
+            proc.kill()
+        raise
     return proc.returncode or 0, out.decode("utf-8", "replace").strip()
 
 
@@ -9865,7 +9962,7 @@ class CamHub:
             except asyncio.CancelledError:
                 await sess.close()
                 raise
-            except (aiohttp.ClientError, asyncio.TimeoutError, ValueError, OSError) as e:
+            except Exception as e:                       # jeder Fehler -> neuer Versuch, nie still enden
                 fails += 1
                 # Einmal sichtbar, danach leise (Kamera offline -> sonst alle 3 s eine Zeile)
                 (log.info if fails == 1 else log.debug)("Kamera %s: %s - neuer Versuch in %.0f s",
@@ -9974,7 +10071,15 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
             # mit, wird er abgehaengt statt die Verteilung aufzuhalten.
             await asyncio.wait_for(resp.write(head + frame + b"\r\n"), timeout=15)
             sent = time.monotonic()
-            frame = await q.get()
+            # Kommt lange kein Bild (Kamera still), regelmaessig pruefen, ob der
+            # Browser noch da ist - sonst haelt ein verwaister Betrachter die Kamera ewig.
+            while True:
+                try:
+                    frame = await asyncio.wait_for(q.get(), timeout=20)
+                    break
+                except asyncio.TimeoutError:
+                    if request.transport is None or request.transport.is_closing():
+                        raise ConnectionError("Betrachter weg")
             if gap:
                 # Bis zum naechsten erlaubten Zeitpunkt warten, dann das NEUESTE Bild nehmen
                 wait = gap - (time.monotonic() - sent)
@@ -9991,7 +10096,7 @@ async def mjpeg_handler(request: web.Request) -> web.StreamResponse:
 
 async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     app: App = request.app["app"]
-    ws = web.WebSocketResponse()
+    ws = web.WebSocketResponse(heartbeat=30)    # halb offene Verbindungen (WLAN weg) nach ~60 s erkennen
     await ws.prepare(request)
     dev = (request.query.get("device", "") or "").strip()[:60]
     uid = (request.query.get("uid", "") or "").strip()

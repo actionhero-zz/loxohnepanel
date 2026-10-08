@@ -22,6 +22,8 @@ Steuerung (play/pause/next/volume/roomfav) laeuft weiter ueber den Miniserver
 from __future__ import annotations
 
 import asyncio
+import time
+import random
 import json
 import logging
 import socket
@@ -277,7 +279,7 @@ class AudioEventClient:
                         self.url, timeout=8, heartbeat=30,
                         protocols=("remotecontrol",)) as ws:
                     self._ws = ws
-                    fails = 0
+                    up_since = time.monotonic()
                     self.last_err = None
                     log.info("Audioserver-Events verbunden (remotecontrol): %s", self.url)
                     # Gekoppelter Audioserver: erst anmelden, dann sind
@@ -293,6 +295,9 @@ class AudioEventClient:
                         elif m.type in (aiohttp.WSMsgType.CLOSED,
                                         aiohttp.WSMsgType.ERROR):
                             break
+                # Verbindung war da: erst nach stabiler Zeit als Erfolg werten - ein Server,
+                # der annimmt und sofort schliesst, soll die Wartezeit trotzdem wachsen lassen.
+                fails = 0 if time.monotonic() - up_since >= 60 else fails + 1
             except Exception as err:
                 fails += 1
                 self.last_err = str(err) or type(err).__name__
@@ -311,7 +316,7 @@ class AudioEventClient:
             else:
                 wait = min(60, 5 * 2 ** max(0, fails - 1)) if fails else 5
             self._dns_failed = False
-            await asyncio.sleep(wait)
+            await asyncio.sleep(wait * random.uniform(0.8, 1.2))   # Streuung: nicht alle gleichzeitig
 
     async def close(self) -> None:
         self._stop = True

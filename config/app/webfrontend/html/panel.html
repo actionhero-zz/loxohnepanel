@@ -1403,9 +1403,13 @@
      Pillen. Rot bewusst fest und pulsierend - muss auffallen. */
   .secal{position:absolute;inset:0;z-index:40;background:#2a0607;display:flex;gap:12px;padding:12px;overflow:auto;}
   .secbox{flex:1 1 0;min-width:0;border-radius:var(--r-xl);background:#C62F2D;color:#fff;display:flex;flex-direction:column;gap:10px;padding:18px 18px 16px;
-    box-shadow:0 0 0 0 rgba(255,90,90,.6);animation:secpulse 1.6s ease-out infinite;}
+    position:relative;}
+  /* Puls-Ring als eigene Ebene: nur transform/opacity (Compositor) statt box-shadow, das
+     jedes Bild neu gezeichnet werden muesste - gleiches Aussehen, kaum Last (Shelly). */
+  .secbox::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    box-shadow:0 0 0 9px rgba(255,90,90,.65);animation:secpulse 1.6s ease-out infinite;}
   .screen:not(.split) .secal{flex-direction:column;}
-  @keyframes secpulse{0%{box-shadow:0 0 0 0 rgba(255,90,90,.65);}100%{box-shadow:0 0 0 18px rgba(255,90,90,0);}}
+  @keyframes secpulse{0%{transform:scale(.97);opacity:1;}100%{transform:scale(1.06);opacity:0;}}
   .secbox .dhead .droom{color:rgba(255,255,255,.8);} .secbox .dhead .dname{color:#fff;}
   .secstate{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;gap:18px;}
   .secico{width:64px;height:64px;flex:none;}
@@ -1423,7 +1427,7 @@
   .secpill.main:active,.secpill.main.sent{background:#f3d3d3;}
   .sectap{display:none;width:max-content;margin-top:8px;font-size:13px;font-weight:600;background:rgba(0,0,0,.25);border-radius:999px;padding:4px 12px;}
   html.tone-blocked .sectap{display:block;}
-  html[data-motion="off"] .secbox{animation:none;}
+  html[data-motion="off"] .secbox::after{animation:none;opacity:0;}
 
   /* Tuerstation: Tasten auf dem Livebild (leicht transparent) */
   .video .vrow{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;display:flex;flex-direction:column;gap:8px;}
@@ -1747,6 +1751,7 @@ const TABS = [
 
 const el = id => document.getElementById(id);
 let ws, stack = [{view:'tab',tab:'favoriten'}], view = null;
+let _wsFails=0, _wsErrs=0;   // Verbindungsfehler in Folge (Wartezeit) / Fehler bei Nachrichten in Folge
 // Touch-Panel: nach der ersten Beruehrung den Mauszeiger ausblenden (Desktop-Maus bleibt)
 addEventListener('touchstart', ()=>document.body.classList.add('touch'), {once:true, passive:true});
 let tabsCfg = ['favoriten','zentral','raeume','kategorien'];
@@ -2479,6 +2484,7 @@ function chTicks(t0,t1){
 }
 let chSeq=0;
 function paintChart(box,b){
+  const ck=JSON.stringify(b); if(box._ck===ck) return; box._ck=ck;   // gleiche Daten: Diagramm nicht neu bauen
   box.querySelectorAll('[data-rng]').forEach(c=>c.classList.toggle('on',c.dataset.rng===b.range));
   const body=box.querySelector('.chbody'); if(!body) return;
   if(b.state!=='ok'){
@@ -2837,8 +2843,8 @@ function updatePanel(blocks){
   nth('status','.status:not(.alist-empty)',(e,b)=>{ e.textContent=b.text||''; });
   nth('value','.pbar',(e,b)=>{ e.textContent=b.text||''; });
   nth('big','.pbig:not(.sbar .pbig):not(.dimcard .pbig):not(.dstate .pbig):not(.aedit .pbig)',(e,b)=>{ const h=fmtBig(b.text); if(e.innerHTML!==h) e.innerHTML=h; e.className='pbig'+(b.tone==='good'?' good':(b.tone==='crit'?' crit':'')); });
-  nth('title','.ptitle',(e,b)=>{ e.childNodes[0].nodeValue=b.text||''; const su=e.querySelector('.psub'); if(su)su.textContent=b.sub||''; });
-  nth('astat','.astat',(e,b)=>{ e.childNodes[0].nodeValue=b.text||''; e.className='astat'+(b.tone==='crit'?' crit':''); const su=e.querySelector('.astatsub'); if(su)su.textContent=b.sub||''; });
+  nth('title','.ptitle',(e,b)=>{ leadText(e, b.text||''); const su=e.querySelector('.psub'); if(su)su.textContent=b.sub||''; });
+  nth('astat','.astat',(e,b)=>{ leadText(e, b.text||''); e.className='astat'+(b.tone==='crit'?' crit':''); const su=e.querySelector('.astatsub'); if(su)su.textContent=b.sub||''; });
   const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img&&img.getAttribute('src')!==cov.src){img.style.opacity='0'; img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
   const sb=blocks.find(b=>b.k==='slider'); if(sb){const sld=g.querySelector('.sld'); if(sld&&!sldDragging){ sld.value=sb.value; sldFill(sld); const sv=g.querySelector('.sval'); if(sv)sv.textContent=sb.value; }}
   patchLive(g,blocks);
@@ -2868,6 +2874,10 @@ function applyFace(){
 function isRoomPanel(){ return tabsCfg.length===1 && String(tabsCfg[0]||'').indexOf('room:')===0; }
 let roomCatTabs=null, pendingCatScroll=null;
 
+// Text vor dem ersten Kind-Element setzen. War er beim Aufbau leer, gibt es keinen
+// Textknoten - dann einen anlegen (sonst Absturz bzw. der Text erscheint nie).
+function leadText(e, txt){ const n=e.firstChild;
+  if(n&&n.nodeType===3) n.nodeValue=txt; else if(txt) e.insertBefore(document.createTextNode(txt), n); }
 function renderTabs(){
   // Raum-Panel: die untere Leiste zeigt die im Raum vorkommenden Kategorien
   // (vom Server als view.catTabs) als SCROLL-Tabs - ein Tipp scrollt zur Gruppe,
@@ -2923,14 +2933,19 @@ function renderTabs(){
     // Screensaver zurueck, siehe back()).
     items = bar(items);
   }
-  el('tabs').innerHTML = items.join('');
-  // Tab-Namen (nur sichtbar auf Tablets mit Platz, html.sqbig): aus dem title
-  el('tabs').querySelectorAll('.tab[title]').forEach(t=>{ const l=t.getAttribute('title'); if(l) t.insertAdjacentHTML('beforeend','<span class="tlbl">'+esc(l)+'</span>'); });
+  // Leiste nur bei Aenderung neu bauen (renderTabs laeuft bei jeder Live-Nachricht
+  // freier Seiten mit) - spart Neuaufbau, Neubindung und Neuzeichnen der Symbole.
+  const tabsEl=el('tabs'), tabsHtml=items.join('')+(ct?'|c':'|t');
+  if(tabsEl._html!==tabsHtml){ tabsEl._html=tabsHtml;
+    tabsEl.innerHTML = items.join('');
+    // Tab-Namen (nur sichtbar auf Tablets mit Platz, html.sqbig): aus dem title
+    tabsEl.querySelectorAll('.tab[title]').forEach(t=>{ const l=t.getAttribute('title'); if(l) t.insertAdjacentHTML('beforeend','<span class="tlbl">'+esc(l)+'</span>'); });
+    if(ct) tabsEl.querySelectorAll('.tab[data-cat]').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) scrollToCat(n.dataset.cat); });
+    else   tabsEl.querySelectorAll('.tab').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) goTab(n.dataset.tab); });
+    const tb = tabsEl.querySelector('#tabback'); if(tb) tb.onclick = ()=>{ if(!justLeftSaver()) back(); };
+    tabsEl.querySelectorAll('.crumb[data-lvl]').forEach(n=>n.onclick=()=>{ if(!justLeftSaver()) crumbJump(+n.dataset.lvl); });
+  }
   applyFace();
-  if(ct) el('tabs').querySelectorAll('.tab[data-cat]').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) scrollToCat(n.dataset.cat); });
-  else   el('tabs').querySelectorAll('.tab').forEach(n => n.onclick=()=>{ if(!justLeftSaver()) goTab(n.dataset.tab); });
-  const tb = el('tabs').querySelector('#tabback'); if(tb) tb.onclick = ()=>{ if(!justLeftSaver()) back(); };
-  el('tabs').querySelectorAll('.crumb[data-lvl]').forEach(n=>n.onclick=()=>{ if(!justLeftSaver()) crumbJump(+n.dataset.lvl); });
   applyPane();
 }
 // Raum-Panel: zur ersten Kachel einer Kategorie scrollen. Sind wir in einer
@@ -2953,8 +2968,12 @@ function applyPane(){
   const isPane=(kind==='player'||kind==='weather'||kind==='calendar'||kind==='energy'||kind==='camera'||kind==='chart');   // Widget in Pane 2
   sc.classList.toggle('split', isPane);   // Widget -> zweigeteilt, sonst "Screen fuellen"
   sc.classList.toggle('fill', themeFill);  // "Bildschirm fuellen" fuellt Split UND Screen-fuellen
-  applyScale();
+  // Neu ausmessen nur, wenn sich die Aufteilung aendert: applyScale erzwingt zwei
+  // komplette Layout-Durchlaeufe und lief sonst bei jeder Live-Nachricht mit.
+  const psig=[isPane,themeFill,isPhone(),innerWidth,innerHeight,uiScaleCfg&&JSON.stringify(uiScaleCfg),(el('svSt')&&el('svSt').children.length)?1:0].join('|');
+  if(sc._psig!==psig){ sc._psig=psig; applyScale(); }
   const pp=el('playerpane'), fp=el('frontpane');
+  if(fp && fp._kind!==kind){ fp._kind=kind; fp._html=null; }   // anderer Inhalt -> setHTML-Vergleich zuruecksetzen
   if(pp) pp.hidden=(kind!=='player');
   if(fp){
     fp.hidden=!(kind==='weather'||kind==='calendar'||kind==='energy'||kind==='camera'||kind==='chart');
@@ -3116,7 +3135,8 @@ function updateGrid(items){
     // Mini-Verlauf: dazu oder weg -> neu aufbauen, sonst nur bei Aenderung neu zeichnen
     const spEl=n.querySelector('.tspark'), bdEl=n.querySelector('.tsbadge'), bd=it.spark&&it.spark.badge;
     if(!!it.spark!==!!spEl || !!bd!==!!bdEl) ok=false;
-    else if(spEl){ paintSpark(spEl,it.spark);
+    else if(spEl){ const sk=JSON.stringify(it.spark)+'|'+n.clientWidth+'x'+n.clientHeight;   // unveraenderter Verlauf und Kachelgroesse: kein Ausmessen/Neuzeichnen
+      if(spEl._sp!==sk){ spEl._sp=sk; paintSpark(spEl,it.spark); }
       n.querySelectorAll('.tsbadge,.tsline').forEach(e=>{ if(e.textContent!==bd) e.textContent=bd; }); }
   });
   return ok;
@@ -3625,7 +3645,11 @@ function nowDate(){
     return new Date(u.getUTCFullYear(),u.getUTCMonth(),u.getUTCDate(),u.getUTCHours(),u.getUTCMinutes(),u.getUTCSeconds()); }
   return new Date(t);
 }
-let LANG='de-DE';   // Panel-Sprache (aus dem Profil, Server sendet sie im theme); steuert Datum/Uhr
+let LANG='de-DE';
+// Uhr/Datum laufen jede Sekunde: Formatierer einmal je Sprache anlegen statt bei jedem Aufruf
+const _FMT={}, _FMT_OPT={t:{hour:'2-digit',minute:'2-digit'}, dl:{weekday:'long',day:'numeric',month:'long',year:'numeric'},
+  ds:{weekday:'short',day:'numeric',month:'long'}};
+function fmtCached(k){ const id=LANG+'|'+k; return _FMT[id]||(_FMT[id]=new Intl.DateTimeFormat(LANG,_FMT_OPT[k])); }   // Panel-Sprache (aus dem Profil, Server sendet sie im theme); steuert Datum/Uhr
 // Horizontaler Feinversatz der ganzen Visu — live einstellbar ohne Redeploy:
 //   ?x=-6  -> 6px nach links     ?x=8 -> nach rechts     ?x=0 -> zuruecksetzen
 // Der Wert wird gemerkt (localStorage) und gilt dann auch ohne Parameter weiter.
@@ -3720,15 +3744,24 @@ function connect(){
   // Erststart: Startseite kommt vom Server (erster Tab des Profils). Nach einem
   // Reconnect stattdessen die zuletzt betrachtete Seite wiederherstellen.
   wsRx=Date.now();
-  ws.onopen=()=>{ el('conn').classList.add('ok'); wsRx=Date.now(); clearTimeout(srvDownT); srvDownT=null; srvOk=true; linkBanner();
+  ws.onopen=()=>{ _wsFails=0; el('conn').classList.add('ok'); wsRx=Date.now(); clearTimeout(srvDownT); srvDownT=null; srvOk=true; linkBanner();
     curChartKey=''; if(booted) send({t:'nav',route:stack[stack.length-1]});
     deviceInfo().then(info=>send({t:'devinfo', info})).catch(()=>{});
     // Wieder verbunden (z.B. Laptop aufgewacht): ein Klingeln, dessen Ende
     // waehrend der Trennung verpasst wurde, beenden. Klingelt es noch, schickt
     // der Server das Klingeln beim Verbinden erneut.
     [..._toneSources].filter(x=>String(x).indexOf('ring')===0).forEach(x=>toneOff(x)); stopRingAudio(); };
-  ws.onclose=e=>{ clog('Verbindung geschlossen (Code '+(e&&e.code)+')'); wsLost(); setTimeout(connect,1500); };
+  // Neu verbinden: erst schnell, bei Dauerausfall wachsend bis 15 s (mit Streuung)
+  ws.onclose=e=>{ clog('Verbindung geschlossen (Code '+(e&&e.code)+')'); wsLost();
+    _wsFails++; setTimeout(connect, Math.min(15000, 1500*Math.pow(1.6, Math.max(0,_wsFails-1)))*(0.8+Math.random()*0.4)); };
   ws.onmessage=e=>{
+    // Ein Fehler beim Verarbeiten einer Nachricht darf die naechsten nicht blockieren;
+    // wiederholt er sich, Seite neu aufbauen statt eingefroren stehen zu bleiben.
+    try{ onWsMessage(e); _wsErrs=0; }
+    catch(err){ _wsErrs++; clog('Fehler bei Nachricht: '+(err&&err.message)+' ('+_wsErrs+'×)'); console.error(err);
+      if(_wsErrs>=5){ _wsErrs=0; try{ view=null; send({t:'nav', route:(stack[stack.length-1]||{view:'tab',tab:tabsCfg[0]})}); }catch(e2){} } }
+  };
+  function onWsMessage(e){
     wsRx=Date.now();
     let msg;
     try{ msg=JSON.parse(e.data); }
@@ -3850,9 +3883,9 @@ function tickClock(){
   const d=nowDate();
   const t=el('svTime'), dd=el('svDate');
   // Nur schreiben, wenn sich der Text aendert (sonst jede Sekunde neues Layout)
-  const ts=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
+  const ts=fmtCached('t').format(d);
   if(t&&t.textContent!==ts) t.textContent=ts;
-  const ds=d.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const ds=fmtCached('dl').format(d);
   if(dd&&dd.textContent!==ds) dd.textContent=ds;
   tickSaverClocks();   // Uhr-Widgets im Screensaver und in Tabs
 }
@@ -4046,11 +4079,11 @@ function svClockHTML(it){
 function tickSaverClocks(){
   const d=nowDate();
   document.querySelectorAll('.svw-clock').forEach(c=>{
-    const t=c.querySelector('.t'), ts=d.toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'});
+    const t=c.querySelector('.t'), ts=fmtCached('t').format(d);
     if(t&&t.textContent!==ts) t.textContent=ts;
     const dd=c.querySelector('.d'); if(dd){ const ds=dd.dataset.fmt==='long'
-      ? d.toLocaleDateString(LANG,{weekday:'long',day:'numeric',month:'long',year:'numeric'})
-      : d.toLocaleDateString(LANG,{weekday:'short',day:'numeric',month:'long'});
+      ? fmtCached('dl').format(d)
+      : fmtCached('ds').format(d);
       if(dd.textContent!==ds) dd.textContent=ds; }
   });
 }
@@ -4941,11 +4974,11 @@ function renderCameraPane(elc){ if(!elc) return;
   const be=elc.querySelector('.cambell'); if(be){ if(bell){ be.textContent=bell.text||''; be.hidden=false; } else be.hidden=true; }
 }
 function renderWeatherPane(elc){ if(!elc) return; const d=frontData||{}, w=d.weather;
-  if(!w){ elc.innerHTML='<div class="fp-empty">Kein Wetter konfiguriert.</div>'; return; }
+  if(!w){ setHTML(elc, '<div class="fp-empty">Kein Wetter konfiguriert.</div>'); return; }
   // Seite 1 = Aktuell/Kurve/Vorschau (fuellt die 2x2-Hoehe), Seite 2 = Detailkacheln.
   const det=fpWeatherDetailHTML(w);
-  elc.innerHTML='<div class="fp-page">'+fpWeatherMainHTML(w)+'</div>'
-    +(det?'<div class="fp-page">'+det+'</div>':''); }
+  setHTML(elc, '<div class="fp-page">'+fpWeatherMainHTML(w)+'</div>'
+    +(det?'<div class="fp-page">'+det+'</div>':'')); }   // nur bei geaendertem Inhalt neu zeichnen
 function fpMonthHTML(events, holidays, colors){
   const base=nowDate(); base.setDate(1); base.setMonth(base.getMonth()+calMonthOff);
   const y=base.getFullYear(), m=base.getMonth();
@@ -4985,9 +5018,9 @@ function renderCalendarPane(elc){ if(!elc) return; const d=frontData||{};
   // Seite 1 = Monat (fuellt die 2x2-Hoehe), Seite 2 = Agenda/Termine.
   // Legende auch unter das Monatsraster: dort stehen die Farbpunkte, die sie
   // erklaert — sie nur auf der Agenda-Seite zu zeigen, hilft niemandem.
-  elc.innerHTML='<div class="fp-page">'+fpMonthHTML(d.events, d.holidays, d.calColors)
+  setHTML(elc, '<div class="fp-page">'+fpMonthHTML(d.events, d.holidays, d.calColors)
       +fpLegendHTML(d)+'</div>'
-    +'<div class="fp-page">'+fpCalHTML(d)+'</div>';
+    +'<div class="fp-page">'+fpCalHTML(d)+'</div>');
   elc.querySelectorAll('[data-mnav]').forEach(b=>b.onclick=()=>{ calMonthOff+=parseInt(b.dataset.mnav)||0; renderCalendarPane(elc); });
   elc.querySelectorAll('[data-day]').forEach(c=>c.onclick=()=>{ calSel=(calSel===c.dataset.day?'':c.dataset.day); renderCalendarPane(elc); });
   elc.querySelectorAll('[data-calall]').forEach(b=>b.onclick=()=>{ calSel=''; renderCalendarPane(elc); });

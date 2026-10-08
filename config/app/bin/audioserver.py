@@ -81,7 +81,17 @@ class LoxoneAudioServerBackend(AudioBackend):
                     log.info("audio-cmd %s", cmd)
                     return True
                 except Exception as err:
-                    self._ws = None
+                    # Alte Verbindung samt Lese-Task sauber beenden, sonst bleiben
+                    # Socket und Task bei wiederholten Fehlern liegen.
+                    old, self._ws = self._ws, None
+                    if self._reader:
+                        self._reader.cancel()
+                        self._reader = None
+                    if old is not None and not old.closed:
+                        try:
+                            await asyncio.wait_for(old.close(), 3)
+                        except Exception:
+                            pass
                     if attempt == 2:
                         log.warning("Audioserver-Kommando fehlgeschlagen (%s): %s", cmd, err)
                         return False

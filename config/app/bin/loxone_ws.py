@@ -206,11 +206,14 @@ class LoxoneWS:
             if time.monotonic() - self._last_rx > DEAD_S:
                 log.warning("Miniserver antwortet seit %ds nicht -> Verbindung wird neu aufgebaut",
                             int(time.monotonic() - self._last_rx))
-                await self._ws.close()
+                try:
+                    await asyncio.wait_for(self._ws.close(), 5)   # halb offen: nicht ewig auf close warten
+                except Exception:
+                    pass
                 return
             try:
                 await self._ws.send_str("keepalive")
-            except (ConnectionError, RuntimeError) as err:
+            except Exception as err:
                 log.debug("keepalive nicht gesendet: %s", err)
                 return
 

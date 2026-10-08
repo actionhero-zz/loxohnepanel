@@ -70,6 +70,8 @@ FORMAT_KEYS = {
 }
 
 
+_LETZTER_VERSATZ = None   # zuletzt gemeldeter Zeitversatz des Wetterservers
+
 def _schluessel(text: str) -> str:
     """Kleinbuchstaben ohne Umlaute — Vergleichsform fuer die Icon-Zuordnung."""
     t = str(text).lower()
@@ -262,7 +264,9 @@ def build(cfg: dict, actual: list, forecast: list, *,
         log.warning("Wetterserver: Zeitstempel unplausibel (%s statt ~%s) — Open-Meteo bleibt",
                     t_roh, now.replace(microsecond=0))
         return None
-    if versatz:
+    global _LETZTER_VERSATZ
+    if versatz and versatz != _LETZTER_VERSATZ:     # nur bei Aenderung melden (sonst bei jedem Wetter-Push)
+        _LETZTER_VERSATZ = versatz
         log.info("Wetterserver: Zeitstempel um %+d h gegen die Ortszeit verschoben — wird ausgeglichen",
                  round(versatz.total_seconds() / 3600))
 

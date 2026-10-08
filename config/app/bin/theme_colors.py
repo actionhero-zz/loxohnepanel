@@ -22,6 +22,8 @@ Nur Standardbibliothek, keine zusaetzliche Abhaengigkeit.
 """
 from __future__ import annotations
 
+import copy
+import functools
 import colorsys
 import math
 import re
@@ -266,7 +268,20 @@ def _versuch(screen: str, grundfarbe: str, helle_schrift: bool) -> dict | None:
     }
 
 
+@functools.lru_cache(maxsize=64)
+def _derive_cached(grundfarbe: str):
+    return _derive(grundfarbe)
+
+
 def derive(grundfarbe: str) -> dict | None:
+    """Wie _derive, aber gepuffert: die Ableitung probiert bis zu ~100 Helligkeiten
+    samt Farbfehlsicht-Pruefung durch (bis zu Sekunden auf dem Pi) und lief bei
+    jedem Theme-Aufbau erneut. Rueckgabe ist eine Kopie (Aufrufer duerfen aendern)."""
+    r = _derive_cached(str(grundfarbe or ""))
+    return copy.deepcopy(r) if r is not None else None
+
+
+def _derive(grundfarbe: str) -> dict | None:
     """Grundfarbe (#rrggbb) -> CSS-Variablen fuers Panel. None, wenn unmoeglich.
 
     Die Grundfarbe wird in ihrer Helligkeit so weit verschoben, bis der GANZE

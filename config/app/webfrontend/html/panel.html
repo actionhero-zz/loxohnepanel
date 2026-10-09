@@ -491,6 +491,7 @@
     -webkit-mask:var(--u) no-repeat center/contain;mask:var(--u) no-repeat center/contain;}
   .hero .circle .rawico{width:38px;height:38px;object-fit:contain;}
   .status{text-align:center;color:var(--muted);font-size:14px;padding:2px 6px;}
+  .sltx{color:var(--muted);font-size:14px;min-width:0;}
   /* Wecker-Status: moderat gross (nicht so riesig wie .pbig), Raum als Unterzeile */
   .astat{text-align:center;font-size:30px;font-weight:600;line-height:1.18;letter-spacing:-.01em;padding:0 16px;}
   .astat.crit{color:var(--crit-txt);}
@@ -928,6 +929,10 @@
   .sv-wx .fc .ico{width:calc(var(--sv-fc-size,12.5) * 1.76 * 1px);height:calc(var(--sv-fc-size,12.5) * 1.76 * 1px);}
   .sv-wx .fc .tt{font-size:calc(var(--sv-fc-size,12.5) * 1 * 1px);font-variant-numeric:tabular-nums;}
   .sv-wx .fc .tt .mx{font-weight:600;} .sv-wx .fc .tt .mn{color:var(--muted);}
+  /* Handy: Vorhersage-Kacheln sind nur ~95 px breit -> Schrift/Symbol deckeln, sonst wird "MORGEN" zu "MOR..." */
+  html.phone .sv-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.88 * 1px), 12px);letter-spacing:.02em;white-space:nowrap;}
+  html.phone .sv-wx .fc .ico{width:min(calc(var(--sv-fc-size,12.5) * 1.76 * 1px), 32px);height:min(calc(var(--sv-fc-size,12.5) * 1.76 * 1px), 32px);}
+  html.phone .sv-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 16px);}
   .sv-wx .ico{display:grid;place-items:center;color:var(--ink);}
   .sv-wx .ico svg{width:100%;height:100%;}
   .sv-wx .ico.sun{color:var(--glow);}
@@ -1296,7 +1301,7 @@
   .grid.panel .hero .circle{width:56px;height:56px;}
   .grid.panel .hero .circle svg,.grid.panel .hero .circle .himg,.grid.panel .hero .circle .rawico{width:28px;height:28px;}
   /* Mockup-Schriftgroessen: Nebentexte mind. 17 px, Titel in der Zahlen-/Titelschrift */
-  .grid.panel .status{font-size:18px;}
+  .grid.panel .status,.grid.panel .sltx{font-size:18px;}
   .grid.panel .ptitle{font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));font-size:22px;font-weight:600;}
   .grid.panel .ptitle .psub{font-family:var(--font,"Manrope",sans-serif);font-size:18px;font-weight:400;}
   .grid.panel.anchorbot .pantop>.scenes,.grid.panel.anchorbot .pantop>.dimcard{flex:1 1 auto;min-height:0;align-self:stretch;}
@@ -1322,10 +1327,11 @@
   .scene b{font-family:var(--font-num,"Sora",var(--font,"Manrope",sans-serif));font-weight:600;font-size:20px;line-height:1.15;}
   .scene.on{background:var(--ink);color:var(--tile);}
   /* Beschattung: hoch / Stellung / runter */
-  .shade{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:14px;flex-shrink:0;min-width:0;}
+  .shade,.istrow{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:14px;flex-shrink:0;min-width:0;}
   .sbar{flex:none;width:var(--pill-m,44px);height:var(--pill-m,44px);min-height:0;background:var(--tile);border-radius:var(--radius-control,50%);display:grid;place-items:center;color:var(--ink);cursor:pointer;}
   .sbar svg{width:24px;height:24px;}
   .sbar.on{background:var(--ink);color:var(--tile);}
+  .sbsp{flex:none;width:var(--pill-m,44px);height:var(--pill-m,44px);}   /* Platzhalter, wenn -/+ fehlen: Wert bleibt mittig */
   .sbar.pos{flex:0 1 auto;width:auto;height:auto;border-radius:0;background:none;cursor:default;min-width:0;}
   .sbar.pos i{display:none;}   /* Stellung steht als Zahl; keine Fuellflaeche mehr */
   .pantop>.shade + .status{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -1646,6 +1652,23 @@
   .brow.act .btn.cht svg{width:18px;height:18px;}
   .brow.act.hasc .btn:not(.cht){flex:1 1 0;}
   .brow.act.n1.hasc .btn:not(.cht){flex:0 1 61.8%;margin-right:auto;margin-left:auto;}
+
+  /* ==== Nebenaktionen im Kopf der Detailansicht + Heizung (0.19.100) ====
+     Verlauf / Verknuepft / Quellen: Kreis 44 px, tile 55 %, ohne Umriss, rechts oben auf Hoehe
+     von Raum + Name. Links ein gleich breiter Leerplatz -> der Titel bleibt mittig. */
+  .dhead.hasa{display:grid;grid-template-columns:var(--dcw) minmax(0,1fr) var(--dcw);column-gap:8px;align-items:center;
+    --dcw:calc(var(--dn,1) * var(--pill-m,44px) + (var(--dn,1) - 1) * 8px);}
+  .dhead .dtx{min-width:0;}
+  .dhead .dacts{display:flex;justify-content:flex-end;gap:8px;}
+  .dact{flex:none;width:var(--pill-m,44px);height:var(--pill-m,44px);border-radius:var(--radius-control,50%);display:grid;place-items:center;
+    color:var(--ink);cursor:pointer;touch-action:manipulation;border:0;box-shadow:none;
+    background:rgba(var(--wash,255,255,255),.12);background:color-mix(in srgb,var(--tile) 55%,transparent);}
+  .dact svg{width:22px;height:22px;}
+  .dact:active{transform:scale(.94);}
+  .menuitem svg{flex:none;width:22px;height:22px;margin-right:12px;}
+  /* Heizung: Textzeile (ruhig, ink-2) + Betriebsart-Chip; 480er: Chip rutscht in eine eigene Zeile */
+  .sline{flex-shrink:0;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px;max-width:100%;text-align:center;}
+  .sline .pchip{flex:none;}
   /* ==== Einträge in Detailansichten als Listenzeilen (Zonen, Wecker, Stimmungen …) ====
      Schmal eine Spalte, breit (2 Panels/Tablet) zwei gleich breite Spalten ueber die
      ganze Breite; nie seitwaerts scrollen, nur senkrecht. */
@@ -1827,7 +1850,7 @@
   }
   /* Detailseiten flacher: Wert, Pillen (M statt L) und Symbole niedriger, damit nichts abgeschnitten wird */
   html.pls .grid.panel .pbig,html.pls .grid.panel.wide .pbig.word,html.pls .grid.panel .dstate .pbig{font-size:clamp(30px,11vh,42px);}
-  html.pls .grid.panel .status{font-size:14px;}
+  html.pls .grid.panel .status,html.pls .grid.panel .sltx{font-size:14px;}
   /* Handy quer: Szenenliste in 3 Spalten (ab 5 Eintraegen), ab 7 niedrigere Zeilen -> alle Eintraege (auch der aktive) sichtbar ohne Scrollen */
   html.pls .grid.panel .pantop>.scenes:has(>:nth-child(5)){grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
   html.pls .grid.panel .pantop>.scenes:has(>:nth-child(7)){grid-auto-rows:38px !important;gap:5px !important;}
@@ -1936,6 +1959,7 @@ const ICONS = {
   shield:'<path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/>',
   drop:'<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
   minus:'<path d="M6 12h12"/>',
+  more:'<circle cx="5.5" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18.5" cy="12" r="1.4" fill="currentColor"/>',
   chart:'<path d="M3 3v18h18"/><path d="m7 15 4-5 4 3 5-7"/>',
   link:'<circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="m8.2 10.8 7.6-3.6M8.2 13.2l7.6 3.6"/>',
   plus:'<path d="M12 6v12M6 12h12"/>',
@@ -2588,6 +2612,12 @@ function patchLive(g,blocks){
     const b=g.querySelector('.sbar.pos .pbig'); const h=fmtBig(shadeTxt(sh)); if(b&&b.innerHTML!==h) b.innerHTML=h;
     const u=g.querySelector('.sbar[data-dir="up"]'), d=g.querySelector('.sbar[data-dir="down"]');
     if(u) u.classList.toggle('on',!!(sh.up&&sh.up.on)); if(d) d.classList.toggle('on',!!(sh.down&&sh.down.on)); }
+  const ib=blocks.find(b=>b.k==='ist');
+  if(ib){ g._ist=ib; const e=g.querySelector('.istrow .pbig'), h=fmtBig(ib.text);
+    if(e){ if(e.innerHTML!==h) e.innerHTML=h; e.className='pbig'+bigTone(ib.tone); } }
+  const sl=blocks.find(b=>b.k==='sline');
+  if(sl){ g._sline=sl; const e=g.querySelector('.sline .sltx'); if(e&&e.textContent!==(sl.text||'')) e.textContent=sl.text||'';
+    const ch=g.querySelector('.sline .pchip.tap'); if(ch&&sl.chip&&ch.textContent!==(sl.chip.text||'')) ch.textContent=sl.chip.text||''; }
   const dm=blocks.find(b=>b.k==='dim'), card=g.querySelector('.dimcard');
   if(dm&&card){ g._dim=dm; if(!card._drag) dimPaint(card,dm.value,dm);
     const su=card.querySelector('.dsub'); if(su&&dm.sub!=null&&su.textContent!==dm.sub) su.textContent=dm.sub; }
@@ -2665,10 +2695,57 @@ function cellIco(n){ return STROKE_ICONS[n]?svg(ICONS[n]):svgF(ICONS[n]||ICONS.i
 function isChartCell(c){ return !!(c&&(((c.icon==='chart'||c.icon==='link')&&c.nav)||c.minor)); }   // Verlauf / Verknuepft / "Quellen ›": Nebenaktionen, kleiner   // Verlauf / "Quellen ›": Nebenaktionen, kleiner
 function actCls(cells){ const n=cells.filter(c=>!isChartCell(c)).length, h=cells.some(isChartCell);
   return ' n'+Math.min(n,5)+(h?' hasc':''); }
+// ---- Nebenaktionen im Kopf der Detailansicht: Verlauf, Verknuepft, Quellen (Knoepfe, die eine
+// Unterseite oeffnen) stehen rechts oben auf Hoehe von Raum + Name, nicht in der Aktionsreihe.
+// Von links nach rechts: Quellen, Verknuepft, Verlauf. Hoechstens 2 sichtbar; bei 3+ steht links
+// von Verlauf ein "..."-Knopf mit Menue. normSide zieht sie auch aus aelteren Server-Bloecken
+// (Zellen in der Aktionsreihe) in den Kopf; "Erzwingen" (ohne nav) wird eine normale Pille.
+const SIDE_LBL={list:'Quellen',link:'Verknüpft',chart:'Verlauf'}, SIDE_ORD=['list','link','chart'];
+function isSideCell(c){ return !!(c&&c.nav&&SIDE_LBL[c.icon]); }
+function normSide(blocks){
+  const dh=blocks.find(b=>b.k==='dhead'); if(!dh) return blocks;
+  const acts=(dh.acts||[]).slice(); let ch=false;
+  const out=[];
+  for(const b of blocks){
+    if(b.k!=='row'||!b.cells){ out.push(b); continue; }
+    const keep=[]; let mod=false;
+    for(const c of b.cells){
+      if(isSideCell(c)){ acts.push({icon:c.icon,label:c.label||SIDE_LBL[c.icon],nav:c.nav}); mod=true; }
+      else if(c.minor&&!c.nav){ keep.push(Object.assign({},c,{icon:undefined,minor:undefined})); mod=true; }   // alte Nebenaktion ohne Unterseite
+      else keep.push(c); }
+    if(!mod){ out.push(b); continue; }
+    ch=true; if(keep.length) out.push(Object.assign({},b,{cells:keep})); }
+  if(!ch&&!acts.length) return blocks;
+  acts.sort((x,y)=>SIDE_ORD.indexOf(x.icon)-SIDE_ORD.indexOf(y.icon));
+  const i=out.indexOf(dh); out[i]=Object.assign({},dh,{acts});
+  return out; }
+// sichtbare Knoepfe (links nach rechts) und Menue-Eintraege (bei 3+: Verlauf bleibt, Rest im Menue)
+function sideSplit(acts){ acts=acts||[];
+  if(acts.length<=2) return {vis:acts,menu:null};
+  return {vis:[{icon:'more',label:'Mehr',menu:true},acts[acts.length-1]], menu:acts.slice(0,-1).reverse()}; }
+function dheadHtml(b){
+  const sp=sideSplit(b.acts), n=sp.vis.length;
+  const tx=(b.room?'<div class="droom">'+esc(b.room)+'</div>':'')+'<div class="dname">'+esc(b.name||'')+'</div>';
+  if(!n) return '<div class="dhead">'+tx+'</div>';
+  return '<div class="dhead hasa" style="--dn:'+n+'"><i class="dsp"></i><div class="dtx">'+tx+'</div><div class="dacts">'+
+    sp.vis.map((a,i)=>'<div class="dact" role="button" data-da="'+i+'" title="'+esc(a.label)+'" aria-label="'+esc(a.label)+'">'+svg(ICONS[a.icon]||ICONS.info)+'</div>').join('')+'</div></div>'; }
+function bindDhead(g,blocks){
+  const b=blocks.find(x=>x.k==='dhead'); if(!b||!b.acts||!b.acts.length) return;
+  const sp=sideSplit(b.acts);
+  g.querySelectorAll('.dhead .dact').forEach(n=>{ const a=sp.vis[+n.dataset.da]; if(!a) return;
+    n.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation();
+      if(a.menu){ openMenu(n,sp.menu,true); return; }
+      _crumbNext={lvl:stack.length, html:svg(ICONS[a.icon]||ICONS.info)}; nav(a.nav); }); }); }
 // ---- Raumregelung: Zustands-Pillen, Sollwert-Zeile, Tagesplan (Bloecke chips/setp/tline) ----
 function bigTone(t){ return t==='good'?' good':(t==='crit'?' crit':(t==='heat'?' heat':(t==='cool'?' cool':''))); }
 function chipsHtml(b){ return '<div class="pchips">'+(b.items||[]).map((c,i)=>
   '<span class="pchip'+(c.tone?' '+esc(c.tone):'')+(c.menu?' tap':'')+'" data-ch="'+i+'">'+esc(c.text||'')+'</span>').join('')+'</div>'; }
+// Heizung: Ist-Wert mit -/+ als runde Knoepfe daneben (Aufbau und Stil wie Auf/Ab der Jalousie)
+function istHtml(b){ const bt=(k,i)=>b[k]?'<div class="sbar" data-sp="'+k+'">'+svg(ICONS[i])+'</div>':'<i class="sbsp"></i>';
+  return '<div class="istrow">'+bt('minus','minus')+'<div class="sbar pos"><b class="pbig'+bigTone(b.tone)+'">'+fmtBig(b.text)+'</b></div>'+bt('plus','plus')+'</div>'; }
+// Heizung: eine ruhige Textzeile + (nur) der tippbare Betriebsart-Chip
+function slineHtml(b){ return '<div class="sline"><span class="sltx">'+esc(b.text||'')+'</span>'+
+  (b.chip?'<span class="pchip tap">'+esc(b.chip.text||'')+'</span>':'')+'</div>'; }
 function setpHtml(b){ return '<div class="psetp"><div class="sb" data-sp="minus">'+cellIco('minus')+'</div>'+
   '<div class="spv"><b>'+esc(b.text||'')+'</b><span>'+esc(b.label||'')+'</span></div>'+
   '<div class="sb" data-sp="plus">'+cellIco('plus')+'</div></div>'; }
@@ -2689,6 +2766,12 @@ function bindRegler(g,blocks){
   const cb=blocks.find(b=>b.k==='chips'), ce=g.querySelector('.pchips');
   if(cb&&ce) ce.querySelectorAll('.pchip.tap').forEach(n=>{ const c=cb.items[+n.dataset.ch]; if(!c)return;
     n.addEventListener('pointerdown',ev=>{ ev.preventDefault(); openMenu(n,c.menu); }); });
+  const ib=blocks.find(b=>b.k==='ist'); g._ist=ib||null;
+  if(ib) g.querySelectorAll('.istrow .sbar[data-sp]').forEach(n=>n.addEventListener('pointerdown',ev=>{ ev.preventDefault();
+    const c=(g._ist||{})[n.dataset.sp]; if(c) sendCmd(c.uuid,c.cmd,view&&view.secured); }));
+  const sl=blocks.find(b=>b.k==='sline'); g._sline=sl||null;
+  const sc_=g.querySelector('.sline .pchip.tap');
+  if(sl&&sc_) sc_.addEventListener('pointerdown',ev=>{ ev.preventDefault(); const c=(g._sline||{}).chip; if(c&&c.menu) openMenu(sc_,c.menu); });
   const sb=blocks.find(b=>b.k==='setp');
   if(sb) g.querySelectorAll('.psetp .sb').forEach(n=>n.addEventListener('pointerdown',ev=>{ ev.preventDefault();
     const c=sb[n.dataset.sp]; if(c) sendCmd(c.uuid,c.cmd,view&&view.secured); }));
@@ -2704,21 +2787,25 @@ function cellHtml(c,i){
 function closeMenu(){ const m=document.querySelector('.menuov'); if(m)m.remove(); }
 // Auswahl-Popup ueber einem Button (Klima Modus/Fan): oeffnet nach oben, Tipp
 // daneben schliesst. Auswahl sendet den Befehl und schliesst.
-function openMenu(btn, items){
+// below: Menue unter dem Knopf, rechtsbuendig (Nebenaktionen im Kopf); Eintraege mit
+// Symbol (icon) und/oder Unterseite (nav).
+function openMenu(btn, items, below){
   const s=document.querySelector('.screen'); if(!s)return;
   closeMenu();
   const ov=document.createElement('div'); ov.className='menuov';
   const box=document.createElement('div'); box.className='menubox';
-  box.innerHTML=items.map((it,i)=>'<div class="menuitem'+(it.on?' on':'')+'" data-m="'+i+'">'+esc(it.label)+'</div>').join('');
+  box.innerHTML=items.map((it,i)=>'<div class="menuitem'+(it.on?' on':'')+'" data-m="'+i+'">'+(it.icon?svg(ICONS[it.icon]||ICONS.info):'')+'<span>'+esc(it.label)+'</span></div>').join('');
   ov.appendChild(box); s.appendChild(ov);
   const br=btn.getBoundingClientRect(), sr=s.getBoundingClientRect();
-  let left=br.left-sr.left;
+  let left=below?br.right-sr.left-box.offsetWidth:br.left-sr.left;
   left=Math.max(8, Math.min(left, sr.width-box.offsetWidth-8));
   box.style.left=left+'px';
-  box.style.bottom=(sr.height-(br.top-sr.top)+6)+'px';   // ueber dem Button
+  if(below) box.style.top=(br.bottom-sr.top+6)+'px';
+  else box.style.bottom=(sr.height-(br.top-sr.top)+6)+'px';   // ueber dem Button
   box.querySelectorAll('.menuitem').forEach(n=>{
     n.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation();
       const it=items[+n.dataset.m]; closeMenu();
+      if(it&&it.nav){ _crumbNext={lvl:stack.length, html:svg(ICONS[it.icon]||ICONS.info)}; nav(it.nav); return; }
       if(it&&it.cmd) sendCmd(it.cmd.uuid,it.cmd.cmd,view&&view.secured); });
   });
   ov.addEventListener('pointerdown',()=>closeMenu());
@@ -2733,6 +2820,8 @@ function blockSig(blocks){
     b.k==='row' ? 'row'+b.cells.length+(b.hidden?'h':'')
     : b.k==='favs' ? 'favs'+(b.items?b.items.length:0)
     : b.k==='alarmlist' ? 'alarm'+JSON.stringify(b.entries||[])   // geaenderte Weckzeit -> neu zeichnen
+    : b.k==='dhead' ? 'dhead'+(b.acts?b.acts.map(a=>a.icon).join(','):'')
+    : b.k==='sline' ? 'sline'+(b.chip?1:0)
     : (b.k==='chips'||b.k==='setp'||b.k==='tline') ? b.k+JSON.stringify(b)   // Inhalt aendert sich -> neu zeichnen
     : b.k==='astat' ? 'astat'+(b.sub?1:0)
     : b.k==='scenes' ? 'scenes'+(b.items?b.items.length:0)
@@ -2992,7 +3081,7 @@ function renderPanel(blocks){
   const anchorBot = !!(view && view.anchor==='bottom');
   g.classList.toggle('anchorbot', anchorBot);
   const TOPK = {dhead:1,hero:1,cover:1,video:1,status:1,title:1,value:1,big:1,astat:1,eflow:1,scenes:1,shade:1,dim:1,
-    state:1,log:1,kpis:1,audiomid:1,alarmedit:1,web:1,chips:1,setp:1,tline:1};
+    state:1,log:1,kpis:1,audiomid:1,alarmedit:1,web:1,chips:1,setp:1,tline:1,ist:1,sline:1};
   const bh = b => {
     if(b.k==='eflow') return '<div class="epane-detail" data-eflow></div>';   // Radial; wird nach dem Einfuegen von paintEnergy gefuellt
     if(b.k==='hero'){ const hic = b.iconImg
@@ -3001,7 +3090,7 @@ function renderPanel(blocks){
         ? '<span class="himg" style="--u:url(\''+esc(b.iconUrl)+'\')"></span>'
         : svg(ICONS[b.icon]||ICONS.info);
       return '<div class="hero"><div class="circle">'+hic+'</div></div>'; }
-    if(b.k==='dhead') return '<div class="dhead">'+(b.room?'<div class="droom">'+esc(b.room)+'</div>':'')+'<div class="dname">'+esc(b.name||'')+'</div></div>';
+    if(b.k==='dhead') return dheadHtml(b);
     if(b.k==='cover') return '<div class="cover"><div class="coverph">'+svg(ICONS.music)+'</div><img id="coverimg" alt=""></div>';
     if(b.k==='video') return '<div class="video"><img alt="">'+(b.bell?'<span class="vbell">'+VBELL+'</span>':'')+'</div>';
     if(b.k==='state') return '<div class="dstate tone-'+esc(b.tone||'idle')+'"><span class="sico">'+svg(ICONS[b.icon]||ICONS.info)+'</span>'+
@@ -3013,6 +3102,8 @@ function renderPanel(blocks){
     if(b.k==='alarmedit') return alarmEditHtml(b);
     if(b.k==='web') return '<div class="webframe"><iframe src="'+esc(b.url||'')+'" referrerpolicy="no-referrer"></iframe></div>';
     if(b.k==='chips') return chipsHtml(b);
+    if(b.k==='ist') return istHtml(b);
+    if(b.k==='sline') return slineHtml(b);
     if(b.k==='setp') return setpHtml(b);
     if(b.k==='tline') return tlineHtml(b);
     if(b.k==='status') return '<div class="status">'+esc(b.text||'')+'</div>';
@@ -3098,6 +3189,7 @@ function renderPanel(blocks){
   }
   bindLive(g,blocks);
   bindRegler(g,blocks);
+  bindDhead(g,blocks);
   bindAudio(g,blocks.find(b=>b.k==='audiomid'));
   bindAlarmEdit(g,blocks);
   fitBig(g);
@@ -4193,6 +4285,7 @@ function connect(){
     }
     const same = view && key(view.route)===key(msg.route);
     if(msg.blocks){
+      msg.blocks=normSide(msg.blocks);
       view=msg;
       if(same && el('grid').classList.contains('panel')) updatePanel(msg.blocks);
       else renderPanel(msg.blocks);

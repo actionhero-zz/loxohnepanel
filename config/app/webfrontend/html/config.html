@@ -1380,7 +1380,7 @@
             </div>
             <label class="chk" style="margin-top:12px"><input type="checkbox" id="ms_tls"><span data-i18n>Zertifikat prüfen (Gen2 mit selbstsigniertem Zertifikat: aus)</span></label>
             <div class="actions"><button class="btn" id="ms_save" data-i18n>Verbinden &amp; Speichern</button><span class="toast" id="ms_toast"></span></div>
-            <p class="note"><a href="/api/types?format=text" target="_blank" rel="noopener">Bausteintypen der Anlage anzeigen</a> <span>(welche Typen vorkommen und welche LoxPanel noch nicht unterstützt; als JSON unter /api/types)</span></p>
+            <p class="note keep"><a href="/api/types?format=text" target="_blank" rel="noopener">Bausteintypen der Anlage anzeigen</a> <span>(welche Typen vorkommen und welche LoxPanel noch nicht unterstützt; als JSON unter /api/types)</span></p>
           </div>
           <div class="card">
             <h3 data-i18n>Wetter</h3>
@@ -1867,7 +1867,7 @@ function helpify(root){
   });
 }
 // Sofort wirkende Aktionen (nicht ueber "Speichern" unten): Nebenaktion mit kleinem Blitz (CSS .now) + title
-const NOW_SEL='#at_send,#dg_dl,#ad_go,#secSet,#secOff,#secOut,#fs_del,label.btn:has(#fs_file),.dren_go,[data-dglog],[data-act],.dbri_get,.ddel,.ic_soundrm,#dBgDel,.ddetuse';
+const NOW_SEL='#at_send,#dg_dl,#ad_go,#secSet,#secOff,#secOut,#fs_del,label.btn:has(#fs_file),.dren_go,[data-dglog],[data-act],.dbri_get,.ddel,.ic_soundrm,.ic_soundtest,#dBgDel,.ddetuse';
 function markNow(root){ (root||document).querySelectorAll(NOW_SEL).forEach(el=>{ if(el.classList.contains('now')) return;
   el.classList.add('now'); const t=T('Wirkt sofort – nicht über „Speichern“'); el.title=el.title?el.title+' · '+t:t; }); }
 setTimeout(()=>markNow(),400);
@@ -4434,7 +4434,7 @@ function deviceRow(d, sel){
   if(has('reboot')) ctl+=btn('devreboot',T('Gerät neu starten'),T('Ganzes Gerät neu starten, wenn das Display hängt'),0,1);
   const extra=devExtraHTML(d,caps,off), adb=has('reboot')||has('brightness');
   // offline: Steuerung ausblenden, nur eine Zeile (wie online wieder da)
-  const ctlH=(ctl||extra)?wrap('<div class="dsec dctl'+(off?' off':'')+'">'+
+  const ctlH=(ctl||extra||off)?wrap('<div class="dsec dctl'+(off?' off':'')+'">'+
       (off?'<div class="doff">'+(rc?T('Gerät verbindet – Steuerung gleich verfügbar'):T('Gerät offline – Steuerung nicht verfügbar'))+'</div>'
           :((ctl?'<div class="drow">'+ctl+'</div>':'')+extra+
             (adb?'<div class="dhint">'+T('Per adb: ADB über WLAN muss am Gerät aktiv und für diesen Server freigegeben sein.')+'</div>':'')))+'</div>'):

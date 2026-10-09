@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.102"
+APP_VERSION = "0.19.103"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -2200,13 +2200,13 @@ class App:
             return ""
         return "heat" if p > 0 else ("cool" if p < 0 else "")
 
-    def _irc_chips(self, prep, tt, zustand, art) -> list:
-        """Zustands-Pillen der Raumregelung. Anzeigen ohne Befehl (kein cmd/menu)
-        zeichnet das Panel transparent mit Haarlinie; die Betriebsart ist
-        tippbar (Aufklapper, gefuellt) und traegt den aktuellen Namen.
-          Aktivitaet  Heizen / Kuehlen / Ruht (prepareState bzw. Ventile) + Ziel
-          zustand     aktiver Modus (V2: activeMode, alt: aktuelle Temperatur)
-          art         Betriebsart-Aufklapper aus _irc_betriebsart"""
+    def _irc_top(self, ta, prep, tt, soll, soll_label, zustand, art, window, minus=None, plus=None) -> list:
+        """Kopfbloecke der Raumregelung (Detail-Schema, Heizung):
+          ist    grosser Ist-Wert (Farbton heizt/kuehlt) mit -/+ als runde Knoepfe daneben
+                 (stellen den Komfort-Soll; ohne bekannten Absolutwert entfallen sie)
+          sline  EINE ruhige Textzeile aus Soll, aktivem Modus, Aktivitaet (Heizen /
+                 Kuehlen / Ruht) + Ziel, Fenster; dazu nur der tippbare Betriebsart-
+                 Aufklapper als Chip (aus _irc_betriebsart)."""
         try:
             p = float(prep)
         except (TypeError, ValueError):
@@ -2214,13 +2214,22 @@ class App:
         akt = "Heizen" if p > 0 else ("Kühlen" if p < 0 else "Ruht")
         if tt:
             akt += f" · Ziel {tt}°"
-        chips = [{"text": akt, "tone": self._irc_tone(prep)}]
-        if zustand:
-            chips.append({"text": zustand})
+        parts = []
+        if soll:
+            parts.append(f"Soll {soll}° {soll_label}")
+        if zustand and zustand.casefold() != soll_label.casefold():
+            parts.append(zustand)
+        parts.append(akt)
+        if window:
+            parts.append("Fenster offen")
+        ist = {"k": "ist", "text": f"{ta} °C" if ta else "–", "tone": self._irc_tone(prep)}
+        if minus and plus:
+            ist["minus"], ist["plus"] = minus, plus
+        line = {"k": "sline", "text": " · ".join(parts)}
         if art:
             cur = next((m["label"] for m in art.get("menu") or [] if m.get("on")), "")
-            chips.append({"text": cur or art.get("label") or "Betriebsart", "menu": art["menu"]})
-        return chips
+            line["chip"] = {"text": cur or art.get("label") or "Betriebsart", "menu": art["menu"]}
+        return [ist, line]
 
     def _irc_schedule(self, c: dict, modes: dict) -> dict | None:
         """Tagesplan der Raumregelung aus dem Daytimer-Unterbaustein (State
@@ -5788,7 +5797,7 @@ class App:
             return None
         rng = rng if rng in STAT_RANGES else STAT_DEFAULT_RANGE
         v = self._view_control_inner(uuid)
-        big = next((b.get("text") or "" for b in v.get("blocks") or [] if b.get("k") == "big"), "")
+        big = next((b.get("text") or "" for b in v.get("blocks") or [] if b.get("k") in ("big", "ist")), "")
         return {"control": uuid, "name": _clean(c.get("name")), "value": big,
                 "range": rng, "blocks": self._stat_blocks(c, rng)}
 
@@ -6047,7 +6056,7 @@ class App:
             mid["vol"] = {"value": vol.get("value", 0), "min": vol.get("min", 0), "max": vol.get("max", 100),
                           "cmd": vol.get("cmd")}
         if rows and more:
-            rows[-1]["cells"] = rows[-1]["cells"] + [{"label": "Quellen", "icon": "list", "nav": more, "minor": True}]
+            rows[-1]["cells"] = rows[-1]["cells"] + [{"label": "Quellen", "icon": "list", "nav": more}]
         v["blocks"] = rest + [mid] + rows
         v["anchor"] = "bottom"
         return v
@@ -6093,33 +6102,25 @@ class App:
             rng = rng if rng in STAT_RANGES else STAT_DEFAULT_RANGE
             charts = self._stat_blocks(c, rng)
             if charts:
-                # Verlauf NIE unter dem Wert, sondern immer eine Ebene tiefer:
-                # Knopf in der Aktionsreihe (letzte Zeile) -> eigene Seite. Seiten
-                # ohne Aktionsreihe (reine Anzeige) bekommen eine mit nur diesem
-                # Knopf; der Wert steht dann gross in der Mitte darueber.
-                btn = {"icon": "chart", "nav": {"view": "control", "id": uuid, "chart": 1}}
-                rows = [b for b in v["blocks"] if b.get("k") == "row" and b.get("act")]
-                if rows:
-                    rows[-1]["cells"] = rows[-1]["cells"] + [btn]
-                else:
-                    v["blocks"] = v["blocks"] + [{"k": "row", "act": True, "cells": [btn]}]
-                    v["anchor"] = "bottom"
-        # Verknuepfte Objekte (Loxone Config): kleiner Knopf daneben, wie der
+                # Verlauf NIE unter dem Wert, sondern immer eine Ebene tiefer: Nebenaktion
+                # rechts oben im Kopf (siehe _with_head), kein Knopf in der Aktionsreihe.
+                v.setdefault("side", []).append({"icon": "chart", "label": "Verlauf",
+                                                 "nav": {"view": "control", "id": uuid, "chart": 1}})
+        # Verknuepfte Objekte (Loxone Config): Nebenaktion im Kopf, wie der
         # Verlauf eine Ebene tiefer -> Seite mit den Objekten als Kacheln
         if self._links_of(c) and isinstance(v.get("blocks"), list):
-            btn = {"icon": "link", "nav": {"view": "links", "id": uuid}}
-            rows = [b for b in v["blocks"] if b.get("k") == "row" and b.get("act")]
-            if rows:
-                rows[-1]["cells"] = rows[-1]["cells"] + [btn]
-            else:
-                v["blocks"] = v["blocks"] + [{"k": "row", "act": True, "cells": [btn]}]
-                v["anchor"] = "bottom"
+            v.setdefault("side", []).append({"icon": "link", "label": "Verknüpft",
+                                             "nav": {"view": "links", "id": uuid}})
         return self._with_head(v, c)
 
     # Bloecke, die eine Seite zum "Spezialbaustein" machen (Bedienung/Medien)
     _SPECIAL_KINDS = {"dim", "scenes", "shade", "title", "alarmlist", "video", "favs",
                       "cover", "eflow", "slider", "chart", "web", "state", "audiomid",
-                      "log", "kpis", "alarmedit"}
+                      "log", "kpis", "alarmedit", "ist", "sline"}
+
+    # Symbole der Nebenaktionen (Knopf oeffnet eine Unterseite), von links nach rechts
+    _SIDE_ORDER = ["list", "link", "chart"]
+    _SIDE_LABEL = {"list": "Quellen", "link": "Verknüpft", "chart": "Verlauf"}
 
     def _with_head(self, v: dict, c: dict) -> dict:
         """Kopf jeder Detailseite: Raum + Bausteinname oben, kein Symbol-Kreis.
@@ -6127,7 +6128,28 @@ class App:
         stattdessen ihr Piktogramm uebergross im Hintergrund (v["bgIcon"])."""
         blocks = v.get("blocks") if isinstance(v, dict) else None
         if not isinstance(blocks, list):
+            v.pop("side", None)
             return v
+        # Nebenaktionen (Verlauf, Verknuepft, Quellen = Knoepfe, die eine Unterseite
+        # oeffnen) wandern aus den Aktionsreihen in den Kopf. Reihenfolge von links:
+        # Quellen, Verknuepft, Verlauf; eine dadurch leere Reihe entfaellt.
+        side = list(v.pop("side", None) or [])
+        nb = []
+        for b in blocks:
+            if b.get("k") == "row":
+                keep = []
+                for cell in b.get("cells") or []:
+                    if cell.get("nav") and cell.get("icon") in self._SIDE_LABEL:
+                        side.append({"icon": cell["icon"], "label": cell.get("label") or self._SIDE_LABEL[cell["icon"]],
+                                     "nav": cell["nav"]})
+                    else:
+                        keep.append(cell)
+                if not keep:
+                    continue
+                b = {**b, "cells": keep}
+            nb.append(b)
+        blocks = nb
+        side.sort(key=lambda x: self._SIDE_ORDER.index(x["icon"]))
         hero = next((b for b in blocks if b.get("k") == "hero"), None)
         blocks = [b for b in blocks if b.get("k") not in ("hero", "dhead")]
         kinds = {b.get("k") for b in blocks}
@@ -6142,7 +6164,10 @@ class App:
         # OG Bad") oder Loxone-Platzhalter "nicht zugeordnet"
         if room and (room.casefold() == (name or "").casefold() or room.casefold() in ("nicht zugeordnet", "unassigned")):
             room = ""
-        blocks.insert(0, {"k": "dhead", "room": room, "name": name})
+        dh = {"k": "dhead", "room": room, "name": name}
+        if side:
+            dh["acts"] = side
+        blocks.insert(0, dh)
         v["blocks"] = blocks
         v["anchor"] = "bottom"   # Kopf immer oben, Wert mittig, Aktionsreihe unten
         return v
@@ -6773,19 +6798,15 @@ class App:
             art, manuell = self._irc_betriebsart(c)
             prep = self._state(c, "prepareState")
             kc = self._fmt_num(self._state(c, "comfortTemperature"), "%.1f")
-            # Detail-Schema: Ist-Temperatur gross (Farbton heizt/kuehlt von Loxone),
-            # Zustands-Pillen, Sollwert-Zeile (Komfort -/+ in 0,5er-Schritten),
-            # Tagesplan als Zeitleiste (nur wenn Loxone ihn liefert), unten die
-            # Modi als 1-h-Override. Offenes Fenster als Pille.
+            # Detail-Schema: Ist-Temperatur gross (Farbton heizt/kuehlt von Loxone)
+            # mit -/+ (Komfort in 0,5er-Schritten), darunter eine Textzeile + Betriebsart-
+            # Chip (_irc_top), Tagesplan als Zeitleiste (nur wenn Loxone ihn liefert),
+            # unten die Modi als 1-h-Override.
             zustand = modes.get(am) if am is not None else ""
-            chips = self._irc_chips(prep, tt, _kurz_modus(zustand), art)
-            if self._state(c, "openWindow"):
-                chips.insert(1, {"text": "Fenster offen"})
-            blocks = [{"k": "big", "text": f"{ta} °C" if ta else "–", "tone": self._irc_tone(prep)},
-                      {"k": "chips", "items": chips},
-                      {"k": "setp", "label": "Komfort-Soll", "text": f"{kc}°" if kc else "–",
-                       "minus": {"uuid": ua, "cmd": f"setComfortTemperature/{comfort - 0.5:.1f}"},
-                       "plus": {"uuid": ua, "cmd": f"setComfortTemperature/{comfort + 0.5:.1f}"}}]
+            blocks = self._irc_top(
+                ta, prep, tt, kc, "Komfort", _kurz_modus(zustand), art, self._state(c, "openWindow"),
+                {"uuid": ua, "cmd": f"setComfortTemperature/{comfort - 0.5:.1f}"},
+                {"uuid": ua, "cmd": f"setComfortTemperature/{comfort + 0.5:.1f}"})
             plan = self._irc_schedule(c, modes)
             if plan and plan["segs"]:
                 blocks.append({"k": "tline", **plan})
@@ -6814,21 +6835,18 @@ class App:
             # liefert keinen). Zustand = aktuelle Temperatur (Eco, Komfort ...),
             # bei manueller Betriebsart steht sie schon in der Betriebsart-Pille.
             zustand = z["name"] if z["name"] and not (manuell and z["ix"] == IRC1_MANUELL) else ""
-            kv = z["stell"] if z["stell_ix"] == z["komfort_ix"] else self._irc1_temp(c, z["komfort_ix"])
-            kc = self._fmt_num(kv, "%.1f") if kv is not None else ""
-            chips = self._irc_chips(z["prep"], tt, zustand, art)
-            if self._state(c, "openWindow"):
-                chips.insert(1, {"text": "Fenster offen"})
-            blocks = [{"k": "big", "text": f"{ta} °C" if ta else "–", "tone": self._irc_tone(z["prep"])},
-                      {"k": "chips", "items": chips}]
             # -/+ verstellt Komfort der Periode (manuell: die manuelle
             # Temperatur) - nur mit bekanntem, absolutem Wert.
+            minus = plus = None
+            soll, soll_label = "", "Komfort"
             if z["stell"] is not None:
                 ix, v = z["stell_ix"], z["stell"]
-                blocks.append({"k": "setp", "label": "Manuell-Soll" if ix == IRC1_MANUELL else "Komfort-Soll",
-                               "text": f"{self._fmt_num(v, '%.1f')}°",
-                               "minus": {"uuid": ua, "cmd": f"settemp/{ix}/{v - 0.5:.1f}"},
-                               "plus": {"uuid": ua, "cmd": f"settemp/{ix}/{v + 0.5:.1f}"}})
+                soll = self._fmt_num(v, "%.1f")
+                soll_label = "Manuell" if ix == IRC1_MANUELL else "Komfort"
+                minus = {"uuid": ua, "cmd": f"settemp/{ix}/{v - 0.5:.1f}"}
+                plus = {"uuid": ua, "cmd": f"settemp/{ix}/{v + 0.5:.1f}"}
+            blocks = self._irc_top(ta, z["prep"], tt, soll, soll_label, zustand, art,
+                                   self._state(c, "openWindow"), minus, plus)
             # Eco/Komfort fuer eine Stunde halten, Automatik beendet den Timer.
             blocks.append({"k": "row", "cells": [
                 {"label": IRC1_TEMPS[IRC1_ECO], "on": z["ix"] == IRC1_ECO,
@@ -7411,7 +7429,7 @@ class App:
                 blocks.append({"k": "scenes", "items": items})
             blocks.append({"k": "row", "act": True, "cells": [
                 {"label": "Start", "on": act, "cmd": {"uuid": ua, "cmd": "start"}},
-                {"label": "Erzwingen", "icon": "bolt", "minor": True, "cmd": {"uuid": ua, "cmd": "startForce"}},
+                {"label": "Erzwingen", "cmd": {"uuid": ua, "cmd": "startForce"}},
                 {"label": "Stopp", "cmd": {"uuid": ua, "cmd": "stop"}},
             ]})
             return {"t": "view", "title": _clean(c.get("name")), "route": route,

@@ -7,7 +7,7 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - **Ebene 2 – Baustein**, in zwei Formen:
   - **2a Kachel:** der Baustein im Raster mit Symbol, Raum, Name und einem Zustand. Tippen öffnet 2b. Direkt auf der Kachel schalten nur ihre **Schnellbedienungen**: Mini-Schalter (Ein/Aus), Mini-Buttons ‹ › (Stimmung/Helligkeit) und ˄ ˅ (Jalousie, Fenster). Bausteine ohne eigene Detailansicht (z. B. reiner Taster) lösen beim Tippen ihren Loxone-Befehl direkt aus.
   - **2b Detail:** derselbe Baustein geöffnet. Aufbau: Kopf, großer Wert, Einträge, Aktionen. Hier wird eingestellt.
-  - **2b-Unterseite:** Was eine eigene Seite braucht (Farbe, Verlauf, verknüpfte Bausteine), öffnet über einen Icon-Knopf am Ende der Aktionsreihe. Ebenso öffnen **Einträge mit Pfeil ›** eine Unterseite (z. B. Wecker → Eintrag bearbeiten, Raum → Baustein). Unterseiten haben denselben Kopf wie 2b, Zurück geht genau eine Ebene zurück, Änderungen gelten sofort. Die Verschachtelung folgt der Struktur des Loxone-Bausteins; eigene zusätzliche Ebenen werden nicht erfunden.
+  - **2b-Unterseite:** Was eine eigene Seite braucht (Verlauf, verknüpfte Bausteine, Quellen), öffnet über einen Nebenaktions-Knopf rechts oben im Kartenkopf (siehe „Nebenaktionen“). Ebenso öffnen **Einträge mit Pfeil ›** eine Unterseite (z. B. Wecker → Eintrag bearbeiten, Raum → Baustein). Unterseiten haben denselben Kopf wie 2b, Zurück geht genau eine Ebene zurück, Änderungen gelten sofort. Die Verschachtelung folgt der Struktur des Loxone-Bausteins; eigene zusätzliche Ebenen werden nicht erfunden.
 
 ## Grundsätze
 
@@ -59,11 +59,18 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - Ist der Zustand ein Text statt einer Zahl (Taster „Zuletzt ausgelöst“), steht er kleiner (`value-hero` · Stufe 22–30 px), die Zeit darunter.
 - Zustandsfarbe des großen Werts nur aus dem Theme: heizt = Wärme-Token (`dot-3`), kühlt = kühler Token, ruht = `ink`.
 - Zusatzangaben (Betriebsart, Zeitplan, „Fenster offen“) als Chips unter dem Wert: Anzeige = transparent mit Haarlinie, tippbar = gefüllt mit Pfeil ˅/›.
-- Heizung nach Loxone-Vorbild: Sollwert-Zeile „− 24,0° Komfort-Soll +“ (Zeile = Anzeige, −/+ = runde Bedienelemente), darunter optional die Zeitleiste 0–24 Uhr mit Komfortzeiten aus dem Loxone-Zeitplan und „Komfort bis …“; Betriebsarten als Pillen unten.
+- Heizung wie der Rollladen aufgebaut: −/+ als runde Bedienelemente direkt links/rechts neben der Ist-Temperatur (wie ˄/˅ bei der Jalousie), darunter EINE ruhige Textzeile in `ink-2` („Soll 24,0° Komfort · Ruht · Ziel 22,0°“) plus nur die tippbaren Menü-Chips (z. B. „Automatik nur Heizen ˅“); optional die Zeitleiste 0–24 Uhr mit Komfortzeiten aus dem Loxone-Zeitplan; Betriebsarten als Pillen unten. Keine eigene Sollwert-Fläche.
 - Alles passt auf ein Panel (960 × 480, 480 × 480) ohne Scrollen; Verläufe füllen den freien Platz, bei zu wenigen Messwerten steht „Noch zu wenig Messwerte“.
 - Einträge (Lichtszenen, Zonen, Wecker, Ausgänge, Stimmungen) sind Listenzeilen: 46 px hoch (Tablet 52 px), `r-m`, Symbol links, Titel und Unterzeile, aktiv gefüllt in `ink`.
 - **Standard zwei Spalten:** Auf Panels und Tablets stehen Einträge in zwei gleich breiten Spalten über die ganze Breite (480 × 480 ab 3 Einträgen, breit immer) – Lichtszenen genauso wie Bewässerungszonen. Nie drei Spalten (einzige Ausnahme: Handy quer, zu wenig Höhe); Handy hoch eine Spalte. Passen nicht alle Einträge, scrollt die Liste senkrecht – der Rest der Ansicht bleibt unverändert. Nie seitwärts scrollen.
 - Kamera „ganzes Bild“: freie Ränder in Kartenfarbe oder als verwischtes Bild – nie weiße Streifen.
+
+## Nebenaktionen
+- Knöpfe, die eine Unterseite öffnen (Verlauf, Verknüpft, Quellen), stehen **rechts oben im Kartenkopf** der Detailansicht und ihrer Unterseiten, auf Höhe von Raum + Name – auf allen Geräten gleich. Raum + Name bleiben mittig.
+- Form: Kreis 44 px (`radius-control`), Fläche `tile` 55 %, ohne Umriss, Symbol 22 px, mit Beschriftung als Tooltip. Abstand 8 px. Reihenfolge von rechts: Verlauf, Verknüpft, Quellen.
+- **Höchstens zwei sichtbar.** Bei mehr: Verlauf plus „⋯“ mit Menü (Popup-Standard). Ein Knopf wird nie weggelassen.
+- Sofortbefehle (z. B. „Erzwingen“ der Bewässerung) sind keine Nebenaktion, sondern Pillen in der Aktionsreihe.
+- Die Aktionsreihe unten enthält nur Hauptaktionen. Die Kopfleiste (Zurück, Pfad, Tabs) bleibt reine Navigation.
 
 ## Kacheltext und Seiten
 - **Gemeinsame Grundlinie:** Der Textblock der Kachel hat drei feste Plätze – Raumzeile, Name (Platz für zwei Zeilen, sonst „…“), Zustand unten. Kacheln einer Reihe stehen dadurch bündig, egal ob der Name ein- oder zweizeilig ist.
@@ -78,7 +85,7 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - Reihenfolge von hinten nach vorn: Menü < Blatt < Hinweis < Alarm < Nachtabdunklung.
 
 ## Fläche heißt tippbar
-- Alles Tippbare hat eine Fläche; der Rang zeigt sich an Größe und Deckkraft: Hauptaktion `tile` deckend (aktiv `ink`), Nebenaktion (Kreis 32 px) und Chips `tile` 55 %, ohne Umriss.
+- Alles Tippbare hat eine Fläche; der Rang zeigt sich an Größe und Deckkraft: Hauptaktion `tile` deckend (aktiv `ink`), Nebenaktion (Kreis 44 px, rechts oben im Kartenkopf) und Chips `tile` 55 %, ohne Umriss.
 - Reine Anzeigen (z. B. Bewässerungszonen) haben keine Fläche, nur eine Haarlinie. „Läuft/aktiv“ zeigt eine leichte Tönung plus Indikator-Quadrat in `dot-*` – nie die dunkle `ink`-Füllung, die ist Bedienelementen vorbehalten.
 - Einträge, die eine Ansicht öffnen, sind Bedienelemente und tragen rechts einen Pfeil ›.
 - Keine eigene Logik: Was ein Eintrag kann, bestimmt allein der Loxone-Baustein (Standardbefehle).

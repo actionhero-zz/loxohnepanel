@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.107"
+APP_VERSION = "0.19.108"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -6190,6 +6190,21 @@ class App:
         side.sort(key=lambda x: self._SIDE_ORDER.index(x["icon"]))
         hero = next((b for b in blocks if b.get("k") == "hero"), None)
         blocks = [b for b in blocks if b.get("k") not in ("hero", "dhead")]
+        # Seiten mit Eintragsliste (Szenen, Fenster, Zonen, Zentral-Mitglieder): der Zustand
+        # steht EINZEILIG ("2 offen · 1 gekippt · 16 Fenster") statt als grosse Zahl, damit
+        # die Liste Platz hat (Designsystem: Auswahl-/Sammelbausteine). Grosse Zahl bleibt
+        # Seiten ohne Liste vorbehalten.
+        if any(b.get("k") == "scenes" for b in blocks):
+            nb2, i = [], 0
+            while i < len(blocks):
+                b = blocks[i]
+                if b.get("k") == "big" and not b.get("line"):
+                    b = {**b, "line": True, "small": False}
+                    nx = blocks[i + 1] if i + 1 < len(blocks) else None
+                    if nx and nx.get("k") == "status" and nx.get("text"):
+                        b["extra"] = nx["text"]; i += 1
+                nb2.append(b); i += 1
+            blocks = nb2
         kinds = {b.get("k") for b in blocks}
         rows = [b for b in blocks if b.get("k") == "row"]
         simple = not (kinds & self._SPECIAL_KINDS) and all(

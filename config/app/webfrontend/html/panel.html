@@ -1772,6 +1772,8 @@
      Ausnahme nur Handy quer (zu wenig Hoehe), Handy hoch einspaltig. */
   /* 480er (nicht Handy): schon ab 3 Eintraegen zwei Spalten, sonst scrollt die Liste in ihren ~125 px (z.B. 3 Bewaesserungszonen) */
   html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:has(>:nth-child(3)){grid-template-columns:repeat(2,minmax(0,1fr));}
+  /* Zeilen mit Zustandswort rechts (Fenster): auf 480 eine Spalte, sonst werden die Namen abgeschnitten */
+  html:not(.phone) .grid.panel:not(.wide) .pantop>.scenes:has(>.scene.wv){grid-template-columns:minmax(0,1fr);}
   html.phone .grid.panel .pantop>.scenes{grid-auto-rows:46px;align-content:start;grid-template-columns:minmax(0,1fr);}   /* Handy: Hoehe reicht, eine Spalte */
   .grid.panel .pantop>.scenes>.scene{flex-direction:row;align-items:center;justify-content:flex-start;min-width:0;height:auto;
     padding:0 14px;gap:10px;border-radius:var(--r-m);}

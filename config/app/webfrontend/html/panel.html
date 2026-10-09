@@ -1689,7 +1689,7 @@
   .pantop>.pbig ~ .scenes .scene .ssub{font-size:12px;}
   .pantop>.pbig ~ .scenes .sico svg{width:22px;height:22px;}
   /* Auswahlbausteine (Licht): Zustand einzeilig "An · Tag / viel Licht" statt grosser Zahl */
-  .pantop>.pbig.lst,.pantop>.pbig.lst:has(~ .scenes){font-size:clamp(22px,6vh,30px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .grid .pantop>.pbig.lst{font-size:clamp(20px,5vh,24px) !important;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}   /* !important: schlaegt die Hero-Groessen (.word/.wide/:has(~.scenes)) */
   .pbig.lst .lx{font-family:var(--font,inherit);font-size:.6em;font-weight:500;color:var(--ink-2,var(--muted));letter-spacing:0;}
 
   /* ==== Anzeige statt Bedienung (0.19.80) ====

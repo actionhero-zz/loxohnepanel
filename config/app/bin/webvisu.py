@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.104"
+APP_VERSION = "0.19.105"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -894,7 +894,7 @@ _COVER_MAX_BYTES = 5 * 1024 * 1024   # Obergrenze fuer /cover-Bilder
 
 THEME_UI_KEYS = ("iconSize", "nameSize", "subSize", "saverFcSize",
                  "tileShadow", "font", "fontNum", "textColor", "baseColor", "design", "bold", "lang",
-                 "alarmsEnabled", "motion", "contrast", "sceneLight", "dblTapOff", "iconAnim")
+                 "alarmsEnabled", "motion", "contrast", "sceneLight", "dblTapOff", "iconAnim", "bigValues")
 
 
 # Komplettkatalog der Loxone-Standard-Icons (IconsFilled/*.svg). Der Miniserver
@@ -2698,7 +2698,7 @@ class App:
             "split": ui.get("split") is not False,
             # Handy-Profil: Flaechen untereinander, Tabs unten, volle Hoehe
             "phone": ui.get("phone") is True,
-            "bigValues": ui.get("bigValues") is True,   # Werte gross auf reinen Wert-Kacheln (je Panel)
+            "bigValues": ui.get("bigValues") in (True, "on"),   # Werte gross: global (Darstellung) + Panel-Override wie sceneLight
             # Split-Pane pro Tab: Tab-Kennung -> "weather"|"calendar"|"player:<uuid>".
             # Nur wirksam, wenn split an ist. Das Panel rendert die passende Pane.
             # Zusatzflaeche je Tab (Pane 2) entfaellt: Widgets liegen jetzt frei im
@@ -4157,8 +4157,8 @@ class App:
                 cui["split"] = False            # Split-Screen aus (4"-Panel: nur Visu)
             if ui.get("phone") is True:
                 cui["phone"] = True             # Handy: Flaechen untereinander, Tabs unten
-            if ui.get("bigValues") is True:
-                cui["bigValues"] = True         # Werte gross auf reinen Wert-Kacheln (Standard aus)
+            if ui.get("bigValues") in (True, "on", "off"):
+                cui["bigValues"] = "on" if ui["bigValues"] in (True, "on") else "off"   # Werte gross: Panel-Override
             if isinstance(ui.get("player"), str) and ui.get("player"):
                 cui["player"] = ui["player"]    # Split-Layout: AudioZone-UUID fuer den festen Player
             if isinstance(ui.get("panes"), dict):
@@ -4577,6 +4577,8 @@ class App:
             out["contrast"] = "on"
         if ui.get("sceneLight") == "on":
             out["sceneLight"] = "on"
+        if ui.get("bigValues") in (True, "on"):
+            out["bigValues"] = "on"       # Werte gross auf Wert-Kacheln, Standard aus
         # Animierte Symbole: Default an; nur explizites "off" speichern.
         if ui.get("iconAnim") == "off":
             out["iconAnim"] = "off"

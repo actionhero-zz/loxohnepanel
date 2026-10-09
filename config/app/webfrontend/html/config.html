@@ -2277,6 +2277,10 @@ function contrastOpts(cur,withGlobal){
   return (withGlobal?o('','Wie Standard'):'')+o('off','Aus (flach)')+o('on','Mehr Kontrast');
 }
 // Lichtszenen: Piktogramm zeigt Lichtfarbe + Helligkeit der Szene (lernend)
+function bigValOpts(cur,withGlobal){
+  const o=(v,t)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+T(t)+'</option>';
+  return (withGlobal?o('','Wie Standard'):'')+o('off','Aus')+o('on','An');
+}
 function sceneLightOpts(cur,withGlobal){
   const o=(v,t)=>'<option value="'+v+'"'+(cur===v?' selected':'')+'>'+T(t)+'</option>';
   return (withGlobal?o('','Wie Standard'):'')+o('off','Einheitliches Symbol')+o('on','Lichtfarbe zeigen');
@@ -2311,6 +2315,7 @@ function renderGlobalEditor(p){
       '<div class="field" style="max-width:260px"><label class="lbl">'+T('Animation')+'</label><select id="gMotion">'+motionOpts((p.ui||{}).motion||'full',false)+'</select></div>'+
       '<div class="field" style="max-width:320px"><label class="lbl">'+T('Kontrast')+'</label><select id="gContrast">'+contrastOpts((p.ui||{}).contrast==='on'?'on':'off',false)+'</select></div>'+
       '<div class="field" style="max-width:340px"><label class="lbl">'+T('Lichtszenen')+'</label><select id="gSceneLight">'+sceneLightOpts((p.ui||{}).sceneLight==='on'?'on':'off',false)+'</select></div>'+
+      '<div class="field" style="max-width:260px"><label class="lbl">'+T('Werte groß auf Kacheln')+'</label><select id="gBigVals">'+bigValOpts(((p.ui||{}).bigValues===true||(p.ui||{}).bigValues==='on')?'on':'off',false)+'</select></div>'+
       '<label class="chk" style="flex:1 1 100%;margin-top:4px"><input type="checkbox" id="gIconAnim"'+((p.ui||{}).iconAnim==='off'?'':' checked')+'>'+
         '<span>'+T('Animierte Symbole – dezente Bewegung: Klingel und Wecker wackeln, Jalousie-Pfeil wippt beim Fahren, Heizung flackert beim Heizen, Symbol ploppt beim Einschalten, neue Werte ticken ein')+'</span></label>'+
       '</div>'+
@@ -2328,6 +2333,8 @@ function renderGlobalEditor(p){
       if(gs.value==='on') p.ui.sceneLight='on'; else delete p.ui.sceneLight; markDirty(); }; }
   { const ga=$('#gIconAnim'); if(ga) ga.onchange=()=>{ p.ui=p.ui||{};
       if(ga.checked) delete p.ui.iconAnim; else p.ui.iconAnim='off'; markDirty(); }; }
+  { const gb=$('#gBigVals'); if(gb) gb.onchange=()=>{ p.ui=p.ui||{};
+      if(gb.value==='on') p.ui.bigValues='on'; else delete p.ui.bigValues; markDirty(); }; }
   { const gc=$('#gContrast'); if(gc) gc.onchange=()=>{ p.ui=p.ui||{};
       if(gc.value==='on') p.ui.contrast='on'; else delete p.ui.contrast; markDirty(); }; }
   renderCatColors(p);
@@ -2486,8 +2493,8 @@ function renderEditor(){
          '<select id="fIconAnim">'+['','on','off'].map(v=>'<option value="'+v+'"'+(((p.ui||{}).iconAnim||'')===v?' selected':'')+'>'+T(v===''?'Wie Standard':(v==='on'?'An':'Aus'))+'</option>').join('')+'</select></div>'+
      '</div><p class="hint">'+T('Schwächere Panels: Animation „Mittel“ oder „Keine“ und Kontrast „Aus“ entlasten das Gerät.')+'</p></div>'+
      '<div class="card"><h3>'+T('Kacheln')+'</h3><div class="sizes">'+
-       '<label class="chk" style="flex:1 1 100%"><input type="checkbox" id="fBigVals"'+((p.ui||{}).bigValues?' checked':'')+'>'+
-         '<span>'+T('Werte groß auf Kacheln')+'</span></label></div>'+
+       '<div class="field" style="max-width:260px"><label class="lbl">'+T('Werte groß auf Kacheln')+'</label>'+
+         '<select id="fBigVals">'+bigValOpts((p.ui||{}).bigValues===true?'on':((p.ui||{}).bigValues||''),true)+'</select></div></div>'+
      '<p class="hint">'+T('Reine Messwert-Kacheln (Temperatur, Feuchte, CO₂, Leistung, Zähler) zeigen den Wert groß, das Symbol als blasses Wasserzeichen. Zahl und Einheit kommen unverändert aus Loxone. Texte und Kacheln mit Schnellbedienung bleiben unverändert. Je Kachel änderbar: Raster-Editor → Kachel → Aussehen.')+'</p></div></section>';
 
 
@@ -2529,7 +2536,7 @@ function renderEditor(){
   { const fs=$('#fSceneLight'); if(fs) fs.onchange=e=>{ p.ui=p.ui||{};
       if(e.target.value) p.ui.sceneLight=e.target.value; else delete p.ui.sceneLight; markDirty(); }; }
   { const fb=$('#fBigVals'); if(fb) fb.onchange=e=>{ p.ui=p.ui||{};
-      if(e.target.checked) p.ui.bigValues=true; else delete p.ui.bigValues; markDirty(); }; }
+      if(e.target.value) p.ui.bigValues=e.target.value; else delete p.ui.bigValues; markDirty(); }; }
   { const fa=$('#fIconAnim'); if(fa) fa.onchange=e=>{ p.ui=p.ui||{};
       if(e.target.value) p.ui.iconAnim=e.target.value; else delete p.ui.iconAnim; markDirty(); }; }
   { const fc=$('#fContrast'); if(fc) fc.onchange=e=>{ p.ui=p.ui||{};

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.109"
+APP_VERSION = "0.19.110"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -3859,6 +3859,29 @@ class App:
         ok = code == 0 and "rror" not in out
         log.info("Fully auf %s (%s) neu gestartet: %s", device, target, "ok" if ok else out)
         return {"ok": ok, "via": "adb", **({} if ok else {"error": out[-300:]})}
+
+    async def launcher_version(self, device: str, ip: str = "") -> dict:
+        """Installierte LoxPanel-Launcher-Version per adb lesen (nur lesend) und
+        mit der im Update mitgelieferten vergleichen -> {ok, installed, bundled}.
+        installed 0 = nicht installiert."""
+        ip = ip or self._device_ip(device)
+        try:
+            ip = str(ipaddress.ip_address(ip.strip()))
+        except (ValueError, AttributeError):
+            return {"ok": False, "error": "IP des Geraets unbekannt - Visu am Panel einmal öffnen"}
+        if not shutil.which("adb"):
+            return {"ok": False, "error": "adb fehlt im Container"}
+        target = f"{ip}:5555"
+        async with _adb_lock:
+            code, out = await _adb("connect", target, timeout=15)
+            if "connected" not in out or "failed" in out:
+                return {"ok": False, "error": "Panel per adb nicht erreichbar"}
+            code, out = await _adb("-s", target, "get-state", timeout=10)
+            if out != "device":
+                return {"ok": False, "error": "adb nicht freigegeben"}
+            code, out = await _adb("-s", target, "shell", "dumpsys", "package", LAUNCHER_PKG, timeout=15)
+        return {"ok": True, "installed": _launcher_ver_of(out) if code == 0 else 0,
+                "bundled": _launcher_bundled_ver()}
 
     async def device_adblog(self, device: str, ip: str = "") -> dict:
         """Android-Geraet (Shelly, Tablet) per adb auslesen - NUR lesend: Systemprotokoll,
@@ -10105,6 +10128,27 @@ async def _adb(*args: str, timeout: float = 30) -> tuple[int, str]:
     return proc.returncode or 0, out.decode("utf-8", "replace").strip()
 
 
+def _launcher_bundled_ver() -> int:
+    """versionCode der mitgelieferten Launcher-APK (0 = unbekannt)."""
+    try:
+        return int(LAUNCHER_VERSION_FILE.read_text().strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def _launcher_ver_of(dumpsys: str) -> int:
+    """versionCode aus "dumpsys package" (0 = nicht installiert)."""
+    m = re.search(r"versionCode=(\d+)", dumpsys)
+    return int(m.group(1)) if m else 0
+
+
+async def api_panel_launcher_version(request: web.Request) -> web.Response:
+    """Launcher-Version am Panel vs. Update: POST {device, ip?}."""
+    app: App = request.app["app"]
+    d = await _json_or_empty(request)
+    return web.json_response(await app.launcher_version(str(d.get("device") or "").strip(), str(d.get("ip") or "")))
+
+
 async def api_panel_launcher(request: web.Request) -> web.Response:
     """LoxPanel-Launcher per adb auf ein Android-Panel installieren und
     einrichten: {ip, port?, server, panel?, device?}. device "shelly" (Shelly
@@ -10164,13 +10208,9 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
                                       "error": "Am Panel \"USB-Debugging zulassen\" bestaetigen "
                                                "(\"Immer erlauben\" anhaken) und erneut klicken."})
         # Schon gleiche/neuere Version drauf? Dann Installieren ueberspringen.
-        try:
-            apk_ver = int(LAUNCHER_VERSION_FILE.read_text().strip())
-        except (OSError, ValueError):
-            apk_ver = 0   # unbekannt -> immer installieren
+        apk_ver = _launcher_bundled_ver()   # 0 = unbekannt -> immer installieren
         code, out = await _adb("-s", target, "shell", "dumpsys", "package", LAUNCHER_PKG, timeout=15)
-        m = re.search(r"versionCode=(\d+)", out) if code == 0 else None
-        have_ver = int(m.group(1)) if m else 0
+        have_ver = _launcher_ver_of(out) if code == 0 else 0
         if apk_ver and have_ver >= apk_ver:
             step("Installieren", 0, f"Version {have_ver} schon installiert - uebersprungen")
         else:
@@ -10200,7 +10240,8 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
         if not step("URL eintragen", code, out, ok=(code == 0 and "rror" not in out)):
             return web.json_response({"ok": False, "steps": steps, "error": "URL konnte nicht gesetzt werden"})
     log.info("LoxPanel-Launcher auf %s eingerichtet (%s, URL %s)", target, device, url)
-    return web.json_response({"ok": True, "steps": steps, "url": url, "fully": has_fully})
+    return web.json_response({"ok": True, "steps": steps, "url": url, "fully": has_fully,
+                              "version": max(apk_ver, have_ver)})
 
 
 async def font_handler(request: web.Request) -> web.Response:
@@ -11071,6 +11112,7 @@ def main() -> None:
     a.router.add_get("/api/notify", api_notify)
     a.router.add_post("/api/notify", api_notify)
     a.router.add_post("/api/panel/launcher", api_panel_launcher)
+    a.router.add_post("/api/panel/launcher/version", api_panel_launcher_version)
     a.router.add_get("/icon", icon_handler)
     a.router.add_get("/fonts/{name}", font_handler)
     a.router.add_get("/appicon/{size}.png", appicon_handler)

@@ -720,6 +720,8 @@
   .dev .drow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
   .dev .drow+.drow{margin-top:8px;}
   .dev .dhint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.35;}
+  .dev .dhint.dlver{color:var(--accent);font-weight:600;}
+  .dev .dhint.dlver:empty{display:none;}
   #dev_list .dev.inactive>.devtg{opacity:.55;} #dev_list .dev.inactive.open>.devtg{opacity:.8;}
   .dev .dren{display:flex;gap:8px;margin-bottom:8px;} .dev .dren_in{flex:1;min-width:0;max-width:320px;}
   .dev .ddelrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
@@ -4469,7 +4471,8 @@ function deviceRow(d, sel){
   let mt='';
   if(has('fullyinstall')) mt+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'))+
     btn('launcher',T('Launcher einrichten'),T('LoxPanel-Launcher per adb installieren und Start-URL eintragen; das Symbol „LoxPanel“ öffnet Fully Kiosk mit dem Panel'));
-  const maint=mt?wrap('<div class="dsec">'+dsh('setup',T('Einrichten per adb'))+'<div class="drow">'+mt+'</div></div>'):'';
+  const maint=mt?wrap('<div class="dsec">'+dsh('setup',T('Einrichten per adb'))+'<div class="drow">'+mt+'</div>'+
+    '<div class="dhint dlver">'+launcherHint(d.name)+'</div></div>'):'';
   return {view:view, ctl:ctlH, maint:maint};
 }
 // Android: Display-Helligkeit per adb; mit Fully: Link zum Fully Remote Admin (Port 2323)
@@ -4488,6 +4491,22 @@ function devExtraHTML(d,caps,off){
     (fully?'<a class="btn sm ghost'+(off?' disabled':'')+'"'+(off?' aria-disabled="true" tabindex="-1"':'')+' href="http://'+esc(d.ip)+':2323" target="_blank" rel="noopener" title="'+T('Fully Remote Admin (in Fully unter Remote Administration aktivieren)')+'">'+T('Fully Remote Admin')+' ↗</a>':'')+
   '</div>';
 }
+const DEV_LV={};   // je Geraet: {installed, bundled} - Launcher-Version (per adb gelesen)
+// Hinweis, wenn das Update eine neuere Launcher-Version mitbringt als am Geraet installiert
+function launcherHint(name){ const v=DEV_LV[name];
+  return v&&v.installed&&v.bundled>v.installed
+    ? '⬆ '+T('Neue Launcher-Version im Update')+' ('+v.installed+' → '+v.bundled+') – '+T('„Launcher einrichten“ aktualisiert.') : ''; }
+async function devLauncherVer(row){
+  const name=row.dataset.name;
+  try{ const j=await postJson('/api/panel/launcher/version',{device:name, ip:row.dataset.devip||''});
+    if(!j.ok) return;   // still: adb fehlt/nicht freigegeben -> kein Hinweis
+    DEV_LV[name]={installed:j.installed||0, bundled:j.bundled||0};
+    document.querySelectorAll('.dev').forEach(dv=>{ if(dv.dataset.name!==name) return;
+      const h=dv.querySelector('.dlver'); if(h) h.textContent=launcherHint(name); });
+  }catch(e){}
+}
+// Zustand vom Geraet lesen: Helligkeit, Tipp-Toene, Launcher-Version
+function devAutoRead(bx){ devBrightness(bx,'read'); devTouchSound(bx,null); devLauncherVer(bx); }
 const DEV_BRI={};   // je Geraet: {pct, auto, read} - zuletzt gelesen/gesetzt
 const DEV_BRI_TRY=new Set();
 const DEV_SND={};   // je Geraet: Tipp-Toene an (zuletzt gelesen/gesetzt)
@@ -4555,10 +4574,10 @@ function renderDeviceList(j){
     // Automatik an: Geraet regelt; aus: der Regler legt den festen Wert fest
     if(a) a.onchange=()=>{ if(r) r.disabled=a.checked; x.querySelector('.dbri').classList.toggle('auto',a.checked);
       devBrightness(x, a.checked?'auto':+(r?r.value:70)); a.blur(); };
-    const g=x.querySelector('.dbri_get'); if(g) g.onclick=()=>{ devBrightness(x,'read'); devTouchSound(x,null); };
+    const g=x.querySelector('.dbri_get'); if(g) g.onclick=()=>{ devAutoRead(x); };
     const sn=x.querySelector('.dsnd_on'); if(sn) sn.onchange=()=>{ devTouchSound(x, sn.checked); sn.blur(); };
     // beim ersten Anzeigen den echten Zustand vom Geraet holen (einmal je Sitzung)
-    const nm=x.dataset.name; if(!DEV_BRI_TRY.has(nm) && x.closest('.dev.open') && !x.closest('.dev.off')){ DEV_BRI_TRY.add(nm); devBrightness(x,'read'); devTouchSound(x,null); } });
+    const nm=x.dataset.name; if(!DEV_BRI_TRY.has(nm) && x.closest('.dev.open') && !x.closest('.dev.off')){ DEV_BRI_TRY.add(nm); devAutoRead(x); } });
   list.querySelectorAll('.ag[data-name] button[data-act]').forEach(b=>{
     const row=b.closest('.ag');
     b.onclick=()=>deviceAction(b.dataset.act, row.dataset.name, row.dataset.ip, (row.closest('.dev').querySelector('.agsel')||{}).value||'', row.dataset.devip);
@@ -4622,6 +4641,8 @@ async function deviceAction(act, name, ip, panel, devip){
       if(!devip){ flash($('#ag_toast'),T('IP des Geräts unbekannt – Visu einmal am Gerät öffnen.'),false); return; }
       flash($('#ag_toast'), T('Richte Launcher per adb ein …'), true);
       j=await postJson('/api/panel/launcher',{ip:devip, server:location.host, panel:panel||'', device:shelly?'shelly':'android', name});
+      if(j.ok&&j.version){ DEV_LV[name]={installed:j.version, bundled:j.version};   // aktuell -> Hinweis weg
+        document.querySelectorAll('.dev').forEach(dv=>{ if(dv.dataset.name===name){ const h=dv.querySelector('.dlver'); if(h) h.textContent=''; } }); }
       flash($('#ag_toast'), j.ok ? (j.fully?'✓ '+T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))
                                  : T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':''), !!(j.ok&&j.fully));
       return; }
@@ -4951,10 +4972,10 @@ function renderDevices(){
   if(!box._dgh) box._dgh=1, box.addEventListener('click',e=>{ const h=e.target.closest('.dgh'); if(!h) return;
     const g=h.parentNode, n=g.closest('.dev').dataset.name, o=!g.classList.contains('open');
     g.classList.toggle('open',o); h.setAttribute('aria-expanded',o?'true':'false'); DEV_G[n+'|'+g.dataset.g]=o;
-    if(o&&g.dataset.g==='steuerung'){ const bx=g.querySelector('.devx'); if(bx&&!g.closest('.dev.off')&&!DEV_BRI_TRY.has(n)&&bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); } } });
+    if(o&&g.dataset.g==='steuerung'){ const bx=g.querySelector('.devx'); if(bx&&!g.closest('.dev.off')&&!DEV_BRI_TRY.has(n)&&bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devAutoRead(bx); } } });
   box.querySelectorAll('.devtg').forEach(b=>b.onclick=()=>{ const dv=b.closest('.dev'), n=dv.dataset.name;
     const op=dv.classList.toggle('open'); if(op) DEV_OPEN.add(n); else DEV_OPEN.delete(n);
-    const bx=op&&!dv.classList.contains('off')&&dv.querySelector('.devx'); if(bx && !DEV_BRI_TRY.has(n) && bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devBrightness(bx,'read'); devTouchSound(bx,null); }
+    const bx=op&&!dv.classList.contains('off')&&dv.querySelector('.devx'); if(bx && !DEV_BRI_TRY.has(n) && bx.querySelector('.dbri')){ DEV_BRI_TRY.add(n); devAutoRead(bx); }
     if(DEV_NEW.delete(n)){ dv.classList.remove('isnew'); const nb=b.querySelector('.newb'); if(nb) nb.remove(); } });
   box.querySelectorAll('.dm_add').forEach(b=>b.onclick=()=>{
     readDevFromDom(); const name=b.closest('.dev').dataset.name;

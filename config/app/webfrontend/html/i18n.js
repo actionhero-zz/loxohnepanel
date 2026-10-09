@@ -14,6 +14,15 @@
     en: {
       // Statusleiste: Anzeige je Baustein
       'Statusleiste – Anzeige je Baustein': 'Status bar – display per block',
+      // Werte groß auf Kacheln
+      'Kacheln': 'Tiles',
+      'Werte groß auf Kacheln': 'Large values on tiles',
+      'Werte groß': 'Large values',
+      'Panel-Standard': 'Panel default',
+      'immer groß': 'always large',
+      'nie groß': 'never large',
+      'Reine Messwert-Kacheln (Temperatur, Feuchte, CO₂, Leistung, Zähler) zeigen den Wert groß, das Symbol als blasses Wasserzeichen. Zahl und Einheit kommen unverändert aus Loxone. Texte und Kacheln mit Schnellbedienung bleiben unverändert. Je Kachel änderbar: Raster-Editor → Kachel → Aussehen.':
+        'Pure measurement tiles (temperature, humidity, CO₂, power, meters) show the value large, with the icon as a faint watermark. Number and unit come unchanged from Loxone. Text tiles and tiles with quick controls stay as they are. Can be changed per tile: grid editor → tile → appearance.',
       'Symbol + Text': 'Icon + text',
       'Loxone-Statussymbol statt festem Symbol': 'Loxone status icon instead of fixed icon',
       'Status-Baustein · jetzt: ': 'Status block · now: ',

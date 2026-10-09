@@ -431,6 +431,11 @@
   .tile .body .name{grid-row:2;align-self:start;}
   .tile .body .sub{grid-row:3;align-self:end;line-height:1.3;}
   .grid.list .tile .body{display:block;}
+  /* Raumansicht = gleiche Grundlinie wie Favoriten (Raster ohne .svw): Name reserviert
+     zwei Zeilen (sonst "..."), Raumzeile bleibt als leeres Fach reserviert, Status unten. */
+  .screen>.grid:not(.panel):not(.list):not(.scheme) .tile{--nm-n:2;}
+  .screen>.grid:not(.panel):not(.list):not(.scheme) .tile .name{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;
+    -webkit-box-orient:vertical;hyphens:auto;-webkit-hyphens:auto;overflow-wrap:anywhere;}
   .tile.good{background:rgba(var(--good-rgb,82,184,129),.16);
     border:1px solid rgba(var(--good-rgb,82,184,129),.55);}
   .tile.good .ico,.tile.good .icowrap,.tile.good .sub{color:var(--good-txt);}
@@ -1249,7 +1254,8 @@
   .scene .sico svg.sli{margin:0;}
   .scene.on .ssub{color:inherit;opacity:.75;}
   /* Protokoll: Zeilen mit Zeit links, neueste oben */
-  .dlog{flex:1 1 auto;min-height:0;align-self:stretch;overflow-y:auto;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain;}
+  .dlog{flex:1 1 0;min-height:0;align-self:stretch;overflow-y:auto;display:flex;flex-direction:column;gap:6px;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;}
+  .dlog>div{flex:none;}
   .dlog>div{background:var(--tile);border-radius:var(--r-m);padding:10px 14px;display:flex;gap:14px;font-size:15px;align-items:baseline;}
   .dlog b{font-family:var(--font-num,"Sora",sans-serif);font-weight:600;font-size:15px;min-width:52px;white-space:nowrap;color:var(--muted);}
   /* Energie: Radial gross, Kennzahlen darunter */
@@ -1310,7 +1316,8 @@
      .pantop schrumpfen (sonst wuchs das 2x2-Szenenraster seit #81 ueber den Schirm). */
   .grid.panel.anchorbot .pantop:has(>.scenes),.grid.panel.anchorbot .pantop:has(>.shade),.grid.panel.anchorbot .pantop:has(>.dimcard),
   .grid.panel.anchorbot .pantop:has(>.epane-detail),.grid.panel .pantop:has(>.epane-detail),
-  .grid.panel .pantop:has(>.video){flex:1 1 0;min-height:0;}   /* Kamerabild passt in die Seite (kein Scrollen) */
+  .grid.panel .pantop:has(>.video),
+  .grid.panel .pantop:has(>.dlog){flex:1 1 0;min-height:0;}   /* Kamerabild passt in die Seite (kein Scrollen) */
   .grid.panel .pantop>.epane-detail{overflow:hidden;}
   /* Breite Detailseite: Worte (Status wie "Kein Alarm") kleiner als Zahlen -
      ueber die volle Breite wirken sie sonst wie Plakatschrift */
@@ -1681,6 +1688,9 @@
   .pantop>.pbig ~ .scenes .scene b{font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .pantop>.pbig ~ .scenes .scene .ssub{font-size:12px;}
   .pantop>.pbig ~ .scenes .sico svg{width:22px;height:22px;}
+  /* Auswahlbausteine (Licht): Zustand einzeilig "An · Tag / viel Licht" statt grosser Zahl */
+  .pantop>.pbig.lst,.pantop>.pbig.lst:has(~ .scenes){font-size:clamp(22px,6vh,30px);line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+  .pbig.lst .lx{font-family:var(--font,inherit);font-size:.6em;font-weight:500;color:var(--ink-2,var(--muted));letter-spacing:0;}
 
   /* ==== Anzeige statt Bedienung (0.19.80) ====
      Eintraege ohne Befehl (.ro) sehen nicht tippbar aus: keine Flaeche, nur eine
@@ -1892,6 +1902,38 @@
   .pbig.sm{font-size:clamp(22px,5vw,30px) !important;}   /* Text statt Zahl als grosser Wert (z. B. Taster "Zuletzt ausgelöst") */
   .saver.layout.bar2 .sv-bar{height:auto;min-height:52px;}
   .saver.layout.bar2 .sv-grid{top:calc(var(--svbar-h,52px) + 18px);}   /* zweizeilige Statusleiste: Raster rutscht nach */
+
+  /* ===== Werte gross (it.big, Panel-Option "Werte groß auf Kacheln") =====
+     Reine Wert-Kachel: Name/Raum klein oben links, Wert gross unten links, das
+     Bausteinsymbol als Wasserzeichen (8 %, ink) angeschnitten rechts unten.
+     Schriftgroesse EINE fuer alle Wert-Kacheln eines Bildschirms: aus der Breite
+     einer 1x1-Zelle des Rasters (Container-Einheit cqw des Rasters, nicht der
+     Kachel) -> 2x1/2x2 und alle Kacheln bekommen dieselbe Zahlengroesse.
+     Zahl und Einheit kommen getrennt vom Server (Loxone-Format); die Einheit
+     steht klein, hochgestellt und in --muted. Passt ein Wert trotzdem nicht
+     (sehr lange Zahl), schrumpft nur diese Kachel (--bigk, fitBigVals()). */
+  .grid.cells,.grid:not(.panel):not(.scheme):not(.cells),.saver.layout .sv-grid{container-type:inline-size;}
+  .grid.cells{--bigcols:var(--cc,3);}
+  .grid:not(.cells){--bigcols:var(--cols,2);}
+  .saver.layout .sv-grid{--bigcols:var(--svc,3);}
+  .tile.tbig{--bigfs:44px;position:relative;}
+  @supports (width:1cqw){
+    .tile.tbig{--bigfs:calc((100cqw - (var(--bigcols,2) - 1) * var(--gap,10px)) / var(--bigcols,2) * .225);}
+  }
+  .tile.tbig .head{position:absolute;right:-.5em;bottom:-.7em;font-size:var(--bigfs);
+    --ico-size:calc(var(--bigfs) * 2.1);opacity:.08;pointer-events:none;z-index:0;}
+  .tile.tbig .head .ico,.tile.tbig .head .icowrap{color:var(--ink);}
+  .tile.tbig .head .ico.img{background-color:var(--ink);}
+  .tile.tbig .body{position:relative;z-index:1;grid-template-rows:auto auto;}
+  .tile.tbig .name{white-space:nowrap !important;display:block !important;-webkit-line-clamp:unset !important;}
+  .tile.tbig .bigv{position:relative;z-index:1;--bf:calc(var(--bigfs) * var(--bigk,1));font-size:var(--bf);
+    font-family:var(--font-num,"Sora",var(--font,"Manrope",system-ui,sans-serif));font-weight:600;
+    font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1;color:var(--ink);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:auto;padding-top:2px;}
+  .tile.tbig .bigv .bu{display:inline-block;vertical-align:top;font-size:calc(var(--bf) * .32);line-height:1;
+    margin:calc(var(--bf) * .08) 0 0 calc(var(--bf) * .06);font-weight:600;letter-spacing:0;color:var(--muted);}
+  .grid.list .tile.tbig .head{position:static;font-size:inherit;--ico-size:28px;opacity:1;}
+  .grid.list .tile.tbig .bigv{margin:0 0 0 auto;font-size:calc(var(--bigfs) * .6);flex:0 1 auto;}
 </style>
 </head>
 <body>
@@ -2255,7 +2297,13 @@ function closeSheets(){
   const p=document.querySelector('.pinov'); if(p&&p._cancel) p._cancel();
   closeMenu();
 }
+// Scrollposition je Ansicht merken: beim Zurueck aus einer Detailansicht steht
+// Kachelraster/Raum wieder an derselben Stelle (Tab-Wechsel beginnt oben).
+const _scrollMem={}; let _scrollRestore=null;
+function memScroll(){ const t=stack[stack.length-1], g=el('grid');
+  if(t && view && g && !g.classList.contains('panel') && key(t)===key(view.route)) _scrollMem[key(t)]=g.scrollTop; }
 function nav(route){
+  memScroll();
   closeSheets();   // Wetter-/Status-Blatt nicht ueber der neuen Seite stehen lassen
   stack.push(route);
   const c=_crumbNext; _crumbNext=null;
@@ -2388,6 +2436,7 @@ function back(){
     zoomBack();
     stack.pop(); _crumbs.length=stack.length;
     const top=stack[stack.length-1];
+    _scrollRestore=top?key(top):null;
     // {view:'saver'} ist ein rein clientseitiger Merker (kein Server-Route).
     if(top && top.view==='saver'){
       // Merker entfernen, Seite darunter (vor dem Dashboard) wiederherstellen
@@ -2465,7 +2514,7 @@ function fmtBig(t){
 }
 // Grosse Zahl so weit verkleinern, dass sie in ihre Zeile passt (lange Werte).
 function fitBig(g){
-  g.querySelectorAll('.pbig').forEach(e=>{ e.style.fontSize='';
+  g.querySelectorAll('.pbig:not(.lst)').forEach(e=>{ e.style.fontSize='';
     let fs=parseFloat(getComputedStyle(e).fontSize)||100;
     for(let i=0;i<8&&e.scrollWidth>e.clientWidth+1&&fs>36;i++){ fs*=0.85; e.style.fontSize=fs+'px'; } });
   // ... und in die Hoehe: steht unter dem Wert noch etwas (z.B. Weckzeiten-
@@ -2475,7 +2524,7 @@ function fitBig(g){
   g.querySelectorAll('.dimcard').forEach(card=>{ const tx=card.querySelector('.dimtxt'), b=tx&&tx.querySelector('.pbig'); if(!b) return;
     let f=parseFloat(getComputedStyle(b).fontSize)||100;
     for(let i=0;i<10&&tx.offsetHeight>card.clientHeight-8&&f>36;i++){ f*=0.85; b.style.fontSize=f+'px'; } });
-  const top=g.querySelector('.pantop'), pb=top&&top.querySelector(':scope>.pbig'); if(!top||!pb) return;
+  const top=g.querySelector('.pantop'), pb=top&&top.querySelector(':scope>.pbig:not(.lst)'); if(!top||!pb) return;
   const hero=top.querySelector(':scope>.hero'); if(hero) hero.style.display='';
   let fs=parseFloat(getComputedStyle(pb).fontSize)||100;
   for(let i=0;i<10&&top.scrollHeight>top.clientHeight+1;i++){
@@ -3109,7 +3158,7 @@ function renderPanel(blocks){
     if(b.k==='status') return '<div class="status">'+esc(b.text||'')+'</div>';
     if(b.k==='title') return '<div class="ptitle">'+esc(b.text||'')+'<div class="psub">'+esc(b.sub||'')+'</div></div>';
     if(b.k==='value') return '<div class="pbar">'+esc(b.text||'')+'</div>';
-    if(b.k==='big') return '<div class="pbig'+bigTone(b.tone)+(b.small?' sm':'')+'">'+fmtBig(b.text)+'</div>';
+    if(b.k==='big') return '<div class="'+bigCls(b)+'">'+bigInner(b)+'</div>';
     if(b.k==='astat') return '<div class="astat'+(b.tone==='crit'?' crit':'')+'">'+esc(b.text||'')+(b.sub?'<div class="astatsub">'+esc(b.sub)+'</div>':'')+'</div>';
     if(b.k==='slider') return '<div class="srow"><span class="sico">'+svg(ICONS[b.icon]||ICONS.vol)+'</span><button type="button" class="sbtn" data-sd="dn">−</button><input type="range" class="sld" min="'+b.min+'" max="'+b.max+'"'+(b.step?' step="'+b.step+'"':'')+' value="'+b.value+'"><button type="button" class="sbtn" data-sd="up">+</button><span class="sval">'+b.value+'</span></div>';
     if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
@@ -3248,7 +3297,7 @@ function updatePanel(blocks){
     blocks.filter(b=>b.k===k).forEach((b,i)=>{ if(es[i]) fn(es[i],b); }); };
   nth('status','.status:not(.alist-empty)',(e,b)=>{ e.textContent=b.text||''; });
   nth('value','.pbar',(e,b)=>{ e.textContent=b.text||''; });
-  nth('big','.pbig:not(.sbar .pbig):not(.dimcard .pbig):not(.dstate .pbig):not(.aedit .pbig)',(e,b)=>{ const h=fmtBig(b.text); if(e.innerHTML!==h) e.innerHTML=h; e.className='pbig'+bigTone(b.tone); });
+  nth('big','.pbig:not(.sbar .pbig):not(.dimcard .pbig):not(.dstate .pbig):not(.aedit .pbig)',(e,b)=>{ const h=bigInner(b); if(e.innerHTML!==h) e.innerHTML=h; e.className=bigCls(b); });
   nth('title','.ptitle',(e,b)=>{ leadText(e, b.text||''); const su=e.querySelector('.psub'); if(su)su.textContent=b.sub||''; });
   nth('astat','.astat',(e,b)=>{ leadText(e, b.text||''); e.className='astat'+(b.tone==='crit'?' crit':''); const su=e.querySelector('.astatsub'); if(su)su.textContent=b.sub||''; });
   const cov=blocks.find(b=>b.k==='cover'); if(cov){const img=g.querySelector('#coverimg'); if(img&&img.getAttribute('src')!==cov.src){img.style.opacity='0'; img.onload=()=>img.style.opacity='1'; img.onerror=()=>img.style.opacity='0'; img.src=cov.src;}}
@@ -3496,6 +3545,7 @@ function updateGrid(items){
   // weg oder aendern sich in der Anzahl) - sonst reicht das schnelle Patchen.
   for(let i=0;i<items.length;i++){
     if(String(items[i].id)!==nodes[i].dataset.id) return false;
+    if(!!items[i].big !== nodes[i].classList.contains('tbig')) return false;
     if(!!items[i].toggle !== !!nodes[i].querySelector('.tswitch')) return false;
     if(!!items[i].tap !== !!nodes[i].querySelector('.tapbtn')) return false;
     if(!!items[i].updown !== !!nodes[i].querySelector('.updown')) return false;
@@ -3514,13 +3564,17 @@ function updateGrid(items){
     // Animierte Symbole: Einschalten -> Symbol ploppt kurz; neuer Wert -> Statuszeile tickt
     if(prev&&!prev.on&&it.on) animOnce(n.querySelector('.head>:first-child'),'an-pop');
     else if(prev&&prev.sublabel&&it.sublabel&&prev.sublabel!==it.sublabel) setTimeout(()=>animOnce(n.querySelector('.body .sub'),'an-val'),0);
-    const cls='tile'+tileTone(it)+(it.anim?' an-'+it.anim:'')+(i%_pg===0?' snap':'')+[...n.classList].filter(c=>c.startsWith('spark')).map(c=>' '+c).join('');
+    const cls='tile'+tileTone(it)+(it.big?' tbig':'')+(it.anim?' an-'+it.anim:'')+(i%_pg===0?' snap':'')+[...n.classList].filter(c=>c.startsWith('spark')).map(c=>' '+c).join('');
     if(n.className!==cls) n.className=cls;
     const stStr=tileVarStyle(it);
     if((n.getAttribute('style')||'')!==stStr) n.setAttribute('style',stStr);
+    if(it.big){ const bn=n.querySelector('.bigv .bn'), bu=n.querySelector('.bigv .bu');
+      if(bn&&(bn.textContent!==it.big.v||(bu?bu.textContent:'')!==(it.big.u||''))){
+        if(!!bu!==!!it.big.u) ok=false;
+        else { bn.textContent=it.big.v; if(bu) bu.textContent=it.big.u; fitBigVals(n); } } }
     const body=n.querySelector('.body');
     if(body){ let subEl=body.querySelector('.sub');
-      if(it.sublabel){ if(!subEl){ subEl=document.createElement('div'); subEl.className='sub'; body.appendChild(subEl); }
+      if(it.sublabel&&!it.big){ if(!subEl){ subEl=document.createElement('div'); subEl.className='sub'; body.appendChild(subEl); }
         if(subEl.textContent!==it.sublabel) subEl.textContent=it.sublabel; }
       else if(subEl){ subEl.remove(); } }
     if(it.controls){ const tbs=n.querySelectorAll('.tctrls .tb');
@@ -3558,6 +3612,20 @@ function cbHtml(icon, n, tone, size, big){
   return '<span class="cbw '+cls+(big?' big':'')+'"'+(size?' style="--cbs:'+size+'px"':'')+'><span class="cbi">'+icon+'</span>'+
     '<b class="cbn'+(tone?' '+esc(tone):'')+'">'+t+'</b></span>';
 }
+// "Werte gross": Zahl gross, Einheit klein und hochgestellt (beides getrennt vom Server).
+function bigValHtml(b){
+  return '<div class="bigv"><span class="bn">'+esc(b.v)+'</span>'+(b.u?'<span class="bu">'+esc(b.u)+'</span>':'')+'</div>';
+}
+// Notfall: passt ein Wert trotz gemeinsamer Schriftgroesse nicht (sehr lange Zahl),
+// schrumpft NUR diese Kachel (--bigk); alle anderen behalten die gemeinsame Groesse.
+function fitBigVals(root){
+  (root||document).querySelectorAll('.tile.tbig .bigv').forEach(b=>{
+    b.style.removeProperty('--bigk');
+    const cw=b.clientWidth, sw=b.scrollWidth;
+    if(cw>0 && sw>cw+0.5) b.style.setProperty('--bigk', Math.max(.4, cw/sw*.97).toFixed(3));
+  });
+}
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>fitBigVals());
 // Eine Kachel als HTML - gemeinsam fuer das Raster und den Screensaver.
 // extraCls: zusaetzliche Klassen (z.B. ' snap' fuers Seiten-Snapping).
 function tileHtml(it, extraCls){
@@ -3575,7 +3643,7 @@ function tileHtml(it, extraCls){
   // oben rechts, an der Stelle des Pfeils (ersetzt ihn) - wie im Original-
   // Loxone-Plugin. Mehrere Bedienelemente (z.B. Player-Transport: zurueck/
   // Play/weiter) bleiben als Reihe unten (tctrls), dafuer ist oben kein Platz.
-  const chev = (it.nav && !it.controls && !it.toggle && !it.tap && !it.updown && !it.prevnext)
+  const chev = (it.nav && !it.big && !it.controls && !it.toggle && !it.tap && !it.updown && !it.prevnext)
     ? '<span class="chev">'+svg('<path d="m9 6 6 6-6 6"/>')+'</span>' : '';
   const togg = it.toggle
     ? '<span class="tswitch'+(it.toggle.on?' on':'')+'" data-tog="1"><span class="knob"></span></span>' : '';
@@ -3606,7 +3674,7 @@ function tileHtml(it, extraCls){
   if(ts.weight) nsv.push('font-weight:'+ts.weight);
   if(ts.italic) nsv.push('font-style:italic');
   const nst = nsv.length?' style="'+esc(nsv.join(';'))+'"':'';
-  return '<div class="tile'+tone+(it.anim?' an-'+esc(it.anim):'')+(extraCls||'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
+  return '<div class="tile'+tone+(it.big?' tbig':'')+(it.anim?' an-'+esc(it.anim):'')+(extraCls||'')+'" data-id="'+esc(it.id)+'"'+(it.catKey?' data-cat="'+esc(it.catKey)+'"':'')+st+'>'+
           '<div class="head">'+icoCell+(it.spark&&it.spark.badge?'<span class="tsbadge">'+esc(it.spark.badge)+'</span>':'')+
             chev+togg+tapb+updown+prevnext+'</div>'+
           (it.spark?'<div class="tspark"></div>':'')+   // Mini-Verlauf (gezeichnet in bindTile, erst dann ist die Groesse bekannt)
@@ -3614,7 +3682,8 @@ function tileHtml(it, extraCls){
           (it.room?'<div class="room">'+esc(it.room)+'</div>':'')+
           (it.spark&&it.spark.badge?'<div class="room tsline">'+esc(it.spark.badge)+'</div>':'')+
           '<div class="name"'+nst+'>'+esc(it.label)+'</div>'+
-          (it.sublabel?'<div class="sub">'+esc(it.sublabel)+'</div>':'')+'</div>'+
+          (it.sublabel&&!it.big?'<div class="sub">'+esc(it.sublabel)+'</div>':'')+'</div>'+
+          (it.big?bigValHtml(it.big):'')+
           ctrls+
         '</div>';
 }
@@ -3739,6 +3808,7 @@ function render(){
   g.innerHTML = html;
   g.classList.toggle('snapy', items.length > (view.layout==='list'?4:gridCols*gridRows));   // Snapping erst ab >1 Seite
   g.querySelectorAll('.tile[data-id]').forEach(n=>bindTile(n, items.find(x=>String(x.id)===n.dataset.id)));
+  fitBigVals(g);
   if(view.catTabs && view.catTabs.length) roomCatTabs = view.catTabs;   // fuer Detailansichten merken
   renderTabs();
   updateScrollInd();
@@ -3940,6 +4010,7 @@ function applyScale(){
 }
 window.addEventListener('resize',()=>{
   applyScale();
+  clearTimeout(window._fbT); window._fbT=setTimeout(()=>fitBigVals(),120);
   clearTimeout(window._efT); window._efT=setTimeout(()=>{ const d=document.querySelector('[data-eflow]'); if(d&&d._ed) paintEnergy(d,d._ed,true); },250);   // Energie-Radial an neue Groesse
   if(el('grid').classList.contains('scheme')&&schemeFit) schemeFit();
   // Screensaver-Spaltigkeit nachziehen, wenn das Fenster (Kiosk-Start, Rotation,
@@ -3964,6 +4035,20 @@ window.addEventListener('resize',()=>{
 // sonst bei exakt passender Kachelzahl minimal flackern liesse.
 // Lange Kachel-Listen in Detailansichten (z.B. Zentral mit 20 Lichtern):
 // unten weich ausblenden, solange noch etwas folgt - statt hart angeschnittener Reihe
+// Grosser Zustand: Zahl/Wort gross; Auswahlbausteine (line) einzeilig "An · Szene"
+function bigCls(b){ return 'pbig'+bigTone(b.tone)+(b.small?' sm':'')+(b.line?' lst':''); }
+function bigInner(b){ return b.line ? '<b>'+esc(b.text||'')+'</b>'+(b.extra?'<span class="lx"> · '+esc(b.extra)+'</span>':'') : fmtBig(b.text); }
+// Auswahlliste: erste aktive Zeile in den sichtbaren Bereich holen (Reihenfolge bleibt wie in
+// Loxone); nicht, solange der Nutzer in den letzten 4 s selbst gescrollt hat.
+function sceneAutoScroll(){
+  el('grid').querySelectorAll('.scenes').forEach(sc=>{
+    if(!sc._asB){ sc._asB=true; sc.addEventListener('scroll',()=>{ if(!sc._asProg) sc._userTs=Date.now(); },{passive:true}); }
+    if(sc._userTs && Date.now()-sc._userTs<4000) return;
+    const on=sc.querySelector('.scene.on'); if(!on) return;
+    const t=on.offsetTop-sc.offsetTop, top=sc.scrollTop, h=sc.clientHeight;
+    if(t>=top && t+on.offsetHeight<=top+h) return;
+    sc._asProg=true; sc.scrollTop=Math.max(0,t-4); setTimeout(()=>{ sc._asProg=false; },120); });
+}
 function sceneFades(){
   el('grid').querySelectorAll('.scenes').forEach(sc=>{
     const upd=()=>sc.classList.toggle('more', sc.scrollHeight-sc.clientHeight-sc.scrollTop>4);
@@ -3972,7 +4057,7 @@ function sceneFades(){
 function updateScrollInd(){
   const g=el('grid'), ind=el('scrollInd'); if(!g||!ind) return;
   const over = g.scrollHeight - g.clientHeight;
-  if(over<=1){ ind.classList.remove('show'); g.classList.remove('hasdots'); return; }
+  if(over<=1){ ind.classList.remove('show','dots'); g.classList.remove('hasdots'); return; }
   ind.classList.add('show');
   // Seitenpunkte statt Scrollbalken (0.19.98): geblaettert = eine Seite je Bildschirmhoehe,
   // sonst so viele Punkte wie Bildschirmhoehen, der Punkt folgt der Scrollposition.
@@ -3990,6 +4075,7 @@ function updateScrollInd(){
   thumb.style.transform='translateY('+Math.round(top)+'px)';
 }
 // Beim Scrollen hoechstens einmal pro Bild nachziehen
+function takeScroll(route){ const k=key(route), r=_scrollRestore===k; _scrollRestore=null; return r&&_scrollMem[k]||0; }
 let _sindRaf=0;
 function onGridScroll(){ if(_sindRaf) return; _sindRaf=requestAnimationFrame(()=>{ _sindRaf=0; updateScrollInd(); }); }
 
@@ -4286,20 +4372,21 @@ function connect(){
     const same = view && key(view.route)===key(msg.route);
     if(msg.blocks){
       msg.blocks=normSide(msg.blocks);
-      view=msg;
+      view=msg; _scrollRestore=null;
       if(same && el('grid').classList.contains('panel')) updatePanel(msg.blocks);
       else renderPanel(msg.blocks);
-      requestAnimationFrame(()=>{ updateScrollInd(); sceneFades(); });   // Detailansicht: Scroll-Anzeige der vorigen Seite nicht stehen lassen
+      requestAnimationFrame(()=>{ updateScrollInd(); sceneAutoScroll(); sceneFades(); });   // Detailansicht: Scroll-Anzeige der vorigen Seite nicht stehen lassen
     } else if(msg.layout==='cells'){
       view=msg; render();
-      if(!same) g.scrollTop=0;
+      if(!same) g.scrollTop=takeScroll(msg.route);
     } else {
-      const st=same?g.scrollTop:0;
+      const st=same?g.scrollTop:takeScroll(msg.route);
       view=msg;
       // Gleiche Kachel-Seite: nur die veraenderlichen Teile patchen (kein
       // innerHTML-Neuaufbau -> kein Flackern/Neuladen der Icons, z.B. Fully Kiosk).
       // Struktur geaendert (andere/mehr Kacheln) -> voller Neuaufbau.
-      if(!(same && updateGrid(view.items||[]))){ render(); g.scrollTop=st; }
+      if(!(same && updateGrid(view.items||[]))){ render(); g.scrollTop=st;
+        if(!same && st) requestAnimationFrame(()=>{ if(view===msg){ g.scrollTop=st; updateScrollInd(); } }); }
       else updateScrollInd();   // render() ruft es schon selbst auf - hier nur fuer den Patch-Pfad noetig
     }
     if(!same){ el('grid').classList.remove('zhide'); zoomOpen(); }
@@ -4752,6 +4839,7 @@ function renderLayout(g, items, sd, place, camsOn){
       cell._html=html; cell.innerHTML=html; cell._live=null;
       if(it.type==='tile'||it.type==='room'||it.type==='cat'){ const n=cell.querySelector('.tile'), nt=((sd||{}).tiles||{})[it.uuid], pt=cell._tileIt;
         if(n) bindTile(n,nt);
+        if(n&&n.classList.contains('tbig')) fitBigVals(cell);
         // Animierte Symbole: eingeschaltet -> Symbol ploppt; neuer Wert -> Statuszeile tickt
         if(n&&pt&&nt){ if(!pt.on&&nt.on) animOnce(n.querySelector('.head>:first-child'),'an-pop');
           else if(pt.sublabel&&nt.sublabel&&pt.sublabel!==nt.sublabel) animOnce(n.querySelector('.body .sub'),'an-val'); }

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.103"
+APP_VERSION = "0.19.104"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -589,6 +589,11 @@ PARTIAL_TYPES = {"AudioZone", "AlarmClock", "Intercom", "TextInput", "UpDownAnal
 # Standard sind - beim Speichern kein Verlust (siehe _panels_verworfen).
 # Pfad-Muster, "*" steht fuer einen beliebigen Schluessel (z. B. Kachel-UUID).
 PANEL_STANDARD = {("ui", "split"): True, ("tiles", "*", "chartStyle"): "trend"}
+# "Werte gross" (ui.bigValues je Panel, tiles.<uuid>.big = "on"|"off"): reine
+# Wert-Bausteine zeigen ihren Messwert gross, Piktogramm als Wasserzeichen.
+# Zahl und Einheit kommen unveraendert aus dem Loxone-Format, nur getrennt.
+BIG_TYPES = ("InfoOnlyAnalog", "Meter")
+_BIGNUM_RE = re.compile(r"^\s*([+\-\u2212]?\d[\d.,]*)\s*(.*?)\s*$")
 _COLOR_RE = re.compile(r"^(#[0-9a-fA-F]{3,8}|rgba?\([0-9.,%\s]+\)|[a-zA-Z]{3,20})$")
 # Tracker-Zeile: fuehrender Zeitstempel (TT.MM.JJ[JJ] HH:MM[:SS]) wird vom Text
 # getrennt, damit er als Untertitel erscheint. Matcht sonst nichts -> ganze Zeile.
@@ -2693,6 +2698,7 @@ class App:
             "split": ui.get("split") is not False,
             # Handy-Profil: Flaechen untereinander, Tabs unten, volle Hoehe
             "phone": ui.get("phone") is True,
+            "bigValues": ui.get("bigValues") is True,   # Werte gross auf reinen Wert-Kacheln (je Panel)
             # Split-Pane pro Tab: Tab-Kennung -> "weather"|"calendar"|"player:<uuid>".
             # Nur wirksam, wenn split an ist. Das Panel rendert die passende Pane.
             # Zusatzflaeche je Tab (Pane 2) entfaellt: Widgets liegen jetzt frei im
@@ -3983,7 +3989,7 @@ class App:
               if k in ("iconSize", "nameSize", "subSize", "font", "fontNum", "nudgeX",
                        "dpmsOff", "reloadHours", "nightDim", "nightWake",
                        "cols", "rows", "fill", "baseColor", "design",
-                       "textColor", "bold", "lang", "player", "panes", "split", "phone",
+                       "textColor", "bold", "lang", "player", "panes", "split", "phone", "bigValues",
                        "saverFcSize",
                        "motion", "contrast", "sceneLight", "iconAnim", "grid", "ambBg", "ambClock")}
         # Split-Pane je Tab: nur gueltige Tab-Kennung -> "weather"|"calendar".
@@ -4151,6 +4157,8 @@ class App:
                 cui["split"] = False            # Split-Screen aus (4"-Panel: nur Visu)
             if ui.get("phone") is True:
                 cui["phone"] = True             # Handy: Flaechen untereinander, Tabs unten
+            if ui.get("bigValues") is True:
+                cui["bigValues"] = True         # Werte gross auf reinen Wert-Kacheln (Standard aus)
             if isinstance(ui.get("player"), str) and ui.get("player"):
                 cui["player"] = ui["player"]    # Split-Layout: AudioZone-UUID fuer den festen Player
             if isinstance(ui.get("panes"), dict):
@@ -4214,6 +4222,8 @@ class App:
                     icc = _clean_icon(ov.get("icon"))
                     if icc:
                         e2["icon"] = icc
+                    if ov.get("big") in ("on", "off"):
+                        e2["big"] = ov["big"]       # Werte gross: immer / nie (fehlt = Panel-Standard)
                     if ov.get("chart") in STAT_RANGES:
                         e2["chart"] = ov["chart"]   # Mini-Verlauf in der Kachel, Wert = Zeitraum
                         if ov.get("chartStyle") in STAT_TILE_STYLES and ov["chartStyle"] != "trend":
@@ -5471,7 +5481,29 @@ class App:
                 # Aussehen, wenn kein Overlay konfiguriert ist.
                 st.setdefault("bg", "rgba(%s,var(--ov-fill,.16))" % rgb)
                 st.setdefault("border", "rgba(%s,var(--ov-bord,.55))" % rgb)
-        return self._apply_tile_style(it, uuid, prof)
+        return self._apply_big(self._apply_tile_style(it, uuid, prof), c, uuid, prof)
+
+    def _apply_big(self, it: dict, c: dict, uuid: str, prof: dict | None) -> dict:
+        """"Werte gross": reine Wert-Kachel bekommt it["big"] = {"v": Zahl, "u": Einheit}.
+        Format, Skalierung und Einheit kommen aus Loxone (_fmt_num); hier wird der
+        fertige Text nur an der Zahl getrennt. Panel-Schalter ui.bigValues, je Kachel
+        tiles.<uuid>.big = "on"/"off" gewinnt. Keine Wertkachel (Text, Bedienung,
+        Mini-Verlauf, kein Messwert) -> unveraendert."""
+        if c.get("type") not in BIG_TYPES or it.get("spark") or it.get("toggle") or it.get("controls"):
+            return it
+        ov = ((prof.get("tiles") or {}).get(uuid) if prof else None) or {}
+        mode = ov.get("big") if isinstance(ov, dict) else None
+        if not (mode == "on" or (mode != "off" and prof and prof.get("bigValues"))):
+            return it
+        if c.get("type") == "Meter":
+            det = c.get("details") or {}
+            txt = self._fmt_num(self._state(c, "actual"), det.get("actualFormat", "%.1f"))
+        else:
+            txt = it.get("sublabel") or ""
+        m = _BIGNUM_RE.match(txt)
+        if m:
+            it["big"] = {"v": m.group(1), "u": m.group(2)[:12]}
+        return it
 
     def _apply_tile_style(self, it: dict, uuid: str, prof: dict | None) -> dict:
         """Pro-Kachel-Overrides (Farben/Icon/Schrift) aus dem Panel-Profil."""
@@ -6487,18 +6519,16 @@ class App:
             # Aus-Szene steht schon in der Aktionsreihe -> nicht doppelt als Kachel
             scenes = [i for i in items if not (cells and cells[0].get("icon") == "power"
                                                and i["cmd"]["cmd"] == cells[0]["cmd"]["cmd"])]
-            # Detail-Schema: grosser Zustand, kleine Zeile "Szene: <aktive Szene>",
-            # Szenen als Eintraege, Aktionsreihe unten (Kopf setzt _with_head)
-            blocks = [{"k": "big", "text": "An" if r["on"] else "Aus", "tone": ""}]   # an/aus = ink (Farbe nur heizt/kühlt)
-            if r["on"] and r["label"]:
-                blocks.append({"k": "status", "text": "Szene: " + r["label"]})
-            elif not r["on"]:
-                # Aus + aktive Stimmung ist die Aus-Stimmung (z.B. "Bereich verlassen"): Name nennen,
-                # damit die gefüllte Zeile in der Liste zum "Aus" passt
+            # Detail-Schema fuer Auswahlbausteine: Zustand EINZEILIG ("An · Tag / viel Licht"),
+            # damit die Szenenliste Platz hat. Aus-Stimmung steht nur im Aus-Knopf, nie in der Liste;
+            # bei Licht aus nennt die Zeile ihren Namen (ausser er lautet selbst "Aus").
+            extra = r["label"] if r["on"] else ""
+            if not r["on"]:
                 _an = next((str(m.get("name") or "") for m in LIGHT.moods(cu, self.states)
                             if m.get("id") in active and m.get("id") in _off), "")
                 if _an and _an.strip().lower() != "aus":
-                    blocks.append({"k": "status", "text": "Szene: " + _an})
+                    extra = _an
+            blocks = [{"k": "big", "text": "An" if r["on"] else "Aus", "tone": "", "line": True, "extra": extra}]
             blocks.append({"k": "scenes", "items": scenes})
             if cells:
                 blocks.append({"k": "row", "act": True, "cells": cells})

@@ -1107,11 +1107,12 @@
   .chgpop,.icbox{border:0;border-radius:var(--r-m);box-shadow:var(--pop-shadow);}
   .qpop{border-radius:var(--r-m);}
   /* Segmentschalter: Spur in panel2, Pillen darin, aktiv = prim */
-  .sved .seg,.g2ed .libtabs{display:flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--panel2);border-radius:var(--r-pill);}
-  .sved .seg button,.g2ed .libtabs button{flex:1;min-height:32px;min-width:44px;border:0;border-radius:var(--r-pill);background:transparent;
+  .sved .seg,.tedit .seg,.g2ed .libtabs{display:flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--panel2);border-radius:var(--r-pill);}
+  .sved .seg button,.tedit .seg button,.g2ed .libtabs button{flex:1;min-height:32px;min-width:44px;border:0;border-radius:var(--r-pill);background:transparent;
     color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:4px 10px;cursor:pointer;}
-  .sved .seg button:hover,.g2ed .libtabs button:hover{color:var(--fg);}
-  .sved .seg button.on,.g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
+  .tedit .frow .seg{flex:1;}
+  .sved .seg button:hover,.tedit .seg button:hover,.g2ed .libtabs button:hover{color:var(--fg);}
+  .sved .seg button.on,.tedit .seg button.on,.g2ed .libtabs button.on{background:var(--prim);color:var(--prim-ink);}
   .themesw button{min-height:30px;border-radius:var(--r-pill);}
   /* Badge: kleine Pille ohne Tippfunktion, 11 px/600, keine Versalien-Mono */
   #phead .badge,.ag .tag,.ovw .devcat .badge,.ovw figcaption .badge,.ovsec .secst{display:inline-flex;align-items:center;height:22px;
@@ -2483,7 +2484,11 @@ function renderEditor(){
          '<select id="fSceneLight">'+sceneLightOpts((p.ui||{}).sceneLight||'',true)+'</select></div>'+
        '<div class="field" style="max-width:260px"><label class="lbl">'+T('Animierte Symbole')+'</label>'+
          '<select id="fIconAnim">'+['','on','off'].map(v=>'<option value="'+v+'"'+(((p.ui||{}).iconAnim||'')===v?' selected':'')+'>'+T(v===''?'Wie Standard':(v==='on'?'An':'Aus'))+'</option>').join('')+'</select></div>'+
-     '</div><p class="hint">'+T('Schwächere Panels: Animation „Mittel“ oder „Keine“ und Kontrast „Aus“ entlasten das Gerät.')+'</p></div></section>';
+     '</div><p class="hint">'+T('Schwächere Panels: Animation „Mittel“ oder „Keine“ und Kontrast „Aus“ entlasten das Gerät.')+'</p></div>'+
+     '<div class="card"><h3>'+T('Kacheln')+'</h3><div class="sizes">'+
+       '<label class="chk" style="flex:1 1 100%"><input type="checkbox" id="fBigVals"'+((p.ui||{}).bigValues?' checked':'')+'>'+
+         '<span>'+T('Werte groß auf Kacheln')+'</span></label></div>'+
+     '<p class="hint">'+T('Reine Messwert-Kacheln (Temperatur, Feuchte, CO₂, Leistung, Zähler) zeigen den Wert groß, das Symbol als blasses Wasserzeichen. Zahl und Einheit kommen unverändert aus Loxone. Texte und Kacheln mit Schnellbedienung bleiben unverändert. Je Kachel änderbar: Raster-Editor → Kachel → Aussehen.')+'</p></div></section>';
 
 
   $('#delSlot').innerHTML='';   // Loeschen jetzt per ✕ am Panel in der linken Liste
@@ -2523,6 +2528,8 @@ function renderEditor(){
       if(e.target.value) p.ui.motion=e.target.value; else delete p.ui.motion; markDirty(); }; }
   { const fs=$('#fSceneLight'); if(fs) fs.onchange=e=>{ p.ui=p.ui||{};
       if(e.target.value) p.ui.sceneLight=e.target.value; else delete p.ui.sceneLight; markDirty(); }; }
+  { const fb=$('#fBigVals'); if(fb) fb.onchange=e=>{ p.ui=p.ui||{};
+      if(e.target.checked) p.ui.bigValues=true; else delete p.ui.bigValues; markDirty(); }; }
   { const fa=$('#fIconAnim'); if(fa) fa.onchange=e=>{ p.ui=p.ui||{};
       if(e.target.value) p.ui.iconAnim=e.target.value; else delete p.ui.iconAnim; markDirty(); }; }
   { const fc=$('#fContrast'); if(fc) fc.onchange=e=>{ p.ui=p.ui||{};
@@ -3532,6 +3539,15 @@ function chartStyleRows(c,ov){
     '</select></div>';
   return h;
 }
+// "Werte groß" je Kachel: nur Bausteine, die ihren Messwert als Zahl mit Einheit zeigen
+// (gleiche Liste wie BIG_TYPES im Server). Fehlt tiles.<uuid>.big, gilt die Panel-Einstellung.
+const BIG_TYPES=['InfoOnlyAnalog','Meter'];
+function bigValRows(ov){
+  const cur=ov.big==='on'||ov.big==='off'?ov.big:'std';
+  return '<div class="frow"><label class="lbl">'+T('Werte groß')+'</label><div class="seg">'+
+    [['std','Panel-Standard'],['on','immer groß'],['off','nie groß']].map(([k,l])=>
+      '<button type="button" data-big="'+k+'"'+(cur===k?' class="on"':'')+'>'+T(l)+'</button>').join('')+'</div></div>';
+}
 function setChartStyle(v){
   // Der Zeitraum bleibt beim Stilwechsel erhalten; Muster und Spanne rechnet
   // der Server unabhaengig davon ueber 7 Tage.
@@ -3572,6 +3588,7 @@ function renderTileEditor(hostSel){
         '<span class="itab dis" title="folgt in Stufe 2/3">Google · Upload</span></div></div>'+
       '<div class="ipick" id="ipick"></div>'+
       (c.stat?chartStyleRows(c,ov):'')+
+      (BIG_TYPES.indexOf(c.type)>=0?bigValRows(ov):'')+
       '<div class="frow" style="margin-top:4px"><button class="minibtn" id="tileReset">Kachel zurücksetzen</button></div>'+
     '</div></div>';
   bindColor('bg'); bindColor('border'); bindColor('iconColor'); bindColor('textColor');
@@ -3583,6 +3600,8 @@ function renderTileEditor(hostSel){
   $('#tItalic').onclick=()=>{ const ov=tileOv(); if(ov.italic)delete ov.italic; else ov.italic=true; pruneTile(); $('#tItalic').classList.toggle('on'); markDirty(); drawPrev(); };
   host.querySelectorAll('.itab[data-src]').forEach(t=>t.onclick=()=>{
     host.querySelectorAll('.itab').forEach(x=>x.classList.remove('on')); t.classList.add('on'); renderIconPick(t.dataset.src); });
+  host.querySelectorAll('[data-big]').forEach(b=>b.onclick=()=>{ setTile('big', b.dataset.big==='std'?null:b.dataset.big);
+    host.querySelectorAll('[data-big]').forEach(x=>x.classList.toggle('on',x===b)); });
   { const ts=$('#tChartStyle'); if(ts) ts.onchange=()=>setChartStyle(ts.value); }
   { const tr=$('#tChartRange'); if(tr) tr.onchange=()=>setTile('chart', tr.value); }
   $('#tileReset').onclick=()=>{ if(!confirm(T('Kachel auf Standard zurücksetzen?'))) return; if(PANELS[cur].tiles) delete PANELS[cur].tiles[tileSel]; renderTileEditor(); markDirty(); };

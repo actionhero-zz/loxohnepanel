@@ -8,10 +8,12 @@ public class Main extends Activity {
     @Override
     protected void onCreate(Bundle state) {
         super.onCreate(state);
-        if (getIntent().hasExtra("url")) {
+        boolean setUrl = getIntent().hasExtra("url");
+        if (setUrl) {
             Fully.saveUrl(this, getIntent().getStringExtra("url"));
         }
-        Fully.start(this);
+        // Neue URL (Einrichtung): sofort laden; sonst laufendes Fully nur nach vorn.
+        Fully.start(this, setUrl);
         finish();
     }
 }

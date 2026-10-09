@@ -31,3 +31,6 @@ zipalign -f 4 "$OUT/unsigned.apk" "$OUT/aligned.apk"
 apksigner sign --ks "$KEYSTORE" --ks-pass pass:loxpanel --key-pass pass:loxpanel \
                --v4-signing-enabled false --out "$DEST" "$OUT/aligned.apk"
 apksigner verify "$DEST" && echo "OK: $DEST"
+# versionCode daneben ablegen: der Server ueberspringt "adb install", wenn das
+# Panel diese oder eine neuere Version schon hat.
+sed -n 's/.*android:versionCode="\([0-9]*\)".*/\1/p' AndroidManifest.xml > "${DEST%.apk}.version"

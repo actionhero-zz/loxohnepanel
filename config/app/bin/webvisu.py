@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.108"
+APP_VERSION = "0.19.109"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -117,6 +117,7 @@ def bg_url(pid: str) -> str:
 # dem Panel bestaetigte "USB-Debugging zulassen" Container-Updates ueberlebt.
 LAUNCHER_APK = Path(__file__).resolve().parent.parent / "android" / "LoxPanel-Launcher.apk"
 LAUNCHER_PKG = "de.loxpanel.launcher"
+LAUNCHER_VERSION_FILE = LAUNCHER_APK.with_suffix(".version")   # versionCode, schreibt build.sh
 ADB_HOME = _CFGDIR / "adb"
 FULLY_DIR = ADB_HOME / "fully"   # geladene / hochgeladene Fully-Kiosk-APKs
 _SOUND_EXT_BY_MIME = {"audio/mpeg": "mp3", "audio/mp3": "mp3", "audio/ogg": "ogg",
@@ -10162,9 +10163,25 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
             return web.json_response({"ok": False, "steps": steps,
                                       "error": "Am Panel \"USB-Debugging zulassen\" bestaetigen "
                                                "(\"Immer erlauben\" anhaken) und erneut klicken."})
-        code, out = await _adb("-s", target, "install", "-r", str(LAUNCHER_APK), timeout=120)
-        if not step("Installieren", code, out, ok=("Success" in out)):
-            return web.json_response({"ok": False, "steps": steps, "error": "Installation fehlgeschlagen"})
+        # Schon gleiche/neuere Version drauf? Dann Installieren ueberspringen.
+        try:
+            apk_ver = int(LAUNCHER_VERSION_FILE.read_text().strip())
+        except (OSError, ValueError):
+            apk_ver = 0   # unbekannt -> immer installieren
+        code, out = await _adb("-s", target, "shell", "dumpsys", "package", LAUNCHER_PKG, timeout=15)
+        m = re.search(r"versionCode=(\d+)", out) if code == 0 else None
+        have_ver = int(m.group(1)) if m else 0
+        if apk_ver and have_ver >= apk_ver:
+            step("Installieren", 0, f"Version {have_ver} schon installiert - uebersprungen")
+        else:
+            code, out = await _adb("-s", target, "install", "-r", str(LAUNCHER_APK), timeout=120)
+            if not step("Installieren", code, out, ok=("Success" in out)):
+                return web.json_response({"ok": False, "steps": steps, "error": "Installation fehlgeschlagen"})
+        # Nutzungsstatistik erlauben: Launcher erkennt laufendes Fully und holt es
+        # nur nach vorn statt neu zu laden. Fehlt das Recht, laedt er wie bisher.
+        code, out = await _adb("-s", target, "shell", "appops", "set", LAUNCHER_PKG,
+                               "GET_USAGE_STATS", "allow", timeout=10)
+        step("Nutzungsstatistik", code, out or "erlaubt", ok=(code == 0 and "rror" not in out))
         # Fully Kiosk vorhanden? Nicht mitgeliefert (kommerziell) -> nur Hinweis.
         code, out = await _adb("-s", target, "shell", "pm", "path", "de.ozerov.fully", timeout=10)
         has_fully = "package:" in out

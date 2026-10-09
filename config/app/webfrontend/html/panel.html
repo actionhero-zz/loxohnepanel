@@ -1532,6 +1532,8 @@
   .video .vhead{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:2;max-width:calc(100% - 20px);
     border-radius:999px;padding:6px 18px;opacity:.86;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);box-shadow:0 2px 10px rgba(0,0,0,.25);}
   .video .vhead .dhead{margin:0;padding:0;}
+  .video .vacts{position:absolute;top:10px;right:10px;z-index:2;margin:0;padding:0;}
+  .video .vacts .dact{backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
 
   /* ===== Status-Widget: Kachel-Standard =====
      Schrift wie die Kacheln (Kopf = Kachelname: Zahlen-Schrift, Theme-Groesse
@@ -1706,6 +1708,10 @@
   .pantop>.pbig ~ .scenes .scene.ro.on b::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;
     vertical-align:2px;border-radius:var(--r-round,32%);background:var(--dot,var(--accent));}
   .pantop>.pbig ~ .scenes .scene.ro.on .ssub{opacity:1;color:var(--muted);}
+  /* Zeile mit Zustandswort rechts (z.B. Fenster): kein Indikator-Quadrat, Wort fest, Titel ellipsiert */
+  .pantop>.pbig ~ .scenes .scene.wv.ro.on b::before{display:none;}
+  .scene .sv{flex:none;margin-left:auto;font-size:13px;color:var(--ink-2,var(--muted));white-space:nowrap;}
+  .scene .sv.b{font-weight:700;color:var(--ink);}
   /* Eintrag oeffnet eine Ansicht: Pfeil rechts wie bei Kacheln */
   .pantop>.pbig ~ .scenes .scene.nav::after{content:"\203A";margin-left:auto;padding-left:8px;font-size:22px;line-height:1;opacity:.55;}
 
@@ -1833,6 +1839,10 @@
   html.phone .updown{flex-direction:row;gap:6px;}
   .updown .ub,.prevnext .ub{width:var(--tile-ub);height:var(--tile-ub);}
   .updown .ub svg,.prevnext .ub svg{width:var(--tile-ub-ico);height:var(--tile-ub-ico);}
+  /* Taster-Knopf wie die Pfeil-Knoepfe (gleiche Groesse, Flaeche, Tinte); Impuls leuchtet kurz in der Aktiv-Farbe */
+  .tapbtn{width:var(--tile-ub);height:var(--tile-ub);background:rgba(var(--wash,255,255,255),.08);color:var(--ink);}
+  .tapbtn svg{width:var(--tile-ub-ico);height:var(--tile-ub-ico);stroke-width:2.2;}
+  .tapbtn:active,.tapbtn.flash{background:var(--on,var(--good));color:var(--tile,#fff);}
   .tswitch{width:var(--tile-sw-w);height:var(--tile-sw-h);}
   .tswitch .knob{width:calc(var(--tile-sw-h) - 4px);height:calc(var(--tile-sw-h) - 4px);}
   .tswitch.on .knob{transform:translateX(calc(var(--tile-sw-w) - var(--tile-sw-h)));}
@@ -3161,8 +3171,9 @@ function renderPanel(blocks){
     if(b.k==='big') return '<div class="'+bigCls(b)+'">'+bigInner(b)+'</div>';
     if(b.k==='astat') return '<div class="astat'+(b.tone==='crit'?' crit':'')+'">'+esc(b.text||'')+(b.sub?'<div class="astatsub">'+esc(b.sub)+'</div>':'')+'</div>';
     if(b.k==='slider') return '<div class="srow"><span class="sico">'+svg(ICONS[b.icon]||ICONS.vol)+'</span><button type="button" class="sbtn" data-sd="dn">−</button><input type="range" class="sld" min="'+b.min+'" max="'+b.max+'"'+(b.step?' step="'+b.step+'"':'')+' value="'+b.value+'"><button type="button" class="sbtn" data-sd="up">+</button><span class="sval">'+b.value+'</span></div>';
-    if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+'" data-s="'+i+'">'+
-      '<span class="sico">'+sceneIco(it)+'</span><span class="stx"><b>'+esc(it.label)+'</b>'+(sceneSub(it)?'<span class="ssub">'+esc(sceneSub(it))+'</span>':'<span class="ssub"></span>')+'</span></div>').join('')+'</div>';
+    if(b.k==='scenes') return '<div class="scenes">'+(b.items||[]).map((it,i)=>'<div class="scene'+(it.on?' on':'')+((it.cmd||it.nav)?'':' ro')+(it.nav&&!it.cmd?' nav':'')+(it.val?' wv':'')+'" data-s="'+i+'">'+
+      '<span class="sico">'+sceneIco(it)+'</span><span class="stx"><b>'+esc(it.label)+'</b>'+(sceneSub(it)?'<span class="ssub">'+esc(sceneSub(it))+'</span>':'<span class="ssub"></span>')+'</span>'+
+      (it.val?'<span class="sv'+(it.vb?' b':'')+'">'+esc(it.val)+'</span>':'')+'</div>').join('')+'</div>';
     if(b.k==='shade') return '<div class="shade'+(b.dir==='open'?' open':'')+'"><div class="sbar'+(b.up&&b.up.on?' on':'')+'" data-dir="up">'+svg(ICONS.up)+'</div>'+
       '<div class="sbar pos"><i style="height:'+(b.pct==null?0:b.pct)+'%"></i><b class="pbig">'+fmtBig(shadeTxt(b))+'</b></div>'+
       '<div class="sbar'+(b.down&&b.down.on?' on':'')+'" data-dir="down">'+svg(ICONS.down)+'</div></div>';
@@ -3206,7 +3217,11 @@ function renderPanel(blocks){
     if(ve&&pb&&pb.children.length){ const vr=document.createElement('div'); vr.className='vrow';
       while(pb.firstChild) vr.appendChild(pb.firstChild); ve.appendChild(vr); }
     const dh=ve&&g.querySelector('.pantop>.dhead');
-    if(dh){ const vh=document.createElement('div'); vh.className='vhead'; vh.style.background=getComputedStyle(g).backgroundColor; vh.appendChild(dh); ve.appendChild(vh); }
+    if(dh){ const vh=document.createElement('div'); vh.className='vhead'; vh.style.background=getComputedStyle(g).backgroundColor;
+      // Nebenaktionen (Verknuepft ...) wie ueberall rechts oben, nicht in der Namens-Pille
+      const da=dh.querySelector('.dacts'); if(da){ const va=document.createElement('div'); va.className='dhead vacts'; va.appendChild(da); ve.appendChild(va);
+        dh.classList.remove('hasa'); const sp=dh.querySelector(':scope>.dsp'); if(sp) sp.remove(); }
+      vh.appendChild(dh); ve.appendChild(vh); }
   } else {
     let html='';
     for(const b of blocks){ if(b.k!=='more') html+=bh(b); }

@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.106"
+APP_VERSION = "0.19.107"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -5220,7 +5220,7 @@ class App:
         elif t == "AudioZone":
             playing = self._state(c, "playState") == 2
             ua = c.get("uuidAction")
-            it.update(on=playing, sublabel=(self._song(c) or ("An" if playing else "Aus")),
+            it.update(on=playing, sublabel=(self._song(c) or ("Spielt" if playing else "Aus")),
                       icon="music", nav={"view": "control", "id": uuid},
                       controls=[
                           {"icon": "prev", "cmd": {"uuid": ua, "cmd": "queueminus"}},
@@ -5320,13 +5320,14 @@ class App:
             if on:
                 it["colorFixed"] = "#52b881"        # gruen, solange Anwesenheit erkannt
         elif t == "WindowMonitor":
-            op = sum(self._win_counts(c))
-            it.update(icon="window", on=op > 0, nav={"view": "control", "id": uuid},
+            wo, wt = self._win_counts(c)
+            it.update(icon="window", on=(wo + wt) > 0, nav={"view": "control", "id": uuid},
                       # Gleiches Fenster-Piktogramm wie beim einzelnen Fenster -
                       # Sammelmelder ueber mehrere Fenster, daher nur binaer
                       # (irgendeines offen -> kein Kreuz), keine Prozentangabe.
-                      winpos=(0 if op else 100), count=op, countTone="hint",
-                      sublabel=(f"{op} offen" if op else "Alle geschlossen"))
+                      winpos=(0 if (wo + wt) else 100),
+                      sublabel=" · ".join(x for x in (f"{wo} offen" if wo else "",
+                                                      f"{wt} gekippt" if wt else "") if x) or "Alle geschlossen")
         elif t == "Alarm":
             armed = bool(self._state(c, "armed"))
             lvl = self._state(c, "level") or 0
@@ -5444,19 +5445,22 @@ class App:
             muuids = [m.get("uuid") for m in ((c.get("details") or {}).get("controls") or [])
                       if m.get("uuid") in self.controls]
             n = 0
+            n2 = len(muuids)
             if t == "CentralLightController":
                 n = sum(1 for mu in muuids if LIGHT.render(self._with_uuid(mu), self.states)["on"])
-                it["sublabel"] = (f"In {n} Raum aktiv" if n == 1 else f"In {n} Räumen aktiv") if n else "Aus"
+                it["sublabel"] = self._central_sum(t, n, n2)
             elif t == "CentralAudioZone":
                 n = sum(1 for mu in muuids if self._state(self.controls[mu], "playState") == 2)
-                it["sublabel"] = (f"Spielt in {n} Raum" if n == 1 else f"Spielt in {n} Räumen") if n else "Aus"
+                it["sublabel"] = self._central_sum(t, n, n2)
             elif t in ("CentralGate", "CentralWindow"):
                 n = sum(1 for mu in muuids if (self._state(self.controls[mu], "position") or 0) > 0)
                 it["sublabel"] = f"{n} offen" if n else "Alle geschlossen"
             elif t == "CentralJalousie":
-                it["sublabel"] = "Beschattung"
+                k = sum(1 for mu in muuids if (self._state(self.controls[mu], "position") or 0) < 0.02)
+                it["sublabel"] = self._central_sum(t, k, n2) or "Zentral"
             elif t == "CentralAlarm":
-                it["sublabel"] = "Alarmzentrale"
+                k = sum(1 for mu in muuids if self._state(self.controls[mu], "armed"))
+                it["sublabel"] = self._central_sum(t, k, n2)
             it.setdefault("sublabel", "Zentral")
             it.update(icon="central", on=(n > 0),
                       nav={"view": "group", "kind": "central", "id": uuid})
@@ -6280,6 +6284,21 @@ class App:
         v["blocks"] = out
         return v
 
+    @staticmethod
+    def _central_sum(t: str, n: int, total: int) -> str:
+        """Zusammenfassung eines Zentralbausteins - gleiche Worte auf Kachel und Detail."""
+        if t == "CentralLightController":
+            return "Aus" if not n else ("1 Raum an" if n == 1 else f"{n} Räume an")
+        if t == "CentralAudioZone":
+            return f"{n} von {total} spielen" if n else "Aus"
+        if t == "CentralJalousie":
+            if not total:
+                return ""
+            return "Alle offen" if n >= total else ("Alle zu" if n == 0 else f"{n} von {total} offen")
+        if t == "CentralAlarm":
+            return f"{n} von {total} scharf" if total else "Keine Anlagen"
+        return ""
+
     # Sammelaktionen der Zentralbausteine: je Mitglied ein bekannter Einzelbefehl
     _CENTRAL_ACT = {"lightoff": {"LightControllerV2": "changeTo/778"},
                     "up": {"Jalousie": "FullUp"}, "down": {"Jalousie": "FullDown"},
@@ -6291,7 +6310,7 @@ class App:
         """Zentralbaustein als Seite: Zusammenfassung gross, Mitglieder als
         Kacheln (antippen = Mitglied oeffnen), Sammelaktion(en) unten."""
         t = c.get("type")
-        items, on, central_sub = [], 0, ""
+        items, on = [], 0
         its = [self._control_item(u, prof, show_room=True) for u in uuids]
         rooms = [it.get("room") or "" for it in its]
         by_room = all(rooms) and len(set(rooms)) == len(rooms)   # Raum nur, wenn eindeutig
@@ -6311,29 +6330,36 @@ class App:
                 x["label"] = " · ".join(alt + [x["label"]]) if alt else x["label"]
         cells = []
         if t == "CentralLightController":
-            summary = f"{on} Räume an" if on != 1 else "1 Raum an"
+            summary = self._central_sum(t, on, len(uuids))
             cells = [{"label": "Alle aus", "cmd": {"uuid": gid, "cmd": "__central/lightoff"}}]
         elif t == "CentralJalousie":
             opn = sum(1 for u in uuids if (self._state(self.controls[u], "position") or 0) < 0.02)
-            summary = ("Alle offen" if opn == len(uuids) else
-                       ("Alle zu" if opn == 0 else f"{opn} von {len(uuids)} offen"))
+            summary = self._central_sum(t, opn, len(uuids)) or "–"
+            # Abweichler (die kleinere Gruppe) zuerst, nur Reihenfolge der Anzeige
+            closed = len(uuids) - opn
+            first_open = opn <= closed
+            for x in items:
+                x["_o"] = (self._state(self.controls[x["id"]], "position") or 0) < 0.02
             cells = [{"label": "Alle auf", "cmd": {"uuid": gid, "cmd": "__central/up"}},
                      {"label": "Beschatten", "cmd": {"uuid": gid, "cmd": "__central/shade"}},
                      {"label": "Alle zu", "cmd": {"uuid": gid, "cmd": "__central/down"}}]
         elif t == "CentralAlarm":
-            summary = f"{on} von {len(uuids)} scharf" if uuids else "Keine Anlagen"
+            summary = self._central_sum(t, on, len(uuids))
             cells = [{"label": "Alle scharf", "cmd": {"uuid": gid, "cmd": "__central/arm"}}]
         elif t == "CentralAudioZone":
             # normaler grosser Wert statt Riesen-Titel: "2 von 5" + kleine Zeile
-            summary = f"{on} von {len(uuids)}" if on else "Aus"
-            central_sub = "Räume spielen" if on else "Kein Raum spielt"
+            summary = self._central_sum(t, on, len(uuids))
             cells = [{"label": "Alle Pause", "cmd": {"uuid": gid, "cmd": "__central/pause"}}]
         else:
             return None
-        items.sort(key=lambda x: not x["on"])   # Aktive zuerst (passt zur Zusammenfassung oben)
+        if t == "CentralJalousie":
+            items.sort(key=lambda x: x.get("_o") != first_open)
+            for x in items:
+                x.pop("_o", None)
+        else:
+            items.sort(key=lambda x: not x["on"])   # Aktive zuerst (passt zur Zusammenfassung oben)
         blocks = [{"k": "dhead", "room": "Zentral", "name": _clean(c.get("name"))},
                   {"k": "big", "text": summary},
-                  *([{"k": "status", "text": central_sub}] if central_sub else []),
                   {"k": "scenes", "items": items},
                   {"k": "row", "act": True, "cells": cells}]
         return {"t": "view", "title": _clean(c.get("name")), "tab": "zentral", "route": route,
@@ -6575,18 +6601,8 @@ class App:
             codes = [x for x in str(self._state(c, "windowStates") or "").split(",") if x != ""]
 
             def wtext(b):
-                parts = []
-                if b & 1:
-                    parts.append("geschlossen")
-                if b & 2:
-                    parts.append("gekippt")
-                if b & 4:
-                    parts.append("offen")
-                if b & 8:
-                    parts.append("verriegelt")
-                if b & 32:
-                    parts.append("offline")
-                return ", ".join(parts) or "–"
+                return ("offen" if b & 4 else "gekippt" if b & 2 else "offline" if b & 32
+                        else "verriegelt" if b & 8 else "geschlossen" if b & 1 else "–")
 
             items = []
             for i, w in enumerate(windows):
@@ -6596,25 +6612,22 @@ class App:
                     b = 0
                 ent = {"id": f"{uuid}:{i}", "icon": "blind", "on": bool(b & 6),
                        "label": _clean(w.get("name") or f"Fenster {i + 1}"),
-                       "sublabel": wtext(b), "_r": 0 if b & 4 else (1 if b & 2 else 2)}
-                # Raum (Loxone: window.room = Raum-UUID) und Einbauort, wie auf
-                # den Kacheln als Kopfzeile ueber dem Namen
-                loc = " · ".join(x for x in (
-                    _clean((self.rooms.get(w.get("room")) or {}).get("name")) if w.get("room") else "",
-                    _clean(w.get("installPlace"))) if x)
-                if loc:
-                    ent["room"] = loc
+                       "val": wtext(b), "_r": 0 if b & 4 else (1 if b & 2 else 2)}
+                # Nur der Raum (Loxone: window.room = Raum-UUID), sonst der Einbauort
+                ent["room"] = (_clean((self.rooms.get(w.get("room")) or {}).get("name")) if w.get("room") else "") \
+                    or _clean(w.get("installPlace"))
                 items.append(ent)
             # Offene zuerst, dann gekippte, dann der Rest (sonst Loxone-Reihenfolge)
             items.sort(key=lambda x: x.pop("_r"))
             # Detail-Schema: grosser Wert, Zeile darunter, Fenster als reine Anzeige-Zeilen
-            n_open = sum(1 for x in items if "offen" in x["sublabel"])
-            n_tilt = sum(1 for x in items if "gekippt" in x["sublabel"])
-            big = f"{n_open} offen" if n_open else ("Alle zu" if not n_tilt else f"{n_tilt} gekippt")
+            n_open = sum(1 for x in items if x["val"] == "offen")
+            n_tilt = sum(1 for x in items if x["val"] == "gekippt")
+            big = f"{n_open} offen" if n_open else ("Alle geschlossen" if not n_tilt else f"{n_tilt} gekippt")
             sub = " · ".join(x for x in (f"{n_tilt} gekippt" if n_open and n_tilt else "",
                                           f"{len(items)} Fenster") if x)
+            # val = Zustandswort rechts in der Zeile, vb = hervorgehoben (offen/gekippt)
             rows = [{"id": x["id"], "label": x["label"], "icon": "window", "on": x["on"],
-                     "sub": " · ".join(y for y in (x.get("room", ""), x["sublabel"]) if y)} for x in items]
+                     "sub": x.get("room", ""), "val": x["val"], "vb": x["on"]} for x in items]
             blocks = [{"k": "big", "text": big}, {"k": "status", "text": sub}]
             if rows:
                 blocks.append({"k": "scenes", "items": rows})

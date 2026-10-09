@@ -73,6 +73,13 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - Sofortbefehle (z. B. „Erzwingen“ der Bewässerung) sind keine Nebenaktion, sondern Pillen in der Aktionsreihe.
 - Die Aktionsreihe unten enthält nur Hauptaktionen. Die Kopfleiste (Zurück, Pfad, Tabs) bleibt reine Navigation.
 
+## Sammelbausteine (Zentral-Licht, -Rollladen, -Alarm, -Audio, Fenster/Türen)
+- Kachel und Detail nennen denselben Zustand mit denselben Worten („2 offen · 1 gekippt“, „3 Räume an“, „0 von 2 scharf“) – keine Festtexte wie „Beschattung“.
+- Steht der Zustand als Wort in der Zeile (rechts, „offen“/„gekippt“ in `ink` fett, Ruhezustand in `ink-2`), gibt es keinen Indikator-Punkt. Der Punkt bleibt Zeilen ohne Zustandstext vorbehalten.
+- Zeilen, die einen Einzelbaustein öffnen, sind gefüllt mit Pfeil ›; reine Anzeigen nur Haarlinie – nie gemischt.
+- Abweichler stehen oben (offen/an vor zu/aus); Unterzeile nur der Raum.
+- Sammelaktionen (Alle aus, Alle auf …) als Pillen unten, nur Loxone-Standardbefehle.
+
 ## Kacheltext und Seiten
 - **Gemeinsame Grundlinie:** Der Textblock der Kachel hat drei feste Plätze – Raumzeile, Name (Platz für zwei Zeilen, sonst „…“), Zustand unten. Kacheln einer Reihe stehen dadurch bündig, egal ob der Name ein- oder zweizeilig ist.
 - **Seiten:** Raster, die mehr als eine Bildschirmhöhe brauchen, werden exakt in Seiten geschnitten (keine angeschnittene Folgereihe). Die Position zeigen **Seitenpunkte** rechts in einer eigenen Spur (9 px, aktiv `ink` 75 %, sonst 32 %) – einen klassischen Scrollbalken gibt es im Kachelraster nicht.

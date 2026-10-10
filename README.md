@@ -20,13 +20,7 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
-- **Screensaver frei gestalten (0.14.0)** — Config → Panel-Profil →
-  „Screensaver“: Uhr & Datum, Wetter, Kalender, Türstation und Loxone-Kacheln
-  per Ziehen & Ablegen im Raster anordnen (3×3 je 480er-Display, 6×3 auf
-  breiten Displays wie dem Shelly X2i), Größe an der Ecke ändern. Kacheln
-  bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
-  (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
-  Belegung bleibt der klassische Screensaver.
+- **Wetter-Widget: Max/Min wieder sichtbar, Anzeige je Tag wählbar (0.19.112)** — Dashboard-Wetter: Max/Min je Tag fehlte seit 0.19.102 in schmalen und flachen Kacheln (1×2, 1×3, 2×1, 3×1). Flache 3×1-Karte zeigt das aktuelle Wetter links und die Tage rechts in voller Höhe (Symbol mittig), 2×1 setzt das Symbol links neben Tag und Max/Min, schmale Spalten zeigen Max über Min. Neu im Kachel-Editor: „Je Tag anzeigen“ (Symbol, Max/Min, Regen % – nur mit Open-Meteo) und „Schmale Kachel: 2 Tage statt Max über Min“. Vorschau höchstens 3 Tage (gespeicherte 4 werden zu 3). Config: Sortieren per Ziehen (Statusleiste, Status-Ampel, Kameras) wird jetzt gespeichert. README-Changelog ohne angepinnten Eintrag. (Forum #74.1)
 - **Geräte-Log mit Sensoren (0.19.111)** — System → Diagnose → Geräte-Log enthält jetzt „Sensoren“: Sensorliste mit letzten Werten und einen 10-s-Mitschnitt des Näherungssensors (beim Holen Hand annähern) – prüft, ob das Shelly Wall Display bei Annäherung Werte liefert. README: doppelte Einträge 0.19.105/0.19.91 entfernt.
 - **Hinweis auf neue Launcher-Version (0.19.110)** — Geräte → „Einrichten per adb“: Bringt das Update eine neuere LoxPanel-Launcher-Version mit als am Panel installiert, erscheint dort ein kleiner Hinweis (z. B. 3 → 4); „Launcher einrichten“ aktualisiert. Die Version wird beim Öffnen der Gerätekarte einmal je Sitzung per adb gelesen (nur lesend, zusammen mit Helligkeit/Tipp-Tönen).
 - **Android-Launcher 4.0: Autostart, Fully nach vorn, Bunt-Design (0.19.109)** — Shelly-/Android-Launcher startet Fully nach 10 s von selbst (nach Boot, Fully-Absturz oder Verlassen von Fully), dezenter Countdown, jeder Tipp bricht ab – Shelly-Oberfläche bleibt erreichbar. Läuft Fully schon, holt das LoxPanel-Symbol es nur nach vorn statt die Seite neu zu laden. Design wie Theme „Bunt“, targetSdk 24 (Android 15 installiert ältere Apps nicht). Einrichtung überspringt die Installation, wenn das Panel dieselbe oder eine neuere Launcher-Version hat.
@@ -406,6 +400,13 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 - **Screensaver-Feinschliff (0.14.0-fav2)** — keine doppelte Uhr mehr in der
   Mitte (Split-Panels), Türstation als ruhiges Livebild ohne Buttons (neu auch
   3×2), größere Vorschau-Kacheln und Piktogramme im Wetter-Widget.
+- **Screensaver frei gestalten (0.14.0)** — Config → Panel-Profil →
+  „Screensaver“: Uhr & Datum, Wetter, Kalender, Türstation und Loxone-Kacheln
+  per Ziehen & Ablegen im Raster anordnen (3×3 je 480er-Display, 6×3 auf
+  breiten Displays wie dem Shelly X2i), Größe an der Ecke ändern. Kacheln
+  bleiben im Screensaver bedienbar; die Türstation zeigt nur das Livebild
+  (wie das „Fenster zur Außenwelt“, auch als 3×2). Schließen per ✕ und/oder Wischen ↑ ↓ ← → (frei kombinierbar). Ohne
+  Belegung bleibt der klassische Screensaver.
 - **Kamera stabiler (0.14.0)** — Kamerabilder werden bei Rückkehr ans Panel
   neu aufgebaut (friert nach langer Ruhe nicht mehr ein), bei Fehlern nach 8 s
   erneut versucht; optional je Türstation automatischer Neuaufbau alle

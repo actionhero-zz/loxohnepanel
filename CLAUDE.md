@@ -32,8 +32,8 @@ Ausführliche Übergabe: `docs/UEBERGABE-LOKAL.md`.
   Changelog, kein main. Changelog-Vorschlag steht im Commit-Text.
 - Lokal: `git fetch origin claude/adb && git merge origin/claude/adb`, dann Release:
   1. Version erhöhen in `plugin.cfg`, `release.cfg`, `APP_VERSION` (webvisu.py)
-  2. Changelog-Eintrag oben in `README.md` unter „Eigene Funktionen dieses Forks“
-     (nach dem angepinnten 0.14.0-Eintrag): `- **Titel (0.19.x)** — Text`
+  2. Changelog-Eintrag ganz oben in `README.md` unter „Eigene Funktionen dieses
+     Forks“ (neueste zuerst, nichts angepinnt): `- **Titel (0.19.x)** — Text`
   3. `python3 -m py_compile config/app/bin/webvisu.py`
   4. Commit `0.19.x: Titel`, push `main` (+ `claude/adb` nachziehen)
   5. Plugin-ZIP: `git archive --format=zip --prefix=loxpanelfav/ -o loxpanelfav-0.19.x.zip HEAD`

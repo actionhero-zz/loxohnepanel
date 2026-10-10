@@ -811,7 +811,7 @@
   /* Flach und breit (3x1 im 3x3-Raster, ~430x130): Jetzt-Wert links, Vorschau-
      Pillen rechts daneben in voller Hoehe - uebereinander waeren beide gequetscht. */
   @container (min-aspect-ratio:5/2) and (min-width:300px){
-    .svw .svw-wx{flex-direction:row;align-items:stretch;gap:10px;}
+    .svw .svw-wx,.saver .svw .svw-wx{flex-direction:row;align-items:stretch;gap:10px;}   /* .saver: schlaegt .saver .sv-wx (Spalte) */
     .svw .svw-wx .now{flex:none;align-self:center;flex-direction:column;gap:2px;}
     .svw .svw-wx .now .meta{display:none;}   /* Zustand/Hoch-Tief stehen in den Pillen */
     .svw .svw-wx .now .ico{width:min(40px,26cqh);height:min(40px,26cqh);}
@@ -820,6 +820,29 @@
     .svw .svw-wx .fc .d{font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 12cqh);}
     .svw .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 14cqh);}
   }
+  /* Wenig Hoehe und schmal (2x1): je Tag Symbol links, Tag + Max/Min rechts daneben -
+     untereinander bliebe fuer Max/Min kein Platz (Forum #74.1). */
+  @container (max-height:140px) and (max-width:299px){
+    .svw .svw-wx .fc{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"i d" "i t";
+      column-gap:5px;row-gap:1px;align-items:center;justify-items:start;padding:4px 6px;}
+    .svw .svw-wx .fc .ico{grid-area:i;flex:none;width:min(26px,22cqh);height:min(26px,22cqh);min-height:0;}
+    .svw .svw-wx .fc .d{grid-area:d;} .svw .svw-wx .fc .tt{grid-area:t;}
+    .svw .svw-wx .fc .pop{display:none;}
+  }
+  /* Schmale Spalten (1xN): Max ueber Min statt abgeschnitten; Jetzt-Temperatur passt sich an */
+  @container (max-width:240px){
+    .svw .svw-wx .fc{gap:2px;}
+    .svw .svw-wx .fc .tt{white-space:normal;text-align:center;line-height:1.1;}
+    .svw .svw-wx .fc .tt .mx,.svw .svw-wx .fc .tt .mn{display:block;}
+    .svw .svw-wx .now .t{font-size:min(30px,19cqw);}
+    /* Option "weniger Tage": 2 Tage mit Max/Min nebeneinander statt 3 untereinander */
+    .svw .svw-wx.wx-fewer .fc:nth-child(n+3){display:none;}
+    .svw .svw-wx.wx-fewer .fore{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .svw .svw-wx.wx-fewer .fc .tt .mx,.svw .svw-wx.wx-fewer .fc .tt .mn{display:inline;}
+    .svw .svw-wx.wx-fewer .fc .tt{white-space:nowrap;}
+  }
+  .svw .svw-wx .fc .pop{flex:none;line-height:1.2;color:var(--cool,#7fb2e6);font-variant-numeric:tabular-nums;
+    font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 11cqh);}
   /* Ohne Container-Queries (Safari < 16): dieselben Regeln ueber die Kachelgroesse */
   @supports not (container-type:size){
     .svw[data-sz="1x1"] .svw-wx .fore{display:none !important;}
@@ -4537,8 +4560,10 @@ function fmtTemp(t){ if(t==null||isNaN(t)) return '–'; return Number(t).toLoca
 function tdeg(v){ return v==null?'–':(Math.round(v)+'°'); }
 // Wetter (aktuell + Vorschau) als HTML - fuer den klassischen Screensaver und
 // das Wetter-Widget im Screensaver-Raster.
-function svWxHTML(w, days, det){
-  const fc=(Array.isArray(w.forecast)?w.forecast:[]).slice(0, days||4);   // Widget: 1-4 Tage
+// show: je Tag ['ico','mm','pop'] (Symbol, Max/Min, Regen %); Standard Symbol + Max/Min.
+function svWxHTML(w, days, det, show){
+  const fc=(Array.isArray(w.forecast)?w.forecast:[]).slice(0, days||4);   // Widget: 1-3 Tage
+  const sh=Array.isArray(show)&&show.length?show:['ico','mm'];
   let html='<div class="now"><span class="ico '+esc(w.icon||'cloud')+'">'+wxSvg(w.icon)+'</span>'+
     '<span class="t">'+fmtTemp(w.temp)+'°</span>'+
     '<span class="meta"><span class="cond">'+esc(w.cond||'')+'</span>';
@@ -4546,8 +4571,9 @@ function svWxHTML(w, days, det){
   html+='</span></div>';
   if(fc.length) html+='<div class="fore">'+fc.map((f,i)=>
     '<div class="fc'+(det&&f.det?' wxtap" data-fi="'+i+'"':'"')+'><span class="d">'+esc(f.day||'')+'</span>'+
-    '<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
-    '<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span></div>').join('')+'</div>';
+    (sh.indexOf('ico')>=0?'<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>':'')+
+    (sh.indexOf('mm')>=0?'<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span>':'')+
+    (sh.indexOf('pop')>=0&&f.pop!=null?'<span class="pop">'+f.pop+' %</span>':'')+'</div>').join('')+'</div>';
   return html;
 }
 // Termine als HTML (Ueberschrift + Eintraege).
@@ -4628,10 +4654,11 @@ function svWidgetHTML(it, sd){
   sd=sd||saverData;
   const d=frontData||{};
   if(it.type==='clock') return svClockHTML(it);
-  if(it.type==='weather') return d.weather
-    ? '<div class="sv-wx svw-wx" style="--fc:'+Math.max(1,Math.min(it.days||3,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather, it.days||3, !!it.detail)+
+  if(it.type==='weather'){ const nd=Math.min(it.days||3,3);   // max. 3 Tage (alte Konfig mit 4 -> 3)
+    return d.weather
+    ? '<div class="sv-wx svw-wx'+(it.fewer&&nd===3?' wx-fewer':'')+'" style="--fc:'+Math.max(1,Math.min(nd,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather, nd, !!it.detail, it.show)+
         (it.h>1&&Array.isArray(d.weather.hourly)?'<div class="fp-curve svw-curve">'+fpCurve(d.weather.hourly)+'</div>':'')+'</div>'
-    : '<div class="svw-empty">Kein Wetter konfiguriert</div>';
+    : '<div class="svw-empty">Kein Wetter konfiguriert</div>'; }
   if(it.type==='calendar'){
     const n=it.h===1?2:(it.h===2?4:6), evs=(Array.isArray(d.events)?d.events:[]).slice(0,n);
     return evs.length ? '<div class="sv-cal svw-cal">'+svEvHTML(evs, d)+'</div>'

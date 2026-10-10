@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.111"
+APP_VERSION = "0.19.112"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -746,10 +746,17 @@ def _widget_entry(it: dict, x: int, y: int, w: int, h: int) -> dict | None:
             d = int(it.get("days"))
         except (TypeError, ValueError):
             d = 0
-        if d in (1, 2, 4):
-            e["days"] = d                         # Vorschau-Tage (Standard 3)
+        if d in (1, 2):
+            e["days"] = d                         # Vorschau-Tage (Standard 3 = Maximum; alte 4 -> 3)
         if it.get("detail") is True:
             e["detail"] = True                    # Antippen eines Tages oeffnet die Tagesdetails
+        show = it.get("show")
+        if isinstance(show, list):
+            sh = [k for k in ("ico", "mm", "pop") if k in show]
+            if sh and sh != ["ico", "mm"]:
+                e["show"] = sh                    # je Tag: Symbol, Max/Min, Regen % (Standard Symbol + Max/Min)
+        if it.get("fewer") is True:
+            e["fewer"] = True                     # schmale Kachel: 2 Tage statt Max ueber Min
     if it["type"] == "clock":
         e["align"] = it.get("align") if it.get("align") in ("left", "center", "right") else "center"
         e["date"] = it.get("date") if it.get("date") in ("none", "short", "long") else "short"

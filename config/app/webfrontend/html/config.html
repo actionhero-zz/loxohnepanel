@@ -2792,12 +2792,14 @@ function stPickBind(box, onIds, rerender, max){
     if(ids.length>max){ snack(T('Höchstens')+' '+max+' '+T('Bausteine')); rerender(); return; }
     onIds(ids); };
   box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=apply);
-  let drag=null;
+  let drag=null, order0='';
+  const order=()=>[...box.querySelectorAll('.camopt')].map(r=>r.dataset.id).join('|');
   box.querySelectorAll('.camopt').forEach(r=>{
-    r.ondragstart=e=>{ drag=r; r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); }catch(x){} };
-    r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; };
+    r.ondragstart=e=>{ drag=r; order0=order(); r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); }catch(x){} };
+    // Uebernehmen beim Loslassen: liegt die Zeile nach dem Verschieben unter dem Zeiger, kommt kein drop
+    r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; if(order()!==order0) apply(); };
     r.ondragover=e=>{ if(!drag||drag===r) return; e.preventDefault(); const q=r.getBoundingClientRect(); box.insertBefore(drag,(e.clientY-q.top)>q.height/2?r.nextSibling:r); };
-    r.ondrop=e=>{ e.preventDefault(); apply(); }; });
+    r.ondrop=e=>{ e.preventDefault(); }; });
 }
 // Panel, dessen Dashboard globale Standardansicht ist (Vorlage fuer neue Panels)
 function dashStdId(){ return Object.keys(PANELS).find(id=>id!=='__global__'&&PANELS[id]&&PANELS[id].saver&&PANELS[id].saver.std&&(PANELS[id].saver.items||[]).length)||''; }
@@ -3169,7 +3171,12 @@ function tbSideHTML(p){
   if(it.type==='weather'||it.type==='wxdetail') h+='<div class="hintp">'+T('Quelle: System → Miniserver → Wetter.')+'</div>';
   if(it.type==='calendar') h+='<div class="hintp">'+T('Quelle: System → Kalender.')+'</div>';
   if(it.type==='weather') h+='<div class="lbl2">'+T('Vorschau (Tage)')+'</div><div class="seg">'+
-    [1,2,3,4].map(n=>'<button data-wxd="'+n+'"'+((it.days||3)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
+    [1,2,3].map(n=>'<button data-wxd="'+n+'"'+(Math.min(it.days||3,3)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
+  if(it.type==='weather'){ const sh=it.show||['ico','mm'];   // je Tag: Symbol, Max/Min, Regen % (mehrfach waehlbar)
+    h+='<div class="lbl2">'+T('Je Tag anzeigen')+'</div><div class="seg">'+
+      [['ico','Symbol'],['mm','Max / Min'],['pop','Regen %']].map(([k,l])=>'<button data-wxs="'+k+'"'+(sh.indexOf(k)>=0?' class="on"':'')+'>'+T(l)+'</button>').join('')+'</div>'+
+      '<div class="hintp">'+T('Regen % liefert Open-Meteo, der Loxone-Wetterdienst nicht.')+'</div>'+
+      '<label class="chk" style="margin-top:8px"><input type="checkbox" id="tbWxFew"'+(it.fewer?' checked':'')+'> <span>'+T('Schmale Kachel: 2 Tage statt Max über Min')+'</span></label>'; }
   if(it.type==='weather') h+='<label class="chk" style="margin-top:8px"><input type="checkbox" id="tbWxDet"'+(it.detail?' checked':'')+'> <span>'+T('Detailansicht beim Antippen eines Tages')+'</span></label>'+
     '<div class="hintp">'+T('Öffnet ein Fenster mit Temperaturverlauf, Regen je Stunde, Wind, UV und Sonnenzeiten des Tages.')+'</div>';
   if(it.type==='status'){   // Status-Ampel: bis zu 4 Bausteine als Chips (Haken + Ziehen), optional Verlauf
@@ -3252,6 +3259,11 @@ function tbBindSide(p){
   { const cb=$('#tbCamBack'); if(cb) cb.onchange=()=>{ let n=Math.round(+cb.value); if(!(n>=0)) n=3; n=Math.min(240,n);   // Standard 3 min
       if(n===3) delete it.back; else it.back=n; redo(); }; }
   host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===3) delete it.days; else it.days=n; redo(); });   // Standard 3 Tage
+  host.querySelectorAll('[data-wxs]').forEach(b=>b.onclick=()=>{ const k=b.dataset.wxs; let sh=(it.show||['ico','mm']).slice(); const i=sh.indexOf(k);
+    if(i>=0){ if(sh.length===1){ snack(T('Mindestens eine Angabe je Tag.')); return; } sh.splice(i,1); } else sh.push(k);
+    sh=['ico','mm','pop'].filter(x=>sh.indexOf(x)>=0);
+    if(sh.join()==='ico,mm') delete it.show; else it.show=sh; redo(); });   // Standard Symbol + Max/Min wird nicht gespeichert
+  { const fw=host.querySelector('#tbWxFew'); if(fw) fw.onchange=()=>{ if(fw.checked) it.fewer=true; else delete it.fewer; redo(); }; }
   stPickBind($('#tbStCh'), ids=>{ it.ctls=ids; redo(); }, renderTabEditor);
   { const tr=$('#tbStTrk'); if(tr) tr.onchange=()=>{ if(tr.value) it.trk=tr.value; else delete it.trk; redo(); }; }
   host.querySelectorAll('[data-stlook]').forEach(b=>b.onclick=()=>{ if(b.dataset.stlook==='color') it.look='color'; else delete it.look; redo(); });
@@ -3263,13 +3275,15 @@ function tbBindSide(p){
       if(ids.length===allIds.length && ids.every((id,n)=>id===allIds[n])) delete it.cams; else it.cams=ids;
       delete it.cam; redo(); };
     box.querySelectorAll('input[type=checkbox]').forEach(cb=>cb.onchange=apply);
-    let drag=null;
+    let drag=null, order0='';
+    const order=()=>[...box.querySelectorAll('.camopt')].map(r=>r.dataset.id).join('|');
     box.querySelectorAll('.camopt').forEach(r=>{
-      r.ondragstart=e=>{ drag=r; r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); e.dataTransfer.effectAllowed='move'; }catch(x){} };
-      r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; };
+      r.ondragstart=e=>{ drag=r; order0=order(); r.classList.add('dragging'); try{ e.dataTransfer.setData('text/plain',''); e.dataTransfer.effectAllowed='move'; }catch(x){} };
+      // Uebernehmen beim Loslassen (wie stPickBind): drop kommt nicht, wenn die Zeile unter dem Zeiger liegt
+      r.ondragend=()=>{ r.classList.remove('dragging'); drag=null; if(order()!==order0) apply(); };
       r.ondragover=e=>{ if(!drag||drag===r) return; e.preventDefault(); const q=r.getBoundingClientRect();
         box.insertBefore(drag, (e.clientY-q.top)>q.height/2 ? r.nextSibling : r); };
-      r.ondrop=e=>{ e.preventDefault(); apply(); };
+      r.ondrop=e=>{ e.preventDefault(); };
     }); } }
   // Groesse: passt sie an der Stelle nicht, sucht der Editor einen freien Platz; sonst Hinweis
   host.querySelectorAll('[data-size]').forEach(b=>b.onclick=()=>{ const [w,h]=b.dataset.size.split('x').map(Number);

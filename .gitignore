@@ -24,3 +24,6 @@ dist/
 *.swp
 config/app/config/devinfo.json
 config/app/config/bg/
+
+# Claude-Laufzeitdateien
+.claude/*.lock

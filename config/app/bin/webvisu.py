@@ -8694,7 +8694,7 @@ async def index(request: web.Request) -> web.Response:
 # Auto-Update liest (plugin.cfg -> RELEASECFG). Installiert wird weiter nur ueber
 # die LoxBerry-Pluginverwaltung - hier nur der Hinweis.
 RELEASE_CFG_URL = ("https://raw.githubusercontent.com/actionhero-zz/loxohnepanel/"
-                   "claude/festive-sagan-avv9if/release.cfg")
+                   "main/release.cfg")
 _UPD_CACHE: dict = {"ts": 0.0, "latest": ""}
 
 

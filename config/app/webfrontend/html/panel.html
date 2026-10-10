@@ -827,22 +827,11 @@
       column-gap:5px;row-gap:1px;align-items:center;justify-items:start;padding:4px 6px;}
     .svw .svw-wx .fc .ico{grid-area:i;flex:none;width:min(26px,22cqh);height:min(26px,22cqh);min-height:0;}
     .svw .svw-wx .fc .d{grid-area:d;} .svw .svw-wx .fc .tt{grid-area:t;}
-    .svw .svw-wx .fc .pop{display:none;}
   }
-  /* Schmale Spalten (1xN): Max ueber Min statt abgeschnitten; Jetzt-Temperatur passt sich an */
-  @container (max-width:240px){
-    .svw .svw-wx .fc{gap:2px;}
-    .svw .svw-wx .fc .tt{white-space:normal;text-align:center;line-height:1.1;}
-    .svw .svw-wx .fc .tt .mx,.svw .svw-wx .fc .tt .mn{display:block;}
-    .svw .svw-wx .now .t{font-size:min(30px,19cqw);}
-    /* Option "weniger Tage": 2 Tage mit Max/Min nebeneinander statt 3 untereinander */
-    .svw .svw-wx.wx-fewer .fc:nth-child(n+3){display:none;}
-    .svw .svw-wx.wx-fewer .fore{grid-template-columns:repeat(2,minmax(0,1fr));}
-    .svw .svw-wx.wx-fewer .fc .tt .mx,.svw .svw-wx.wx-fewer .fc .tt .mn{display:inline;}
-    .svw .svw-wx.wx-fewer .fc .tt{white-space:nowrap;}
-  }
-  .svw .svw-wx .fc .pop{flex:none;line-height:1.2;color:var(--cool,#7fb2e6);font-variant-numeric:tabular-nums;
-    font-size:min(calc(var(--sv-fc-size,12.5) * 0.8 * 1px), 11cqh);}
+  /* Schmale Spalten: Jetzt-Temperatur passt sich der Breite an */
+  @container (max-width:240px){ .svw .svw-wx .now .t{font-size:min(30px,19cqw);} }
+  /* Passt "Max Min" nicht in die Tageskachel, bleibt nur Max (wxFit setzt die Klasse) */
+  .svw .svw-wx.wx-maxonly .fc .tt .mn{display:none;}
   /* Ohne Container-Queries (Safari < 16): dieselben Regeln ueber die Kachelgroesse */
   @supports not (container-type:size){
     .svw[data-sz="1x1"] .svw-wx .fore{display:none !important;}
@@ -856,6 +845,12 @@
     .svw[data-sz="3x1"] .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 18px);}
   }
   .svw .svw-curve svg{width:100%;height:auto;max-height:150px;display:block;}
+  /* Mit Verlauf (3x2/2x2): Tageskacheln behalten ihre Inhaltshoehe, der Verlauf nimmt den Rest
+     (sonst schneidet grosse Vorschau-Schrift Tag und Max/Min ab). */
+  .svw .svw-wx.wx-curve .fore{flex:none;}
+  .svw .svw-wx.wx-curve .fc .ico{flex:none;width:100%;height:min(calc(var(--sv-fc-size,12.5) * 2.2 * 1px),40px);}
+  .svw .svw-wx.wx-curve .svw-curve{flex:1;min-height:0;display:flex;align-items:flex-end;}
+  .svw .svw-wx.wx-curve .svw-curve svg{height:100%;}
   .svw .svw-cal{justify-content:flex-start;gap:6px;}
   .svw .svw-cal .sv-ev{padding:7px 12px;gap:10px;border-radius:var(--r-m);}
   .svw .svw-cal .sv-ev .when .tm{font-size:14px;} .svw .svw-cal .sv-ev .ttl{font-size:13px;}
@@ -4147,7 +4142,8 @@ try{ if(DEVICE_ID) localStorage.setItem('lp_device', DEVICE_ID); else DEVICE_ID 
 const DEVICE_UID=(function(){
   const ok=v=>typeof v==='string'&&/^[A-Za-z0-9._:-]{6,80}$/.test(v);
   let u='';
-  try{ const f=window.fully; if(f&&typeof f.getDeviceId==='function'){ const d=String(f.getDeviceId()||'').replace(/[^A-Za-z0-9]/g,''); if(d.length>=6) u='fk-'+d.slice(0,40); } }catch(e){}
+  try{ const t=window.TbView, f=window.fully, src=t||f, pre=t?'tb-':'fk-';
+    if(src&&typeof src.getDeviceId==='function'){ const d=String(src.getDeviceId()||'').replace(/[^A-Za-z0-9]/g,''); if(d.length>=6) u=pre+d.slice(0,40); } }catch(e){}
   if(!u){ try{ u=localStorage.getItem('lp_uid')||''; }catch(e){} }
   if(!ok(u)){ const m=document.cookie.match(/(?:^|; )lp_uid=([^;]+)/); u=m?decodeURIComponent(m[1]):''; }
   if(!ok(u)){ const r=new Uint8Array(12); (window.crypto||{}).getRandomValues ? crypto.getRandomValues(r) : r.forEach((x,i)=>r[i]=Math.random()*256|0);
@@ -4169,6 +4165,7 @@ async function deviceInfo(){
   try{ const f=window.fully; if(f){ const g=k=>{ try{ return typeof f[k]==='function'?String(f[k]()||''):''; }catch(e){ return ''; } };
     i.fully={manuf:g('getDeviceManufacturer'), model:g('getDeviceModel'), android:g('getAndroidVersion'), ver:g('getFullyVersion'),
       mac:g('getMacAddress'), devid:g('getDeviceId'), ssid:g('getWifiSsid')}; } }catch(e){}
+  try{ if(window.TbView) i.tbview=JSON.parse(window.TbView.getDeviceInfo()); }catch(e){}
   return i;
 }
 // Uhrzeit vom Server (LoxBerry/Miniserver) statt der Geraeteuhr: falsch
@@ -4291,7 +4288,7 @@ function connect(){
   if(PANEL_ID) q.push('panel='+encodeURIComponent(PANEL_ID));
   if(DEVICE_ID) q.push('device='+encodeURIComponent(DEVICE_ID));
   q.push('uid='+encodeURIComponent(DEVICE_UID));
-  if(kiosk()) q.push('kiosk=fully');   // Kiosk-App melden -> Typ in der Geraeteliste
+  if(kiosk()) q.push('kiosk='+lpHost.type);   // Kiosk-App melden (tbview|fully) -> Typ in der Geraeteliste
   ws=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws'
                    +(q.length?('?'+q.join('&')):''));
   // Erststart: Startseite kommt vom Server (erster Tab des Profils). Nach einem
@@ -4352,6 +4349,7 @@ function connect(){
       if(msg.title) document.title=msg.title;
       if(msg.tabMeta) tabMeta=msg.tabMeta;
       if(msg.night){ NIGHT.dim=+msg.night.dim||0; NIGHT.wake=+msg.night.wake||0; setNight(msg.night.on); }
+      if(msg.sensors) applySensors(msg.sensors);
       if(Array.isArray(msg.tabs)&&msg.tabs.length) tabsCfg=msg.tabs;
       applyDisplayCfg(msg);   // Display aus / Auto-Neustart ohne Agent (Kiosk-App)
       renderTabs(); return; }
@@ -4560,10 +4558,8 @@ function fmtTemp(t){ if(t==null||isNaN(t)) return '–'; return Number(t).toLoca
 function tdeg(v){ return v==null?'–':(Math.round(v)+'°'); }
 // Wetter (aktuell + Vorschau) als HTML - fuer den klassischen Screensaver und
 // das Wetter-Widget im Screensaver-Raster.
-// show: je Tag ['ico','mm','pop'] (Symbol, Max/Min, Regen %); Standard Symbol + Max/Min.
-function svWxHTML(w, days, det, show){
+function svWxHTML(w, days, det){
   const fc=(Array.isArray(w.forecast)?w.forecast:[]).slice(0, days||4);   // Widget: 1-3 Tage
-  const sh=Array.isArray(show)&&show.length?show:['ico','mm'];
   let html='<div class="now"><span class="ico '+esc(w.icon||'cloud')+'">'+wxSvg(w.icon)+'</span>'+
     '<span class="t">'+fmtTemp(w.temp)+'°</span>'+
     '<span class="meta"><span class="cond">'+esc(w.cond||'')+'</span>';
@@ -4571,9 +4567,8 @@ function svWxHTML(w, days, det, show){
   html+='</span></div>';
   if(fc.length) html+='<div class="fore">'+fc.map((f,i)=>
     '<div class="fc'+(det&&f.det?' wxtap" data-fi="'+i+'"':'"')+'><span class="d">'+esc(f.day||'')+'</span>'+
-    (sh.indexOf('ico')>=0?'<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>':'')+
-    (sh.indexOf('mm')>=0?'<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span>':'')+
-    (sh.indexOf('pop')>=0&&f.pop!=null?'<span class="pop">'+f.pop+' %</span>':'')+'</div>').join('')+'</div>';
+    '<span class="ico '+esc(f.icon||'cloud')+'">'+wxSvg(f.icon)+'</span>'+
+    '<span class="tt"><span class="mx">'+tdeg(f.hi)+'</span> <span class="mn">'+tdeg(f.lo)+'</span></span></div>').join('')+'</div>';
   return html;
 }
 // Termine als HTML (Ueberschrift + Eintraege).
@@ -4656,7 +4651,7 @@ function svWidgetHTML(it, sd){
   if(it.type==='clock') return svClockHTML(it);
   if(it.type==='weather'){ const nd=Math.min(it.days||3,3);   // max. 3 Tage (alte Konfig mit 4 -> 3)
     return d.weather
-    ? '<div class="sv-wx svw-wx'+(it.fewer&&nd===3?' wx-fewer':'')+'" style="--fc:'+Math.max(1,Math.min(nd,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather, nd, !!it.detail, it.show)+
+    ? '<div class="sv-wx svw-wx'+(it.h>1&&Array.isArray(d.weather.hourly)?' wx-curve':'')+'" style="--fc:'+Math.max(1,Math.min(nd,(d.weather.forecast||[]).length))+'">'+svWxHTML(d.weather, nd, !!it.detail)+
         (it.h>1&&Array.isArray(d.weather.hourly)?'<div class="fp-curve svw-curve">'+fpCurve(d.weather.hourly)+'</div>':'')+'</div>'
     : '<div class="svw-empty">Kein Wetter konfiguriert</div>'; }
   if(it.type==='calendar'){
@@ -4891,12 +4886,24 @@ function renderLayout(g, items, sd, place, camsOn){
       if(it.type==='intercom' && camsOn) svStartCams(cell);
       if(it.type==='camera' && camsOn) camSwStart(cell);
       if(it.type==='status') stBind(cell);
+      if(it.type==='weather') wxFit(cell);
     }
     if(it.type==='energy'||it.type==='chart'||it.type==='player') svPaintLive(cell,it,sd);
   });
   g.querySelectorAll('.svw').forEach(c=>{ if(!keys.has(c.dataset.k)){ c.querySelectorAll('.svw-cam img').forEach(camStop); c.remove(); } });
   tickSaverClocks();
 }
+// Wetter-Kachel: passt "Max Min" nicht in die Breite einer Tageskachel, nur Max zeigen.
+// Gemessen statt per CSS geraten - haengt von Kachelgroesse und Vorschau-Schrift ab.
+function wxFit(cell){
+  const wx=cell&&cell.querySelector('.svw-wx'); if(!wx||!cell.clientWidth) return;
+  wx.classList.remove('wx-maxonly');
+  const over=[...wx.querySelectorAll('.fc')].some(fc=>{ const t=fc.querySelector('.tt'); if(!t) return false;
+    const a=fc.getBoundingClientRect(), b=t.getBoundingClientRect();
+    return b.right>a.right+0.5||b.left<a.left-0.5; });   // nur Breite: Min weglassen hilft nur dort
+  if(over) wx.classList.add('wx-maxonly');
+}
+addEventListener('resize', ()=>{ clearTimeout(wxFit._t); wxFit._t=setTimeout(()=>document.querySelectorAll('.svw-weather-cell').forEach(wxFit),150); });
 // Kamerabilder nur bei sichtbarem Screensaver laufen lassen.
 function svStartCams(root){
   const r=root||el('svGrid');
@@ -5808,8 +5815,11 @@ function nightLayer(){
   return nightEl;
 }
 function applyNight(awake){
-  nightLayer().style.opacity =
-    (NIGHT.on && NIGHT.dim>0 && !awake) ? Math.min(90,NIGHT.dim)/100 : 0;
+  const dim=(NIGHT.on && NIGHT.dim>0 && !awake) ? Math.min(90,NIGHT.dim) : 0;
+  // TbView: echte Fensterhelligkeit (Schwarz bleibt schwarz); lehnt die App ab, dunkelt das Overlay
+  let real=false;
+  if(lpHost.type==='tbview'){ try{ real=!!lpHost.api.setDisplayBrightness(100-dim); }catch(e){} }
+  nightLayer().style.opacity = real ? 0 : dim/100;
 }
 function setNight(on){ NIGHT.on=!!on; clearTimeout(nightWakeTimer); applyNight(false); }
 function nightWake(){          // Beruehrung -> kurz voll aufhellen, dann zurueck
@@ -5827,10 +5837,28 @@ function nightWake(){          // Beruehrung -> kurz voll aufhellen, dann zuruec
 // Neu laden gegen Einfrieren erledigt die Seite ohne Agent selbst (s. neuladenFaellig).
 const DISP = { dpmsOff: 0, reloadHours: 0, reloadAt: null, agent: false, wake: false };
 let dpmsTimer=null;
-function kiosk(){
-  const f=window.fully;
-  return (f && typeof f.turnScreenOff==='function' && typeof f.turnScreenOn==='function') ? f : null;
+// Geraete-Bruecke: TbView (eigene App) -> Fully (Fallback) -> Browser. TbView hat die
+// Fully-Namen (turnScreenOn/Off, isScreenOn), kiosk() liefert also fuer beide dasselbe.
+// Ereignisse der App kommen ueber lpHost._ev(name, wert): 'prox' (nah), 'light' (0..16), 'screen'.
+const lpHost=(()=>{
+  const t=window.TbView, f=window.fully;
+  const type=t?'tbview':((f&&typeof f.turnScreenOff==='function'&&typeof f.turnScreenOn==='function')?'fully':'browser');
+  const on={};
+  return { type, api:type==='tbview'?t:(type==='fully'?f:null),
+    on(ev,fn){ (on[ev]=on[ev]||[]).push(fn); },
+    _ev(ev,v){ (on[ev]||[]).forEach(fn=>{ try{ fn(v); }catch(e){} }); } };
+})();
+function kiosk(){ return lpHost.api; }
+// Sensoren der Kiosk-App (nur TbView): Annaeherung und Helligkeit aus dem Lichtsensor.
+const SENS={ prox:'wake' };
+function applySensors(s){
+  SENS.prox=s.prox||'wake';
+  if(lpHost.type!=='tbview') return;
+  try{ lpHost.api.setProximityWake(SENS.prox!=='off'); }catch(e){}
+  try{ lpHost.api.setAutoBrightness(s.auto!==false, +s.min||10, +s.max||100); }catch(e){}
 }
+// "Display an + Dashboard schliessen": Annaeherung schliesst das Dashboard wie eine Beruehrung
+lpHost.on('prox', near=>{ if(near && SENS.prox==='open' && saverOn()) wake(); });
 function screenOff(){ const f=kiosk(); if(!f) return; _screenWasOff=true; camsDark(true); try{ f.turnScreenOff(); }catch(e){} }
 function screenOn(){ camsDark(false); const f=kiosk(); if(!f) return; _screenWasOff=false;
   try{ if(typeof f.isScreenOn!=='function' || !f.isScreenOn()) f.turnScreenOn(); }catch(e){} }

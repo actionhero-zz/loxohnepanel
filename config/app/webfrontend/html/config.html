@@ -1638,7 +1638,7 @@
             <div class="npbar"><button type="button" class="btn ghost sm" id="np_back" data-i18n>‹ Anderes Gerät wählen</button><b id="np_kind"></b></div>
             <div class="card npcard" id="np_adb" data-npf="shelly sonoff android">
               <h3 data-i18n>Automatisch einrichten per ADB</h3>
-              <p class="note" id="ad_note" data-i18n>LoxPanel installiert Fully Kiosk und den „LoxPanel“-Launcher auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.</p>
+              <p class="note" id="ad_note" data-i18n>LoxPanel installiert den „LoxPanel“-Launcher (Anzeige TbView oder Fully Kiosk) auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.</p>
               <div class="row2">
                 <div class="field"><label class="lbl" data-i18n>Gerätename</label><input type="text" id="ad_name" placeholder="Tablet Küche"></div>
                 <div class="field"><label class="lbl" data-i18n>IP-Adresse des Geräts</label><input type="text" id="ad_ip" placeholder="10.0.0.77" inputmode="decimal" autocomplete="off"></div>
@@ -1647,7 +1647,9 @@
                 <div class="field"><label class="lbl" data-i18n>Startet mit Panel</label><select id="ad_panel"></select></div>
                 <div class="field"><label class="lbl" data-i18n>Server-Adresse (dieser Server)</label><input type="text" id="ad_server" placeholder="10.0.0.55:8099"></div>
               </div>
-              <label class="chk" style="margin-top:12px"><input type="checkbox" id="ad_hasfully"><span data-i18n>Fully Kiosk ist schon auf dem Gerät – nur den Launcher einrichten</span></label>
+              <div class="field" style="margin-top:12px"><label class="lbl" data-i18n>Anzeige</label><select id="ad_display">
+                <option value="tbview" data-i18n>TbView (eigene App, empfohlen)</option><option value="fully" data-i18n>Fully Kiosk</option></select></div>
+              <label class="chk" id="ad_hasfullyl" style="margin-top:12px;display:none"><input type="checkbox" id="ad_hasfully"><span data-i18n>Fully Kiosk ist schon auf dem Gerät – nur den Launcher einrichten</span></label>
               <div class="actions"><button class="btn" id="ad_go" data-i18n>Automatisch einrichten</button><span class="toast" id="ad_toast"></span></div>
               <div class="note" id="ad_out" style="display:none;margin-top:10px"></div>
               <div class="actions" id="ad_done" style="display:none"><button class="btn ghost sm" id="ad_goto" data-i18n>Zu „Meine Geräte“</button></div>
@@ -2210,6 +2212,10 @@ function bindAppearance(p){
   document.querySelectorAll('input[data-uitext]').forEach(inp=>{
     inp.oninput=()=>{ p.ui=p.ui||{}; const k=inp.dataset.uitext;
       if(inp.value.trim()==='') delete p.ui[k]; else p.ui[k]=inp.value.trim(); markDirty(); }; });
+  // Auswahlfelder: leer = Standard (nicht gespeichert); autoBright "off" -> false
+  document.querySelectorAll('select[data-uisel]').forEach(sel=>{
+    sel.onchange=()=>{ p.ui=p.ui||{}; const k=sel.dataset.uisel, v=sel.value;
+      if(v==='') delete p.ui[k]; else p.ui[k]=(k==='autoBright')?false:v; markDirty(); }; });
   bindFont(p,'font','fFont'); bindFont(p,'fontNum','fFontNum');
   { const b=$('#fBold'); if(b) b.onchange=e=>{ p.ui=p.ui||{}; e.target.value?p.ui.bold=true:delete p.ui.bold; markDirty(); }; }
 }
@@ -2463,7 +2469,20 @@ function renderEditor(){
        '<div class="field" style="max-width:220px" id="nightWakeField"><label class="lbl">'+T('Nach Antippen hell für (Sek.)')+'</label>'+
          '<input type="number" min="0" max="300" step="5" data-ui="nightWake" value="'+
          (((p.ui||{}).nightWake==null)?'':(p.ui||{}).nightWake)+'" placeholder="20"></div>'+
-     '</div></div>'+
+     '</div><div class="lbl2" style="margin-top:12px">'+T('Sensoren')+'</div><div class="sizes">'+
+       '<div class="field" style="max-width:320px"><label class="lbl">'+T('Bei Annäherung')+'</label>'+
+         '<select data-uisel="prox">'+[['','Display einschalten'],['open','Display einschalten und Dashboard schließen'],['off','Nichts tun']].map(([v,l])=>
+           '<option value="'+v+'"'+(((p.ui||{}).prox||'')===v?' selected':'')+'>'+T(l)+'</option>').join('')+'</select></div>'+
+       '<div class="field" style="max-width:260px"><label class="lbl">'+T('Helligkeit')+'</label>'+
+         '<select data-uisel="autoBright">'+[['','Automatisch (Lichtsensor)'],['off','Systemeinstellung']].map(([v,l])=>
+           '<option value="'+v+'"'+((((p.ui||{}).autoBright===false)?'off':'')===v?' selected':'')+'>'+T(l)+'</option>').join('')+'</select></div>'+
+       '<div class="field" style="max-width:160px"><label class="lbl">'+T('Mindestens (%)')+'</label>'+
+         '<input type="number" min="1" max="100" step="5" data-ui="brightMin" value="'+
+         (((p.ui||{}).brightMin==null)?'':(p.ui||{}).brightMin)+'" placeholder="10"></div>'+
+       '<div class="field" style="max-width:160px"><label class="lbl">'+T('Höchstens (%)')+'</label>'+
+         '<input type="number" min="1" max="100" step="5" data-ui="brightMax" value="'+
+         (((p.ui||{}).brightMax==null)?'':(p.ui||{}).brightMax)+'" placeholder="100"></div>'+
+     '</div><p class="hint">'+T('Nur mit der Anzeige TbView auf Geräten mit Sensoren (z. B. Shelly Wall Display). Automatisch: dunkler Raum = Mindestwert, heller Raum = Höchstwert; nachts zusätzlich um „Abdunkeln um“ gesenkt. Fully Kiosk und Browser ignorieren diese Werte.')+'</p></div>'+
      apCardHTML(p)+'</section>'+
 
    '<section class="spane" data-sub="tabs"><div class="card"><h3>Tabs</h3>'+
@@ -3172,11 +3191,6 @@ function tbSideHTML(p){
   if(it.type==='calendar') h+='<div class="hintp">'+T('Quelle: System → Kalender.')+'</div>';
   if(it.type==='weather') h+='<div class="lbl2">'+T('Vorschau (Tage)')+'</div><div class="seg">'+
     [1,2,3].map(n=>'<button data-wxd="'+n+'"'+(Math.min(it.days||3,3)===n?' class="on"':'')+'>'+n+'</button>').join('')+'</div>';
-  if(it.type==='weather'){ const sh=it.show||['ico','mm'];   // je Tag: Symbol, Max/Min, Regen % (mehrfach waehlbar)
-    h+='<div class="lbl2">'+T('Je Tag anzeigen')+'</div><div class="seg">'+
-      [['ico','Symbol'],['mm','Max / Min'],['pop','Regen %']].map(([k,l])=>'<button data-wxs="'+k+'"'+(sh.indexOf(k)>=0?' class="on"':'')+'>'+T(l)+'</button>').join('')+'</div>'+
-      '<div class="hintp">'+T('Regen % liefert Open-Meteo, der Loxone-Wetterdienst nicht.')+'</div>'+
-      '<label class="chk" style="margin-top:8px"><input type="checkbox" id="tbWxFew"'+(it.fewer?' checked':'')+'> <span>'+T('Schmale Kachel: 2 Tage statt Max über Min')+'</span></label>'; }
   if(it.type==='weather') h+='<label class="chk" style="margin-top:8px"><input type="checkbox" id="tbWxDet"'+(it.detail?' checked':'')+'> <span>'+T('Detailansicht beim Antippen eines Tages')+'</span></label>'+
     '<div class="hintp">'+T('Öffnet ein Fenster mit Temperaturverlauf, Regen je Stunde, Wind, UV und Sonnenzeiten des Tages.')+'</div>';
   if(it.type==='status'){   // Status-Ampel: bis zu 4 Bausteine als Chips (Haken + Ziehen), optional Verlauf
@@ -3259,11 +3273,6 @@ function tbBindSide(p){
   { const cb=$('#tbCamBack'); if(cb) cb.onchange=()=>{ let n=Math.round(+cb.value); if(!(n>=0)) n=3; n=Math.min(240,n);   // Standard 3 min
       if(n===3) delete it.back; else it.back=n; redo(); }; }
   host.querySelectorAll('[data-wxd]').forEach(b=>b.onclick=()=>{ const n=+b.dataset.wxd; if(n===3) delete it.days; else it.days=n; redo(); });   // Standard 3 Tage
-  host.querySelectorAll('[data-wxs]').forEach(b=>b.onclick=()=>{ const k=b.dataset.wxs; let sh=(it.show||['ico','mm']).slice(); const i=sh.indexOf(k);
-    if(i>=0){ if(sh.length===1){ snack(T('Mindestens eine Angabe je Tag.')); return; } sh.splice(i,1); } else sh.push(k);
-    sh=['ico','mm','pop'].filter(x=>sh.indexOf(x)>=0);
-    if(sh.join()==='ico,mm') delete it.show; else it.show=sh; redo(); });   // Standard Symbol + Max/Min wird nicht gespeichert
-  { const fw=host.querySelector('#tbWxFew'); if(fw) fw.onchange=()=>{ if(fw.checked) it.fewer=true; else delete it.fewer; redo(); }; }
   stPickBind($('#tbStCh'), ids=>{ it.ctls=ids; redo(); }, renderTabEditor);
   { const tr=$('#tbStTrk'); if(tr) tr.onchange=()=>{ if(tr.value) it.trk=tr.value; else delete it.trk; redo(); }; }
   host.querySelectorAll('[data-stlook]').forEach(b=>b.onclick=()=>{ if(b.dataset.stlook==='color') it.look='color'; else delete it.look; redo(); });
@@ -3451,7 +3460,7 @@ function markDirty(){ dirty=true; dirtyN++; const t=$('#toast'); if(t){ t.classN
 let SAVED_SNAP=null;
 function snapSaved(){ try{ SAVED_SNAP=JSON.parse(JSON.stringify(PANELS)); }catch(e){ SAVED_SNAP=null; } }
 function stable(v){ return JSON.stringify(v,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.keys(x).sort().reduce((o,kk)=>(o[kk]=x[kk],o),{}):x); }
-const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
+const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',prox:'Bei Annäherung',autoBright:'Helligkeit automatisch',brightMin:'Mindesthelligkeit',brightMax:'Höchsthelligkeit',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
   nightWake:'Nach Antippen hell',phone:'Panel-Größe (Handy)',ambBg:'Farbverlauf Hintergrund',ambClock:'Farbverlauf Uhrzeit',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
   nudgeX:'Horizontaler Versatz',iconSize:'Symbolgröße',nameSize:'Namensgröße',subSize:'Zusatztext-Größe',bold:'Fett',dblTapOff:'Doppeltipp',alarmsEnabled:'Wecker',
   lang:'Sprache',saverFcSize:'Wettervorschau-Größe',tileShadow:'Kachel-Schatten'};
@@ -4437,7 +4446,7 @@ async function loadPanelIds(){
     });
   }catch(e){ PANEL_IDS=[]; }
 }
-const TYPE_LABEL={agent:'Agent', fully:'Fully Kiosk', browser:'Browser'};
+const TYPE_LABEL={agent:'Agent', tbview:'TbView', fully:'Fully Kiosk', browser:'Browser'};
 function profSelect(cls, cur){
   return '<select class="'+cls+'"><option value="">'+T('(Standard)')+'</option>'+
     PANEL_IDS.map(id=>'<option value="'+esc(id)+'"'+(cur===id?' selected':'')+'>'+esc(id)+'</option>').join('')+'</select>';
@@ -4546,7 +4555,7 @@ async function devBrightness(row, mode){
   }catch(e){ if(v) v.textContent='–'; flash($('#ag_toast'),'Fehler: '+e,false); }
 }
 function anonRow(a, typed){
-  const info=[a.ip, a.kiosk==='fully'?'Fully Kiosk':T('Browser'), a.profile?(T('Ansicht')+' '+a.profile):''].filter(Boolean).join(' · ');
+  const info=[a.ip, a.kiosk==='fully'?'Fully Kiosk':(a.kiosk==='tbview'?'TbView':T('Browser')), a.profile?(T('Ansicht')+' '+a.profile):''].filter(Boolean).join(' · ');
   return '<div class="ag" data-anon="'+esc(a.ip)+'">'+
     '<span class="dot on"></span><span class="agn">'+T('Ohne Kennung')+'</span>'+
     '<span class="agip">'+esc(info)+'</span><span class="sp"></span>'+
@@ -4651,7 +4660,7 @@ async function deviceAction(act, name, ip, panel, devip){
       if(!confirm(T('LoxPanel-Launcher auf „')+name+T('“ einrichten?')+'\n\n'+
         (shelly?T('Shelly Wall Display: Der Launcher wird Startbildschirm mit den Symbolen „LoxPanel“ und „Shelly“.')
                :T('Android-Tablet: Startbildschirm bleibt, das Symbol „LoxPanel“ erscheint im App-Menü.'))+'\n\n'+
-        T('Voraussetzung: Fully Kiosk ist installiert und ADB über WLAN (Port 5555) aktiv. Beim ersten Mal am Panel „USB-Debugging zulassen?“ mit „Immer erlauben“ bestätigen und erneut starten.'))) return;
+        T('Voraussetzung: ADB über WLAN (Port 5555) aktiv; die Anzeige (TbView oder Fully) bleibt wie eingestellt. Beim ersten Mal am Panel „USB-Debugging zulassen?“ mit „Immer erlauben“ bestätigen und erneut starten.'))) return;
       if(!devip){ flash($('#ag_toast'),T('IP des Geräts unbekannt – Visu einmal am Gerät öffnen.'),false); return; }
       flash($('#ag_toast'), T('Richte Launcher per adb ein …'), true);
       j=await postJson('/api/panel/launcher',{ip:devip, server:location.host, panel:panel||'', device:shelly?'shelly':'android', name});
@@ -5125,6 +5134,8 @@ function npShow(k){
 document.querySelectorAll('.nptile').forEach(b=>b.onclick=()=>npShow(b.dataset.npk));
 $('#np_back').onclick=()=>npShow('');
 $('#ad_goto').onclick=()=>goTo('devices','panels');
+// TbView braucht kein Fully -> Fully-Haken nur bei Anzeige "Fully Kiosk"
+$('#ad_display').onchange=()=>{ $('#ad_hasfullyl').style.display=$('#ad_display').value==='fully'?'':'none'; };
 $('#ad_go').onclick=async()=>{
   const name=$('#ad_name').value.trim(), ip=$('#ad_ip').value.trim(), panel=$('#ad_panel').value, server=$('#ad_server').value.trim();
   const t=$('#ad_toast'), out=$('#ad_out');
@@ -5132,7 +5143,8 @@ $('#ad_go').onclick=async()=>{
   const btn=$('#ad_go'); btn.disabled=true; out.style.display='block'; $('#ad_done').style.display='none';
   const lines=[]; const show=()=>{ out.innerHTML=lines.map(l=>'<div>'+esc(l)+'</div>').join(''); };
   try{
-    if(!$('#ad_hasfully').checked){
+    const display=$('#ad_display').value;
+    if(display==='fully' && !$('#ad_hasfully').checked){
       lines.push(T('Lade Fully Kiosk und installiere per adb … (bis zu einer Minute)')); show();
       const j=await postJson('/api/kiosk/fully',{device:name, ip});
       lines.pop();
@@ -5140,7 +5152,7 @@ $('#ad_go').onclick=async()=>{
       lines.push('✓ '+T('Fully Kiosk')+' '+(j.version||'')+' '+T('installiert')); show();
     }
     lines.push(T('Richte Launcher per adb ein …')); show();
-    const j=await postJson('/api/panel/launcher',{ip, server, panel:panel||'', device:(NP_KINDS[NP_KIND]||{}).dev||'android', name});
+    const j=await postJson('/api/panel/launcher',{ip, server, panel:panel||'', device:(NP_KINDS[NP_KIND]||{}).dev||'android', name, display});
     lines.pop();
     if(j.ok){ lines.push('✓ '+(j.fully?T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))); 
       lines.push(T('Sobald das Gerät die Visu geöffnet hat, erscheint es unter „Meine Geräte“.')); show();

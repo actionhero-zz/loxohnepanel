@@ -1,10 +1,12 @@
 #!/bin/bash
 # Baut LoxPanel-Launcher.apk ohne Gradle/Android Studio.
-# Benoetigt (Debian/Ubuntu): apt install aapt apksigner zipalign dalvik-exchange
-#                            android-sdk-platform-23 default-jdk
+# Benoetigt: apt install aapt apksigner zipalign default-jdk, dazu android.jar (API 28)
+# und r8.jar (D8). Auf claude-pi liegen beide in ~/projekte/tools/android.
 set -euo pipefail
 cd "$(dirname "$0")"
-ANDROID_JAR=${ANDROID_JAR:-/usr/lib/android-sdk/platforms/android-23/android.jar}
+TOOLS=${TOOLS:-$HOME/projekte/tools/android}
+ANDROID_JAR=${ANDROID_JAR:-$TOOLS/p28/android.jar}   # API 28: TbView nutzt APIs ab 26 (zur Laufzeit geprueft)
+R8_JAR=${R8_JAR:-$TOOLS/r8.jar}
 # Schluessel liegt bewusst im Git: Updates per "adb install -r" gehen nur mit
 # DEMSELBEN Schluessel. Er signiert nur diese Sideload-App (kein Store-Konto).
 KEYSTORE=${KEYSTORE:-launcher.keystore}
@@ -16,10 +18,10 @@ rm -rf "$OUT" && mkdir -p "$OUT/classes" "$OUT/gen" "$(dirname "$DEST")"
 
 # Ressourcen + Manifest -> R.java und unsigniertes APK
 aapt package -f -m -J "$OUT/gen" -M AndroidManifest.xml -S res -I "$ANDROID_JAR" -F "$OUT/unsigned.apk"
-# Java -> Bytecode (Java 8, fuer dx) -> classes.dex
+# Java -> Bytecode (Java 8) -> classes.dex (D8 aus r8.jar; dx/alte d8 stuerzen bei javac 21 ab)
 javac -source 8 -target 8 -bootclasspath "$ANDROID_JAR" -classpath "$ANDROID_JAR" -Xlint:-options \
       -d "$OUT/classes" $(find src "$OUT/gen" -name '*.java')
-dalvik-exchange --dex --output="$OUT/classes.dex" "$OUT/classes"
+java -cp "$R8_JAR" com.android.tools.r8.D8 --release --min-api 19 --lib "$ANDROID_JAR" --output "$OUT" $(find "$OUT/classes" -name '*.class')
 (cd "$OUT" && aapt add unsigned.apk classes.dex > /dev/null)
 
 # Signieren (Schluessel wird beim ersten Build erzeugt)

@@ -10,27 +10,14 @@ Ausführliche Übergabe: `docs/UEBERGABE-LOKAL.md`.
 - Code-Kommentare deutsch **ohne Umlaute**, knapp. UI-Texte mit Umlauten über `T('…')`.
 - Vor jedem Commit kurz den Nutzer fragen.
 
-## Arbeitsteilung (zwei Instanzen)
-- **Cloud-Instanz (claude.ai/code): nur der adb-/Android-Teil.**
-  - `android/panel-launcher/**` (Launcher-App, `build.sh`, `launcher.keystore`)
-  - `config/app/android/**` (fertige APK + `.version`)
-  - adb-Funktionen in `webvisu.py`: `_adb`, `api_panel_launcher`,
-    `api_panel_launcher_version`, `App.launcher_version`, `App.kiosk_restart`,
-    `App.fully_install`, `App.device_brightness`, `App.device_touch_sound`,
-    `App.device_adblog` und ihre `/api/kiosk/*`, `/api/panel/launcher*`,
-    `/api/device/adblog`-Handler
-  - Config-Seite: Geräte-Abschnitte „Einrichten per adb“, Helligkeit/Tipp-Töne,
-    Geräte-Log (`devLauncherVer`, `devBrightness`, `devTouchSound`, `deviceAction`
-    für `launcher`/`fullyinstall`/`kioskrestart`/`devreboot`)
-- **Lokale Instanz (Mac): alles andere** – Panel, Bausteine, Config, Theme,
-  Statusleiste, Diagnose, Docker usw. **und alle Releases.**
-- Muss eine Seite etwas im Bereich der anderen ändern: nur das Nötigste, im Commit
-  klar benennen.
+## Arbeitsort
+- Seit 2026-10-10 alles auf claude-pi (`/home/dietpi/projekte/loxohnepanel`), inkl. Android/adb.
+  Teile dürfen in die Cloud ausgelagert werden. Commit/Push/Release macht ein günstiger Agent.
+- Testserver: Docker `lpdev` (Port 8099, Quellcode eingebunden), Browser-Tests mit Chromium +
+  `~/projekte/tools/browser/*.mjs`. Shelly X2i Test-Gerät: 192.168.1.247 (adb).
 
 ## Git / Release
-- Cloud pusht **nur** auf den Branch `claude/adb` – keine Versionsnummer, kein
-  Changelog, kein main. Changelog-Vorschlag steht im Commit-Text.
-- Lokal: `git fetch origin claude/adb && git merge origin/claude/adb`, dann Release:
+- Release nur auf „commit“ des Nutzers, ausgeführt von einem günstigen Agenten:
   1. Version erhöhen in `plugin.cfg`, `release.cfg`, `APP_VERSION` (webvisu.py)
   2. Changelog-Eintrag ganz oben in `README.md` unter „Eigene Funktionen dieses
      Forks“ (neueste zuerst, nichts angepinnt): `- **Titel (0.19.x)** — Text`
@@ -39,8 +26,8 @@ Ausführliche Übergabe: `docs/UEBERGABE-LOKAL.md`.
   5. Plugin-ZIP: `git archive --format=zip --prefix=loxpanelfav/ -o loxpanelfav-0.19.x.zip HEAD`
 - Commit-Autor: `actionhero-zz <najrefisch@googlemail.com>`.
 
-## Android-Launcher
-- APK nur in der Cloud bauen (`android/panel-launcher/build.sh`, braucht Debian-
-  Pakete `aapt apksigner zipalign dalvik-exchange android-sdk-platform-23` + JDK).
+## Android-Launcher / TbView
+- APK auf dem Pi bauen: `android/panel-launcher/build.sh` (aapt, apksigner, zipalign, JDK,
+  dazu `~/projekte/tools/android/{p28/android.jar,r8.jar}`). TbView: `docs/TBVIEW.md`.
 - `launcher.keystore` nie ersetzen – sonst klappt `adb install -r` nicht mehr.
 - Bei Änderungen `versionCode`/`versionName` im Manifest erhöhen; `targetSdkVersion` ≥ 24.

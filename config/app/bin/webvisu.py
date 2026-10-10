@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.112"
+APP_VERSION = "0.19.113"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -292,6 +292,12 @@ def _clean_devinfo(d) -> dict:
               if f.get(k) not in (None, "") and str(f.get(k)).strip()}
         if fo:
             out["fully"] = fo
+    t = d.get("tbview")                           # eigene Kiosk-App (getDeviceInfo)
+    if isinstance(t, dict):
+        to = {k: str(t.get(k)).strip()[:60] for k in ("model", "android", "ver")
+              if t.get(k) not in (None, "") and str(t.get(k)).strip()}
+        if to:
+            out["tbview"] = to
     return out
 
 
@@ -302,6 +308,9 @@ def _ua_parts(info: dict) -> tuple[str, str]:
     if info.get("fully"):
         osn = "Android " + info["fully"].get("android", "") if info["fully"].get("android") else "Android"
         return osn.strip(), "Fully Kiosk " + info["fully"].get("ver", "")
+    if info.get("tbview"):
+        t = info["tbview"]
+        return ("Android " + t.get("android", "")).strip(), ("TbView " + t.get("ver", "")).strip()
     if "iPad" in ua or ("Macintosh" in ua and touch > 1):
         osn = "iPadOS"
     elif "iPhone" in ua:
@@ -341,14 +350,16 @@ def _ua_parts(info: dict) -> tuple[str, str]:
 
 def guess_device_model(info: dict) -> str:
     """Geraetetyp (DEVICE_MODELS-Schluessel) aus dem Steckbrief schaetzen."""
-    f = info.get("fully") or {}
+    f = info.get("fully") or info.get("tbview") or {}
     man = (f.get("manuf") or "").lower()
     mdl = (f.get("model") or info.get("model") or "").lower()
     ua = info.get("ua", "")
     sw, sh = info.get("sw", 0) or 0, info.get("sh", 0) or 0
     square = sw and sh and abs(sw - sh) <= 8
     short = min(sw, sh) if sw and sh else 0
-    if "shelly" in man or "shelly" in mdl or mdl.startswith("sawd") or "wall display" in mdl:
+    # Shelly-Codenamen (Build.MODEL unter TbView, z. B. X2i = "Jenna")
+    if "shelly" in man or "shelly" in mdl or mdl.startswith("sawd") or "wall display" in mdl \
+            or mdl in ("jenna", "blake", "maverick", "cally", "dayna"):
         return "shelly-x1" if square else "shelly-x2"
     if "sonoff" in man or "itead" in man or "nspanel" in mdl:
         return "nspro86" if square else "nspro120"
@@ -750,13 +761,6 @@ def _widget_entry(it: dict, x: int, y: int, w: int, h: int) -> dict | None:
             e["days"] = d                         # Vorschau-Tage (Standard 3 = Maximum; alte 4 -> 3)
         if it.get("detail") is True:
             e["detail"] = True                    # Antippen eines Tages oeffnet die Tagesdetails
-        show = it.get("show")
-        if isinstance(show, list):
-            sh = [k for k in ("ico", "mm", "pop") if k in show]
-            if sh and sh != ["ico", "mm"]:
-                e["show"] = sh                    # je Tag: Symbol, Max/Min, Regen % (Standard Symbol + Max/Min)
-        if it.get("fewer") is True:
-            e["fewer"] = True                     # schmale Kachel: 2 Tage statt Max ueber Min
     if it["type"] == "clock":
         e["align"] = it.get("align") if it.get("align") in ("left", "center", "right") else "center"
         e["date"] = it.get("date") if it.get("date") in ("none", "short", "long") else "short"
@@ -3386,6 +3390,19 @@ class App:
 
         return {"dim": _num("nightDim", 0, 90, 0), "wake": _num("nightWake", 0, 300, 20)}
 
+    def panel_sensors(self, pid: str | None) -> dict:
+        """Sensoren der Kiosk-App (TbView) je Panel: `prox` = Annaeherung (wake: Display an,
+        open: Display an + Dashboard schliessen, off: aus), `auto` = Helligkeit aus dem
+        Lichtsensor, `min`/`max` = Helligkeitsbereich in Prozent. Theme-Vorgabe, Profil ueberschreibt."""
+        ui = {**self.theme.get("ui", {}),
+              **((self.panels.get(pid or "") or {}).get("ui") or {})}
+        lo = ui.get("brightMin")
+        hi = ui.get("brightMax")
+        lo = max(1, min(100, int(lo))) if isinstance(lo, (int, float)) else 10
+        hi = max(lo, min(100, int(hi))) if isinstance(hi, (int, float)) else 100
+        return {"prox": ui.get("prox") if ui.get("prox") in ("wake", "open", "off") else "wake",
+                "auto": ui.get("autoBright") is not False, "min": lo, "max": hi}
+
     def night_control_options(self) -> list:
         """Bausteine, die als Nacht-Ausloeser taugen: alles mit einem `active`-State
         (Switch, InfoOnlyDigital, PresenceDetector ...). Damit laesst sich auch ein
@@ -3541,7 +3558,7 @@ class App:
             model = cfg.get("model") or ""
             fully = bool(cfg.get("fully")) or e["kiosk"] == "fully"
             e["model"] = model
-            e["type"] = "agent" if e["agent"] else ("fully" if fully else "browser")
+            e["type"] = "agent" if e["agent"] else ("tbview" if e["kiosk"] == "tbview" else ("fully" if fully else "browser"))
             # Aktionen je Geraetetyp: Android -> adb; Fully nur wenn angegeben
             os_ = (DEVICE_MODELS.get(model) or {}).get("os")
             e["caps"] = ([c for c, ok in (("kioskrestart", os_ == "android" and fully),
@@ -4032,6 +4049,7 @@ class App:
         ui = {k: v for k, v in (raw.get("ui") or {}).items()
               if k in ("iconSize", "nameSize", "subSize", "font", "fontNum", "nudgeX",
                        "dpmsOff", "reloadHours", "nightDim", "nightWake",
+                       "prox", "autoBright", "brightMin", "brightMax",
                        "cols", "rows", "fill", "baseColor", "design",
                        "textColor", "bold", "lang", "player", "panes", "split", "phone", "bigValues",
                        "saverFcSize",
@@ -4191,6 +4209,13 @@ class App:
                 cui["nightDim"] = max(0, min(90, int(ui["nightDim"])))    # Nachts abdunkeln in %
             if isinstance(ui.get("nightWake"), (int, float)):
                 cui["nightWake"] = max(0, min(300, int(ui["nightWake"])))  # Aufhellen bei Beruehrung, Sek.
+            if ui.get("prox") in ("open", "off"):
+                cui["prox"] = ui["prox"]                 # Annaeherung (Standard "wake" wird nicht gespeichert)
+            if ui.get("autoBright") is False:
+                cui["autoBright"] = False                # Helligkeit nach Systemeinstellung statt Lichtsensor
+            for k in ("brightMin", "brightMax"):
+                if isinstance(ui.get(k), (int, float)) and not isinstance(ui.get(k), bool):
+                    cui[k] = max(1, min(100, int(ui[k])))   # Helligkeitsbereich in %
             if ui.get("cols") in (2, 3):
                 cui["cols"] = int(ui["cols"])   # Spalten: 2 oder 3
             if ui.get("rows") in (2, 3):
@@ -10207,6 +10232,7 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
 
     target = f"{ip}:{port}"
     name = str(d.get("name") or "").strip()[:60]   # Geraetename -> erscheint unter Geraete
+    display = d.get("display") if d.get("display") in ("tbview", "fully") else ""   # Anzeige; leer = unveraendert
     q = ([f"panel={panel}"] if panel else []) + ([f"device={quote(name)}"] if name else [])
     url = f"http://{server}/" + ("?" + "&".join(q) if q else "")
     steps: list[dict] = []
@@ -10256,10 +10282,10 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
         # URL speichern (startet dabei Fully). adb shell setzt die Argumente zu
         # einer Kommandozeile zusammen -> URL fuer die Shell am Panel quoten.
         code, out = await _adb("-s", target, "shell",
-                               f"am start -n {LAUNCHER_PKG}/.Main --es url {shlex.quote(url)}", timeout=15)
+                               f"am start -n {LAUNCHER_PKG}/.Main --es url {shlex.quote(url)}" + (f" --es mode {display}" if display else ""), timeout=15)
         if not step("URL eintragen", code, out, ok=(code == 0 and "rror" not in out)):
             return web.json_response({"ok": False, "steps": steps, "error": "URL konnte nicht gesetzt werden"})
-    log.info("LoxPanel-Launcher auf %s eingerichtet (%s, URL %s)", target, device, url)
+    log.info("LoxPanel-Launcher auf %s eingerichtet (%s, %s, URL %s)", target, device, display or "Anzeige unveraendert", url)
     return web.json_response({"ok": True, "steps": steps, "url": url, "fully": has_fully,
                               "version": max(apk_ver, have_ver)})
 
@@ -10616,7 +10642,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
     # Fully auch am Browser-Kennzeichen erkennen (ohne PLUS fehlt oft ?kiosk=fully)
     if not kiosk and "fully" in (request.headers.get("User-Agent") or "").lower():
         kiosk = "fully"
-    app.conn_info[ws] = {"dev": dev, "kiosk": kiosk if kiosk == "fully" else "",
+    app.conn_info[ws] = {"dev": dev, "kiosk": kiosk if kiosk in ("fully", "tbview") else "",
                          "ip": request.remote or "", "ts": time.time()}
     first_tab = prof["tabs"][0] if prof["tabs"] else "favoriten"
     app.conn_route[ws] = {"view": "tab", "tab": first_tab}
@@ -10642,6 +10668,7 @@ async def ws_handler(request: web.Request) -> web.WebSocketResponse:
                             "reloadHours": app.panel_reload(prof["id"]),
                             "reloadAt": NEULADEN_STUNDE,   # nachts neu laden, wenn reloadHours fehlt
                             "night": {**app.panel_night(prof["id"]), "on": app._night_on},
+                            "sensors": app.panel_sensors(prof["id"]),
                             "screensaverCam": app._screensaver_cam(),
                             "camCrop": app.cam_crops(),
                             "motion": prof["motion"],

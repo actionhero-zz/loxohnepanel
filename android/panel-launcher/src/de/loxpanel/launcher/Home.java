@@ -33,7 +33,7 @@ public class Home extends Activity {
         @Override public void run() {
             if (left <= 0) {
                 stopCountdown();
-                Fully.start(Home.this, false);
+                Kiosk.openPanel(Home.this, false);
                 return;
             }
             countdown.setText("LoxPanel startet in " + left + " s · Tippen bricht ab");
@@ -50,7 +50,7 @@ public class Home extends Activity {
         row.setGravity(Gravity.CENTER);
 
         row.addView(tile(getResources().getDrawable(R.drawable.icon), "LoxPanel", new View.OnClickListener() {
-            @Override public void onClick(View v) { Fully.start(Home.this, false); }
+            @Override public void onClick(View v) { Kiosk.openPanel(Home.this, false); }
         }));
         row.addView(tile(StockHome.icon(this), StockHome.label(this), new View.OnClickListener() {
             @Override public void onClick(View v) {
@@ -79,8 +79,8 @@ public class Home extends Activity {
     protected void onResume() {
         super.onResume();
         // Bei jedem Erscheinen neu zaehlen (Boot, Absturz/Verlassen von Fully).
-        if (getPackageManager().getLaunchIntentForPackage(Fully.PKG) == null) {
-            countdown.setText("");   // ohne Fully kein Autostart
+        if (!Kiosk.enabled(this) && getPackageManager().getLaunchIntentForPackage(Fully.PKG) == null) {
+            countdown.setText("");   // ohne TbView-Modus und ohne Fully kein Autostart
             return;
         }
         left = AUTOSTART_S;

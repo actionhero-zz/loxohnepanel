@@ -284,7 +284,7 @@
       // Gerät hinzufügen / Meine Geräte (Vereinheitlichung)
       'Welches Gerät?': 'Which device?',
       'Erst das Gerät wählen – danach siehst du nur die passenden Schritte.': 'Pick the device first – then you only see the matching steps.',
-      'Android-Geräte (Shelly, Sonoff, Tablet) richtet LoxPanel auf Wunsch automatisch ein: per ADB über WLAN, ohne Kabel und ohne Eingaben am Gerät außer einer Bestätigung. Linux-Panels bekommen den Agenten per SSH. iPad, iPhone und Browser brauchen nur die Adresse.': 'LoxPanel can set up Android devices (Shelly, Sonoff, tablet) automatically: via ADB over Wi-Fi, no cable and nothing to enter on the device except one confirmation. Linux panels get the agent via SSH. iPad, iPhone and browsers only need the address.',
+      'Android-Geräte (Shelly, Sonoff, Tablet) richtet tilebert auf Wunsch automatisch ein: per ADB über WLAN, ohne Kabel und ohne Eingaben am Gerät außer einer Bestätigung. Linux-Panels bekommen den Agenten per SSH. iPad, iPhone und Browser brauchen nur die Adresse.': 'tilebert can set up Android devices (Shelly, Sonoff, tablet) automatically: via ADB over Wi-Fi, no cable and nothing to enter on the device except one confirmation. Linux panels get the agent via SSH. iPad, iPhone and browsers only need the address.',
       'Shelly Wall Display': 'Shelly Wall Display',
       'Sonoff NSPanel Pro': 'Sonoff NSPanel Pro',
       'Wandpanel (Android)': 'Wall panel (Android)',
@@ -296,7 +296,7 @@
       'Safari, Chrome …': 'Safari, Chrome …',
       '‹ Anderes Gerät wählen': '‹ Choose another device',
       'Automatisch einrichten per ADB': 'Set up automatically via ADB',
-      'LoxPanel installiert Fully Kiosk und den „LoxPanel“-Launcher auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.': 'LoxPanel installs Fully Kiosk and the “LoxPanel” launcher on the device and enters the start address. You only need to switch on ADB over Wi-Fi on the device (Settings → Developer options → USB debugging / ADB over Wi-Fi, port 5555). The first time, the device asks “Allow USB debugging?” – confirm with “Always allow” and press the button again.',
+      'tilebert installiert die App „TbViewer“ auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.': 'tilebert installs the “TbViewer” app on the device and enters the start address. You only need to switch on ADB over Wi-Fi on the device (Settings → Developer options → USB debugging / ADB over Wi-Fi, port 5555). The first time, the device asks “Allow USB debugging?” – confirm with “Always allow” and press the button again.',
       'Gerätename': 'Device name',
       'IP-Adresse des Geräts': 'Device IP address',
       'Fully Kiosk ist schon auf dem Gerät – nur den Launcher einrichten': 'Fully Kiosk is already on the device – only set up the launcher',

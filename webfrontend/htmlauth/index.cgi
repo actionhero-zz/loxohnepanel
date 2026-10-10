@@ -88,9 +88,9 @@ sub setup_panel {
     my $list = $steps ? "<ul style='margin:8px 0 0;padding-left:18px'>$steps</ul>" : "";
     my $nofully = ($j->{ok} && !$j->{fully})
         ? "<br><b>Fully Kiosk fehlt noch</b> &ndash; bitte von <a href='https://www.fully-kiosk.com' target='_blank'>fully-kiosk.com</a> "
-          . "auf dem Panel installieren, danach das LoxPanel-Symbol antippen." : "";
+          . "auf dem Panel installieren, danach das tilebert-Symbol antippen." : "";
     return "<div class='alert " . ($nofully ? "alert-warning" : "alert-success") . "'>Launcher eingerichtet &ndash; "
-         . "das LoxPanel-Symbol &ouml;ffnet " . h($j->{url}) . " in Fully Kiosk.$nofully$list</div>" if $j->{ok};
+         . "das tilebert-Symbol &ouml;ffnet " . h($j->{url}) . " in Fully Kiosk.$nofully$list</div>" if $j->{ok};
     return "<div class='alert alert-danger'>" . h($j->{error} // 'Fehler') . "$list</div>";
 }
 
@@ -189,7 +189,7 @@ elsif ($action eq 'upload_backup') {
         binmode $fh;
         my $data = do { local $/; <$fh> } // '';
         if (length($data) < 20 || substr($data, 0, 2) ne "\x1f\x8b") {
-            $msg = "<div class='alert alert-danger'>Keine LoxPanel-Sicherung (.tar.gz) &ndash; Datei verworfen.</div>";
+            $msg = "<div class='alert alert-danger'>Keine tilebert-Sicherung (.tar.gz) &ndash; Datei verworfen.</div>";
         } elsif (length($data) > 50 * 1024 * 1024) {
             $msg = "<div class='alert alert-danger'>Datei zu gro&szlig; (max. 50 MB).</div>";
         } else {
@@ -324,7 +324,7 @@ my $backups_html = $blist
     : "<p class='lpx-note'>Noch keine Sicherung vorhanden.</p>";
 
 # ---- Ausgabe im LoxBerry-Rahmen ----
-LoxBerry::Web::lbheader("LoxPanel Favoriten V$version", $repo, "");
+LoxBerry::Web::lbheader("tilebert V$version", $repo, "");
 
 # Status-Kacheln (Punkte als viereckige Pillen, Farben wie im Panel)
 my ($cst, $ccl) = $running ? ("l&auml;uft", "ok") : ("gestoppt", "bad");
@@ -412,7 +412,7 @@ print <<"HTML";
   <section class="lpx-hero">
     <div class="lpx-top">
       <div class="lpx-brand"><div class="lpx-logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-        <div><b>LoxPanel Favoriten</b><span>Wandpanels, Tablets &amp; Handy f&uuml;r Loxone</span></div></div>
+        <div><b>tilebert</b><span>ein LoxPanel Fork von Lenardo1 &ndash; Wandpanels, Tablets &amp; Handy f&uuml;r Loxone</span></div></div>
       <a class="lpx-ver" href="$repo" target="_blank" rel="noopener" title="GitHub-Repository &ouml;ffnen">V $ver_html</a>
     </div>
     <div class="lpx-stats">

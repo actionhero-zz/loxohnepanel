@@ -76,7 +76,7 @@ log = logging.getLogger("loxpanel.webvisu")
 # kennt sie nicht). Bei jedem Release-Bump hier mitziehen - einziger
 # zuverlaessiger Weg zu pruefen, ob ein Update den Container tatsaechlich neu
 # gebaut hat (z.B. bei einem haengenden Docker-Build-Cache).
-APP_VERSION = "0.19.114"
+APP_VERSION = "0.20.0"
 _WEB = Path(__file__).resolve().parent.parent / "webfrontend" / "html"
 HTML = _WEB / "panel.html"
 CONFIG_HTML = _WEB / "config.html"
@@ -199,13 +199,13 @@ DEVICE_MODELS = {
     "shelly-x2": {"label": "Shelly Wall Display X2 / X2i", "os": "android", "shelly": True, "scale": "auto",
                   "panes": 2,
                   "tips": ["Querformat, 2 Panels nebeneinander (Profil: Panel-Größe „2 Panels“).",
-                           "Fully Kiosk + LoxPanel-Launcher: Gerät hinzufügen → Automatisch einrichten per ADB.",
+                           "TbViewer: Gerät hinzufügen → Automatisch einrichten per ADB.",
                            "Display aus/an über Fully (JavaScript-Schnittstelle einschalten)."]},
     "shelly-x1": {"label": "Shelly Wall Display X1i", "os": "android", "shelly": True, "scale": "auto",
                   "panes": 1,
                   "tips": ["720×720 – Zoom „Automatisch“ vergrößert das 480er-Raster auf den ganzen Schirm.",
                            "Profil: Panel-Größe „1 Panel“.",
-                           "Fully Kiosk + LoxPanel-Launcher per ADB (Gerät hinzufügen)."]},
+                           "TbViewer per ADB (Gerät hinzufügen)."]},
     "nspro86": {"label": "Sonoff NSPanel Pro 86", "os": "android", "scale": "off", "panes": 1,
                 "tips": ["480×480 – passt 1:1, kein Zoom nötig. Profil: „1 Panel“.",
                          "Kiosk-App (Fully) mit Start-URL inkl. ?device=… einrichten."]},
@@ -2678,7 +2678,7 @@ class App:
             ["favoriten", "zentral", "raeume", "kategorien"]
         return {
             "id": pid or "default",
-            "title": prof.get("title") or "LoxPanel",
+            "title": prof.get("title") or "tilebert",
             "tabs": list(tabs),
             "rooms": self._resolve_ids(prof.get("rooms"), self.rooms),
             "cats": self._resolve_ids(prof.get("cats"), self.cats),
@@ -3401,7 +3401,8 @@ class App:
         lo = max(1, min(100, int(lo))) if isinstance(lo, (int, float)) else 10
         hi = max(lo, min(100, int(hi))) if isinstance(hi, (int, float)) else 100
         return {"prox": ui.get("prox") if ui.get("prox") in ("wake", "open", "off") else "wake",
-                "auto": ui.get("autoBright") is not False, "min": lo, "max": hi}
+                "auto": ui.get("autoBright") is not False, "min": lo, "max": hi,
+                "nightCam": ui.get("nightCam") is not False}      # nachts Kamera nur bei Annaeherung
 
     def night_control_options(self) -> list:
         """Bausteine, die als Nacht-Ausloeser taugen: alles mit einem `active`-State
@@ -3919,7 +3920,7 @@ class App:
         if not shutil.which("adb"):
             return {"ok": False, "error": "adb fehlt im Container"}
         target = f"{ip}:5555"
-        parts = [f"LoxPanel Geräte-Log · {device} ({ip}) · {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} · Version {APP_VERSION}"]
+        parts = [f"tilebert Geräte-Log · {device} ({ip}) · {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} · Version {APP_VERSION}"]
         # Naeherungssensor 10 s mitschneiden (gleich zu Beginn - die Config bittet
         # dann um Annaeherung): Roh-Eingaben per getevent im Hintergrund, parallel
         # jede Sekunde die Proximity-Zeilen aus dumpsys sensorservice.
@@ -4049,7 +4050,7 @@ class App:
         ui = {k: v for k, v in (raw.get("ui") or {}).items()
               if k in ("iconSize", "nameSize", "subSize", "font", "fontNum", "nudgeX",
                        "dpmsOff", "reloadHours", "nightDim", "nightWake",
-                       "prox", "autoBright", "brightMin", "brightMax",
+                       "prox", "autoBright", "brightMin", "brightMax", "nightCam",
                        "cols", "rows", "fill", "baseColor", "design",
                        "textColor", "bold", "lang", "player", "panes", "split", "phone", "bigValues",
                        "saverFcSize",
@@ -4213,6 +4214,8 @@ class App:
                 cui["prox"] = ui["prox"]                 # Annaeherung (Standard "wake" wird nicht gespeichert)
             if ui.get("autoBright") is False:
                 cui["autoBright"] = False                # Helligkeit nach Systemeinstellung statt Lichtsensor
+            if ui.get("nightCam") is False:
+                cui["nightCam"] = False                  # Kamera nachts immer live (Standard: nur bei Annaeherung)
             for k in ("brightMin", "brightMax"):
                 if isinstance(ui.get(k), (int, float)) and not isinstance(ui.get(k), bool):
                     cui[k] = max(1, min(100, int(ui[k])))   # Helligkeitsbereich in %
@@ -4373,7 +4376,7 @@ class App:
 
     def _persist_panels_file(self, panels: dict, devices: dict) -> None:
         """Schreibt config/panels.json (Profile + Geraete-Automatik) in einem Rutsch."""
-        doc = {"_comment": "Von der LoxPanel-Konfigurationsseite (/config bzw. "
+        doc = {"_comment": "Von der tilebert-Konfigurationsseite (/config bzw. "
                            "/settings) verwaltet. Jedes Panel oeffnet die Visu mit "
                            "?panel=<id>. rooms/cats leer = alle sichtbar. "
                            "`devices` bildet Betriebsmodus -> Profil je Panel ab.",
@@ -8682,7 +8685,7 @@ def _web_file(path: Path, ctype: str) -> web.Response:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as err:
         log.error("%s nicht lesbar: %s", path, err)
-        return web.Response(status=404, text=f"{path.name} fehlt im LoxPanel-Image")
+        return web.Response(status=404, text=f"{path.name} fehlt im tilebert-Image")
     return web.Response(text=text, content_type=ctype, headers=_NOCACHE)
 
 
@@ -8980,7 +8983,7 @@ async def api_types(request: web.Request) -> web.Response:
     else:
         data = app.types_overview()
     if request.query.get("format") == "text":
-        lines = [f"LoxPanel Bausteintypen: {data['controls']} Controls, {data['typeCount']} Typen "
+        lines = [f"tilebert Bausteintypen: {data['controls']} Controls, {data['typeCount']} Typen "
                  f"(voll {data['typesByStatus']['full']}, teilweise {data['typesByStatus']['partial']}, "
                  f"keine {data['typesByStatus']['none']})", ""]
         if data.get("hint"):
@@ -9093,7 +9096,7 @@ async def api_settings_diag(request: web.Request) -> web.Response:
 async def api_settings_diag_download(request: web.Request) -> web.StreamResponse:
     """Alle Log-Dateien (aelteste zuerst) als eine Textdatei."""
     files = _diag_files()
-    head = (f"LoxPanel Diagnose-Log · Version {APP_VERSION} · erstellt "
+    head = (f"tilebert Diagnose-Log · Version {APP_VERSION} · erstellt "
             f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n").encode()
     body = head + b"".join(f.read_bytes() for f in files) if files else head + "(leer)\n".encode()
     name = f"loxpanel-diagnose-{datetime.now().strftime('%Y%m%d-%H%M')}.log"
@@ -10073,7 +10076,7 @@ async def manifest_handler(request: web.Request) -> web.Response:
         pid = ""
     dev = str(request.query.get("device") or "").strip()[:60]   # Geraetename bleibt in der Home-Bildschirm-App
     prof = app.panels.get(pid or "default") or {}
-    name = _clean(prof.get("title") or "") or "LoxPanel"
+    name = _clean(prof.get("title") or "") or "tilebert"
     bg = "#0d0f1a"
     return web.json_response({
         "name": name, "short_name": name[:12],
@@ -10285,7 +10288,7 @@ async def api_panel_launcher(request: web.Request) -> web.Response:
                                f"am start -n {LAUNCHER_PKG}/.Main --es url {shlex.quote(url)}" + (f" --es mode {display}" if display else ""), timeout=15)
         if not step("URL eintragen", code, out, ok=(code == 0 and "rror" not in out)):
             return web.json_response({"ok": False, "steps": steps, "error": "URL konnte nicht gesetzt werden"})
-    log.info("LoxPanel-Launcher auf %s eingerichtet (%s, %s, URL %s)", target, device, display or "Anzeige unveraendert", url)
+    log.info("TbViewer auf %s eingerichtet (%s, %s, URL %s)", target, device, display or "Anzeige unveraendert", url)
     return web.json_response({"ok": True, "steps": steps, "url": url, "fully": has_fully,
                               "version": max(apk_ver, have_ver)})
 
@@ -10961,14 +10964,14 @@ def _foreign_origin(request: web.Request) -> bool:
 
 
 _LOGIN_HTML = """<!doctype html><html lang="de"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><title>LoxPanel – Anmeldung</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>tilebert – Anmeldung</title>
 <style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0d0f1a;font-family:system-ui,sans-serif;color:#1f2440}
 form{background:#fff;border-radius:22px;padding:28px 26px;width:min(340px,90vw);box-shadow:0 20px 50px rgba(0,0,0,.35)}
 h1{font-size:20px;margin:0 0 4px}p{margin:0 0 18px;color:#5d6282;font-size:14px}
 input{width:100%;box-sizing:border-box;padding:12px 14px;border-radius:12px;border:1px solid #d8d6e8;font-size:16px}
 button{margin-top:14px;width:100%;padding:12px;border:0;border-radius:999px;background:#1f2440;color:#fff;font-size:15px;font-weight:600;cursor:pointer}
 .err{color:#c0392b;font-size:13px;min-height:18px;margin-top:8px}</style></head><body>
-<form id="f"><h1>LoxPanel</h1><p>Die Konfiguration ist mit einem Passwort geschützt.</p>
+<form id="f"><h1>tilebert</h1><p>Die Konfiguration ist mit einem Passwort geschützt.</p>
 <input type="password" id="pw" placeholder="Passwort" autocomplete="current-password" autofocus>
 <button>Anmelden</button><div class="err" id="e"></div></form>
 <script>document.getElementById('f').onsubmit=async e=>{e.preventDefault();

@@ -3,7 +3,7 @@
 
   "panels": {
     "default": {
-      "title": "LoxPanel",
+      "title": "tilebert",
       "tabs": ["favoriten", "zentral", "raeume", "kategorien"],
       "rooms": [],
       "cats": []

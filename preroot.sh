@@ -37,7 +37,7 @@ fi
 # Laufenden Container vor dem (Neu-)Installieren stoppen (belegt sonst Port 8098).
 CONFIGDIR="$ARGV5/config/plugins/$ARGV3"
 if [ -f "$CONFIGDIR/docker-compose.yml" ]; then
-	echo "<INFO> Stoppe laufendes LoxPanel (Favoriten-Fork)..."
+	echo "<INFO> Stoppe laufendes tilebert (Favoriten-Fork)..."
 	sudo docker compose -f "$CONFIGDIR/docker-compose.yml" down 2>/dev/null
 fi
 sudo docker rm -f loxpanelfav > /dev/null 2>&1

@@ -1,5 +1,5 @@
 [Unit]
-Description=LoxPanel Panel-Agent (Kiosk-Fernsteuerung)
+Description=tilebert Panel-Agent (Kiosk-Fernsteuerung)
 After=graphical.target network-online.target
 Wants=graphical.target
 

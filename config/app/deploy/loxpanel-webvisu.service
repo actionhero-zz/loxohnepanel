@@ -1,5 +1,5 @@
 [Unit]
-Description=LoxPanel Web-Visu Server
+Description=tilebert Web-Visu Server
 After=network-online.target
 Wants=network-online.target
 

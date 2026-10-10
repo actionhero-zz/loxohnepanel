@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="de.loxpanel.launcher"
-    android:versionCode="5"
-    android:versionName="5.0">
+    android:versionCode="7"
+    android:versionName="5.2">
 
     <!-- target >= 24: Android 15 verweigert aeltere Apps bei der Installation -->
     <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="24" />
@@ -11,8 +11,8 @@
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" />
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <application android:label="LoxPanel" android:usesCleartextTraffic="true" android:hardwareAccelerated="true" android:largeHeap="true" android:icon="@drawable/icon" android:allowBackup="false">
-        <!-- Startbildschirm (HOME) mit zwei Symbolen: LoxPanel (Fully Kiosk) und
+    <application android:label="TbViewer" android:usesCleartextTraffic="true" android:hardwareAccelerated="true" android:largeHeap="true" android:icon="@drawable/icon" android:allowBackup="false">
+        <!-- Startbildschirm (HOME) mit zwei Symbolen: tilebert (TbView bzw. Fully) und
              dem urspruenglichen Startbildschirm (Shelly-Oberflaeche bzw. Android-
              Launcher), startet Fully nach 10 s selbst. Auf normalen Tablets reicht das App-Symbol. Als Home setzen:
              adb shell cmd package set-home-activity de.loxpanel.launcher/.Home -->

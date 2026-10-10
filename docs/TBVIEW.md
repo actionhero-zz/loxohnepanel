@@ -43,8 +43,8 @@ Namen wie Fully/LoxKiosk, damit das Panel alle gleich behandelt:
 
 ## Panel / Server
 - `lpHost` in `panel.html`: Erkennung `TbView` -> `fully` -> Browser (kein LoxKiosk).
-  Stellen: Geräte-ID ~4127 (`fk-` bleibt für Fully), Steckbrief ~4146, `kiosk=` ~4271,
-  Kamera `isScreenOn`, `kiosk()` ~5803.
+  Stellen: Geräte-ID (`fk-` Fully, `tb-` TbView), Steckbrief `deviceInfo`, `kiosk=`-Meldung,
+  Kamera `isScreenOn`, `kiosk()` (Zeilen siehe docs/ARCHITEKTUR.md).
 - `webvisu.py`: `kiosk=tbview` annehmen, Typ in Geräteliste.
 
 ## ShellyElevate (RapierXbox/ShellyElevate) – bessere Vorlage
@@ -100,7 +100,7 @@ Build auf dem Pi: aapt/apksigner/zipalign (apt) + `~/projekte/tools/android/{d8.
   Näherung (21 s Test), `lpHost` im Panel (`type=tbview`), Nachtmodus über echte Helligkeit,
   Server erkennt `kiosk=tbview` und Modell `shelly-x2` (Codename Jenna).
 - Umschalten: `adb shell am start -n de.loxpanel.launcher/.Main --es mode tbview|fully [--es url …]`.
-  Einrichtungsassistent der Config hat „Anzeige: TbView / Fully“.
+  Config bietet nur „TbViewer installieren“ (Fully nur noch Fallback per adb, nicht in der Oberfläche).
 - Geräte-ID unter TbView: `tb-<ANDROID_ID>` (Fully: `fk-…`) -> Gerät erscheint beim Wechsel neu.
 - Lichtsensor meldet erst bei Änderung; bis dahin Systemhelligkeit.
 - Offen: Lichtkurve (Stufe -> Helligkeit) am Gerät abstimmen; Kamera live nur bei Näherung (0.5).
@@ -110,3 +110,18 @@ Build auf dem Pi: aapt/apksigner/zipalign (apt) + `~/projekte/tools/android/{d8.
 - `ui.autoBright` (false = Systemeinstellung), `ui.brightMin`/`ui.brightMax` in % (Standard 10/100).
 - Server -> Panel: `sensors {prox, auto, min, max}`; Panel -> App: `setProximityWake`, `setAutoBrightness(on,min,max)`.
 - Nachts wirkt „Abdunkeln um“ zusätzlich auf die Auto-Helligkeit.
+
+## Anwendungsfälle Sensoren (Panel, ab Launcher 5.1)
+- **Nachts Kamera nur bei Annäherung** (`ui.nightCam`, Standard an): bei Nacht + TbView mit Näherungssensor
+  sind alle Kamerabilder (Dashboard, Schoner, Widget, Türstation; alle über `camStream`) angehalten.
+  Sichtbar: abgedunkeltes, unscharfes Standbild + Mond + „Live-Bild bei Annäherung“ (`html.camnight`).
+  Live bei Annäherung, Berührung oder Klingel (`wake()`), 30 s Nachlauf nach „fern“.
+- **Annäherung hellt nachts kurz auf** (wie Berührung, `nightWake`), außer `prox=off`.
+- Tag/Nacht kommt **nur** aus dem Betriebsmodus der Config (Nutzervorgabe), nicht vom Lichtsensor.
+- **Dynamische Helligkeit** (`ui.autoBright`, min/max): nur Shelly mit TbView + Lichtsensor regelt nach dem Sensor (ohne „Abdunkeln um“); alle anderen Geräte und Option aus: Abdunkeln nach Betriebsmodus.
+- Ereignisse App -> Panel: `window.lpHost._ev(name, wert)`; Fix 5.1: `lpHost` ist `const`, daher
+  `window.lpHost=lpHost` im Panel (vor 5.1 kamen keine Ereignisse an).
+
+## Namen (ab 0.20.0)
+- App (Launcher + Kiosk-Ansicht): **TbViewer**; sie zeigt die Web-App **tilebert** an.
+- Technisch bleiben: JS-Brücke `window.TbView`, `kiosk=tbview`, Geräte-ID `tb-`, Paket `de.loxpanel.launcher`, Datei `LoxPanel-Launcher.apk`.

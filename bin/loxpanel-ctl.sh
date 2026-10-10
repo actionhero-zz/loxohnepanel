@@ -127,7 +127,7 @@ case "$1" in
 		if ! running; then start
 		# laeuft, antwortet aber nicht mehr (Healthcheck "unhealthy") -> neu starten
 		elif [ "$(sudo docker inspect -f '{{.State.Health.Status}}' loxpanelfav 2>/dev/null)" = "unhealthy" ]; then
-			echo "LoxPanel antwortet nicht (unhealthy) - Neustart."
+			echo "tilebert antwortet nicht (unhealthy) - Neustart."
 			sudo docker restart loxpanelfav 2>&1
 		fi
 		;;

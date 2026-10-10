@@ -1,4 +1,4 @@
-/* LoxPanel – gemeinsame Stile der Vorschauen (nachgebaut aus panel.html/config.html) */
+/* tilebert – gemeinsame Stile der Vorschauen (nachgebaut aus panel.html/config.html) */
 body{margin:0;font-family:var(--font-text);color:var(--ink);background:transparent;}
 .lp-face{background:var(--face-1);border-radius:var(--r-xl);padding:var(--space-card);display:flex;gap:var(--space-gap);flex-wrap:wrap;}
 .lp-tile{background:var(--tile);color:var(--ink);border-radius:var(--r-l);padding:var(--space-tile);width:136px;height:136px;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;}

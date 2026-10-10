@@ -2,9 +2,9 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E %3Cdefs%3E %3ClinearGradient id='bg' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%231d2138'/%3E%3Cstop offset='1' stop-color='%230d0f1a'/%3E%3C/linearGradient%3E %3CradialGradient id='glow' cx='.72' cy='.28' r='.6'%3E%3Cstop offset='0' stop-color='%23ffc145' stop-opacity='.22'/%3E%3Cstop offset='1' stop-color='%23ffc145' stop-opacity='0'/%3E%3C/radialGradient%3E %3ClinearGradient id='tile' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3cf'/%3E%3Cstop offset='1' stop-color='%23ffd97a'/%3E%3C/linearGradient%3E %3ClinearGradient id='hi' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.45'/%3E%3Cstop offset='.5' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E %3C/defs%3E %3Crect width='512' height='512' rx='112' fill='url(%23bg)'/%3E %3Crect width='512' height='512' rx='112' fill='url(%23glow)'/%3E %3Crect x='2' y='2' width='508' height='508' rx='110' fill='none' stroke='%23fff' stroke-opacity='.07' stroke-width='4'/%3E %3Cg%3E %3Crect x='104' y='104' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='104' y='270' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='270' y='270' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='104' y='104' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3Crect x='104' y='270' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3Crect x='270' y='270' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3C/g%3E %3Crect x='270' y='104' width='138' height='138' rx='34' fill='%23fff' fill-opacity='.06' stroke='%23fff3cf' stroke-opacity='.55' stroke-width='4'/%3E %3Crect x='292' y='126' width='12' height='96' rx='6' fill='%23fff' fill-opacity='.16'/%3E%3Crect x='292' y='168' width='12' height='54' rx='6' fill='url(%23tile)'/%3E%3Ccircle cx='298' cy='168' r='15' fill='%23fffaea' stroke='%23ffffff' stroke-opacity='.7' stroke-width='3'/%3E%3Crect x='333' y='126' width='12' height='96' rx='6' fill='%23fff' fill-opacity='.16'/%3E%3Crect x='333' y='202' width='12' height='20' rx='6' fill='url(%23tile)'/%3E%3Ccircle cx='339' cy='202' r='15' fill='%23fffaea' stroke='%23ffffff' stroke-opacity='.7' stroke-width='3'/%3E%3Crect x='374' y='126' width='12' height='96' rx='6' fill='%23fff' fill-opacity='.16'/%3E%3Crect x='374' y='146' width='12' height='76' rx='6' fill='url(%23tile)'/%3E%3Ccircle cx='380' cy='146' r='15' fill='%23fffaea' stroke='%23ffffff' stroke-opacity='.7' stroke-width='3'/%3E %3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' %3E%3Crect width='48' height='48' rx='18.334' fill='%237db7ff'/%3E%3Crect x='9.167' y='16.584' width='29.666' height='14.833' rx='7.416' fill='%231f2440'/%3E%3Ccircle cx='31.416' cy='24' r='4.820' fill='%237db7ff'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>LoxPanel — Konfiguration</title>
+<title>tilebert — Konfiguration</title>
 <script src="/i18n.js"></script>
 <script>
 // Theme der Konfiguration (nur dieser Browser): Bunt / Hell / Dunkel
@@ -1327,7 +1327,7 @@
 <div class="wrap">
   <aside class="side">
     <div class="brandrow">
-      <div class="brand" id="brand" role="button" tabindex="0" style="cursor:pointer">LoxPanel<small>Konfiguration</small></div>
+      <div class="brand" id="brand" role="button" tabindex="0" style="cursor:pointer">tilebert<small>Konfiguration</small></div>
       <button type="button" class="sidetog" id="sideTog" title="Menü einklappen" aria-label="Menü einklappen">
         <svg viewBox="0 0 24 24"><path d="m15 6-6 6 6 6"/></svg></button>
     </div>
@@ -1383,7 +1383,7 @@
             </div>
             <label class="chk" style="margin-top:12px"><input type="checkbox" id="ms_tls"><span data-i18n>Zertifikat prüfen (Gen2 mit selbstsigniertem Zertifikat: aus)</span></label>
             <div class="actions"><button class="btn" id="ms_save" data-i18n>Verbinden &amp; Speichern</button><span class="toast" id="ms_toast"></span></div>
-            <p class="note keep"><a href="/api/types?format=text" target="_blank" rel="noopener">Bausteintypen der Anlage anzeigen</a> <span>(welche Typen vorkommen und welche LoxPanel noch nicht unterstützt; als JSON unter /api/types)</span></p>
+            <p class="note keep"><a href="/api/types?format=text" target="_blank" rel="noopener">Bausteintypen der Anlage anzeigen</a> <span>(welche Typen vorkommen und welche tilebert noch nicht unterstützt; als JSON unter /api/types)</span></p>
           </div>
           <div class="card">
             <h3 data-i18n>Wetter</h3>
@@ -1446,7 +1446,7 @@
           </details>
           <details class="card devhelp">
             <summary><h3 data-i18n>Hinweise</h3></summary>
-            <p class="note" data-i18n><b>Gerät &amp; Fully:</b> Daraus ergeben sich die Knöpfe „Fully neu starten“ und „Gerät neu starten“ (Android per adb, Shelly zuerst über seine eigene Schnittstelle).</p>
+            <p class="note" data-i18n><b>Gerät:</b> Daraus ergeben sich die Knöpfe „TbViewer installieren“ und „Gerät neu starten“ (Android per adb, Shelly zuerst über seine eigene Schnittstelle).</p>
             <p class="note" data-i18n><b>Neues Gerät:</b> Linux-Panels mit Agent erscheinen automatisch. Andere Panels (Android, Tablet) öffnen die Visu mit Kennung: ?panel=&lt;start&gt;&amp;device=&lt;name&gt; – oder bekommen hier unter „Ohne Kennung“ einen Namen.</p>
             <p class="note" data-i18n><b>Betriebsmodus-Automatik:</b> In Loxone Config einen virtuellen HTTP-Ausgang anlegen, der pro Betriebsart einen Modusnamen schickt. Je Gerät festlegen, welche Ansicht bei welchem Modus erscheint; ohne Eintrag bleibt das Panel unverändert.</p>
             <pre class="cmdout" id="mode_hint">GET http://<span id="mode_host">…</span>/api/mode/&lt;modus&gt;</pre>
@@ -1459,7 +1459,7 @@
           <p class="lead" data-i18n>Cover, Titel und Favoriten vom Loxone-Audioserver. Einen Test-Ton, um die Lautsprecher der Panels zu prüfen, findest du unter System → Diagnose.</p>
           <div class="card">
             <h3 data-i18n>Audioserver (Cover / Titel / Favoriten)</h3>
-            <p class="note" data-i18n>Loxone-Audioserver (Gen 2) liefern Cover/Titel/Interpret und Favoriten über einen eigenen Live-Kanal (Audioprotokoll, Port 7091) — genau wie die Loxone-App. LoxPanel abonniert diesen Kanal und legt die Infos über die passende Zone. Die Audioserver-Adresse wird <b>automatisch</b> aus der Loxone-Struktur erkannt — keine IP-Eingabe nötig. Funktioniert mit dem originalen Loxone-Audioserver ebenso wie mit Nachbauten (Sonn/Audioserver4Home). Musikserver-/MS4H-Zonen bleiben unberührt (die liefern es ohnehin).</p>
+            <p class="note" data-i18n>Loxone-Audioserver (Gen 2) liefern Cover/Titel/Interpret und Favoriten über einen eigenen Live-Kanal (Audioprotokoll, Port 7091) — genau wie die Loxone-App. tilebert abonniert diesen Kanal und legt die Infos über die passende Zone. Die Audioserver-Adresse wird <b>automatisch</b> aus der Loxone-Struktur erkannt — keine IP-Eingabe nötig. Funktioniert mit dem originalen Loxone-Audioserver ebenso wie mit Nachbauten (Sonn/Audioserver4Home). Musikserver-/MS4H-Zonen bleiben unberührt (die liefern es ohnehin).</p>
             <label class="chk"><input type="checkbox" id="am_enabled"><span data-i18n>Audioserver-Live-Daten abonnieren (automatisch)</span></label>
             <div class="note" id="am_servers" style="margin-top:8px"></div>
             <div class="actions"><button class="btn" id="am_save" data-i18n>Speichern</button><span class="toast" id="am_toast"></span></div>
@@ -1543,7 +1543,7 @@
 
         <!-- Unterstützte Geräte (Referenz) -->
         <section class="spane" data-sub="supported"><div class="ovw">
-        <p class="lead">LoxPanel läuft auf <b>Android-Wandpanels</b> (Fully Kiosk per <code>adb</code>) im Zielformat <b>480×480</b>. Diese Geräte sind erprobt – 4″-Panels 1:1, höher aufgelöste oder größere per Zoom, breite Geräte als zwei Panes.</p>
+        <p class="lead">tilebert läuft auf <b>Android-Wandpanels</b> (App TbViewer per <code>adb</code>) im Zielformat <b>480×480</b>. Diese Geräte sind erprobt – 4″-Panels 1:1, höher aufgelöste oder größere per Zoom, breite Geräte als zwei Panes.</p>
         <h3>Wandpanels · ein Pane</h3>
         <div class="devcat">
 
@@ -1558,7 +1558,7 @@
             <div class="pane"><div class="visu"><i></i><i></i><i></i><i></i></div></div>
             <div class="nm">Sonoff NSPanel Pro 86 <span class="badge">1 Pane · Fix</span></div>
             <div class="spec">3,95″ · 480×480 · Android</div>
-            <div class="desc">Natives Format, 1:1. Android gesperrt → Fully Kiosk per adb. 2 Relais onboard.</div>
+            <div class="desc">Natives Format, 1:1. Android gesperrt → App TbViewer per adb. 2 Relais onboard.</div>
           </figure>
 
           <figure>
@@ -1625,11 +1625,11 @@
           <p class="lead" id="np_lead" data-i18n>Erst das Gerät wählen – danach siehst du nur die passenden Schritte.</p>
           <div class="card npchoice" id="np_choice">
             <h3 data-i18n>Welches Gerät?</h3>
-            <p class="note" data-i18n>Android-Geräte (Shelly, Sonoff, Tablet) richtet LoxPanel auf Wunsch automatisch ein: per ADB über WLAN, ohne Kabel und ohne Eingaben am Gerät außer einer Bestätigung. Linux-Panels bekommen den Agenten per SSH. iPad, iPhone und Browser brauchen nur die Adresse.</p>
+            <p class="note" data-i18n>Android-Geräte (Shelly, Sonoff, Tablet) richtet tilebert auf Wunsch automatisch ein: per ADB über WLAN, ohne Kabel und ohne Eingaben am Gerät außer einer Bestätigung. Linux-Panels bekommen den Agenten per SSH. iPad, iPhone und Browser brauchen nur die Adresse.</p>
             <div class="nptiles">
               <button type="button" class="nptile" data-npk="shelly"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="12" cy="12" r="3.5"/></svg><b data-i18n>Shelly Wall Display</b><small data-i18n>X2 · X2i · X1i</small></button>
               <button type="button" class="nptile" data-npk="sonoff"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 18h4"/></svg><b data-i18n>Sonoff NSPanel Pro</b><small data-i18n>Wandpanel (Android)</small></button>
-              <button type="button" class="nptile" data-npk="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 16h2"/></svg><b data-i18n>Android-Tablet oder Handy</b><small data-i18n>mit Fully Kiosk</small></button>
+              <button type="button" class="nptile" data-npk="android"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M11 16h2"/></svg><b data-i18n>Android-Tablet oder Handy</b><small data-i18n>mit tilebert-App (TbView)</small></button>
               <button type="button" class="nptile" data-npk="linux"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M12 15h5"/></svg><b data-i18n>Linux-Panel</b><small data-i18n>Agent per SSH</small></button>
               <button type="button" class="nptile" data-npk="ios"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18.5h2"/></svg><b data-i18n>iPad, iPhone oder Browser</b><small data-i18n>Safari, Chrome …</small></button>
             </div>
@@ -1638,7 +1638,7 @@
             <div class="npbar"><button type="button" class="btn ghost sm" id="np_back" data-i18n>‹ Anderes Gerät wählen</button><b id="np_kind"></b></div>
             <div class="card npcard" id="np_adb" data-npf="shelly sonoff android">
               <h3 data-i18n>Automatisch einrichten per ADB</h3>
-              <p class="note" id="ad_note" data-i18n>LoxPanel installiert den „LoxPanel“-Launcher (Anzeige TbView oder Fully Kiosk) auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.</p>
+              <p class="note" id="ad_note" data-i18n>tilebert installiert die App „TbViewer“ auf dem Gerät und trägt die Start-Adresse ein. Du musst nur am Gerät ADB über WLAN einschalten (Einstellungen → Entwickleroptionen → USB-Debugging / ADB über WLAN, Port 5555). Beim ersten Mal fragt das Gerät „USB-Debugging zulassen?“ – mit „Immer erlauben“ bestätigen und den Knopf noch einmal drücken.</p>
               <div class="row2">
                 <div class="field"><label class="lbl" data-i18n>Gerätename</label><input type="text" id="ad_name" placeholder="Tablet Küche"></div>
                 <div class="field"><label class="lbl" data-i18n>IP-Adresse des Geräts</label><input type="text" id="ad_ip" placeholder="10.0.0.77" inputmode="decimal" autocomplete="off"></div>
@@ -1647,9 +1647,6 @@
                 <div class="field"><label class="lbl" data-i18n>Startet mit Panel</label><select id="ad_panel"></select></div>
                 <div class="field"><label class="lbl" data-i18n>Server-Adresse (dieser Server)</label><input type="text" id="ad_server" placeholder="10.0.0.55:8099"></div>
               </div>
-              <div class="field" style="margin-top:12px"><label class="lbl" data-i18n>Anzeige</label><select id="ad_display">
-                <option value="tbview" data-i18n>TbView (eigene App, empfohlen)</option><option value="fully" data-i18n>Fully Kiosk</option></select></div>
-              <label class="chk" id="ad_hasfullyl" style="margin-top:12px;display:none"><input type="checkbox" id="ad_hasfully"><span data-i18n>Fully Kiosk ist schon auf dem Gerät – nur den Launcher einrichten</span></label>
               <div class="actions"><button class="btn" id="ad_go" data-i18n>Automatisch einrichten</button><span class="toast" id="ad_toast"></span></div>
               <div class="note" id="ad_out" style="display:none;margin-top:10px"></div>
               <div class="actions" id="ad_done" style="display:none"><button class="btn ghost sm" id="ad_goto" data-i18n>Zu „Meine Geräte“</button></div>
@@ -1799,7 +1796,7 @@ const DEV_TABS=[
 async function load(){
   const r = await fetch('/api/meta'); META = await r.json();
   PANELS = JSON.parse(JSON.stringify(META.panels||{}));
-  if(!PANELS.default) PANELS.default = {title:'LoxPanel', tabs:defaultTabs(), rooms:[], cats:[], ui:{grid:2}, states:{}};   // frische Installation: 2x2 als Standard
+  if(!PANELS.default) PANELS.default = {title:'tilebert', tabs:defaultTabs(), rooms:[], cats:[], ui:{grid:2}, states:{}};   // frische Installation: 2x2 als Standard
   PANELS.__global__ = {title:'Global (alle Panels)', ui: JSON.parse(JSON.stringify((META.theme||{}).ui||{})),
                        catColors: JSON.parse(JSON.stringify((META.theme||{}).categories||{})), __global:true};
   // Frueher separate Textfarbe fuer Kachelnamen - jetzt Design-Farbe "Schrift"
@@ -1808,7 +1805,9 @@ async function load(){
   renderList(); setRubric('overview'); snapSaved();
   { const h=(location.hash||'').slice(1).split(':');   // Direktlink, z.B. #devices:newpanel (LoxBerry-Seite)
     if(['devices','settings'].indexOf(h[0])>=0) goTo(h[0], h[1]||null); }
-  if(window.I18N) syncPanelLang(I18N.lang);
+  // Nur eine ausdruecklich gewaehlte Sprache (Umschalter -> lp_ui_lang) uebernehmen, nicht die
+  // Browsersprache beim blossen Oeffnen (sonst aendert jeder Besucher theme.json).
+  if(window.I18N){ let chosen=null; try{ chosen=localStorage.getItem('lp_ui_lang'); }catch(e){} if(chosen) syncPanelLang(chosen); }
 }
 
 function panelUrl(id){ return (id==='default'||id==='__global__') ? '/' : '/?panel='+encodeURIComponent(id); }
@@ -2212,6 +2211,10 @@ function bindAppearance(p){
   document.querySelectorAll('input[data-uitext]').forEach(inp=>{
     inp.oninput=()=>{ p.ui=p.ui||{}; const k=inp.dataset.uitext;
       if(inp.value.trim()==='') delete p.ui[k]; else p.ui[k]=inp.value.trim(); markDirty(); }; });
+  // Haken: nur Abweichung vom Standard speichern (data-def="1" = Standard an)
+  document.querySelectorAll('input[data-uichk]').forEach(cb=>{
+    cb.onchange=()=>{ p.ui=p.ui||{}; const k=cb.dataset.uichk, def=cb.dataset.def==='1';
+      if(cb.checked===def) delete p.ui[k]; else p.ui[k]=cb.checked; markDirty(); }; });
   // Auswahlfelder: leer = Standard (nicht gespeichert); autoBright "off" -> false
   document.querySelectorAll('select[data-uisel]').forEach(sel=>{
     sel.onchange=()=>{ p.ui=p.ui||{}; const k=sel.dataset.uisel, v=sel.value;
@@ -2452,7 +2455,7 @@ function renderEditor(){
          (((p.ui||{}).nudgeX==null)?'':(p.ui||{}).nudgeX)+'" placeholder="0"></div>'+
      '</div><p class="hint">'+T('Bildschirm füllen: auf größeren Displays hochzoomen statt im 480er-Raster zu bleiben. Versatz nur nötig, wenn das Bild am Rand abgeschnitten ist.')+'</p></div>'+
      '<div class="card"><h3>'+T('Display &amp; Nacht')+'</h3>'+
-       '<p class="note">'+T('<b>Display</b> gilt Tag und Nacht: Nach der Leerlaufzeit schaltet das Panel das Display aus (Fully Kiosk); Klingel, Wecker und Nachrichten schalten es wieder ein. Das automatische Neuladen hält die Seite auf Dauer frisch.')+'</p>'+
+       '<p class="note">'+T('<b>Display</b> gilt Tag und Nacht: Nach der Leerlaufzeit schaltet das Panel das Display aus (TbView); Klingel, Wecker und Nachrichten schalten es wieder ein. Das automatische Neuladen hält die Seite auf Dauer frisch.')+'</p>'+
        '<p class="note">'+T('<b>Nacht</b> wirkt nur, solange Nacht ist – wann das ist, legst du unter System → Darstellung → Nachtmodus fest (Auslöser-Baustein oder Sonnenuntergang bis -aufgang). Dann legt das Panel eine Abdunklung über das Bild; Antippen macht es kurz wieder hell. 0 % = dieses Panel dunkelt nachts nicht ab.')+'</p>'+
        '<div class="lbl2">'+T('Display')+'</div><div class="sizes">'+
        '<div class="field" style="max-width:220px"><label class="lbl">'+T('Ausschalten nach Leerlauf (Sek.)')+'</label>'+
@@ -2482,7 +2485,9 @@ function renderEditor(){
        '<div class="field" style="max-width:160px"><label class="lbl">'+T('Höchstens (%)')+'</label>'+
          '<input type="number" min="1" max="100" step="5" data-ui="brightMax" value="'+
          (((p.ui||{}).brightMax==null)?'':(p.ui||{}).brightMax)+'" placeholder="100"></div>'+
-     '</div><p class="hint">'+T('Nur mit der Anzeige TbView auf Geräten mit Sensoren (z. B. Shelly Wall Display). Automatisch: dunkler Raum = Mindestwert, heller Raum = Höchstwert; nachts zusätzlich um „Abdunkeln um“ gesenkt. Fully Kiosk und Browser ignorieren diese Werte.')+'</p></div>'+
+     '</div><div class="sizes" style="margin-top:8px">'+
+       '<label class="chk"><input type="checkbox" data-uichk="nightCam" data-def="1"'+(((p.ui||{}).nightCam===false)?'':' checked')+'> <span>'+T('Nachts Kamera nur bei Annäherung live')+'</span></label>'+
+     '</div><p class="hint">'+T('Nur mit TbView auf Geräten mit Sensoren (z. B. Shelly Wall Display). Helligkeit automatisch (nur Shelly mit TbView): dunkler Raum = Mindestwert, heller Raum = Höchstwert – dort ersetzt der Lichtsensor das nächtliche „Abdunkeln um“. Alle anderen Geräte dunkeln nachts nach dem Betriebsmodus ab. Nachts zeigt die Kamera ein abgedunkeltes Standbild und läuft erst live, wenn sich jemand nähert, das Display berührt oder es klingelt (30 s Nachlauf).')+'</p></div>'+
      apCardHTML(p)+'</section>'+
 
    '<section class="spane" data-sub="tabs"><div class="card"><h3>Tabs</h3>'+
@@ -3460,7 +3465,7 @@ function markDirty(){ dirty=true; dirtyN++; const t=$('#toast'); if(t){ t.classN
 let SAVED_SNAP=null;
 function snapSaved(){ try{ SAVED_SNAP=JSON.parse(JSON.stringify(PANELS)); }catch(e){ SAVED_SNAP=null; } }
 function stable(v){ return JSON.stringify(v,(k,x)=>(x&&typeof x==='object'&&!Array.isArray(x))?Object.keys(x).sort().reduce((o,kk)=>(o[kk]=x[kk],o),{}):x); }
-const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',prox:'Bei Annäherung',autoBright:'Helligkeit automatisch',brightMin:'Mindesthelligkeit',brightMax:'Höchsthelligkeit',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
+const CHG_UI={grid:'Raster',split:'Panelgröße',design:'Design',dpmsOff:'Display ausschalten',prox:'Bei Annäherung',autoBright:'Helligkeit automatisch',nightCam:'Kamera nachts',brightMin:'Mindesthelligkeit',brightMax:'Höchsthelligkeit',reloadHours:'Seite neu laden',nightDim:'Nachts abdunkeln',
   nightWake:'Nach Antippen hell',phone:'Panel-Größe (Handy)',ambBg:'Farbverlauf Hintergrund',ambClock:'Farbverlauf Uhrzeit',motion:'Animation',iconAnim:'Animierte Symbole',contrast:'Kontrast',sceneLight:'Lichtszenen',fill:'Bildschirm füllen',font:'Schrift',fontNum:'Zahlen-Schrift',
   nudgeX:'Horizontaler Versatz',iconSize:'Symbolgröße',nameSize:'Namensgröße',subSize:'Zusatztext-Größe',bold:'Fett',dblTapOff:'Doppeltipp',alarmsEnabled:'Wecker',
   lang:'Sprache',saverFcSize:'Wettervorschau-Größe',tileShadow:'Kachel-Schatten'};
@@ -3933,7 +3938,7 @@ window.SHOWN_VER=window.SHOWN_VER||'';
 function loadVersion(){ fetch('/api/version').then(r=>r.json()).then(v=>{ const e=$('#appVersion'); window.SHOWN_VER=v.version||'';
   const bt=v.built?new Date(v.built):null, bts=bt&&!isNaN(bt)?bt.toLocaleString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
   if(e){ e.innerHTML='<b>'+esc(v.version)+'</b>'+(v.commit?'<span>'+esc(v.commit.slice(0,7))+'</span>':'')+(bts?'<span>'+esc(bts)+'</span>':'');
-    e.title='LoxPanel '+v.version+(v.commit?'\nCommit '+v.commit:'')+(bts?'\nInstalliert '+bts:'')+'\n'+T('GitHub öffnen'); }
+    e.title='tilebert '+v.version+(v.commit?'\nCommit '+v.commit:'')+(bts?'\nInstalliert '+bts:'')+'\n'+T('GitHub öffnen'); }
   const b=$('#brand'); if(b) b.title='Version '+v.version; }).catch(()=>{}); }
 loadVersion();
 // Neuere Version im Repo? -> Hinweis ueber der Versionsnummer, fuehrt zur
@@ -4492,9 +4497,11 @@ function deviceRow(d, sel){
     '';
   // Wartung: Einrichtung per adb (geht auch, solange Fully noch fehlt oder nicht laeuft)
   let mt='';
-  if(has('fullyinstall')) mt+=btn('fullyinstall',T('Fully installieren'),T('Fully Kiosk Browser laden und per adb installieren bzw. aktualisieren (Quelle: unten)'))+
-    btn('launcher',T('Launcher einrichten'),T('LoxPanel-Launcher per adb installieren und Start-URL eintragen; das Symbol „LoxPanel“ öffnet Fully Kiosk mit dem Panel'));
-  const maint=mt?wrap('<div class="dsec">'+dsh('setup',T('Einrichten per adb'))+'<div class="drow">'+mt+'</div>'+
+  // Fully bleibt als versteckter Fallback im Server/Launcher (adb: --es mode fully), die Config bietet nur TbView an
+  if(has('fullyinstall')) mt+=btn('launcher',T('TbViewer installieren'),T('App TbViewer (zeigt tilebert an) per adb installieren bzw. aktualisieren und die Start-URL eintragen'));
+  const tbHint=(mt && /^shelly/.test(d.model||'') && d.type!=='tbview')
+    ? '<div class="dhint">'+T('Shelly läuft noch nicht mit TbViewer – „TbViewer installieren“ richtet die eigene Anzeige ein (Annäherung, Helligkeit).')+'</div>' : '';
+  const maint=mt?wrap('<div class="dsec">'+dsh('setup',T('Einrichten per adb'))+'<div class="drow">'+mt+'</div>'+tbHint+
     '<div class="dhint dlver">'+launcherHint(d.name)+'</div></div>'):'';
   return {view:view, ctl:ctlH, maint:maint};
 }
@@ -4518,7 +4525,7 @@ const DEV_LV={};   // je Geraet: {installed, bundled} - Launcher-Version (per ad
 // Hinweis, wenn das Update eine neuere Launcher-Version mitbringt als am Geraet installiert
 function launcherHint(name){ const v=DEV_LV[name];
   return v&&v.installed&&v.bundled>v.installed
-    ? '⬆ '+T('Neue Launcher-Version im Update')+' ('+v.installed+' → '+v.bundled+') – '+T('„Launcher einrichten“ aktualisiert.') : ''; }
+    ? '⬆ '+T('Neue Launcher-Version im Update')+' ('+v.installed+' → '+v.bundled+') – '+T('„TbViewer installieren“ aktualisiert.') : ''; }
 async function devLauncherVer(row){
   const name=row.dataset.name;
   try{ const j=await postJson('/api/panel/launcher/version',{device:name, ip:row.dataset.devip||''});
@@ -4566,7 +4573,7 @@ function renderDeviceList(j){
   { const devs=(j&&j.devices)||[], any=devs.length>0||Object.keys(DEV).length>0;
     const act=$('#dev_save')&&$('#dev_save').closest('.actions'); if(act) act.style.display=any?'':'none';   // nichts zu speichern ohne Geraete
     const dtl=$('#devTools'); if(dtl) dtl.style.display=any?'':'none';
-    const fs=$('#fullySrc'); if(fs) fs.hidden=!devs.some(d=>(d.caps||[]).indexOf('fullyinstall')>=0); }
+    const fs=$('#fullySrc'); if(fs) fs.hidden=true; }   // Fully-Quelle: nur noch Fallback ohne Config-Oberflaeche
   const box=$('#ag_list'), list=$('#dev_list'); if(!box||!list) return;
   list.querySelectorAll('.dev').forEach(dv=>{ const tp=dv.querySelector('.dtips'), ms=dv.querySelector('.dev_model'); if(!tp||!ms) return;
     const h=devTipsHTML(dv.dataset.name,(META.deviceModels||[]).find(x=>x.key===ms.value)); if(tp.innerHTML!==h) tp.innerHTML=h;
@@ -4657,17 +4664,17 @@ async function deviceAction(act, name, ip, panel, devip){
       return; }
     else if(act==='launcher'){
       const shelly=/^shelly/.test((DEV[name]||{}).model||'');
-      if(!confirm(T('LoxPanel-Launcher auf „')+name+T('“ einrichten?')+'\n\n'+
-        (shelly?T('Shelly Wall Display: Der Launcher wird Startbildschirm mit den Symbolen „LoxPanel“ und „Shelly“.')
-               :T('Android-Tablet: Startbildschirm bleibt, das Symbol „LoxPanel“ erscheint im App-Menü.'))+'\n\n'+
-        T('Voraussetzung: ADB über WLAN (Port 5555) aktiv; die Anzeige (TbView oder Fully) bleibt wie eingestellt. Beim ersten Mal am Panel „USB-Debugging zulassen?“ mit „Immer erlauben“ bestätigen und erneut starten.'))) return;
+      if(!confirm(T('TbViewer auf „')+name+T('“ installieren?')+'\n\n'+
+        (shelly?T('Shelly Wall Display: Der Launcher wird Startbildschirm mit den Symbolen „tilebert“ und „Shelly“.')
+               :T('Android-Tablet: Startbildschirm bleibt, das Symbol „tilebert“ erscheint im App-Menü.'))+'\n\n'+
+        T('Voraussetzung: ADB über WLAN (Port 5555) aktiv. Das Gerät erscheint danach einmal neu unter „Meine Geräte“ (Kennung tb-…). Beim ersten Mal am Panel „USB-Debugging zulassen?“ mit „Immer erlauben“ bestätigen und erneut starten.'))) return;
       if(!devip){ flash($('#ag_toast'),T('IP des Geräts unbekannt – Visu einmal am Gerät öffnen.'),false); return; }
       flash($('#ag_toast'), T('Richte Launcher per adb ein …'), true);
-      j=await postJson('/api/panel/launcher',{ip:devip, server:location.host, panel:panel||'', device:shelly?'shelly':'android', name});
+      j=await postJson('/api/panel/launcher',{ip:devip, server:location.host, panel:panel||'', device:shelly?'shelly':'android', name, display:'tbview'});
       if(j.ok&&j.version){ DEV_LV[name]={installed:j.version, bundled:j.version};   // aktuell -> Hinweis weg
         document.querySelectorAll('.dev').forEach(dv=>{ if(dv.dataset.name===name){ const h=dv.querySelector('.dlver'); if(h) h.textContent=''; } }); }
-      flash($('#ag_toast'), j.ok ? (j.fully?'✓ '+T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))
-                                 : T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':''), !!(j.ok&&j.fully));
+      flash($('#ag_toast'), j.ok ? '✓ '+T('TbViewer eingerichtet – öffnet')+' '+(j.url||'')
+                                 : T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':''), !!j.ok);
       return; }
     else if(act==='kioskrestart'||act==='devreboot'){
       const reb=act==='devreboot';
@@ -4848,7 +4855,7 @@ function devRow(name){
       '<div class="drow devhead">'+
         '<select class="dev_model" title="'+T('Welches Gerät ist das?')+'"><option value="">'+T('– Gerätetyp wählen –')+'</option>'+
           models.map(m=>'<option value="'+esc(m.key)+'"'+(m.key===d.model?' selected':'')+'>'+esc(m.label)+'</option>').join('')+'</select>'+
-        '<label class="chk dev_fullyl"'+(mo&&mo.os==='android'?'':' style="display:none"')+'><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
+        '<label class="chk dev_fullyl" style="display:none"><input type="checkbox" class="dev_fully"'+(d.fully?' checked':'')+'> '+T('läuft mit Fully Kiosk')+'</label>'+
         // Fully nachts neu starten (per adb, 3:05): gibt den ueber Tage gewachsenen Speicher frei. Vorgabe: Shelly an
         '<label class="chk dev_nrl" title="'+T('Per adb um 3:05 Uhr – gibt den Speicher der Kiosk-App frei, den das nächtliche Neuladen der Seite nicht erreicht.')+'"'+(mo&&mo.os==='android'&&d.fully?'':' style="display:none"')+'><input type="checkbox" class="dev_nr"'+((d.nrestart===undefined?!!(mo&&mo.shelly):d.nrestart)?' checked':'')+'> '+T('Fully nachts neu starten')+'</label>'+
       '</div><div class="dhint">'+(d.model?T('Bestimmt, welche Steuerung unten angeboten wird.'):T('Zuerst den Gerätetyp wählen – danach erscheinen die passenden Funktionen.'))+'</div>'+
@@ -5015,7 +5022,6 @@ function renderDevices(){
   box.querySelectorAll('.dev_model').forEach(sel=>sel.onchange=()=>{
     const m=(META.deviceModels||[]).find(x=>x.key===sel.value), dv=sel.closest('.dev'), l=dv.querySelector('.dev_fullyl'), dh=dv.querySelector('.ddhost');
     const andr=!!(m&&m.os==='android');
-    if(l) l.style.display=andr?'':'none';
     const nr=dv.querySelector('.dev_nrl'); if(nr){ nr.style.display=andr&&dv.querySelector('.dev_fully').checked?'':'none';
       const d0=DEV[dv.dataset.name]; if(!d0||typeof d0.nrestart!=='boolean') nr.querySelector('input').checked=!!(m&&m.shelly); }
     const zs=dv.querySelector('.dev_scale'); if(zs) zs.innerHTML=devScaleOpts(zs.value,m);
@@ -5134,8 +5140,6 @@ function npShow(k){
 document.querySelectorAll('.nptile').forEach(b=>b.onclick=()=>npShow(b.dataset.npk));
 $('#np_back').onclick=()=>npShow('');
 $('#ad_goto').onclick=()=>goTo('devices','panels');
-// TbView braucht kein Fully -> Fully-Haken nur bei Anzeige "Fully Kiosk"
-$('#ad_display').onchange=()=>{ $('#ad_hasfullyl').style.display=$('#ad_display').value==='fully'?'':'none'; };
 $('#ad_go').onclick=async()=>{
   const name=$('#ad_name').value.trim(), ip=$('#ad_ip').value.trim(), panel=$('#ad_panel').value, server=$('#ad_server').value.trim();
   const t=$('#ad_toast'), out=$('#ad_out');
@@ -5143,18 +5147,11 @@ $('#ad_go').onclick=async()=>{
   const btn=$('#ad_go'); btn.disabled=true; out.style.display='block'; $('#ad_done').style.display='none';
   const lines=[]; const show=()=>{ out.innerHTML=lines.map(l=>'<div>'+esc(l)+'</div>').join(''); };
   try{
-    const display=$('#ad_display').value;
-    if(display==='fully' && !$('#ad_hasfully').checked){
-      lines.push(T('Lade Fully Kiosk und installiere per adb … (bis zu einer Minute)')); show();
-      const j=await postJson('/api/kiosk/fully',{device:name, ip});
-      lines.pop();
-      if(!j.ok){ lines.push('✗ '+T('Fully Kiosk')+': '+(j.error||T('Fehler'))); show(); flash(t,T('Fehler: ')+(j.error||''),false); return; }
-      lines.push('✓ '+T('Fully Kiosk')+' '+(j.version||'')+' '+T('installiert')); show();
-    }
+    const display='tbview';   // Fully nur noch als Fallback per adb (--es mode fully)
     lines.push(T('Richte Launcher per adb ein …')); show();
     const j=await postJson('/api/panel/launcher',{ip, server, panel:panel||'', device:(NP_KINDS[NP_KIND]||{}).dev||'android', name, display});
     lines.pop();
-    if(j.ok){ lines.push('✓ '+(j.fully?T('Launcher eingerichtet – „LoxPanel“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))); 
+    if(j.ok){ lines.push('✓ '+(j.fully?T('Launcher eingerichtet – „tilebert“ öffnet')+' '+(j.url||''):T('Launcher eingerichtet – Fully Kiosk fehlt noch'))); 
       lines.push(T('Sobald das Gerät die Visu geöffnet hat, erscheint es unter „Meine Geräte“.')); show();
       flash(t,'✓ '+name,!!j.fully); $('#ad_done').style.display='flex'; }
     else { lines.push('✗ '+T('Fehler: ')+(j.error||'')+((j.steps||[]).length?' ('+j.steps.filter(x=>!x.ok).map(x=>x.step).join(', ')+')':'')); show(); flash(t,T('Fehler: ')+(j.error||''),false); }

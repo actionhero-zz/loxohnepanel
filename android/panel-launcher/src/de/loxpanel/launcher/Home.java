@@ -16,7 +16,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 /**
- * Startbildschirm mit zwei grossen Symbolen: LoxPanel und der urspruengliche
+ * Startbildschirm mit zwei grossen Symbolen: tilebert und der urspruengliche
  * Startbildschirm. Startet Fully nach AUTOSTART_S Sekunden von selbst (nach
  * Boot, Fully-Absturz oder Verlassen von Fully); jeder Tipp bricht das ab.
  */
@@ -36,7 +36,7 @@ public class Home extends Activity {
                 Kiosk.openPanel(Home.this, false);
                 return;
             }
-            countdown.setText("LoxPanel startet in " + left + " s · Tippen bricht ab");
+            countdown.setText("tilebert startet in " + left + " s · Tippen bricht ab");
             left--;
             handler.postDelayed(this, 1000);
         }
@@ -49,7 +49,7 @@ public class Home extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
 
-        row.addView(tile(getResources().getDrawable(R.drawable.icon), "LoxPanel", new View.OnClickListener() {
+        row.addView(tile(getResources().getDrawable(R.drawable.icon), "tilebert", new View.OnClickListener() {
             @Override public void onClick(View v) { Kiosk.openPanel(Home.this, false); }
         }));
         row.addView(tile(StockHome.icon(this), StockHome.label(this), new View.OnClickListener() {

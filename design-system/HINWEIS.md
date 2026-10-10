@@ -1,4 +1,4 @@
-# LoxPanel Designsystem (Export)
+# tilebert Designsystem (Export)
 
 Spiegel des Designsystem-Artefakts (claude.ai). Regeln und Bausteine: `README.md`,
 Tokens: `tokens.json`, Komponenten mit Vorschau: `components/<Name>/`.

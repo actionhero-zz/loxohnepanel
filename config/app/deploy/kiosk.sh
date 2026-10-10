@@ -44,7 +44,7 @@ mkdir -p "$PROFILE/Default"
 sed -i 's/"exited_cleanly":false/"exited_cleanly":true/; s/"exit_type":"Crashed"/"exit_type":"Normal"/' \
     "$PROFILE/Default/Preferences" 2>/dev/null || true
 
-echo "LoxPanel-Kiosk -> $URL"
+echo "tilebert-Kiosk -> $URL"
 exec "$CHROME" --kiosk \
   --user-data-dir="$PROFILE" \
   --noerrdialogs --disable-infobars --disable-session-crashed-bubble \

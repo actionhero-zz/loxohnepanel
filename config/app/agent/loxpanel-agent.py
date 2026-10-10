@@ -602,7 +602,7 @@ def main():
         start_kiosk(_cur_panel)
     threading.Thread(target=announce_loop, daemon=True).start()
     srv = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
-    print("LoxPanel-Agent auf :%d, Server=%s, Panel=%s, Autostart=%s"
+    print("tilebert-Agent auf :%d, Server=%s, Panel=%s, Autostart=%s"
           % (PORT, SERVER, _cur_panel or "(default)", "an" if AUTOSTART else "aus"))
     srv.serve_forever()
 

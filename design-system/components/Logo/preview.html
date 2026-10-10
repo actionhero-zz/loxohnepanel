@@ -1,0 +1,70 @@
+<!-- @dsCard group="Marke" height=1500 subtitle="Marke, Wortmarke, Favicons, Regeln" page -->
+<style>
+  body{padding:8px;}
+  h3{font:600 13px/1 var(--font-num);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);margin:28px 0 12px;}
+  h3:first-child{margin-top:4px;}
+  .row{display:flex;flex-wrap:wrap;gap:var(--space-gap);align-items:stretch;}
+  .cell{background:var(--tile);border-radius:var(--r-l);padding:var(--space-tile);display:flex;flex-direction:column;gap:12px;align-items:center;justify-content:space-between;box-sizing:border-box;min-width:150px;}
+  .cell.dk{background:#1f2440;}
+  .cell.dk .cap,.cell.dk .cap small{color:#fff;}
+  .cap{font:600 13px/1.25 var(--font-text);color:var(--ink);text-align:center;}
+  .cap small{display:block;font-weight:400;font-size:12px;color:var(--ink-2);margin-top:2px;}
+  .stage{display:flex;align-items:center;justify-content:center;gap:16px;flex:1;}
+  .cell img{display:block;}
+  .zone{position:relative;padding:48px;background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(31,36,64,.08) 6px 7px);border-radius:var(--r-m);}
+  .zone span{position:absolute;font:600 11px var(--font-num);color:var(--ink);}
+  .zone .inner{outline:1.5px dashed #1f2440;outline-offset:0;background:var(--tile);}
+  .sw{width:88px;height:56px;border-radius:var(--r-m);}
+  .sw b{display:block;padding:36px 0 0 8px;font:600 11px var(--font-num);}
+  .dd{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:var(--space-gap);}
+  .dd div{background:var(--tile);border-radius:var(--r-l);padding:var(--space-tile);}
+  .dd h4{margin:0 0 10px;font:600 15px var(--font-num);}
+  .dd ul{margin:0;padding-left:18px;font:400 13px/1.5 var(--font-text);color:var(--ink);}
+  .do h4{color:var(--good);} .dont h4{color:var(--crit);}
+  .bad{display:flex;gap:16px;align-items:center;margin-top:12px;}
+</style>
+<h3>Marke</h3>
+<div class="row">
+  <div class="cell"><div class="stage"><img src="../../logo/marke.svg" width="128" height="128" alt="tilebert Marke"></div><div class="cap">Marke<small>mit Mund, ab 32 px</small></div></div>
+  <div class="cell"><div class="stage"><img src="../../logo/marke-klein.svg" width="128" height="128" alt="tilebert kleine Marke"></div><div class="cap">Kleine Marke<small>16–31 px</small></div></div>
+  <div class="cell"><div class="stage"><img src="../../logo/marke.svg" width="32" height="32" alt=""><img src="../../logo/marke-klein.svg" width="24" height="24" alt=""><img src="../../logo/marke-klein.svg" width="16" height="16" alt=""></div><div class="cap">Reale Größen<small>32 · 24 · 16 px</small></div></div>
+</div>
+<h3>Einfarbig</h3>
+<div class="row">
+  <div class="cell"><div class="stage"><img src="../../logo/marke-einfarbig-tinte.svg" width="96" height="96" alt="Marke einfarbig Tinte"></div><div class="cap">Tinte<small>auf hellem Grund</small></div></div>
+  <div class="cell dk"><div class="stage"><img src="../../logo/marke-einfarbig-weiss.svg" width="96" height="96" alt="Marke einfarbig weiß"></div><div class="cap">Weiß<small>auf dunklem Grund</small></div></div>
+</div>
+<h3>Wortmarke</h3>
+<div class="row">
+  <div class="cell"><div class="stage"><img src="../../logo/wortmarke-hell.svg" width="260" alt="tilebert Wortmarke hell"></div><div class="cap">Hell<small>für hellen Grund, ab 100 px Breite</small></div></div>
+  <div class="cell dk"><div class="stage"><img src="../../logo/wortmarke-dunkel.svg" width="260" alt="tilebert Wortmarke dunkel"></div><div class="cap">Dunkel<small>für dunklen Grund</small></div></div>
+</div>
+<h3>Favicons</h3>
+<div class="row">
+  <div class="cell"><div class="stage"><img src="../../logo/favicons/webapp/favicon.svg" width="64" height="64" alt="Favicon Web-App"><img src="../../logo/favicons/webapp/favicon-32.png" width="32" height="32" alt=""><img src="../../logo/favicons/webapp/favicon-16.png" width="16" height="16" alt=""></div><div class="cap">Web-App<small>gelbe Kachel mit Auge</small></div></div>
+  <div class="cell"><div class="stage"><img src="../../logo/favicons/konfig/favicon.svg" width="64" height="64" alt="Favicon Konfiguration"><img src="../../logo/favicons/konfig/favicon-32.png" width="32" height="32" alt=""><img src="../../logo/favicons/konfig/favicon-16.png" width="16" height="16" alt=""></div><div class="cap">Konfiguration<small>blaue Kachel mit Schalter</small></div></div>
+</div>
+<h3>Mindestgrößen</h3>
+<div class="row">
+  <div class="cell"><div class="cap">Marke mit Mund<small>32 px</small></div></div>
+  <div class="cell"><div class="cap">Kleine Marke<small>16 px</small></div></div>
+  <div class="cell"><div class="cap">Favicon<small>16 px</small></div></div>
+  <div class="cell"><div class="cap">Wortmarke<small>100 px breit</small></div></div>
+</div>
+<h3>Schutzzone</h3>
+<div class="row"><div class="cell"><div class="zone"><span style="top:16px;left:50%;transform:translateX(-50%)">s</span><span style="left:20px;top:50%">s</span><img class="inner" src="../../logo/marke.svg" width="120" height="120" alt=""></div><div class="cap">Eine Kachelkante s rundum frei<small>s = 19,1 von 48 Einheiten der Marke</small></div></div></div>
+<h3>Farben</h3>
+<div class="row">
+  <div class="cell"><div class="sw" style="background:#1f2440"><b style="color:#fff">#1f2440</b></div><div class="cap">Tinte</div></div>
+  <div class="cell"><div class="sw" style="background:#ffc145"><b>#ffc145</b></div><div class="cap">Gelb</div></div>
+  <div class="cell"><div class="sw" style="background:#7db7ff"><b>#7db7ff</b></div><div class="cap">Blau</div></div>
+  <div class="cell"><div class="sw" style="background:#ff9e7a"><b>#ff9e7a</b></div><div class="cap">Koralle</div></div>
+  <div class="cell"><div class="sw" style="background:#5cd6a4"><b>#5cd6a4</b></div><div class="cap">Mint</div></div>
+</div>
+<h3>Do und Don't</h3>
+<div class="dd">
+  <div class="do"><h4>Do</h4><ul><li>Dateien unverändert einbinden</li><li>Schutzzone einhalten</li><li>Unter 32 px die kleine Marke nehmen</li><li>Einfarbig nur, wenn Farbe nicht möglich ist</li><li>Name immer klein: tilebert</li></ul></div>
+  <div class="dont"><h4>Don't</h4><ul><li>Umfärben, strecken oder drehen</li><li>Schatten, Verläufe oder Effekte zufügen</li><li>Wortmarke neu setzen oder in Großbuchstaben schreiben</li><li>Marke mit Mund unter 32 px verkleinern</li><li>Marke auf unruhigem Grund oder mit zu wenig Kontrast</li></ul>
+  <div class="bad"><img src="../../logo/marke.svg" width="48" height="48" style="transform:scaleX(1.6);transform-origin:left" alt=""><img src="../../logo/marke.svg" width="48" height="48" style="transform:rotate(30deg);margin-left:40px" alt=""><img src="../../logo/marke.svg" width="48" height="48" style="filter:hue-rotate(120deg)" alt=""></div></div>
+</div>
+<script></script>

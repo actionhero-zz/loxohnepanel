@@ -1,6 +1,6 @@
-# LoxPanel Favoriten – Regeln für Claude
+# tilebert (früher LoxPanel) – Regeln für Claude
 
-LoxBerry-Plugin „LoxPanel Favoriten“ (Fork von Lenardo1/Loxpanel), läuft als eigener
+LoxBerry-Plugin „tilebert“ (früher „LoxPanel Favoriten“; ein LoxPanel Fork von Lenardo1/Loxpanel), läuft als eigener
 Docker-Container (Port 8098). Server: `config/app/bin/webvisu.py`, Config-Seite:
 `config/app/webfrontend/html/config.html`, Panel: `config/app/webfrontend/html/`.
 TbView (eigene Kiosk-App): `docs/TBVIEW.md`.

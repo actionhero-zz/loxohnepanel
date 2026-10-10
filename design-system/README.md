@@ -1,4 +1,4 @@
-LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig, freundlich, pastellig: ein dunkler Rahmen, darauf je Tab eine farbige Karte, darauf weiße Kacheln. Alles ist zum Antippen gemacht – mit dem Finger, aus einem Meter Abstand.
+tilebert ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px (ein LoxPanel Fork von Lenardo1). Ruhig, freundlich, pastellig: ein dunkler Rahmen, darauf je Tab eine farbige Karte, darauf weiße Kacheln. Alles ist zum Antippen gemacht – mit dem Finger, aus einem Meter Abstand.
 
 ## Ebenen
 - **Ebene 0 – Dashboard und Screensaver:** das Dashboard-Tab mit Infoleiste. Der Screensaver ist dieselbe Ebene.
@@ -120,3 +120,14 @@ LoxPanel ist eine Loxone-Visualisierung für Wandpanels ab 480 × 480 px. Ruhig,
 - **Speichermodell:** Primär (`cfg-prim` gefüllt, Schrift `prim-ink`) ist nur „Speichern“ in der Speicherleiste – und „Weiter“ in Assistenten. Alles andere ist Nebenaktion: Fläche `field`, Rand `line`, Schrift `fg`. Sofort wirkende Aktionen (Test-Ton, Passwort, Log, Geräteaktionen …) tragen ein kleines Blitz-Symbol (11 px) mit Hinweis „Wirkt sofort“. Gefährliches (Löschen, Entfernen, Zurücksetzen): Schrift `crit`, rote Kontur, keine Füllung, rechts abgesetzt bzw. in eigener Zeile mit Trennlinie, immer mit Rückfrage.
 - **Auswahl:** Ausgewählt = 2 px Ring in `prim` (ohne Layoutsprung) plus Häkchen-Quadrat 18 px (`radius-round`) oben rechts in `prim`, Häkchen in `prim-ink`; an Pillen als 16-px-Marke an der Ecke. Kleine Wahlfelder (< 44 px) und Tab-Chips nur Ring. Akzent-/Orangetöne sind für „ausgewählt“ nicht erlaubt.
 - **Karten:** Eine einzelne Karte füllt die Breite; Text steht immer in Karten; jeder Aufklapper trägt denselben Pfeil ›. Hilfe „?“ öffnet ein schwebendes Popover (`r-m`) statt Inhalt zu verschieben.
+
+## Logo
+
+Der Name steht immer klein geschrieben: **tilebert**. Die Marke sind vier Kacheln (Gelb, Blau, Koralle, Mint) mit Augen und Mund. Dateien unter `logo/`, Vorschau und Regeln in der Komponente **Logo**.
+
+- **Marke** `logo/marke.svg` (mit Mund) ab 32 px; darunter (16–31 px) `logo/marke-klein.svg`.
+- **Einfarbig:** `marke-einfarbig-tinte.svg` auf hellem, `marke-einfarbig-weiss.svg` auf dunklem Grund – nur wenn Farbe nicht möglich ist.
+- **Wortmarke** `wortmarke-hell.svg` (Grund hell) und `wortmarke-dunkel.svg` (Grund dunkel): Sora 600, klein, Laufweite −3 %, als Kurven; mindestens 100 px breit.
+- **Schutzzone:** eine Kachelkante `s` rundum frei.
+- **Favicons:** Web-App = gelbe Kachel mit Auge (`logo/favicons/webapp/`), Konfiguration = blaue Kachel mit Schalter (`logo/favicons/konfig/`).
+- **Farben:** Tinte `#1f2440`, Gelb `#ffc145`, Blau `#7db7ff`, Koralle `#ff9e7a`, Mint `#5cd6a4`. Nicht umfärben, strecken oder drehen.

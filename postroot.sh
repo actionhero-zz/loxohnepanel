@@ -37,11 +37,11 @@ docker rm -f loxpanelfav > /dev/null 2>&1
 # Sicherheitsnetz stehen, falls die Docker-Installation dort ausnahmsweise
 # fehlgeschlagen sein sollte.
 if which docker > /dev/null 2>&1; then
-	echo "<INFO> Starte LoxPanel (Favoriten-Fork)..."
+	echo "<INFO> Starte tilebert (Favoriten-Fork)..."
 	su -s /bin/bash loxberry -c "$BINDIR/loxpanel-ctl.sh start"
-	echo "<OK> LoxPanel laeuft – Oberflaeche: http://<LoxBerry-IP>:8098/config"
+	echo "<OK> tilebert laeuft – Oberflaeche: http://<LoxBerry-IP>:8098/config"
 else
-	echo "<WARN> Docker ist nicht verfuegbar - LoxPanel konnte nicht gestartet werden. Bitte preroot.sh-Log pruefen."
+	echo "<WARN> Docker ist nicht verfuegbar - tilebert konnte nicht gestartet werden. Bitte preroot.sh-Log pruefen."
 fi
 
 exit 0

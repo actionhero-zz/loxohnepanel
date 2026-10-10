@@ -1,0 +1,28 @@
+{
+ "name": "Tilebert",
+ "variant": "Offen",
+ "units": "viewBox 48 x 48; Markenblock 40 x 40 ab (4,4)",
+ "colors": {
+  "ink": "#1f2440",
+  "gelb": "#ffc145",
+  "blau": "#7db7ff",
+  "koralle": "#ff9e7a",
+  "mint": "#5cd6a4"
+ },
+ "geometry": {
+  "kachel_s": 19.137,
+  "kreuz_g": 1.726,
+  "radius_r": 7.31,
+  "auge_d": 4.518,
+  "modul_W": 11.827,
+  "strich_k": 1.726
+ },
+ "min_sizes_px": {
+  "marke_mit_mund": 32,
+  "marke_klein": 16,
+  "favicon_einzelkachel": 16,
+  "wortmarke_breite": 100
+ },
+ "clear_space": "eine Kachelkante s rundum",
+ "font": "Sora 600, klein geschrieben, Laufweite -3 %, als Kurven"
+}

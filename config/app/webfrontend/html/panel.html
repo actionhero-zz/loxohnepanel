@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'%3E %3Cdefs%3E %3ClinearGradient id='bg' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%231d2138'/%3E%3Cstop offset='1' stop-color='%230d0f1a'/%3E%3C/linearGradient%3E %3CradialGradient id='glow' cx='.72' cy='.28' r='.6'%3E%3Cstop offset='0' stop-color='%23ffc145' stop-opacity='.22'/%3E%3Cstop offset='1' stop-color='%23ffc145' stop-opacity='0'/%3E%3C/radialGradient%3E %3ClinearGradient id='tile' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23fff3cf'/%3E%3Cstop offset='1' stop-color='%23ffd97a'/%3E%3C/linearGradient%3E %3ClinearGradient id='hi' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.45'/%3E%3Cstop offset='.5' stop-color='%23fff' stop-opacity='0'/%3E%3C/linearGradient%3E %3C/defs%3E %3Crect width='512' height='512' rx='112' fill='url(%23bg)'/%3E %3Crect width='512' height='512' rx='112' fill='url(%23glow)'/%3E %3Crect x='2' y='2' width='508' height='508' rx='110' fill='none' stroke='%23fff' stroke-opacity='.07' stroke-width='4'/%3E %3Cg%3E %3Crect x='104' y='104' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='104' y='270' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='270' y='270' width='138' height='138' rx='34' fill='url(%23tile)'/%3E %3Crect x='104' y='104' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3Crect x='104' y='270' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3Crect x='270' y='270' width='138' height='138' rx='34' fill='url(%23hi)'/%3E %3C/g%3E %3Cdefs%3E%3CradialGradient id='sg' cx='.5' cy='.45' r='.55'%3E%3Cstop offset='0' stop-color='%23fff7dc'/%3E%3Cstop offset='1' stop-color='%23ffcf5c'/%3E%3C/radialGradient%3E %3Cfilter id='sb' x='-50%25' y='-50%25' width='200%25' height='200%25'%3E%3CfeGaussianBlur stdDeviation='14'/%3E%3C/filter%3E%3C/defs%3E %3Cpolygon points='339.0,99.0 357.8,147.1 409.4,150.1 369.4,182.9 382.5,232.9 339.0,205.0 295.5,232.9 308.6,182.9 268.6,150.1 320.2,147.1' fill='%23ffd36a' opacity='.5' filter='url(%23sb)'/%3E %3Cpolygon points='339.0,99.0 357.8,147.1 409.4,150.1 369.4,182.9 382.5,232.9 339.0,205.0 295.5,232.9 308.6,182.9 268.6,150.1 320.2,147.1' fill='url(%23sg)' stroke='%23ffffff' stroke-opacity='.6' stroke-width='3' stroke-linejoin='round'/%3E %3C/svg%3E">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' %3E%3Crect width='48' height='48' rx='18.334' fill='%23ffc145'/%3E%3Ccircle cx='24' cy='24' r='5.666' fill='%231f2440'/%3E%3C/svg%3E">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <!-- Als App vom Home-Bildschirm (Handy): Vollbild, eigenes Symbol -->
 <link rel="manifest" id="appManifest" href="/manifest.webmanifest">
@@ -18,7 +18,7 @@
      WebView (Shelly/Fully Kiosk im System-Dunkelmodus) helle Designs
      eigenmaechtig ab: weisse Kacheln werden schwarz, dunkle Schrift hell. -->
 <meta name="color-scheme" content="dark light">
-<title>LoxPanel</title>
+<title>tilebert</title>
 <style>
   :root{
     color-scheme:dark light;   /* siehe <meta name="color-scheme"> */
@@ -845,6 +845,15 @@
     .svw[data-sz="3x1"] .svw-wx .fc .tt{font-size:min(calc(var(--sv-fc-size,12.5) * 1 * 1px), 18px);}
   }
   .svw .svw-curve svg{width:100%;height:auto;max-height:150px;display:block;}
+  /* Nacht ohne Annaeherung: Kamera angehalten -> Standbild abgedunkelt + Hinweis */
+  canvas.camstill{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;filter:blur(6px) brightness(.45) saturate(.6);
+    transform:scale(1.08);pointer-events:none;z-index:1;}
+  .camnightov{position:absolute;inset:0;z-index:2;display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;
+    color:rgba(255,255,255,.85);font-size:14px;font-weight:500;text-align:center;padding:12px;pointer-events:none;
+    background:radial-gradient(ellipse at center,rgba(0,0,0,.25),rgba(0,0,0,.55));}
+  .camnightov svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:1.6;opacity:.9;}
+  html.camnight .camnightov{display:flex;}
+  html:not(.camnight) canvas.camstill{display:none;}
   /* Mit Verlauf (3x2/2x2): Tageskacheln behalten ihre Inhaltshoehe, der Verlauf nimmt den Rest
      (sonst schneidet grosse Vorschau-Schrift Tag und Max/Min ab). */
   .svw .svw-wx.wx-curve .fore{flex:none;}
@@ -4126,6 +4135,18 @@ g.addEventListener('touchend',e=>{
 });
 
 let booted=false;
+// Geraete-Bruecke: TbView (eigene App) -> Fully (Fallback) -> Browser. TbView hat die
+// Fully-Namen (turnScreenOn/Off, isScreenOn), kiosk() liefert also fuer beide dasselbe.
+// Ereignisse der App kommen ueber lpHost._ev(name, wert): 'prox' (nah), 'light' (0..16), 'screen'.
+const lpHost=(()=>{
+  const t=window.TbView, f=window.fully;
+  const type=t?'tbview':((f&&typeof f.turnScreenOff==='function'&&typeof f.turnScreenOn==='function')?'fully':'browser');
+  const on={};
+  return { type, api:type==='tbview'?t:(type==='fully'?f:null),
+    on(ev,fn){ (on[ev]=on[ev]||[]).push(fn); },
+    _ev(ev,v){ (on[ev]||[]).forEach(fn=>{ try{ fn(v); }catch(e){} }); } };
+})();
+window.lpHost=lpHost;   // die App ruft window.lpHost._ev (const haengt nicht an window)
 const PANEL_ID = new URLSearchParams(location.search).get('panel') || '';
 // Geraete-Kennung (physisches Panel). Darueber adressiert der Server dieses
 // Geraet (Betriebsmodus, Display, Ansicht wechseln) und listet es unter
@@ -4274,7 +4295,7 @@ function wsWake(ev){
   setTimeout(()=>{ if(!document.hidden && ws && ws.readyState===1 && wsRx<t0) wsRestart('wieder sichtbar ('+ev+'), keine Antwort'); }, 4000);
 }
 function linkBanner(){
-  const txt = !srvOk ? 'Keine Verbindung zum LoxPanel-Server'
+  const txt = !srvOk ? 'Keine Verbindung zum tilebert-Server'
     : !msOk ? 'Miniserver nicht erreichbar'+(msSince?' seit '+new Date(msSince).toLocaleTimeString(LANG||undefined,{hour:'2-digit',minute:'2-digit'}):'')+' – Werte evtl. veraltet'
     : '';
   document.documentElement.classList.toggle('stale', !!txt);
@@ -5291,6 +5312,7 @@ function camStream(img, src, reconnectH, onErr, onOk){
       img.src=src+'&single=1&_t='+Date.now(); }, tick); };
   camImgs.add(img);
   load();
+  if(_camNight) camStills();   // neu gezeichnete Kamera waehrend der Nachtsperre: Hinweis gleich zeigen
 }
 function camStop(img){ if(!img) return;
   clearTimeout(img._camRetry); clearTimeout(img._camCycle); clearTimeout(img._camTick);
@@ -5311,12 +5333,48 @@ function camsRefresh(){
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) camsRefresh(); });
 // Display aus (Leerlauf, Server, Fully): Kamerabilder anhalten statt im Dunkeln
 // weiter zu holen und zu dekodieren; beim Aufwecken sofort neu aufbauen.
-let CAM_DARK=false;
-function camsDark(on){ on=!!on; if(CAM_DARK===on) return; CAM_DARK=on;
-  if(on) camImgs.forEach(img=>{ clearTimeout(img._camTick); clearTimeout(img._camRetry); clearTimeout(img._camCycle);
-    if(img.getAttribute('src')) img.removeAttribute('src'); });   // ohne src: Laden bricht ab, ohne Fehler-Ereignis
-  else camsRefresh();
-  clog('Display '+(on?'aus – Kamera angehalten':'an – Kamera läuft'));
+// Zwei Gruende, die Kameras anzuhalten: Display aus (_camScreenOff) und Nacht ohne
+// Annaeherung (_camNight, nur TbView mit Naeherungssensor). CAM_DARK = einer davon.
+let CAM_DARK=false, _camScreenOff=false, _camNight=false;
+function camsDark(on){ _camScreenOff=!!on; camsApply(); }
+function camsApply(){ const on=_camScreenOff||_camNight;
+  document.documentElement.classList.toggle('camnight', _camNight && !_camScreenOff);
+  if(CAM_DARK===on){ if(on) camStills(); return; }
+  CAM_DARK=on;
+  if(on){ camStills(); camImgs.forEach(img=>{ clearTimeout(img._camTick); clearTimeout(img._camRetry); clearTimeout(img._camCycle);
+    if(img.getAttribute('src')) img.removeAttribute('src'); }); }   // ohne src: Laden bricht ab, ohne Fehler-Ereignis
+  else { camStills(true); camsRefresh(); }
+  clog(_camScreenOff?'Display aus – Kamera angehalten':(_camNight?'Nacht – Kamera bis zur Annäherung angehalten':'Kamera läuft'));
+}
+// Nacht-Pause sichtbar machen: letztes Bild als abgedunkeltes Standbild + Hinweis.
+// Wird VOR dem Abbrechen des Streams gezeichnet (danach ist das Bild leer).
+const CAM_NIGHT_HTML='<div class="camnightov">'+svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>')+'<span data-i18n>Live-Bild bei Annäherung</span></div>';
+function camStills(clear){
+  camImgs.forEach(img=>{ const host=img.parentElement; if(!host||!img.isConnected) return;
+    let st=host.querySelector(':scope>canvas.camstill'), ov=host.querySelector(':scope>.camnightov');
+    if(clear){ if(st) st.remove(); if(ov) ov.remove(); return; }
+    if(!_camNight) return;   // Display aus: dunkel genuegt, kein Standbild
+    if(!st && img.naturalWidth){ st=document.createElement('canvas'); st.className='camstill'; st.width=160; st.height=90;
+      try{ st.getContext('2d').drawImage(img,0,0,160,90); host.appendChild(st); }catch(e){} }
+    if(!ov){ host.insertAdjacentHTML('beforeend', CAM_NIGHT_HTML); }
+  });
+}
+// Nachts zeigt die Kamera nur live, wenn jemand da ist: Annaeherung, Beruehrung oder
+// Klingel oeffnen, CAM_NIGHT_HOLD_MS nach dem Weggehen schliesst es wieder.
+const CAM_NIGHT_HOLD_MS=30000;
+let _camNightNear=false, _camNightT=null;
+function camNightGate(){   // ob die Regel gerade greift
+  return lpHost.type==='tbview' && SENS.nightCam!==false && NIGHT.on && lpHost.prox;
+}
+function camNightUpdate(){
+  const pause=camNightGate() && !_camNightNear && !_camNightT;
+  if(pause===_camNight) return; _camNight=pause; camsApply();
+}
+function camNightOpen(near, touch){   // near: jemand da; weg -> Nachlauf; touch: Beruehrung/Klingel = jemand da gewesen
+  if(!near && !touch && !_camNightNear){ camNightUpdate(); return; }   // "fern" ohne vorheriges "nah" (z. B. beim Laden)
+  clearTimeout(_camNightT); _camNightT=null; _camNightNear=!!near;
+  if(!near) _camNightT=setTimeout(()=>{ _camNightT=null; camNightUpdate(); }, CAM_NIGHT_HOLD_MS);
+  camNightUpdate();
 }
 // Fully meldet den echten Schirmzustand (auch wenn Fully selbst abgeschaltet hat)
 setInterval(()=>{ const f=kiosk(); if(f&&typeof f.isScreenOn==='function'){ try{ camsDark(!f.isScreenOn()); }catch(e){} } }, 5000);
@@ -5814,14 +5872,18 @@ function nightLayer(){
   }
   return nightEl;
 }
+// Dynamische Helligkeit: nur Shelly mit TbView und Lichtsensor bei "Helligkeit automatisch" regelt nach
+// dem Raumlicht - dann kein zusaetzliches Abdunkeln nach Betriebsmodus. Alle anderen Geraete (und Shelly
+// mit "Systemeinstellung") dunkeln wie bisher nach dem Betriebsmodus ab.
+function sensorBright(){ return lpHost.type==='tbview' && lpHost.shelly && lpHost.light && SENS.auto; }
 function applyNight(awake){
-  const dim=(NIGHT.on && NIGHT.dim>0 && !awake) ? Math.min(90,NIGHT.dim) : 0;
+  const dim=(NIGHT.on && NIGHT.dim>0 && !awake && !sensorBright()) ? Math.min(90,NIGHT.dim) : 0;
   // TbView: echte Fensterhelligkeit (Schwarz bleibt schwarz); lehnt die App ab, dunkelt das Overlay
   let real=false;
   if(lpHost.type==='tbview'){ try{ real=!!lpHost.api.setDisplayBrightness(100-dim); }catch(e){} }
   nightLayer().style.opacity = real ? 0 : dim/100;
 }
-function setNight(on){ NIGHT.on=!!on; clearTimeout(nightWakeTimer); applyNight(false); }
+function setNight(on){ NIGHT.on=!!on; clearTimeout(nightWakeTimer); applyNight(false); camNightUpdate(); }   // Nacht nur ueber den Betriebsmodus (Config)
 function nightWake(){          // Beruehrung -> kurz voll aufhellen, dann zurueck
   if(!NIGHT.on || NIGHT.dim<=0 || NIGHT.wake<=0) return;
   clearTimeout(nightWakeTimer);
@@ -5837,28 +5899,25 @@ function nightWake(){          // Beruehrung -> kurz voll aufhellen, dann zuruec
 // Neu laden gegen Einfrieren erledigt die Seite ohne Agent selbst (s. neuladenFaellig).
 const DISP = { dpmsOff: 0, reloadHours: 0, reloadAt: null, agent: false, wake: false };
 let dpmsTimer=null;
-// Geraete-Bruecke: TbView (eigene App) -> Fully (Fallback) -> Browser. TbView hat die
-// Fully-Namen (turnScreenOn/Off, isScreenOn), kiosk() liefert also fuer beide dasselbe.
-// Ereignisse der App kommen ueber lpHost._ev(name, wert): 'prox' (nah), 'light' (0..16), 'screen'.
-const lpHost=(()=>{
-  const t=window.TbView, f=window.fully;
-  const type=t?'tbview':((f&&typeof f.turnScreenOff==='function'&&typeof f.turnScreenOn==='function')?'fully':'browser');
-  const on={};
-  return { type, api:type==='tbview'?t:(type==='fully'?f:null),
-    on(ev,fn){ (on[ev]=on[ev]||[]).push(fn); },
-    _ev(ev,v){ (on[ev]||[]).forEach(fn=>{ try{ fn(v); }catch(e){} }); } };
-})();
 function kiosk(){ return lpHost.api; }
 // Sensoren der Kiosk-App (nur TbView): Annaeherung und Helligkeit aus dem Lichtsensor.
-const SENS={ prox:'wake' };
+const SENS={ prox:'wake', nightCam:true, auto:true };
 function applySensors(s){
-  SENS.prox=s.prox||'wake';
+  SENS.prox=s.prox||'wake'; SENS.nightCam=s.nightCam!==false; SENS.auto=s.auto!==false;
+  if(lpHost.type==='tbview'){ try{ const i=JSON.parse(lpHost.api.getDeviceInfo()); lpHost.prox=!!i.prox; lpHost.light=!!i.light;
+    lpHost.shelly=/^(jenna|blake|maverick|cally|dayna|stargate)$/i.test(i.model||'')||/shelly|sawd/i.test(i.model||''); }catch(e){} }
+  applyNight(false);   // Helligkeit: Sensor ersetzt ggf. das naechtliche Abdunkeln
+  if(typeof camNightUpdate==='function') camNightUpdate();
   if(lpHost.type!=='tbview') return;
   try{ lpHost.api.setProximityWake(SENS.prox!=='off'); }catch(e){}
   try{ lpHost.api.setAutoBrightness(s.auto!==false, +s.min||10, +s.max||100); }catch(e){}
 }
 // "Display an + Dashboard schliessen": Annaeherung schliesst das Dashboard wie eine Beruehrung
-lpHost.on('prox', near=>{ if(near && SENS.prox==='open' && saverOn()) wake(); });
+lpHost.on('prox', near=>{ lpHost.prox=true; lpHost.near=!!near;
+  if(near && SENS.prox==='open' && saverOn()) wake();
+  else if(near && SENS.prox!=='off') nightWake();     // nachts kurz aufhellen wie bei Beruehrung
+  camNightOpen(near); });
+lpHost.on('screen', on=>camsDark(!on));
 function screenOff(){ const f=kiosk(); if(!f) return; _screenWasOff=true; camsDark(true); try{ f.turnScreenOff(); }catch(e){} }
 function screenOn(){ camsDark(false); const f=kiosk(); if(!f) return; _screenWasOff=false;
   try{ if(typeof f.isScreenOn!=='function' || !f.isScreenOn()) f.turnScreenOn(); }catch(e){} }
@@ -5909,7 +5968,7 @@ function neuladenFaellig(jetzt){
 }
 setInterval(()=>{ if(saverOn() && neuladenFaellig(Date.now())) location.reload(); }, 60*1000);
 // Server-Ereignis, das Aufmerksamkeit braucht: Display an, Uhr weg, Timer neu.
-function wake(){ screenOn(); nightWake(); hideSaver(); resetIdle(); }
+function wake(){ screenOn(); nightWake(); hideSaver(); resetIdle(); camNightOpen(!!lpHost.near, true); }
 setInterval(tickClock, 1000);
 showSaver();     // Startseite = Uhr
 resetIdle();

@@ -102,7 +102,7 @@ async def run(args: argparse.Namespace, conn: dict) -> int:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
-    p = argparse.ArgumentParser(description="LoxPanel Phase-2-Probe")
+    p = argparse.ArgumentParser(description="tilebert Phase-2-Probe")
     p.add_argument("--host")
     p.add_argument("--user")
     p.add_argument("--pass", dest="password")

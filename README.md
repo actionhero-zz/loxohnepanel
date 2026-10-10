@@ -1,4 +1,6 @@
-# LoxPanel Favoriten – LoxBerry-Plugin (Docker, eigenstaendiger Fork)
+# tilebert
+
+*ein LoxPanel Fork von Lenardo1* – LoxBerry-Plugin (Docker, eigenstaendiger Fork). Das Plugin hieß früher „LoxPanel Favoriten“.
 
 > **Fork von [LoxPanel](https://github.com/Lenardo1/Loxpanel) von Lenardo1.**
 > Copyright © 2025–2026 Lenardo1 and LoxPanel contributors (https://github.com/Lenardo1/Loxpanel).
@@ -6,7 +8,7 @@
 > erlaubt; Details in [LICENSE.md](LICENSE.md). Dieser Fork enthält eigene Änderungen
 > (Raster-Editor, Kameras, Dashboard u. a., siehe unten).
 
-Betreibt den **Favoriten-Fork von LoxPanel** als eigenen Docker-Container auf
+Betreibt **tilebert** (den Favoriten-Fork von LoxPanel) als eigenen Docker-Container auf
 einem LoxBerry – bewusst als **eigenstaendiges Plugin neben einer evtl.
 installierten Original-LoxPanel-Version**, ohne Kollision:
 
@@ -20,6 +22,7 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 
 ## Eigene Funktionen dieses Forks
 
+- **tilebert: neuer Name und neues Logo, App TbViewer, Sensoren nachts (0.20.0)** — LoxPanel Favoriten heißt jetzt **tilebert** (ein LoxPanel Fork von Lenardo1) mit neuem Logo (Plugin-Icon, App-Icon, Favicons: gelbe Kachel für die Web-App, blaue für die Konfiguration). Die Android-App heißt **TbViewer** (5.2) und zeigt tilebert an; in der Config unter Geräte „TbViewer installieren“ (Shelly bekommt einen Hinweis), Fully Kiosk ist aus der Oberfläche entfernt. Nachts zeigt die Kamera nur bei Annäherung live (sonst abgedunkeltes Standbild „Live-Bild bei Annäherung“; Berührung und Klingel öffnen ebenfalls, 30 s Nachlauf; abschaltbar unter Display & Nacht → Sensoren). Annäherung hellt nachts kurz auf. Shelly mit TbViewer regelt die Helligkeit nach dem Lichtsensor statt nach „Abdunkeln um“. Fix: Die Konfiguration speicherte beim Öffnen die Browsersprache als Panelsprache. Technische Kennungen (Plugin-Ordner loxpanelfav, Konfigdateien) bleiben, Updates laufen weiter.
 - **Updates von main (0.19.114)** — Das Plugin holt Updates jetzt vom Branch `main` des Repos (vorher `claude/festive-sagan-avv9if`). Keine Funktionsänderung; nötig, damit der alte Branch später entfallen kann.
 - **TbView: eigene Kiosk-App statt Fully, Sensor-Optionen, Wetter immer Max/Min (0.19.113)** — Launcher 5.0 mit TbView: eigene Vollbild-Anzeige für das Panel (Fully bleibt als Fallback, Umschalten im Einrichtungsassistent „Anzeige: TbView / Fully Kiosk“). Display aus/an, Wecken per Annäherung, echte Helligkeit nachts statt Abdunkel-Fläche. Neu unter Aussehen → Display & Nacht → Sensoren: „Bei Annäherung“ (Display einschalten / zusätzlich Dashboard schließen / nichts) und Helligkeit automatisch per Lichtsensor mit Mindest- und Höchstwert (nur TbView). Geräteliste zeigt TbView, Shelly wird unter TbView erkannt; Geräte-ID unter TbView beginnt mit „tb-“ (Gerät erscheint beim Wechsel einmal neu). Wetter-Widget: immer Max und Min, passt es nicht in die Breite nur Max; Auswahl „Je Tag anzeigen“ und „Schmale Kachel“ entfernt; Verlauf in 3×2/2×2 lässt den Tagen Vorrang (große Vorschau-Schrift wurde abgeschnitten).
 - **Wetter-Widget: Max/Min wieder sichtbar, Anzeige je Tag wählbar (0.19.112)** — Dashboard-Wetter: Max/Min je Tag fehlte seit 0.19.102 in schmalen und flachen Kacheln (1×2, 1×3, 2×1, 3×1). Flache 3×1-Karte zeigt das aktuelle Wetter links und die Tage rechts in voller Höhe (Symbol mittig), 2×1 setzt das Symbol links neben Tag und Max/Min, schmale Spalten zeigen Max über Min. Neu im Kachel-Editor: „Je Tag anzeigen“ (Symbol, Max/Min, Regen % – nur mit Open-Meteo) und „Schmale Kachel: 2 Tage statt Max über Min“. Vorschau höchstens 3 Tage (gespeicherte 4 werden zu 3). Config: Sortieren per Ziehen (Statusleiste, Status-Ampel, Kameras) wird jetzt gespeichert. README-Changelog ohne angepinnten Eintrag. (Forum #74.1)
@@ -418,8 +421,8 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 - **Android-Panel per Klick einrichten (optional, 0.13.11)** — LoxBerry-Pluginseite →
   „Android-Panel einrichten“: Gerät (Shelly Wall Display / anderes Android-Tablet
   als Testing) und Panel-IP wählen, der Container installiert per ADB den
-  LoxPanel-Launcher (`android/panel-launcher`) und trägt die LoxBerry-Adresse
-  ein. Beim Shelly wird er Startbildschirm (Symbole „LoxPanel“ und „Shelly“),
+  App TbViewer (`android/panel-launcher`) und trägt die LoxBerry-Adresse
+  ein. Beim Shelly wird er Startbildschirm (Symbole „tilebert“ und „Shelly“),
   auf anderen Tablets erscheint er im App-Menü. Fully Kiosk ist kommerziell und
   wird nicht mitgeliefert – die Einrichtung prüft, ob es installiert ist.
   Voraussetzung: ADB über WLAN am Panel aktiv; beim ersten Mal „USB-Debugging
@@ -634,7 +637,7 @@ installierten Original-LoxPanel-Version**, ohne Kollision:
 | `config/docker-compose.yml` | Container-Definition (Port 8098) |
 | `config/app/bin/` | Server (`webvisu.py`) und seine Module – das läuft im Container |
 | `config/app/webfrontend/` | Panel, Config-Editor, Settings (HTML/JS) |
-| `config/app/android/` | Fertig gebauter LoxPanel-Launcher (APK), wird per ADB installiert |
+| `config/app/android/` | Fertig gebaute App TbViewer (APK), wird per ADB installiert |
 | `android/panel-launcher/` | Quellcode + Build-Skript des Launchers |
 | `config/app/agent/`, `config/app/deploy/` | Panel-Agent und Installer für Linux-Anzeigegeräte |
 | `config/app/tools/` | Entwickler-Diagnoseskripte (nicht im Image) |

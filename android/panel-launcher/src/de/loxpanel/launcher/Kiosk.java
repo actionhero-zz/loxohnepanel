@@ -29,7 +29,7 @@ import android.widget.FrameLayout;
 import java.util.List;
 
 /**
- * TbView: eigene Kiosk-Ansicht fuer das LoxPanel (Ersatz fuer Fully, Fully bleibt Fallback).
+ * TbView: eigene Kiosk-Ansicht fuer tilebert (Ersatz fuer Fully, Fully bleibt Fallback).
  * Vollbild-WebView auf die Panel-URL, JS-Bruecke "TbView" mit den Fully-Namen
  * (turnScreenOn/Off, isScreenOn) plus Naeherung, Licht und Helligkeit.
  *
@@ -166,7 +166,7 @@ public class Kiosk extends Activity implements SensorEventListener {
 
     private void offline() {
         web.loadData("<body style='background:#000;color:#666;font:18px sans-serif;display:flex;align-items:center;"
-                + "justify-content:center;height:90vh'>LoxPanel nicht erreichbar &ndash; neuer Versuch &hellip;</body>",
+                + "justify-content:center;height:90vh'>tilebert nicht erreichbar &ndash; neuer Versuch &hellip;</body>",
                 "text/html; charset=utf-8", null);
         ui.removeCallbacks(retry);
         ui.postDelayed(retry, RETRY_MS);
@@ -326,7 +326,7 @@ public class Kiosk extends Activity implements SensorEventListener {
         if (web == null || !loaded) return;
         ui.post(new Runnable() {
             @Override public void run() {
-                if (web != null) web.evaluateJavascript("try{ window.lpHost&&lpHost._ev&&lpHost._ev('" + ev + "'," + val + "); }catch(e){}", null);
+                if (web != null) web.evaluateJavascript("try{ var h=window.lpHost||(typeof lpHost!=='undefined'?lpHost:null); if(h&&h._ev) h._ev('" + ev + "'," + val + "); }catch(e){}", null);
             }
         });
     }

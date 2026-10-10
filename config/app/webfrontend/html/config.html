@@ -1522,7 +1522,7 @@
           </div>
           <div class="card">
             <h3 data-i18n>Geräte-Logs</h3>
-            <p class="note" data-i18n>Android-Geräte (z. B. Shelly Wall Display), die per adb über WLAN erreichbar sind: Systemprotokoll, Hänger („isn’t responding“), Speicher und CPU als Textdatei – nur lesend, am Gerät wird nichts verändert. Am besten direkt nach einem Hänger holen, das Android-Protokoll reicht nur einige Stunden zurück.</p>
+            <p class="note" data-i18n>Android-Geräte (z. B. Shelly Wall Display), die per adb über WLAN erreichbar sind: Sensoren (inkl. 10 s Mitschnitt Näherungssensor), Systemprotokoll, Hänger („isn’t responding“), Speicher und CPU als Textdatei – nur lesend, am Gerät wird nichts verändert. Am besten direkt nach einem Hänger holen, das Android-Protokoll reicht nur einige Stunden zurück.</p>
             <div id="dg_devs"></div><span class="toast" id="dg_devtoast"></span>
           </div>
           <div class="card">
@@ -4331,7 +4331,7 @@ if($('#cal_add')) $('#cal_add').onclick=()=>{
 $('#wx_ms').onchange=()=>{ $('#wx_alt').hidden=$('#wx_ms').checked; };
 // Geraete-Logs (System -> Diagnose): alle per adb erreichbaren Geraete
 async function devLogDownload(name, ip, toast){
-  flash(toast, T('Lese Geräte-Log per adb … (bis zu 1 Minute)'), true);
+  flash(toast, T('Lese Geräte-Log per adb … (bis zu 1 Minute). Jetzt 10 s lang die Hand dem Panel nähern und wieder wegnehmen (Test Näherungssensor).'), true);
   try{ const r=await fetch('/api/device/adblog?device='+encodeURIComponent(name)+'&ip='+encodeURIComponent(ip||''));
     if((r.headers.get('Content-Type')||'').indexOf('text/plain')===0){
       const blob=await r.blob(), m=/filename="([^"]+)"/.exec(r.headers.get('Content-Disposition')||'');

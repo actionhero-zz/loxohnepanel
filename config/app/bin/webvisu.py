@@ -3884,8 +3884,9 @@ class App:
                 "bundled": _launcher_bundled_ver()}
 
     async def device_adblog(self, device: str, ip: str = "") -> dict:
-        """Android-Geraet (Shelly, Tablet) per adb auslesen - NUR lesend: Systemprotokoll,
-        ANR-Eintraege ("isn't responding"), Speicher, CPU, Laufzeit. -> {ok, text|error}"""
+        """Android-Geraet (Shelly, Tablet) per adb auslesen - NUR lesend: Sensoren (inkl.
+        10 s Mitschnitt Naeherungssensor), Systemprotokoll, ANR-Eintraege ("isn't
+        responding"), Speicher, CPU, Laufzeit. -> {ok, text|error}"""
         ip = ip or self._device_ip(device)
         try:
             ip = str(ipaddress.ip_address(ip.strip()))
@@ -3895,7 +3896,19 @@ class App:
             return {"ok": False, "error": "adb fehlt im Container"}
         target = f"{ip}:5555"
         parts = [f"LoxPanel Geräte-Log · {device} ({ip}) · {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} · Version {APP_VERSION}"]
+        # Naeherungssensor 10 s mitschneiden (gleich zu Beginn - die Config bittet
+        # dann um Annaeherung): Roh-Eingaben per getevent im Hintergrund, parallel
+        # jede Sekunde die Proximity-Zeilen aus dumpsys sensorservice.
+        prox = ("echo '--- Eingabegeraete mit Abstand/Proximity (getevent -pl) ---'; "
+                "getevent -pl 2>&1 | grep -iE 'add device|name:|ABS_DISTANCE|prox'; "
+                "f=/data/local/tmp/loxpanel_getevent.txt; getevent -lt > $f 2>&1 & p=$!; "
+                "i=0; while [ $i -lt 10 ]; do echo \"--- dumpsys sensorservice, Sekunde $i ---\"; "
+                "dumpsys sensorservice | grep -iE -A6 'prox' | head -n 40; sleep 1; i=$((i+1)); done; "
+                "kill $p 2>/dev/null; echo '--- getevent -lt (10 s, ohne SYN_REPORT) ---'; "
+                "grep -v SYN_REPORT $f | head -n 400; rm -f $f")
         steps = [
+            ("Sensoren: Näherungssensor 10 s Mitschnitt (Hand annähern und wegnehmen)", [prox]),
+            ("Sensoren (Liste + letzte Werte, dumpsys sensorservice)", ["dumpsys", "sensorservice"]),
             ("Laufzeit", ["uptime"]),
             ("Android", ["getprop", "ro.build.display.id"]),
             ("Speicher", ["cat", "/proc/meminfo"]),
